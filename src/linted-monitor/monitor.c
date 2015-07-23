@@ -42,17 +42,15 @@
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <fcntl.h>
 #include <libgen.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <stdio.h>
 
 #if defined HAVE_POSIX_API
 #include <sys/prctl.h>
@@ -199,6 +197,12 @@ static linted_error ptrace_geteventmsg(pid_t pid, unsigned long *msg);
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor",
     .start = monitor_start};
+
+static char const *const default_envvars[] = {
+    "MALLOC_CHECK_", "MALLOC_PERTURB_", "MANAGERPID", "USER", "LOGNAME",
+    "HOME", "SHELL", "XDG_RUNTIME_DIR"
+                     "XDG_SESSION_ID",
+    "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
 
 static unsigned char monitor_start(char const *process_name,
                                    size_t argc,
@@ -1959,11 +1963,6 @@ reply:
 	reply->stop.was_up = was_up;
 	return 0;
 }
-
-static char const *const default_envvars[] = {
-    "MANAGERPID", "USER", "LOGNAME", "HOME", "SHELL", "XDG_RUNTIME_DIR"
-                                                      "XDG_SESSION_ID",
-    "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       linted_ko cwd, char const *path)

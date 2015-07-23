@@ -17,6 +17,7 @@
 
 #include "linted/controller.h"
 
+#include "linted/error.h"
 #include "linted/io.h"
 #include "linted/mem.h"
 #include "linted/rpc.h"

@@ -21,6 +21,8 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/unit.h"
+#include "linted/util.h"
 
 #include <assert.h>
 #include <errno.h>

@@ -14,6 +14,12 @@
  * @section potential Potential tools
  * <ul>
  *
+ * <li> [sixgill](http://sixgill.org/) </li>
+ * <li> [S-Spider](https://code.google.com/p/s-spider/) </li>
+ * <li> [Saturn](http://saturn.stanford.edu/) </li>
+ * <li> [KLEE](https://klee.github.io/) </li>
+ * <li> [Overture Tool](http://overturetool.org/) </li>
+ * <li> [Infer](http://fbinfer.com/) </li>
  * <li> [joern](https://github.com/fabsx00/joern) </li>
  * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
  * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
@@ -24,38 +30,38 @@
  * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
  * <li> [AFL](http://lcamtuf.coredump.cx/afl/) </li>
  * <li> [Why3](http://why3.lri.fr/) </li>
- * <li> [Ada SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
  * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve) </li>
  * <li> [Eclipse's CODAN](http://wiki.eclipse.org/CDT/designs/StaticAnalysis) </li>
  * <li> [unifdef](http://dotat.at/prog/unifdef/) </li>
  * <li> [TLA+](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html) </li>
+ * <li> [Ada SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
  *
  * </ul>
  *
  * @section useful Useful tools
  * <ul>
  *
- * <li> [Valgrind](http://valgrind.org/)
- *
- * A runtime instrumentor that checks code for errors.
- *
- * As of version 3.11:
- * - You have to make sure every running service has a /tmp directory.
- * - You have to set the pipe prefix appropriately
- * - You have to set the Valgrind to trace children
- * - You have to use the latest version from SVN (version 11) to
- *   handle system calls like pivot_root.
- * - It's a bit buggy with sandboxing but works fine.
- * - memcheck works fine.
- * - helgrind can't cope with asynchronous cancellation well.
- * - All together something like `valgrind --vgdb-prefix=/tmp/vgdb --trace-children=yes ./scripts/test` works.
+ * <li> [FlameGraph](https://github.com/brendangregg/FlameGraph)
+ * - Visualizes perf output nicely.
  * </li>
  *
- * <li> [Address Sanitizer](http://clang.llvm.org/docs/AddressSanitizer.html)
+ * <li> [Clang-Format](http://clang.llvm.org/)
+ * As of version 3.5:
+ * - Formats code nicely
+ * </li>
  *
- * A compiler debug mode that checks code for errors.
+ * <li> [Git](http://git-scm.com//)
+ * A version control system
+ * </li>
  *
- * - It works great without any changes.
+ * </ul>
+ *
+ * @subsection instrumenters Instrumenters
+ *
+ * <ul>
+ *
+ * <li> GLibc Memory Allocator Debug Environment Variables
+ * They are `MALLOC_CHECK_` and `MALLOC_PERTURB_`.
  * </li>
  *
  * <li> [Apitrace](https://github.com/apitrace/apitrace)
@@ -99,9 +105,53 @@
  * - Make sure to download all debug symbols
  * </li>
  *
+ * <li> [xtrace](http://xtrace.alioth.debian.org//)
+ * As of version 1.3.1:
+ * - Works perfectly for what it does.
+ * - Is kind of useless.
+ * - Doesn't support a -D detach option like strace.
+ * - Doesn't distinguish between multiple open connections well.
+ * - It'd be awesome if it supported features like fault injection as
+ *   well ("Maximum number of clients reached" for example.)
+ * </li>
+ *
+ * <li> [Valgrind](http://valgrind.org/)
+ *
+ * A runtime instrumentor that checks code for errors.
+ *
+ * As of version 3.11:
+ * - You have to make sure every running service has a /tmp directory.
+ * - You have to set the pipe prefix appropriately
+ * - You have to set the Valgrind to trace children
+ * - You have to use the latest version from SVN (version 11) to
+ *   handle system calls like pivot_root.
+ * - It's a bit buggy with sandboxing but works fine.
+ * - memcheck works fine.
+ * - helgrind can't cope with asynchronous cancellation well.
+ * - All together something like `valgrind --vgdb-prefix=/tmp/vgdb --trace-children=yes ./scripts/test` works.
+ * </li>
+ *
+ * <li> [Address Sanitizer](http://clang.llvm.org/docs/AddressSanitizer.html)
+ *
+ * A compiler debug mode that checks code for errors.
+ *
+ * - It works great without any changes.
+ * </li>
+ *
+ * </ul>
+ *
+ * @subsection analyzers Analyzers
+ *
+ * <ul>
+ *
  * <li> [Cppcheck](http://cppcheck.sourceforge.net/)
  * A code linter.
  * - It's okay but mostly just catches bad style.
+ * </li>
+ *
+ * <li> [IWYU](https://code.google.com/p/include-what-you-use/)
+ * Is a bit buggy.
+ * Use like: `make CC='iwyu -I/usr/lib/clang/3.5/include' -k | tee iwyu.log`
  * </li>
  *
  * <li> [CBMC](http://www.cprover.org/cbmc/)
@@ -123,7 +173,6 @@
  * </li>
  *
  * <li> [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git)
- *
  * Works moderately well but isn't particularly better than other
  * static analyzers without custom annotations.
  *
@@ -133,7 +182,7 @@
  * Segfaults on some code.
  * </li>
  *
- * <li> [Frama-C](http://frama-c.com/
+ * <li> [Frama-C](http://frama-c.com/)
  * As of version Neon-20140301:
  * - It's a bit fiddly to get working.
  * - It doesn't work the standard library and supplies its own but it
@@ -141,33 +190,7 @@
  * - It can't handle concurrency or function pointers in some cases.
  * </li>
  *
- * <li> [xtrace](http://xtrace.alioth.debian.org//)
- * As of version 1.3.1:
- * - Works perfectly for what it does.
- * - Is kind of useless.
- * - Doesn't support a -D detach option like strace.
- * - Doesn't distinguish between multiple open connections well.
- * - It'd be awesome if it supported features like fault injection as
- *   well ("Maximum number of clients reached" for example.)
- * </li>
- *
- * <li> [FlameGraph](https://github.com/brendangregg/FlameGraph)
- * - Visualizes perf output nicely.
- * </li>
- *
- * <li> [Clang-Format](http://clang.llvm.org/)
- * As of version 3.5:
- * - Formats code nicely
- * </li>
- *
- * <li> [Git](http://git-scm.com//)
- * A version control system
- * </li>
- *
- * <li> [IWYU](https://code.google.com/p/include-what-you-use/)
- * Is a bit buggy.
- * Use like: `make CC='iwyu -I/usr/lib/clang/3.5/include' -k | tee iwyu.log`
- * </li>
+ * </ul>
  *
  * @section rejected Rejected Tools
  *
@@ -231,12 +254,12 @@
  * - Did give a nice tip about how `InitializeCriticalSection` can
  *   throw an exception however. Note that this only applies to
  *   Windows XP and lower.
- *
  * </li>
  *
  * @section also See Also
  * - http://gulliver.eu.org/program_dev_check_environments
  * - https://www.gnu.org/software/hurd/open_issues/code_analysis.html
- * - NIST's Software Assurance Metrics and Tool Evaluation (SAMATE) project.
+ * - NIST's Software Assurance Metrics and Tool Evaluation (SAMATE)
+     project.
  * - The Open Source Quality Project at Berkeley.
  */
