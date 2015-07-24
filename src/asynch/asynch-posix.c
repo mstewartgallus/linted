@@ -119,8 +119,9 @@ static bool canceller_check_and_unregister(struct canceller *canceller);
 
 struct canceller {
 	pthread_t owner;
-	bool *cancel_replier;
 	spinlock lock;
+	bool cancelled : 1U;
+	bool cancel_reply : 1U;
 	bool owned : 1U;
 	bool in_flight : 1U;
 };
@@ -1558,7 +1559,8 @@ static void canceller_init(struct canceller *canceller)
 	canceller->in_flight = false;
 
 	canceller->owned = false;
-	canceller->cancel_replier = 0;
+	canceller->cancelled = false;
+	canceller->cancel_reply = false;
 }
 
 static void canceller_start(struct canceller *canceller)
@@ -1578,6 +1580,8 @@ static void canceller_start(struct canceller *canceller)
 	assert(!canceller->in_flight);
 	assert(!canceller->owned);
 
+	canceller->cancelled = false;
+	canceller->cancel_reply = false;
 	canceller->in_flight = true;
 	canceller->owned = false;
 
@@ -1606,11 +1610,10 @@ static void canceller_stop(struct canceller *canceller)
 	assert(canceller->in_flight);
 
 	{
-		bool *cancel_replier = canceller->cancel_replier;
-		bool cancelled = cancel_replier != 0;
+		bool cancelled = canceller->cancelled;
 		if (cancelled)
-			*cancel_replier = true;
-		canceller->cancel_replier = 0;
+			canceller->cancel_reply = true;
+		canceller->cancelled = false;
 	}
 
 	canceller->in_flight = false;
@@ -1631,7 +1634,6 @@ static void canceller_cancel(struct canceller *canceller)
 
 	spinlock *lock = &canceller->lock;
 
-	bool cancel_reply = false;
 	bool in_flight;
 
 	{
@@ -1641,11 +1643,11 @@ static void canceller_cancel(struct canceller *canceller)
 			assert(false);
 		}
 
-		assert(0 == canceller->cancel_replier);
+		assert(false == canceller->cancel_reply);
 
 		in_flight = canceller->in_flight;
 		if (in_flight) {
-			canceller->cancel_replier = &cancel_reply;
+			canceller->cancel_reply = false;
 
 			bool owned = canceller->owned;
 			if (owned) {
@@ -1658,6 +1660,8 @@ static void canceller_cancel(struct canceller *canceller)
 				}
 			}
 		}
+
+		canceller->cancelled = true;
 
 		err = spinlock_unlock(lock);
 		if (err != 0) {
@@ -1681,7 +1685,7 @@ static void canceller_cancel(struct canceller *canceller)
 			assert(false);
 		}
 
-		cancel_replied = cancel_reply;
+		cancel_replied = canceller->cancel_reply;
 		if (!cancel_replied) {
 			bool owned = canceller->owned;
 			if (owned) {
@@ -1718,16 +1722,13 @@ static bool canceller_check_or_register(struct canceller *canceller,
 		assert(false);
 	}
 
-	bool cancelled;
-	{
-		cancelled = canceller->cancel_replier != 0;
+	bool cancelled = canceller->cancelled;
 
-		/* Don't actually complete the cancellation if
-		 * cancelled and let the completion do that.
-		 */
-		canceller->owner = self;
-		canceller->owned = true;
-	}
+	/* Don't actually complete the cancellation if cancelled and
+	 * let the completion do that.
+	 */
+	canceller->owner = self;
+	canceller->owned = true;
 
 	err = spinlock_unlock(lock);
 	if (err != 0) {
@@ -1741,7 +1742,7 @@ static bool canceller_check_or_register(struct canceller *canceller,
 static bool canceller_check_and_unregister(struct canceller *canceller)
 {
 	linted_error err;
-	bool cancelled;
+
 
 	err = spinlock_lock(&canceller->lock);
 	if (err != 0) {
@@ -1753,13 +1754,10 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 	assert(canceller->owned);
 
 	canceller->owned = false;
-	{
-		bool *cancel_replier = canceller->cancel_replier;
-		cancelled = cancel_replier != 0;
-		if (cancelled)
-			*cancel_replier = true;
-		canceller->cancel_replier = 0;
-	}
+
+	bool cancelled = canceller->cancelled;
+	if (cancelled)
+		canceller->cancel_reply = true;
 
 	err = spinlock_unlock(&canceller->lock);
 	if (err != 0) {
