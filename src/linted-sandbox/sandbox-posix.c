@@ -57,6 +57,10 @@
  * @file
  *
  * Sandbox applications.
+ *
+ * @bug `mount("/home", "home", "none", MS_SHARED | MS_BIND)` doesn't
+ *       work if `/home` has a userspace filesystem mounted inside of
+ *       it.
  */
 
 enum { STOP_OPTIONS,
