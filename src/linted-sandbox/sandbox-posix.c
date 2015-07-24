@@ -161,6 +161,7 @@ mount_directories(struct mount_args const *mount_args, size_t size);
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
 
+static linted_error safe_dup2(int oldfd, int newfd);
 static pid_t safe_vfork(int (*f)(void *), void *args);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
@@ -929,10 +930,9 @@ first_fork_routine(void *void_args)
 	if (err != 0)
 		goto fail;
 
-	if (-1 == dup2(logger_reader, LINTED_KO_STDIN)) {
-		err = errno;
+	err = safe_dup2(logger_reader, LINTED_KO_STDIN);
+	if (err != 0)
 		goto fail;
-	}
 
 	{
 		char const *arguments[] = {waiter_base, 0};
@@ -959,15 +959,13 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	char const *const *argv = args->argv;
 	bool use_seccomp = args->use_seccomp;
 
-	if (-1 == dup2(logger_writer, LINTED_KO_STDOUT)) {
-		err = errno;
+	err = safe_dup2(logger_writer, LINTED_KO_STDOUT);
+	if (err != 0)
 		goto fail;
-	}
 
-	if (-1 == dup2(logger_writer, LINTED_KO_STDERR)) {
-		err = errno;
+	err = safe_dup2(logger_writer, LINTED_KO_STDERR);
+	if (err != 0)
 		goto fail;
-	}
 
 	/* Do seccomp filter last of all */
 	if (use_seccomp) {
@@ -1304,6 +1302,41 @@ static linted_error set_no_new_privs(bool b)
 	}
 
 	return 0;
+}
+
+static linted_error safe_dup2(int oldfd, int newfd)
+{
+	linted_error err;
+	/*
+	 * The state of a file descriptor after close gives an EINTR
+	 * error is unspecified by POSIX so this function avoids the
+	 * problem by simply blocking all signals.
+	 */
+
+	sigset_t sigset;
+
+	/* First use the signal set for the full set */
+	sigfillset(&sigset);
+
+	/* Then reuse the signal set for the old set */
+
+	err = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+	if (err != 0)
+		return err;
+
+	if (-1 == dup2(oldfd, newfd)) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+	} else {
+		err = 0;
+	}
+
+	linted_error mask_err =
+	    pthread_sigmask(SIG_SETMASK, &sigset, 0);
+	if (0 == err)
+		err = mask_err;
+
+	return err;
 }
 
 /* Most compilers can't handle the weirdness of vfork so contain it in

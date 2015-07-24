@@ -395,19 +395,55 @@ fail : {
 LINTED_NO_SANITIZE_ADDRESS
 static linted_error duplicate_to(linted_ko new, linted_ko old)
 {
+	linted_error err = 0;
+
 	if (new == old) {
 		int flags = fcntl(old, F_GETFD);
-		if (-1 == flags)
-			return errno;
+		if (-1 == flags) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
+		}
 
-		if (-1 == fcntl(new, F_SETFD, flags & ~FD_CLOEXEC))
-			return errno;
-	} else {
-		if (-1 == dup2(new, old))
-			return errno;
+		if (-1 == fcntl(new, F_SETFD, flags & ~FD_CLOEXEC)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
+		}
+
+		return 0;
 	}
 
-	return 0;
+	/*
+	 * The state of a file descriptor after close gives an EINTR
+	 * error is unspecified by POSIX so this function avoids the
+	 * problem by simply blocking all signals.
+	 */
+
+	sigset_t sigset;
+
+	/* First use the signal set for the full set */
+	sigfillset(&sigset);
+
+	/* Then reuse the signal set for the old set */
+
+	err = pthread_sigmask(SIG_BLOCK, &sigset, &sigset);
+	if (err != 0)
+		return err;
+
+	if (-1 == dup2(new, old)) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+	} else {
+		err = 0;
+	}
+
+	linted_error mask_err =
+	    pthread_sigmask(SIG_SETMASK, &sigset, 0);
+	if (0 == err)
+		err = mask_err;
+
+	return err;
 }
 
 /* Most compilers can't handle the weirdness of vfork so contain it in
