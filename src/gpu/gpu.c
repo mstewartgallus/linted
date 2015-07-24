@@ -120,9 +120,20 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 
 	EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 	if (EGL_NO_DISPLAY == display) {
-		/* Strangely, EGL defines that no error is generated
-		 * in this case. */
-		err = EINVAL;
+		EGLint err_egl = eglGetError();
+		switch (err_egl) {
+		/* In this case no display was found. */
+		case EGL_SUCCESS:
+			err = EINVAL;
+			break;
+
+		case EGL_BAD_ALLOC:
+			err = ENOMEM;
+			break;
+
+		default:
+			assert(false);
+		}
 		goto release_thread;
 	}
 
@@ -133,7 +144,9 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 		/* Shouldn't happen */
 		assert(err_egl != EGL_BAD_DISPLAY);
 
-		if (EGL_NOT_INITIALIZED == err_egl) {
+		switch (err_egl) {
+		case EGL_NOT_INITIALIZED:
+		case EGL_BAD_ALLOC:
 			err = ENOMEM;
 			goto destroy_display;
 		}
@@ -162,6 +175,12 @@ choose_config_failed : {
 	assert(err_egl != EGL_BAD_ATTRIBUTE);
 	assert(err_egl != EGL_NOT_INITIALIZED);
 	assert(err_egl != EGL_BAD_PARAMETER);
+
+	switch (err_egl) {
+	case EGL_BAD_ALLOC:
+		err = ENOMEM;
+		goto destroy_display;
+	}
 
 	assert(false);
 }
