@@ -438,7 +438,9 @@ static linted_error on_idle(struct linted_asynch_task *task)
 	idle_data->idle_in_progress = false;
 
 	/* Draw or resize if we have time to waste */
-	linted_gpu_draw(gpu_context);
+	err = linted_gpu_draw(gpu_context);
+	if (err != 0)
+		return err;
 
 	maybe_idle(idle_task);
 

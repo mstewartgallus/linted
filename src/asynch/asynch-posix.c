@@ -1743,7 +1743,6 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 {
 	linted_error err;
 
-
 	err = spinlock_lock(&canceller->lock);
 	if (err != 0) {
 		assert(err != EDEADLK);
