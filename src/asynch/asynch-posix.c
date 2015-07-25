@@ -1807,7 +1807,7 @@ static size_t small_stack_size(void)
 	size_t page_size = maybe_page_size;
 	size_t stack_min_size = maybe_stack_min_size;
 
-	return stack_min_size + 8U * page_size;
+	return stack_min_size + page_size;
 }
 
 #if defined HAVE_PTHREAD_SETNAME_NP
