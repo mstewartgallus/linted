@@ -75,12 +75,12 @@
  *
  * - Can't profile OpenGL ES code well.
  *
- * - When setting environment variables is better supported using them
- *   directly instead of going through the apitrace binary is probably
- *   better because then it can be used only on the drawer service.
+ * - Probably best used by setting the ExecStart in the drawer service
+ *   like:
  *   <code>
- *   LD_PRELOAD=/home/sstewartgallus/root/usr/local/stow/apitrace/bin/../lib/apitrace/wrappers/egltrace.so
- *   TRACE_FILE=mytrace.trace
+ *   ExecStart=/usr/bin/env
+ *   ExecStart=LD_PRELOAD=/home/sstewartgallus/root/usr/local/stow/apitrace/lib/x86_64-linux-gnu/apitrace/wrappers/egltrace.so
+ *   ExecStart="${LINTED_DRAWER}" "window" "window-notifier-drawer" "updater"
  *   </code>
  *
  * </li>
