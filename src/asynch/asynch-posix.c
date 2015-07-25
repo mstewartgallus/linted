@@ -31,9 +31,9 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <poll.h>
 #include <sys/mman.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -51,6 +51,8 @@ static inline void spinlock_init(spinlock *lock);
 static inline void spinlock_destroy(spinlock *lock);
 static inline linted_error spinlock_lock(spinlock *lock);
 static inline linted_error spinlock_unlock(spinlock *lock);
+
+static size_t small_stack_size(void);
 
 /**
  * A one reader to many writers queue. Should be able to retrieve
@@ -511,20 +513,11 @@ static linted_error worker_pool_create(
 			goto destroy_worker_queues;
 	}
 
-	/*
-	 * Our tasks are only I/O tasks and have extremely tiny stacks.
-	 */
+	size_t stack_size = small_stack_size();
+
 	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
 	assert(maybe_page_size >= 0);
-
-	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
-	assert(maybe_stack_min_size >= 0);
-
 	size_t page_size = maybe_page_size;
-	size_t stack_min_size = maybe_stack_min_size;
-
-	/* We need an extra page for signals */
-	size_t stack_size = stack_min_size + page_size;
 
 	size_t stack_and_guard_size = stack_size + page_size;
 	size_t worker_stacks_size =
@@ -547,15 +540,16 @@ static linted_error worker_pool_create(
 		goto destroy_stacks;
 	}
 
+	char *tail_guard_page =
+	    (char *)worker_stacks + page_size + stack_size;
 	for (size_t ii = 0U; ii < workers_count; ++ii) {
 		if (-1 ==
-		    mprotect((char *)worker_stacks + page_size +
-		                 ii * stack_and_guard_size + stack_size,
-		             page_size, PROT_NONE)) {
+		    mprotect(tail_guard_page, page_size, PROT_NONE)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
 			goto destroy_stacks;
 		}
+		tail_guard_page += page_size + stack_size;
 	}
 
 	pool->worker_count = workers_count;
@@ -572,16 +566,15 @@ static linted_error worker_pool_create(
 		if (err != 0)
 			goto destroy_stacks;
 
+		char *last_stack = (char *)worker_stacks + page_size;
 		for (; created_threads < max_tasks; ++created_threads) {
-			err = pthread_attr_setstack(
-			    &attr,
-			    (char *)worker_stacks + page_size +
-			        created_threads * stack_and_guard_size,
-			    stack_size);
+			err = pthread_attr_setstack(&attr, last_stack,
+			                            stack_size);
 			if (err != 0) {
 				assert(err != EINVAL);
 				assert(false);
 			}
+			last_stack += stack_size + page_size;
 
 			struct worker *worker =
 			    &pool->workers[created_threads];
@@ -917,20 +910,12 @@ static linted_error wait_manager_create(
 			goto free_manager;
 	}
 
-	/*
-	 * Our tasks are only I/O tasks and have extremely tiny stacks.
-	 */
+	/* We need an extra page for signals */
+	size_t stack_size = small_stack_size();
+
 	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
 	assert(maybe_page_size >= 0);
-
-	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
-	assert(maybe_stack_min_size >= 0);
-
 	size_t page_size = maybe_page_size;
-	size_t stack_min_size = maybe_stack_min_size;
-
-	/* We need an extra page for signals */
-	size_t stack_size = stack_min_size + page_size;
 
 	size_t stack_and_guard_size = stack_size + page_size;
 	size_t pollers_stacks_size =
@@ -952,16 +937,16 @@ static linted_error wait_manager_create(
 		LINTED_ASSUME(err != 0);
 		goto destroy_stacks;
 	}
-
+	char *tail_guard_page =
+	    (char *)pollers_stacks + page_size + stack_size;
 	for (size_t ii = 0U; ii < pollers_count; ++ii) {
 		if (-1 ==
-		    mprotect((char *)pollers_stacks + page_size +
-		                 ii * stack_and_guard_size + stack_size,
-		             page_size, PROT_NONE)) {
+		    mprotect(tail_guard_page, page_size, PROT_NONE)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
 			goto destroy_stacks;
 		}
+		tail_guard_page += page_size + stack_size;
 	}
 
 	manager->stopped = false;
@@ -978,17 +963,16 @@ static linted_error wait_manager_create(
 		if (err != 0)
 			goto destroy_stacks;
 
+		char *last_stack = (char *)pollers_stacks + page_size;
 		for (; created_threads < max_pollers;
 		     ++created_threads) {
-			err = pthread_attr_setstack(
-			    &attr,
-			    (char *)pollers_stacks + page_size +
-			        created_threads * stack_and_guard_size,
-			    stack_size);
+			err = pthread_attr_setstack(&attr, last_stack,
+			                            stack_size);
 			if (err != 0) {
 				assert(err != EINVAL);
 				assert(false);
 			}
+			last_stack += stack_size + page_size;
 
 			struct poller *poller =
 			    &manager->pollers[created_threads];
@@ -1808,6 +1792,23 @@ static inline linted_error spinlock_unlock(spinlock *lock)
 	return pthread_mutex_unlock(lock);
 }
 #endif
+
+static size_t small_stack_size(void)
+{
+	/*
+	 * Our tasks are only I/O tasks and have extremely tiny stacks.
+	 */
+	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
+	assert(maybe_page_size >= 0);
+
+	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
+	assert(maybe_stack_min_size >= 0);
+
+	size_t page_size = maybe_page_size;
+	size_t stack_min_size = maybe_stack_min_size;
+
+	return stack_min_size + 8U * page_size;
+}
 
 #if defined HAVE_PTHREAD_SETNAME_NP
 static void set_thread_name(char const *name)
