@@ -27,6 +27,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <string.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -244,18 +245,26 @@ wait_on_poll:
 	                                sigpipe_reader, POLLIN);
 }
 
+#if defined __GLIBC__
 char const *linted_signal_string(int signo)
 {
-	extern const char *const sys_siglist[];
+	/* GLibc's strsignal can allocate memory on unknown values
+	 * which is wrong and bad. */
+	static char const unknown_signal[] = "Unknown signal";
 
-	if (signo >= _NSIG)
-		return 0;
-	if (signo < 0)
-		return 0;
+	if (signo >= NSIG)
+		return unknown_signal;
+	if (signo <= 0)
+		return unknown_signal;
 
-	return sys_siglist[signo];
+	return strsignal(signo);
 }
-
+#else
+char const *linted_signal_string(int signo)
+{
+	return strsignal(signo);
+}
+#endif
 static void listen_to_signal(size_t ii);
 
 void linted_signal_listen_to_sighup(void)

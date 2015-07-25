@@ -209,16 +209,6 @@ dnl
                 AC_MSG_ERROR([Unable to find good mmap function])
         ])
 dnl
-        AC_CHECK_FUNCS([[fchdir]dnl
-                        [gethostname]dnl
-                        [munmap]dnl
-                        [setenv]dnl
-                        [setlocale]dnl
-                        [socket]dnl
-                        [strndup]], [], [
-                AC_MSG_ERROR([Unable to find function ${ac_func}])
-        ])
-dnl
         AC_CHECK_FUNCS([[dup2]dnl
                         [memmove]dnl
                         [memset]dnl
