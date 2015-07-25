@@ -14,27 +14,27 @@
  * @section potential Potential tools
  * <ul>
  *
- * <li> [sixgill](http://sixgill.org/) </li>
- * <li> [S-Spider](https://code.google.com/p/s-spider/) </li>
- * <li> [Saturn](http://saturn.stanford.edu/) </li>
- * <li> [KLEE](https://klee.github.io/) </li>
- * <li> [Overture Tool](http://overturetool.org/) </li>
+ * <li> [Ada SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
+ * <li> [AFL](http://lcamtuf.coredump.cx/afl/) </li>
+ * <li> [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
+ * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
+ * <li> [Eclipse's CODAN](http://wiki.eclipse.org/CDT/designs/StaticAnalysis) </li>
+ * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve) </li>
  * <li> [Infer](http://fbinfer.com/) </li>
  * <li> [joern](https://github.com/fabsx00/joern) </li>
- * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
+ * <li> [KLEE](https://klee.github.io/) </li>
  * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
- * <li> [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
- * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
  * <li> [Oink](http://daniel-wilkerson.appspot.com/oink/index.html) </li>
- * <li> [Yasca](http://sourceforge.net/projects/yasca/) </li>
+ * <li> [Overture Tool](http://overturetool.org/) </li>
  * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
- * <li> [AFL](http://lcamtuf.coredump.cx/afl/) </li>
- * <li> [Why3](http://why3.lri.fr/) </li>
- * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve) </li>
- * <li> [Eclipse's CODAN](http://wiki.eclipse.org/CDT/designs/StaticAnalysis) </li>
- * <li> [unifdef](http://dotat.at/prog/unifdef/) </li>
+ * <li> [Saturn](http://saturn.stanford.edu/) </li>
+ * <li> [sixgill](http://sixgill.org/) </li>
+ * <li> [S-Spider](https://code.google.com/p/s-spider/) </li>
+ * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
  * <li> [TLA+](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html) </li>
- * <li> [Ada SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
+ * <li> [unifdef](http://dotat.at/prog/unifdef/) </li>
+ * <li> [Why3](http://why3.lri.fr/) </li>
+ * <li> [Yasca](http://sourceforge.net/projects/yasca/) </li>
  *
  * </ul>
  *
@@ -195,6 +195,15 @@
  * @section rejected Rejected Tools
  *
  * <ul>
+ *
+ * <li> [VOGL](https://github.com/ValveSoftware/vogl)
+ * - It doesn't support EGL.  See the issue at
+ *   https://github.com/ValveSoftware/vogl/issues/193
+ * </li>
+ *
+ * <li> [GLSL-Debugger](https://glsl-debugger.github.io/)
+ * - I couldn't get it to build as it required Qt4.
+ * </li>
  *
  * <li> [Build EAR](https://github.com/rizsotto/Bear)
  * - It works perfectly except each time it is rerun it overwrites the
