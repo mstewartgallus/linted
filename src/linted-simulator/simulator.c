@@ -17,7 +17,7 @@
 
 #include "config.h"
 
-#include "simulator.h"
+#include "sim.h"
 
 #include "linted/asynch.h"
 #include "linted/controller.h"
@@ -36,33 +36,33 @@
 #include <time.h>
 
 #define ROTATION_SPEED 512U
-#define DEAD_ZONE (LINTED_SIM_UINT_MAX / 8)
+#define DEAD_ZONE (SIM_UINT_MAX / 8)
 
 enum { ON_READ_TIMER,
        ON_RECEIVE_CONTROLLER_EVENT,
        ON_SENT_UPDATER_EVENT,
        MAX_TASKS };
 
-struct action_state {
-	linted_sim_int x_tilt;
-	linted_sim_int y_tilt;
+struct intent {
+	sim_int look_sideways;
+	sim_int look_up_or_down;
 
-	signed int x : 2U;
-	signed int z : 2U;
+	signed int strafe : 2U;
+	signed int retreat_or_go_forth : 2U;
 
-	bool jumping : 1U;
+	bool jump_up : 1U;
 };
 
 struct differentiable {
-	linted_sim_int value;
-	linted_sim_int old;
+	sim_int value;
+	sim_int old;
 };
 
-struct sim_state {
+struct state {
 	struct differentiable position[3U];
 
-	linted_sim_angle x_rotation;
-	linted_sim_angle y_rotation;
+	sim_angle x_rotation;
+	sim_angle y_rotation;
 
 	bool update_pending : 1U;
 	bool write_in_progress : 1U;
@@ -71,25 +71,24 @@ struct sim_state {
 struct tick_data {
 	struct linted_asynch_pool *pool;
 	struct linted_updater_task_send *updater_task;
-	struct action_state const *action_state;
-	struct sim_state *sim_state;
+	struct intent const *intent;
+	struct state *state;
 	linted_ko updater;
 };
 
 struct controller_data {
 	struct linted_asynch_pool *pool;
-	struct action_state *action_state;
+	struct intent *intent;
 };
 
 struct updater_data {
-	struct sim_state *sim_state;
+	struct state *state;
 	struct linted_asynch_pool *pool;
 	linted_ko updater;
 };
 
-static unsigned char linted_sim_start(char const *const process_name,
-                                      size_t argc,
-                                      char const *const argv[]);
+static unsigned char sim_start(char const *const process_name,
+                               size_t argc, char const *const argv[]);
 static linted_error dispatch(struct linted_asynch_task *completed_task);
 
 static linted_error
@@ -99,29 +98,27 @@ on_controller_receive(struct linted_asynch_task *task);
 static linted_error
 on_sent_update(struct linted_asynch_task *completed_task);
 
-static void maybe_update(linted_updater updater,
-                         struct sim_state *sim_state,
+static void maybe_update(linted_updater updater, struct state *state,
                          struct linted_updater_task_send *updater_task,
                          struct linted_asynch_pool *pool);
 
-static void simulate_tick(struct sim_state *sim_state,
-                          struct action_state const *action_state);
-static linted_sim_angle tilt_rotation(linted_sim_angle rotation,
-                                      linted_sim_int tilt);
-static linted_sim_angle tilt_clamped_rotation(linted_sim_angle rotation,
-                                              linted_sim_int tilt);
+static void simulate_tick(struct state *state,
+                          struct intent const *intent);
+static sim_angle tilt_rotation(sim_angle rotation, sim_int tilt);
+static sim_angle tilt_clamped_rotation(sim_angle rotation,
+                                       sim_int tilt);
 
-static linted_sim_uint absolute(linted_sim_int x);
-static linted_sim_int min_int(linted_sim_int x, linted_sim_int y);
-static linted_sim_int sign(linted_sim_int x);
+static sim_int downscale(sim_int x, sim_int y);
+static sim_uint absolute(sim_int x);
+static sim_int min_int(sim_int x, sim_int y);
+static sim_int sign(sim_int x);
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator",
-    .start = linted_sim_start};
+    .start = sim_start};
 
-static unsigned char linted_sim_start(char const *const process_name,
-                                      size_t argc,
-                                      char const *const argv[])
+static unsigned char sim_start(char const *const process_name,
+                               size_t argc, char const *const argv[])
 {
 	linted_error err;
 
@@ -162,17 +159,17 @@ static unsigned char linted_sim_start(char const *const process_name,
 		updater = xx;
 	}
 
-	struct action_state action_state = {
-	    .x = 0, .z = 0, .jumping = false};
+	struct intent intent = {
+	    .strafe = 0, .retreat_or_go_forth = 0, .jump_up = false};
 
-	struct sim_state sim_state = {
+	struct state state = {
 	    .update_pending = true, /* Initialize the gui at start */
 	    .write_in_progress = false,
 	    .position = {{.value = 0, .old = 0},
 	                 {.value = 0, .old = 0},
 	                 {.value = 3 * 1024, .old = 3 * 1024}},
-	    .x_rotation = LINTED_SIM_ANGLE(1U, 2U),
-	    .y_rotation = LINTED_SIM_ANGLE(0U, 1U)};
+	    .x_rotation = SIM_ANGLE(1U, 2U),
+	    .y_rotation = SIM_ANGLE(0U, 1U)};
 
 	struct linted_asynch_pool *pool;
 	{
@@ -220,12 +217,12 @@ static unsigned char linted_sim_start(char const *const process_name,
 
 	timer_data.pool = pool;
 	timer_data.updater_task = updater_task;
-	timer_data.action_state = &action_state;
-	timer_data.sim_state = &sim_state;
+	timer_data.intent = &intent;
+	timer_data.state = &state;
 	timer_data.updater = updater;
 
 	controller_data.pool = pool;
-	controller_data.action_state = &action_state;
+	controller_data.intent = &intent;
 
 	{
 		struct timespec now;
@@ -340,9 +337,8 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 	linted_ko updater = timer_data->updater;
 	struct linted_updater_task_send *updater_task =
 	    timer_data->updater_task;
-	struct action_state const *action_state =
-	    timer_data->action_state;
-	struct sim_state *sim_state = timer_data->sim_state;
+	struct intent const *intent = timer_data->intent;
+	struct state *state = timer_data->state;
 
 	struct timespec last_tick_time;
 	{
@@ -372,9 +368,9 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 	}
 	linted_asynch_pool_submit(pool, task);
 
-	simulate_tick(sim_state, action_state);
+	simulate_tick(state, intent);
 
-	maybe_update(updater, sim_state, updater_task, pool);
+	maybe_update(updater, state, updater_task, pool);
 
 	return 0;
 }
@@ -394,8 +390,7 @@ on_controller_receive(struct linted_asynch_task *task)
 	    linted_controller_task_receive_data(controller_task);
 
 	struct linted_asynch_pool *pool = controller_data->pool;
-	struct action_state *action_state =
-	    controller_data->action_state;
+	struct intent *intent = controller_data->intent;
 
 	struct linted_controller_message message;
 	err = linted_controller_decode(controller_task, &message);
@@ -404,21 +399,21 @@ on_controller_receive(struct linted_asynch_task *task)
 
 	linted_asynch_pool_submit(pool, task);
 
-	signed int x = message.right - message.left;
-	signed int z = message.back - message.forward;
+	signed int x = message.left - message.right;
+	signed int z = message.forward - message.back;
 
-	linted_sim_int x_tilt = -message.x_tilt;
-	linted_sim_int y_tilt = -message.y_tilt;
+	sim_int look_sideways = -message.x_tilt;
+	sim_int look_up_or_down = -message.y_tilt;
 
-	bool jumping = message.jumping;
+	bool jump_up = message.jumping;
 
-	action_state->x = x;
-	action_state->z = z;
+	intent->strafe = x;
+	intent->retreat_or_go_forth = z;
 
-	action_state->x_tilt = x_tilt;
-	action_state->y_tilt = y_tilt;
+	intent->look_sideways = look_sideways;
+	intent->look_up_or_down = look_up_or_down;
 
-	action_state->jumping = jumping;
+	intent->jump_up = jump_up;
 
 	return 0;
 }
@@ -442,31 +437,30 @@ static linted_error on_sent_update(struct linted_asynch_task *task)
 	    linted_updater_task_send_data(updater_task);
 	struct linted_asynch_pool *pool = updater_data->pool;
 	linted_ko updater = updater_data->updater;
-	struct sim_state *sim_state = updater_data->sim_state;
+	struct state *state = updater_data->state;
 
-	sim_state->write_in_progress = false;
+	state->write_in_progress = false;
 
-	maybe_update(updater, sim_state, updater_task, pool);
+	maybe_update(updater, state, updater_task, pool);
 
 	return 0;
 }
 
-static void maybe_update(linted_updater updater,
-                         struct sim_state *sim_state,
+static void maybe_update(linted_updater updater, struct state *state,
                          struct linted_updater_task_send *updater_task,
                          struct linted_asynch_pool *pool)
 {
-	bool update_pending = sim_state->update_pending;
-	bool write_in_progress = sim_state->write_in_progress;
+	bool update_pending = state->update_pending;
+	bool write_in_progress = state->write_in_progress;
 
-	struct differentiable const *position = sim_state->position;
+	struct differentiable const *position = state->position;
 
-	linted_sim_int x_position = position[0U].value;
-	linted_sim_int y_position = position[1U].value;
-	linted_sim_int z_position = position[2U].value;
+	sim_int x_position = position[0U].value;
+	sim_int y_position = position[1U].value;
+	sim_int z_position = position[2U].value;
 
-	linted_sim_angle x_rotation = sim_state->x_rotation;
-	linted_sim_angle y_rotation = sim_state->y_rotation;
+	sim_angle x_rotation = state->x_rotation;
+	sim_angle y_rotation = state->y_rotation;
 
 	if (!update_pending)
 		return;
@@ -476,15 +470,15 @@ static void maybe_update(linted_updater updater,
 
 	struct updater_data *updater_data =
 	    linted_updater_task_send_data(updater_task);
-	updater_data->sim_state = sim_state;
+	updater_data->state = state;
 	updater_data->pool = pool;
 	updater_data->updater = updater;
 
 	linted_updater_angle update_x_rotation = LINTED_UPDATER_ANGLE(
-	    x_rotation._value, (uintmax_t)LINTED_SIM_UINT_MAX + 1U);
+	    x_rotation._value, (uintmax_t)SIM_UINT_MAX + 1U);
 
 	linted_updater_angle update_y_rotation = LINTED_UPDATER_ANGLE(
-	    y_rotation._value, (uintmax_t)LINTED_SIM_UINT_MAX + 1U);
+	    y_rotation._value, (uintmax_t)SIM_UINT_MAX + 1U);
 
 	struct linted_updater_update update = {
 	    .x_position = x_position,
@@ -501,50 +495,49 @@ static void maybe_update(linted_updater updater,
 	linted_asynch_pool_submit(
 	    pool, linted_updater_task_send_to_asynch(updater_task));
 
-	sim_state->update_pending = false;
-	sim_state->write_in_progress = true;
+	state->update_pending = false;
+	state->write_in_progress = true;
 }
 
-static linted_sim_int downscale(linted_sim_int x)
-{
-	return (INTMAX_C(16) * x) / LINTED_SIM_INT_MAX;
-}
-
-static void simulate_tick(struct sim_state *sim_state,
-                          struct action_state const *action_state)
+static void simulate_tick(struct state *state,
+                          struct intent const *intent)
 {
 
-	linted_sim_angle x_rotation = sim_state->x_rotation;
-	linted_sim_angle y_rotation = sim_state->y_rotation;
+	sim_angle x_rotation = state->x_rotation;
+	sim_angle y_rotation = state->y_rotation;
 
-	struct differentiable *positions = sim_state->position;
-	size_t dimensions = LINTED_ARRAY_SIZE(sim_state->position);
+	struct differentiable *positions = state->position;
+	size_t dimensions = LINTED_ARRAY_SIZE(state->position);
 
-	linted_sim_int x = action_state->x;
-	linted_sim_int z = action_state->z;
-	linted_sim_int jumping = action_state->jumping;
-	linted_sim_int x_tilt = action_state->x_tilt;
-	linted_sim_int y_tilt = action_state->y_tilt;
+	sim_int x = intent->strafe;
+	sim_int z = intent->retreat_or_go_forth;
+	sim_int jump_up = intent->jump_up;
+	sim_int look_sideways = intent->look_sideways;
+	sim_int look_up_or_down = intent->look_up_or_down;
 
-	linted_sim_int cos_x = downscale(linted_sim_cos(x_rotation));
-	linted_sim_int sin_x = downscale(linted_sim_sin(x_rotation));
+	bool contacting_ground = positions[1U].value >= 0;
 
-	linted_sim_int x_thrust[3U] = {z * -sin_x, 0, z * -cos_x};
-	linted_sim_int y_thrust[3U] = {x * -cos_x, 0, x * sin_x};
-	linted_sim_int z_thrust[3U] = {
-	    0, jumping * downscale(-LINTED_SIM_INT_MAX), 0};
+	sim_int cos_x = downscale(sim_cos(x_rotation), 16);
+	sim_int sin_x = downscale(sim_sin(x_rotation), 16);
 
-	linted_sim_int thrusts[3U];
+	sim_int x_thrust[3U] = {contacting_ground * z * sin_x, 0,
+	                        contacting_ground * z * cos_x};
+	sim_int y_thrust[3U] = {contacting_ground * x * cos_x, 0,
+	                        contacting_ground * x * -sin_x};
+	sim_int z_thrust[3U] = {0, contacting_ground * jump_up *
+	                               downscale(-SIM_INT_MAX, 512),
+	                        0};
+
+	sim_int thrusts[3U];
 	for (size_t ii = 0U; ii < dimensions; ++ii)
 		thrusts[ii] =
 		    x_thrust[ii] + y_thrust[ii] + z_thrust[ii];
 
-	linted_sim_int gravity[3U] = {0, 10, 0};
+	sim_int gravity[3U] = {0, 10, 0};
 
-	linted_sim_int normal_force[3U] = {
-	    0, (positions[1U].value >= 0) * -20, 0};
+	sim_int normal_force[3U] = {0, contacting_ground * -20, 0};
 
-	linted_sim_int forces[3U];
+	sim_int forces[3U];
 	for (size_t ii = 0U; ii < dimensions; ++ii)
 		forces[ii] =
 		    gravity[ii] + normal_force[ii] + thrusts[ii];
@@ -552,86 +545,91 @@ static void simulate_tick(struct sim_state *sim_state,
 	for (size_t ii = 0U; ii < dimensions; ++ii) {
 		struct differentiable *pos = &positions[ii];
 
-		linted_sim_int position = pos->value;
-		linted_sim_int old_position = pos->old;
+		sim_int position = pos->value;
+		sim_int old_position = pos->old;
 
-		linted_sim_int old_velocity = position - old_position;
-		linted_sim_int force = forces[ii];
+		sim_int old_velocity = position - old_position;
+		sim_int force = forces[ii];
 
-		linted_sim_int guess_velocity =
-		    linted_sim_isatadd(force, old_velocity);
+		sim_int guess_velocity =
+		    sim_isatadd(force, old_velocity);
 
-		linted_sim_int friction =
-		    min_int(absolute(guess_velocity), 5 /* = μ Fₙ */) *
+		sim_int mu;
+		if (0U == ii || 2U == ii) {
+			mu = contacting_ground * 5;
+		} else {
+			mu = 5;
+		}
+		sim_int friction =
+		    min_int(absolute(guess_velocity), mu) *
 		    -sign(guess_velocity);
 
-		linted_sim_int new_velocity =
-		    linted_sim_isatadd(guess_velocity, friction);
+		sim_int new_velocity =
+		    sim_isatadd(guess_velocity, friction);
 
-		linted_sim_int new_position =
-		    linted_sim_isatadd(position, new_velocity);
+		sim_int new_position =
+		    sim_isatadd(position, new_velocity);
 
 		pos->value = new_position;
 		pos->old = position;
 	}
 
-	linted_sim_angle new_x_rotation =
-	    tilt_rotation(x_rotation, x_tilt);
-	linted_sim_angle new_y_rotation =
-	    tilt_clamped_rotation(y_rotation, y_tilt);
+	sim_angle new_x_rotation =
+	    tilt_rotation(x_rotation, look_sideways);
+	sim_angle new_y_rotation =
+	    tilt_clamped_rotation(y_rotation, look_up_or_down);
 
-	sim_state->x_rotation = new_x_rotation;
-	sim_state->y_rotation = new_y_rotation;
+	state->x_rotation = new_x_rotation;
+	state->y_rotation = new_y_rotation;
 
-	sim_state->update_pending = true;
+	state->update_pending = true;
 }
 
-static linted_sim_angle tilt_rotation(linted_sim_angle rotation,
-                                      linted_sim_int tilt)
+static sim_angle tilt_rotation(sim_angle rotation, sim_int tilt)
 {
 
-	linted_sim_angle increment =
-	    LINTED_SIM_ANGLE(1, ROTATION_SPEED);
+	sim_angle increment = SIM_ANGLE(1, ROTATION_SPEED);
 
-	return linted_sim_angle_add((absolute(tilt) > DEAD_ZONE) *
-	                                sign(tilt),
-	                            rotation, increment);
+	return sim_angle_add((absolute(tilt) > DEAD_ZONE) * sign(tilt),
+	                     rotation, increment);
 }
 
-static linted_sim_angle tilt_clamped_rotation(linted_sim_angle rotation,
-                                              linted_sim_int tilt)
+static sim_angle tilt_clamped_rotation(sim_angle rotation, sim_int tilt)
 {
-	linted_sim_int tilt_sign = sign(tilt);
+	sim_int tilt_sign = sign(tilt);
 
 	if (absolute(tilt) <= DEAD_ZONE) {
 		return rotation;
 	}
 
-	linted_sim_angle minimum = LINTED_SIM_ANGLE(15U, 16U);
-	linted_sim_angle maximum = LINTED_SIM_ANGLE(3U, 16U);
-	linted_sim_angle increment =
-	    LINTED_SIM_ANGLE(1U, ROTATION_SPEED);
+	sim_angle minimum = SIM_ANGLE(15U, 16U);
+	sim_angle maximum = SIM_ANGLE(3U, 16U);
+	sim_angle increment = SIM_ANGLE(1U, ROTATION_SPEED);
 
-	return linted_sim_angle_add_clamped(tilt_sign, minimum, maximum,
-	                                    rotation, increment);
+	return sim_angle_add_clamped(tilt_sign, minimum, maximum,
+	                             rotation, increment);
 }
 
-static linted_sim_int min_int(linted_sim_int x, linted_sim_int y)
+static sim_int downscale(sim_int x, sim_int y)
+{
+	return (((intmax_t)y) * x) / SIM_INT_MAX;
+}
+
+static sim_int min_int(sim_int x, sim_int y)
 {
 	return x < y ? x : y;
 }
 
-static linted_sim_int sign(linted_sim_int x)
+static sim_int sign(sim_int x)
 {
 	return x > 0 ? 1 : 0 == x ? 0 : -1;
 }
 
-static linted_sim_uint absolute(linted_sim_int x)
+static sim_uint absolute(sim_int x)
 {
-	if (LINTED_SIM_INT_MIN == x) {
+	if (SIM_INT_MIN == x) {
 		/* Avoid tricky arithmetic overflow possibilities */
-		return ((linted_sim_uint) - (LINTED_SIM_INT_MIN + 1)) +
-		       1U;
+		return ((sim_uint) - (SIM_INT_MIN + 1)) + 1U;
 	} else if (x < 0) {
 		return -x;
 	} else {
