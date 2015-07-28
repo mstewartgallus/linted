@@ -535,7 +535,7 @@ static void simulate_tick(struct state *state,
 
 	sim_int gravity[3U] = {0, 10, 0};
 
-	sim_int normal_force[3U] = {0, contacting_ground * -20, 0};
+	sim_int normal_force[3U] = {0, -contacting_ground, 0};
 
 	sim_int forces[3U];
 	for (size_t ii = 0U; ii < dimensions; ++ii)
@@ -566,6 +566,10 @@ static void simulate_tick(struct state *state,
 
 		sim_int new_velocity =
 		    sim_isatadd(guess_velocity, friction);
+
+		if (1U == ii && contacting_ground && new_velocity > 0) {
+			new_velocity = 0U;
+		}
 
 		sim_int new_position =
 		    sim_isatadd(position, new_velocity);
