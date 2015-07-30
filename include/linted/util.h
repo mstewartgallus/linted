@@ -47,7 +47,7 @@
 #define LINTED_UTIL_HAS_BUILTIN(X) 0
 #endif
 
-#define LINTED_FIELD_SIZEOF(type, member) (sizeof((type *)0)->member)
+#define LINTED_FIELD_SIZEOF(type, member) (sizeof((type){0}).member)
 
 #define LINTED_ARRAY_SIZE(...)                                         \
 	((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
