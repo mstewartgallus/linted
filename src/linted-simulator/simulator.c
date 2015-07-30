@@ -613,8 +613,8 @@ static sim_angle tilt_clamped_rotation(sim_angle rotation, sim_int tilt)
 		return rotation;
 	}
 
-	sim_angle minimum = SIM_ANGLE(15U, 16U);
-	sim_angle maximum = SIM_ANGLE(3U, 16U);
+	sim_angle minimum = SIM_ANGLE(3U, 16U);
+	sim_angle maximum = SIM_ANGLE(5U, 16U);
 	sim_angle increment = SIM_ANGLE(1U, ROTATION_SPEED);
 
 	return sim_angle_add_clamped(tilt_sign, minimum, maximum,

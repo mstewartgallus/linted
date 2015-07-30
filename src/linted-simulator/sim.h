@@ -77,13 +77,14 @@ static inline sim_angle sim_angle_add_clamped(int sign, sim_angle min,
                                               sim_angle phi)
 {
 	assert(max._value <= SIM_UINT_MAX / 2U);
-	assert(SIM_UINT_MAX / 2U < min._value);
+	assert(min._value <= SIM_UINT_MAX / 2U);
 
 	sim_uint result =
 	    (theta._value + sign * (int_fast64_t)phi._value) %
 	    SIM_UINT_MAX;
 	switch ((sign > 0) | (theta._value > SIM_UINT_MAX / 2U) << 1U) {
 	case 1U | (1U << 1U):
+		result = result > max._value ? max._value : result;
 		break;
 
 	case 1U | (0U << 1U):
@@ -95,6 +96,7 @@ static inline sim_angle sim_angle_add_clamped(int sign, sim_angle min,
 		break;
 
 	case 0U | (0U << 1U):
+		result = result > min._value ? result : min._value;
 		break;
 	}
 	sim_angle angle;
