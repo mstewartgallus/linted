@@ -50,6 +50,9 @@ AM_LDFLAGS=-Xcompiler '\
 
 AM_CPPFLAGS=-I$(srcdir)/include
 
+mostlyclean-local:
+	- find "$(builddir)/src" -type f -name '*.dwo' -exec rm -f '{}' '+'
+
 .PHONY: indent
 indent:
 	find $(srcdir)/src $(srcdir)/include -type f -name '*.[ch]' -exec \
