@@ -166,7 +166,7 @@ static unsigned char sim_start(char const *const process_name,
 	    .update_pending = true, /* Initialize the gui at start */
 	    .write_in_progress = false,
 	    .position = {{.value = 0, .old = 0},
-	                 {.value = 3 * 1024, .old = 3 * 1024},
+	                 {.value = 10 * 1024, .old = 10 * 1024},
 	                 {.value = 0, .old = 0}},
 	    .z_rotation = SIM_ANGLE(0U, 1U),
 	    .x_rotation = SIM_ANGLE(3U, 16U)};
