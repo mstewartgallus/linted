@@ -61,8 +61,8 @@ struct differentiable {
 struct state {
 	struct differentiable position[3U];
 
+	sim_angle z_rotation;
 	sim_angle x_rotation;
-	sim_angle y_rotation;
 
 	bool update_pending : 1U;
 	bool write_in_progress : 1U;
@@ -166,10 +166,10 @@ static unsigned char sim_start(char const *const process_name,
 	    .update_pending = true, /* Initialize the gui at start */
 	    .write_in_progress = false,
 	    .position = {{.value = 0, .old = 0},
-	                 {.value = 0, .old = 0},
-	                 {.value = 3 * 1024, .old = 3 * 1024}},
-	    .x_rotation = SIM_ANGLE(1U, 2U),
-	    .y_rotation = SIM_ANGLE(0U, 1U)};
+	                 {.value = 3 * 1024, .old = 3 * 1024},
+	                 {.value = 0, .old = 0}},
+	    .z_rotation = SIM_ANGLE(0U, 1U),
+	    .x_rotation = SIM_ANGLE(3U, 16U)};
 
 	struct linted_asynch_pool *pool;
 	{
@@ -400,15 +400,15 @@ on_controller_receive(struct linted_asynch_task *task)
 	linted_asynch_pool_submit(pool, task);
 
 	signed int x = message.left - message.right;
-	signed int z = message.forward - message.back;
+	signed int y = message.back - message.forward;
 
-	sim_int look_sideways = -message.x_tilt;
-	sim_int look_up_or_down = -message.y_tilt;
+	sim_int look_sideways = message.z_tilt;
+	sim_int look_up_or_down = -message.x_tilt;
 
 	bool jump_up = message.jumping;
 
 	intent->strafe = x;
-	intent->retreat_or_go_forth = z;
+	intent->retreat_or_go_forth = y;
 
 	intent->look_sideways = look_sideways;
 	intent->look_up_or_down = look_up_or_down;
@@ -459,8 +459,8 @@ static void maybe_update(linted_updater updater, struct state *state,
 	sim_int y_position = position[1U].value;
 	sim_int z_position = position[2U].value;
 
+	sim_angle z_rotation = state->z_rotation;
 	sim_angle x_rotation = state->x_rotation;
-	sim_angle y_rotation = state->y_rotation;
 
 	if (!update_pending)
 		return;
@@ -474,18 +474,26 @@ static void maybe_update(linted_updater updater, struct state *state,
 	updater_data->pool = pool;
 	updater_data->updater = updater;
 
+	linted_updater_angle update_z_rotation = LINTED_UPDATER_ANGLE(
+	    z_rotation._value, (uintmax_t)SIM_UINT_MAX + 1U);
+
 	linted_updater_angle update_x_rotation = LINTED_UPDATER_ANGLE(
 	    x_rotation._value, (uintmax_t)SIM_UINT_MAX + 1U);
 
-	linted_updater_angle update_y_rotation = LINTED_UPDATER_ANGLE(
-	    y_rotation._value, (uintmax_t)SIM_UINT_MAX + 1U);
+	/* linted_updater_angle update_z_rotation =
+	 * LINTED_UPDATER_ANGLE( */
+	/*     0U, 1U); */
+
+	/* linted_updater_angle update_x_rotation =
+	 * LINTED_UPDATER_ANGLE( */
+	/*     0U, 4U); */
 
 	struct linted_updater_update update = {
 	    .x_position = x_position,
 	    .y_position = y_position,
 	    .z_position = z_position,
-	    .x_rotation = update_x_rotation,
-	    .y_rotation = update_y_rotation};
+	    .z_rotation = update_z_rotation,
+	    .x_rotation = update_x_rotation};
 
 	{
 		struct linted_updater_update xx = update;
@@ -503,39 +511,38 @@ static void simulate_tick(struct state *state,
                           struct intent const *intent)
 {
 
+	sim_angle z_rotation = state->z_rotation;
 	sim_angle x_rotation = state->x_rotation;
-	sim_angle y_rotation = state->y_rotation;
 
 	struct differentiable *positions = state->position;
 	size_t dimensions = LINTED_ARRAY_SIZE(state->position);
 
 	sim_int x = intent->strafe;
-	sim_int z = intent->retreat_or_go_forth;
+	sim_int y = intent->retreat_or_go_forth;
 	sim_int jump_up = intent->jump_up;
 	sim_int look_sideways = intent->look_sideways;
 	sim_int look_up_or_down = intent->look_up_or_down;
 
-	bool contacting_ground = positions[1U].value >= 0;
+	bool contacting_ground = positions[2U].value >= 0;
 
-	sim_int cos_x = downscale(sim_cos(x_rotation), 16);
-	sim_int sin_x = downscale(sim_sin(x_rotation), 16);
+	sim_int cos_z = downscale(sim_cos(z_rotation), 16);
+	sim_int sin_z = downscale(sim_sin(z_rotation), 16);
 
-	sim_int x_thrust[3U] = {contacting_ground * z * sin_x, 0,
-	                        contacting_ground * z * cos_x};
-	sim_int y_thrust[3U] = {contacting_ground * x * cos_x, 0,
-	                        contacting_ground * x * -sin_x};
-	sim_int z_thrust[3U] = {0, contacting_ground * jump_up *
-	                               downscale(-SIM_INT_MAX, 512),
-	                        0};
+	sim_int y_thrust[3U] = {contacting_ground * y * sin_z,
+	                        contacting_ground * y * cos_z, 0};
+	sim_int x_thrust[3U] = {contacting_ground * x * cos_z,
+	                        contacting_ground * x * -sin_z, 0};
+	sim_int z_thrust[3U] = {0, 0, contacting_ground * jump_up *
+	                                  downscale(-SIM_INT_MAX, 512)};
 
 	sim_int thrusts[3U];
 	for (size_t ii = 0U; ii < dimensions; ++ii)
 		thrusts[ii] =
 		    x_thrust[ii] + y_thrust[ii] + z_thrust[ii];
 
-	sim_int gravity[3U] = {0, 10, 0};
+	sim_int gravity[3U] = {0, 0, 10};
 
-	sim_int normal_force[3U] = {0, -contacting_ground, 0};
+	sim_int normal_force[3U] = {0, 0, -contacting_ground};
 
 	sim_int forces[3U];
 	for (size_t ii = 0U; ii < dimensions; ++ii)
@@ -555,7 +562,7 @@ static void simulate_tick(struct state *state,
 		    sim_isatadd(force, old_velocity);
 
 		sim_int mu;
-		if (0U == ii || 2U == ii) {
+		if (0U == ii || 1U == ii) {
 			mu = contacting_ground * 5;
 		} else {
 			mu = 5;
@@ -567,7 +574,7 @@ static void simulate_tick(struct state *state,
 		sim_int new_velocity =
 		    sim_isatadd(guess_velocity, friction);
 
-		if (1U == ii && contacting_ground && new_velocity > 0) {
+		if (2U == ii && contacting_ground && new_velocity > 0) {
 			new_velocity = 0U;
 		}
 
@@ -578,13 +585,13 @@ static void simulate_tick(struct state *state,
 		pos->old = position;
 	}
 
+	sim_angle new_z_rotation =
+	    tilt_rotation(z_rotation, look_sideways);
 	sim_angle new_x_rotation =
-	    tilt_rotation(x_rotation, look_sideways);
-	sim_angle new_y_rotation =
-	    tilt_clamped_rotation(y_rotation, look_up_or_down);
+	    tilt_clamped_rotation(x_rotation, look_up_or_down);
 
+	state->z_rotation = new_z_rotation;
 	state->x_rotation = new_x_rotation;
-	state->y_rotation = new_y_rotation;
 
 	state->update_pending = true;
 }

@@ -33,8 +33,8 @@
 struct linted_gpu_context;
 
 struct linted_gpu_update {
+	float z_rotation;
 	float x_rotation;
-	float y_rotation;
 
 	float x_position;
 	float y_position;

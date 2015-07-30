@@ -103,8 +103,8 @@ struct linted_updater_update {
 	linted_updater_int y_position;
 	linted_updater_int z_position;
 
+	linted_updater_angle z_rotation;
 	linted_updater_angle x_rotation;
-	linted_updater_angle y_rotation;
 };
 
 static inline double

@@ -158,10 +158,10 @@ void linted_updater_task_send_prepare(
 	linted_rpc_pack(update->z_position, tip);
 	tip += LINTED_RPC_INT32_SIZE;
 
-	linted_rpc_pack_uint32(update->x_rotation._value, tip);
+	linted_rpc_pack_uint32(update->z_rotation._value, tip);
 	tip += LINTED_RPC_UINT32_SIZE;
 
-	linted_rpc_pack_uint32(update->y_rotation._value, tip);
+	linted_rpc_pack_uint32(update->x_rotation._value, tip);
 }
 
 struct linted_updater_task_send *
@@ -198,8 +198,8 @@ void linted_updater_decode(
 	update->z_position = linted_rpc_unpack(tip);
 	tip += LINTED_RPC_INT32_SIZE;
 
-	update->x_rotation._value = linted_rpc_unpack_uint32(tip);
+	update->z_rotation._value = linted_rpc_unpack_uint32(tip);
 	tip += LINTED_RPC_UINT32_SIZE;
 
-	update->y_rotation._value = linted_rpc_unpack_uint32(tip);
+	update->x_rotation._value = linted_rpc_unpack_uint32(tip);
 }

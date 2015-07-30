@@ -543,22 +543,44 @@ static linted_error on_receive_update(struct linted_asynch_task *task)
 	    updater_data->gpu_context;
 	struct linted_asynch_pool *pool = updater_data->pool;
 
-	struct linted_updater_update update;
+	linted_updater_int x_position;
+	linted_updater_int y_position;
+	linted_updater_int z_position;
 
-	linted_updater_decode(updater_task, &update);
+	linted_updater_angle z_rotation;
+	linted_updater_angle x_rotation;
+	{
+		struct linted_updater_update update;
+
+		linted_updater_decode(updater_task, &update);
+
+		z_rotation = update.z_rotation;
+		x_rotation = update.x_rotation;
+
+		x_position = update.x_position;
+		y_position = update.y_position;
+		z_position = update.z_position;
+	}
 
 	linted_asynch_pool_submit(pool, task);
 
+	float gpu_z_rotation =
+	    linted_updater_angle_to_double(z_rotation);
+	float gpu_x_rotation =
+	    linted_updater_angle_to_double(x_rotation);
+
+	float gpu_x_position = x_position * (1 / 2048.0);
+	float gpu_y_position = y_position * (1 / 2048.0);
+	float gpu_z_position = z_position * (1 / 2048.0);
+
 	struct linted_gpu_update gpu_update;
 
-	gpu_update.x_rotation =
-	    linted_updater_angle_to_double(update.x_rotation);
-	gpu_update.y_rotation =
-	    linted_updater_angle_to_double(update.y_rotation);
+	gpu_update.z_rotation = gpu_z_rotation;
+	gpu_update.x_rotation = gpu_x_rotation;
 
-	gpu_update.x_position = update.x_position * (1 / 2048.0);
-	gpu_update.y_position = update.y_position * (1 / 2048.0);
-	gpu_update.z_position = update.z_position * (1 / 2048.0);
+	gpu_update.x_position = gpu_x_position;
+	gpu_update.y_position = gpu_y_position;
+	gpu_update.z_position = gpu_z_position;
 
 	linted_gpu_update_state(gpu_context, &gpu_update);
 

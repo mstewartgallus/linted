@@ -173,7 +173,7 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	{
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     controller_path, LINTED_KO_WRONLY);
+		                     controller_path, LINTED_KO_RDWR);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_ko_open: %s",
@@ -711,8 +711,8 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 
 clear:
 	if (clear_controls) {
+		controller_data->update.z_tilt = 0;
 		controller_data->update.x_tilt = 0;
-		controller_data->update.y_tilt = 0;
 
 		controller_data->update.left = 0;
 		controller_data->update.right = 0;
@@ -928,8 +928,8 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
 	x *= INT32_MAX / (intmax_t)width;
 	y *= INT32_MAX / (intmax_t)height;
 
-	controller_data->update.x_tilt = x;
-	controller_data->update.y_tilt = y;
+	controller_data->update.z_tilt = x;
+	controller_data->update.x_tilt = y;
 
 	controller_data->update_pending = true;
 }

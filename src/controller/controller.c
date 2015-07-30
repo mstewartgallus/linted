@@ -106,10 +106,10 @@ void linted_controller_task_send_prepare(
 
 	char *tip = task->message;
 
-	linted_rpc_pack(message->x_tilt, tip);
+	linted_rpc_pack(message->z_tilt, tip);
 	tip += LINTED_RPC_INT32_SIZE;
 
-	linted_rpc_pack(message->y_tilt, tip);
+	linted_rpc_pack(message->x_tilt, tip);
 	tip += LINTED_RPC_INT32_SIZE;
 
 	unsigned char bitfield = ((uintmax_t)message->forward) |
@@ -191,10 +191,10 @@ linted_error linted_controller_decode(
 {
 	char const *tip = task->message;
 
-	message->x_tilt = linted_rpc_unpack(tip);
+	message->z_tilt = linted_rpc_unpack(tip);
 	tip += LINTED_RPC_INT32_SIZE;
 
-	message->y_tilt = linted_rpc_unpack(tip);
+	message->x_tilt = linted_rpc_unpack(tip);
 	tip += LINTED_RPC_INT32_SIZE;
 
 	unsigned char bitfield;

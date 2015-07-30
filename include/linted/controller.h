@@ -30,8 +30,8 @@
 typedef linted_ko linted_controller;
 
 struct linted_controller_message {
+	int_fast32_t z_tilt;
 	int_fast32_t x_tilt;
-	int_fast32_t y_tilt;
 
 	_Bool left : 1U;
 	_Bool right : 1U;

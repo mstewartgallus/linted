@@ -30,8 +30,10 @@ def output():
                                               for index in polygon.vertices]))
 
         for vertex in mesh.vertices:
-            normals.append(Array(3, GLfloat)([GLfloat(part) for part in vertex.normal.to_tuple()]))
-            vertices.append(Array(3, GLfloat)([GLfloat(part) for part in (matrix * vertex.co).to_tuple()]))
+            x_norm, y_norm, z_norm = vertex.normal.to_tuple()
+            x, y, z = (matrix * vertex.co).to_tuple()
+            normals.append(Array(3, GLfloat)((GLfloat(x_norm), GLfloat(y_norm), GLfloat(z_norm))))
+            vertices.append(Array(3, GLfloat)((GLfloat(x), GLfloat(y), GLfloat(z))))
 
     # Compatibility shim for older Blender versions
     def polygons(mesh):
@@ -90,7 +92,7 @@ size_t const linted_assets_size = LINTED_ARRAY_SIZE(vertices);
 static linted_assets_point const normals[] = $normals;
 linted_assets_point const * const linted_assets_normals = normals;
 
-static unsigned char const indices_data[][3u] = $indices;
+static unsigned char const indices_data[][3U] = $indices;
 
 unsigned char const * const linted_assets_indices = &indices_data[0U][0U];
 size_t const linted_assets_indices_size = LINTED_ARRAY_SIZE(indices_data);

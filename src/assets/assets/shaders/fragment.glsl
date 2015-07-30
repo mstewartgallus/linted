@@ -21,7 +21,11 @@ const vec3 light_location = vec3(-0.5, 1.0, 0.0);
 const vec3 colour = vec3(1.0, 0.9, 1.0);
 
 const vec3 dark_stone = vec3(0.1, 0.3, 0.5);
-const vec3 foggy_air = vec3(1.0, 0.4, 0.2);
+
+/* So that fogginess does not have an affect at a distance of zero,
+ * the first value of foggy_air must be 1.
+ */
+const vec3 foggy_air = vec3(1.0, 0.2, 0.1);
 
 in vec3 linted_varying_vertex;
 in vec3 linted_varying_normal;

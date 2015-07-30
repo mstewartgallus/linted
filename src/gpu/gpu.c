@@ -191,8 +191,8 @@ choose_config_succeeded:
 		goto destroy_display;
 	}
 
+	gpu_context->update.z_rotation = 0;
 	gpu_context->update.x_rotation = 0;
-	gpu_context->update.y_rotation = 0;
 
 	gpu_context->update.x_position = 0;
 	gpu_context->update.y_position = 0;
@@ -926,29 +926,29 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		 * sums of the columns (row major order).
 		 */
 
+		GLfloat z_rotation = update->z_rotation;
 		GLfloat x_rotation = update->x_rotation;
-		GLfloat y_rotation = update->y_rotation;
 
 		GLfloat x_position = update->x_position;
 		GLfloat y_position = update->y_position;
 		GLfloat z_position = update->z_position;
 
 		/* Rotate the camera */
-		GLfloat cos_y = cosf(y_rotation);
-		GLfloat sin_y = sinf(y_rotation);
-
-		struct matrix const y_rotation_matrix = {
-		    {{1, 0, 0, 0},
-		     {0, cos_y, -sin_y, 0},
-		     {0, sin_y, cos_y, 0},
-		     {0, 0, 0, 1}}};
-
 		GLfloat cos_x = cosf(x_rotation);
 		GLfloat sin_x = sinf(x_rotation);
+
 		struct matrix const x_rotation_matrix = {
-		    {{cos_x, 0, sin_x, 0},
-		     {0, 1, 0, 0},
-		     {-sin_x, 0, cos_x, 0},
+		    {{1, 0, 0, 0},
+		     {0, cos_x, -sin_x, 0},
+		     {0, sin_x, cos_x, 0},
+		     {0, 0, 0, 1}}};
+
+		GLfloat cos_z = cosf(z_rotation);
+		GLfloat sin_z = sinf(z_rotation);
+		struct matrix const z_rotation_matrix = {
+		    {{cos_z, sin_z, 0, 0},
+		     {-sin_z, cos_z, 0, 0},
+		     {0, 0, 1, 0},
 		     {0, 0, 0, 1}}};
 
 		/* Translate the camera */
@@ -973,7 +973,7 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		     {0, 0, -1, 0}}};
 
 		struct matrix rotations = matrix_multiply(
-		    x_rotation_matrix, y_rotation_matrix);
+		    z_rotation_matrix, x_rotation_matrix);
 		struct matrix model_view =
 		    matrix_multiply(camera, rotations);
 		struct matrix model_view_projection =
