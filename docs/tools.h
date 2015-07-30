@@ -34,6 +34,7 @@
  * <li> [TLA+](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html) </li>
  * <li> [unifdef](http://dotat.at/prog/unifdef/) </li>
  * <li> [Why3](http://why3.lri.fr/) </li>
+ * <li> [Vera++](https://bitbucket.org/verateam/vera/wiki/Home) </li>
  * <li> [Yasca](http://sourceforge.net/projects/yasca/) </li>
  *
  * </ul>
