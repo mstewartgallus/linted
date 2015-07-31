@@ -64,8 +64,6 @@ dnl
 AM_PROG_AR
 LT_INIT
 dnl
-AM_PROG_CC_C_O
-dnl
 [linted_posix_api_default=no]
 [linted_x11_api_default=no]
 [linted_windows_api_default=no]
