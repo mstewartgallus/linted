@@ -20,7 +20,7 @@ dnl
 AC_LANG_PUSH([C])
 dnl
 AC_MSG_CHECKING([for C compiler flag $2])
-[CFLAGS=$2]
+[CFLAGS=]$2
 dnl
 [ac_c_werror_flag='yes']
 dnl
@@ -29,9 +29,10 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
     void nonempty_translation_unit_E5XlWC(void) { }
 ]])], [
          AC_MSG_RESULT([yes])
-         $1[="$]$1[ $CFLAGS"]
+         $1[="$CFLAGS"]
 ],
 [
+         $1[='']
          AC_MSG_RESULT([no])
 ])
 dnl

@@ -18,6 +18,7 @@ dnl
 [ac_c_werror_flag='yes']
 dnl
 AC_LANG_PUSH([C])
+$1[='']
 m4_foreach_w([linted_the_flag], $2, [
         AC_MSG_CHECKING([for C compiler flag linted_the_flag])
         [CFLAGS=]linted_the_flag
