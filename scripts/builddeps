@@ -19,33 +19,35 @@ then
     exit 1
 fi
 
-case "${OS}"-"${ABI}" in
-    'w64-mingw')
-	case "${ARCH}" in
-	    'amd64')
-		deps() {
-		    printf '%s\0' "mingw-w64-x86-64-dev"
-		}
-		;;
-	    'i386')
-		deps() {
-		    printf '%s\0' "mingw-w64-i686-dev"
-		}
-		;;
-	    *)
-		exit 1
-		;;
-	esac
-	;;
 
-    'linux-musl')
-	deps() {
+deps() {
+    # This is an ugly hack to get autoconf working
+    printf '%s\0' "libc6"
+    printf '%s\0' "libc6-dev"
+
+    case "${ARCH}-${OS}"-"${ABI}" in
+	'aarch64-linux-gnu' | \
+	'arm-linux-androideabi' | \
+	'arm-linux-gnueabi' | \
+	'arm-linux-gnueabihf' | \
+	'i686-linux-android' | \
+	'powerpc64le-linux-gnu' | \
+	'powerpc-linux-gnu')
+	    printf '%s\0' "gcc-${ARCH}-${OS}-${ABI}"
+	    ;;
+
+	'amd64-w64-mingw')
+	    printf '%s\0' "mingw-w64-x86-64-dev"
+	    ;;
+	'i686-w64-mingw')
+	    printf '%s\0' "mingw-w64-i686-dev"
+	    ;;
+
+	'i686-linux-musl' | 'amd64-linux-musl')
 	    printf '%s\0' "musl-dev:${ARCH}"
-	}
-	;;
+	    ;;
 
-    'linux-gnu')
-	deps() {
+	'i686-linux-gnu' | 'amd64-linux-gnu')
 	    printf '%s\0' "libc6:${ARCH}"
 	    printf '%s\0' "libc6-dev:${ARCH}"
 	    printf '%s\0' "libcap-dev:${ARCH}"
@@ -78,13 +80,12 @@ case "${OS}"-"${ABI}" in
 	    printf '%s\0' "libxcb-dri2-0:${ARCH}"
 	    printf '%s\0' "libxcb-xfixes0:${ARCH}"
 	    printf '%s\0' "x11proto-core-dev"
-	}
-	;;
+	    ;;
 
-    *)
-	exit 1
-	;;
-esac
+	*)
+	    ;;
+    esac
+}
 
 mkdir -p var/cache/builddeps
 (cd var/cache/builddeps && deps | xargs -0 -- apt-get download) || :
