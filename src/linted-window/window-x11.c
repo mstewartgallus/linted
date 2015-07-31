@@ -228,6 +228,9 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_pool;
 		}
+		err = linted_xcb_conn_error(connection);
+		if (err != 0)
+			goto close_display;
 		screen_number = (unsigned)xx;
 	}
 

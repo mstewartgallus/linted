@@ -236,6 +236,9 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		err = LINTED_ERROR_UNIMPLEMENTED;
 		goto destroy_pool;
 	}
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
+		goto close_connection;
 
 	if (!xkb_x11_setup_xkb_extension(
 	        connection, XKB_X11_MIN_MAJOR_XKB_VERSION,
