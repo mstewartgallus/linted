@@ -2,8 +2,6 @@
 # interpreted relative to the location Linted chroots to.
 #
 # <file system>	<mount point>	<type>	<options>
-/home	home	none	mkdir,shared,bind
-
 none	../../var/simulator	none	mkdir,nomount
 ../../var/simulator	var	none	mkdir,shared,bind
 

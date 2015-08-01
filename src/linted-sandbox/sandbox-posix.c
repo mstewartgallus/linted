@@ -852,6 +852,28 @@ first_fork_routine(void *void_args)
 	 * become PID 1 in the new pid namespace so that we can mount
 	 * procfs */
 	if (mount_args_size > 0U) {
+		err = linted_file_create(0, LINTED_KO_CWD, "waiter", 0U,
+		                         S_IRWXU);
+		if (err != 0)
+			goto fail;
+
+		if (-1 == mount(waiter, "waiter", "none", MS_BIND, 0)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			goto fail;
+		}
+
+		err = linted_file_create(0, LINTED_KO_CWD, "init", 0U,
+		                         S_IRWXU);
+		if (err != 0)
+			goto fail;
+
+		if (-1 == mount(binary, "init", "none", MS_BIND, 0)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			goto fail;
+		}
+
 		err = mount_directories(mount_args, mount_args_size);
 		if (err != 0)
 			goto fail;
@@ -902,7 +924,7 @@ first_fork_routine(void *void_args)
 		struct second_fork_args args = {
 		    .err_writer = vfork_err_writer,
 		    .logger_writer = logger_writer,
-		    .binary = binary,
+		    .binary = mount_args_size > 0U ? "/init" : binary,
 		    .argv = command,
 		    .use_seccomp = use_seccomp};
 		grand_child = safe_vfork(second_fork_routine, &args);
@@ -936,7 +958,8 @@ first_fork_routine(void *void_args)
 
 	{
 		char const *arguments[] = {waiter_base, 0};
-		execve(waiter, (char *const *)arguments, environ);
+		execve(mount_args_size > 0U ? "/waiter" : waiter,
+		       (char *const *)arguments, environ);
 	}
 	err = errno;
 
