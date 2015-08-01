@@ -1,0 +1,29 @@
+#! /usr/bin/env sh
+# Copyright (C) 2015 Steven Stewart-Gallus
+#
+# Copying and distribution of this file, with or without modification,
+# are permitted in any medium without royalty provided the copyright
+# notice and this notice are preserved.
+
+set -e
+set -C
+set -u
+
+export PKG_CONFIG_PATH="$SYSROOT/usr/lib"
+export PKG_CONFIG_LIBDIR="$SYSROOT/usr/lib"
+export CFLAGS="--sysroot ${SYSROOT}"
+export CPPFLAGS="--sysroot ${SYSROOT}"
+export LDFLAGS="--sysroot ${SYSROOT}"
+export PKG_CONFIG_SYSSYSROOT_DIR="${SYSROOT}"
+
+unset CPATH
+unset C_INCLUDE_PATH
+unset CPLUS_INCLUDE_PATH
+unset OBJC_INCLUDE_PATH
+
+if test "x$*" = x
+then
+    exit 0
+fi
+
+exec "$@"

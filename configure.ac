@@ -193,6 +193,10 @@ dnl
           AC_MSG_WARN([Unable to find header ${ac_header}])
         ], [])
 dnl
+        LINTED_CHECK_LIB([MATH_LIBS], [-lm], [sin], [#include <math.h>], [], [
+           AC_MSG_ERROR([Unable to find a math library])
+        ])
+dnl
 dnl     First try to see if realtime functionality is included by default
         LINTED_CHECK_LIB([REALTIME_LIBS], [], [clock_gettime], [#define _POSIX_C_SOURCE 199309L
 #include <time.h>], [], [
@@ -252,24 +256,24 @@ dnl
         AC_DEFINE([HAVE_X11_API], [1], [Define if the X11 API is being used.])
 dnl
         PKG_CHECK_MODULES(XCB, xcb, [], [
-                AC_MSG_ERROR([Unable to find an XCB library])
+                AC_MSG_WARN([Unable to find an XCB library])
         ])
         PKG_CHECK_MODULES(XCB_XKB, xcb-xkb, [], [
-                AC_MSG_ERROR([Unable to find an xcb-xkb library])
+                AC_MSG_WARN([Unable to find an xcb-xkb library])
         ])
 dnl
         PKG_CHECK_MODULES(XKB, xkbcommon, [], [
-                AC_MSG_ERROR([Unable to find an xkbcommon library])
+                AC_MSG_WARN([Unable to find an xkbcommon library])
         ])
         PKG_CHECK_MODULES(XKB_X11, xkbcommon-x11, [], [
-                AC_MSG_ERROR([Unable to find an xkbcommon-x11 library])
+                AC_MSG_WARN([Unable to find an xkbcommon-x11 library])
         ])
 dnl
         PKG_CHECK_MODULES(EGL, egl, [], [
-                AC_MSG_ERROR([Unable to find an EGL library])
+                AC_MSG_WARN([Unable to find an EGL library])
         ])
         PKG_CHECK_MODULES(GLES, glesv2, [], [
-                AC_MSG_ERROR([Unable to find an OpenGLES version 2 library])
+                AC_MSG_WARN([Unable to find an OpenGLES version 2 library])
         ])
 dnl
 ])
@@ -295,10 +299,6 @@ dnl
 AC_CHECK_HEADERS([[inttypes.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
-dnl
-LINTED_CHECK_LIB([MATH_LIBS], [-lm], [sin], [#include <math.h>], [], [
-   AC_MSG_ERROR([Unable to find a math library])
-])
 dnl
 AC_TYPE_MODE_T
 dnl

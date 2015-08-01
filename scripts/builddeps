@@ -22,10 +22,21 @@ fi
 
 deps() {
     # This is an ugly hack to get autoconf working
-    printf '%s\0' "libc6"
-    printf '%s\0' "libc6-dev"
+    printf '%s\0' 'libc6'
+    printf '%s\0' 'libc6-dev'
 
-    case "${ARCH}-${OS}"-"${ABI}" in
+    printf '%s\0' 'x11proto-core-dev'
+
+    case "${ABI}" in
+	'dietlibc')
+	    printf '%s\0' 'dietlibc-dev'
+	    ;;
+
+	*)
+	    ;;
+    esac
+
+    case "${ARCH}-${OS}-${ABI}" in
 	'aarch64-linux-gnu' | \
 	'arm-linux-androideabi' | \
 	'arm-linux-gnueabi' | \
@@ -36,18 +47,48 @@ deps() {
 	    printf '%s\0' "gcc-${ARCH}-${OS}-${ABI}"
 	    ;;
 
+	*)
+	    ;;
+    esac
+
+    case "${ARCH}-${OS}-${ABI}" in
+	'arm-linux-gnueabihf')
+	    printf '%s\0' 'libc6-dev-armhf-cross'
+	    ;;
+
+	'powerpc-linux-gnu')
+	    printf '%s\0' 'libc6-dev-powerpc-cross'
+	    ;;
+
+	'aarch64-linux-gnu')
+	    printf '%s\0' 'libc6-dev-arm64-cross'
+	    ;;
+
+	'arm-linux-gnueabi')
+	    printf '%s\0' 'libc6-dev-armel-cross'
+	    ;;
+
+	'powerpc64le-linux-gnu')
+	    printf '%s\0' 'libc6-dev-ppc64el-cross'
+	    ;;
+
 	'amd64-w64-mingw')
-	    printf '%s\0' "mingw-w64-x86-64-dev"
+	    printf '%s\0' 'mingw-w64-x86-64-dev'
 	    ;;
 	'i686-w64-mingw')
-	    printf '%s\0' "mingw-w64-i686-dev"
+	    printf '%s\0' 'mingw-w64-i686-dev'
 	    ;;
 
 	'i686-linux-musl' | 'amd64-linux-musl')
 	    printf '%s\0' "musl-dev:${ARCH}"
 	    ;;
 
-	'i686-linux-gnu' | 'amd64-linux-gnu')
+	*)
+	    ;;
+    esac
+
+    case "${OS}-${ABI}" in
+	'linux-gnu')
 	    printf '%s\0' "libc6:${ARCH}"
 	    printf '%s\0' "libc6-dev:${ARCH}"
 	    printf '%s\0' "libcap-dev:${ARCH}"
@@ -79,7 +120,6 @@ deps() {
 	    printf '%s\0' "libx11-xcb1:${ARCH}"
 	    printf '%s\0' "libxcb-dri2-0:${ARCH}"
 	    printf '%s\0' "libxcb-xfixes0:${ARCH}"
-	    printf '%s\0' "x11proto-core-dev"
 	    ;;
 
 	*)
