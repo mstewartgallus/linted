@@ -43,12 +43,13 @@ static uint_fast8_t enter_start(char const *const process_name,
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-enter",
-	     .dont_handle_signals = true,
+    .dont_handle_signals = true,
     .start = enter_start};
 
 /* Order of entering matters */
 
-static char const *const namespaces[] = {"user", "mnt", "pid", "ipc", "net"};
+static char const *const namespaces[] = {"user", "mnt", "pid", "ipc",
+                                         "net"};
 
 static uint_fast8_t enter_start(char const *const process_name,
                                 size_t argc, char const *const argv[])
@@ -63,7 +64,8 @@ static uint_fast8_t enter_start(char const *const process_name,
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD, "/bin/sh", 0);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_ko_open: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -138,8 +140,8 @@ static uint_fast8_t enter_start(char const *const process_name,
 	}
 
 	static const char *args[] = {"/bin/sh", 0};
-	syscall(__NR_execveat, (int)sh_ko, "",
-			(char *const *)args, environ, AT_EMPTY_PATH);
+	syscall(__NR_execveat, (int)sh_ko, "", (char *const *)args,
+	        environ, AT_EMPTY_PATH);
 
 	linted_log(LINTED_LOG_ERROR, "execve: %s",
 	           linted_error_string(errno));

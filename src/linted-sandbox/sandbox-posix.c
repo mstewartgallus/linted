@@ -854,7 +854,6 @@ first_fork_routine(void *void_args)
 		goto fail;
 	}
 
-
 	/* For some reason we must mount directories after we actually
 	 * become PID 1 in the new pid namespace so that we can mount
 	 * procfs */
@@ -863,7 +862,8 @@ first_fork_routine(void *void_args)
 	if (mount_args_size > 0U) {
 		{
 			linted_ko xx;
-			err = linted_ko_open(&xx, LINTED_KO_CWD, waiter, 0);
+			err = linted_ko_open(&xx, LINTED_KO_CWD, waiter,
+			                     0);
 			if (err != 0)
 				goto fail;
 			waiter_ko = xx;
@@ -871,7 +871,8 @@ first_fork_routine(void *void_args)
 
 		{
 			linted_ko xx;
-			err = linted_ko_open(&xx, LINTED_KO_CWD, binary, 0);
+			err = linted_ko_open(&xx, LINTED_KO_CWD, binary,
+			                     0);
 			if (err != 0)
 				goto fail;
 			binary_ko = xx;
@@ -972,11 +973,11 @@ first_fork_routine(void *void_args)
 	if (mount_args_size > 0U) {
 		char const *const arguments[] = {waiter_base, 0};
 		syscall(__NR_execveat, (int)waiter_ko, "",
-			(char *const *)arguments, environ, AT_EMPTY_PATH);
+		        (char *const *)arguments, environ,
+		        AT_EMPTY_PATH);
 	} else {
 		char const *const arguments[] = {waiter_base, 0};
-		execve(waiter,
-		       (char *const *)arguments, environ);
+		execve(waiter, (char *const *)arguments, environ);
 	}
 	err = errno;
 
@@ -1030,7 +1031,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 
 	if (use_execveat) {
 		syscall(__NR_execveat, (int)binary_ko, "",
-			(char *const *)argv, environ, AT_EMPTY_PATH);
+		        (char *const *)argv, environ, AT_EMPTY_PATH);
 	} else {
 		execve(binary, (char *const *)argv, environ);
 	}

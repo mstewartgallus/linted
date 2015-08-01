@@ -168,6 +168,11 @@ static unsigned char main_start(char const *const process_name,
 
 		char const *fdname = direntry->d_name;
 
+		if (0 == strcmp(".", fdname))
+			continue;
+		if (0 == strcmp("..", fdname))
+			continue;
+
 		linted_ko open_fd = (linted_ko)atoi(fdname);
 		if (0U == open_fd)
 			continue;
