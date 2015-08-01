@@ -208,17 +208,9 @@ static unsigned char main_start(char const *const process_name,
 		return EXIT_FAILURE;
 	}
 
-	for (size_t ii = 0U; ii < num_kos_to_close; ++ii) {
-		linted_log(LINTED_LOG_ERROR, "%s: fd %u", PACKAGE_NAME,
-		           kos_to_close[ii]);
-		err = linted_ko_close(kos_to_close[ii]);
-		if (err != 0) {
-			linted_log(
-			    LINTED_LOG_ERROR, "%s: linted_ko_close: %s",
-			    PACKAGE_NAME, linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-	}
+	/* Deliberately don't check the closed fds */
+	for (size_t ii = 0U; ii < num_kos_to_close; ++ii)
+		linted_ko_close(kos_to_close[ii]);
 #endif
 	linted_log_open(process_name);
 

@@ -5,8 +5,6 @@
 none	../../var/gui	none	mkdir,nomount
 ../../var/gui	var	none	mkdir,shared,bind
 
-proc	proc	proc	mkdir,nosuid,noexec,hidepid=2
-
 tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 ../../controller	run/controller	none	touch,bind
 ../../window	run/window	none	touch,bind
