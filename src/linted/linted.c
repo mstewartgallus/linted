@@ -40,6 +40,10 @@
 #include "linted/start.h"
 #include "linted/util.h"
 
+#ifdef HAVE_POSIX_API
+#include "linted/mem.h"
+#endif
+
 #ifdef HAVE_WINDOWS_API
 #include "linted/utf.h"
 #endif
@@ -55,6 +59,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#ifdef HAVE_POSIX_API
+#include <dirent.h>
+#endif
 
 #ifdef HAVE_WINDOWS_API
 #include <windows.h>
@@ -79,6 +87,8 @@ static linted_error do_help(linted_ko ko, char const *process_name,
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-linted",
+    .dont_handle_signals = true,
+    .dont_init_log = true,
     .start = main_start};
 
 static struct envvar const default_envvars[] = {
@@ -112,6 +122,105 @@ static unsigned char main_start(char const *const process_name,
 		    PACKAGE_NAME, linted_error_string(err));
 		return EXIT_FAILURE;
 	}
+
+#ifdef HAVE_POSIX_API
+	linted_ko fds_dir_ko;
+	{
+		linted_ko xx;
+		err =
+		    linted_ko_open(&xx, LINTED_KO_CWD, "/proc/self/fd",
+		                   LINTED_KO_DIRECTORY);
+		if (err != 0) {
+			linted_log(
+			    LINTED_LOG_ERROR,
+			    "%s: linted_ko_open(/proc/self/fd): %s",
+			    PACKAGE_NAME, linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		fds_dir_ko = xx;
+	}
+
+	DIR *fds_dir = fdopendir(fds_dir_ko);
+	if (0 == fds_dir) {
+		linted_log(LINTED_LOG_ERROR, "%s: fdopendir: %s",
+		           PACKAGE_NAME, linted_error_string(err));
+		return EXIT_FAILURE;
+	}
+
+	linted_ko *kos_to_close = 0;
+	size_t num_kos_to_close = 0U;
+	/* Read all the open fds first and then close the fds after
+	 * because otherwise there is a race condition */
+	for (;;) {
+		errno = 0;
+		struct dirent *direntry = readdir(fds_dir);
+		if (0 == direntry) {
+			err = errno;
+			if (err != 0) {
+				linted_log(LINTED_LOG_ERROR,
+				           "%s: readdir: %s",
+				           PACKAGE_NAME,
+				           linted_error_string(err));
+				return EXIT_FAILURE;
+			}
+			break;
+		}
+
+		char const *fdname = direntry->d_name;
+
+		linted_ko open_fd = (linted_ko)atoi(fdname);
+		if (0U == open_fd)
+			continue;
+		if (1U == open_fd)
+			continue;
+		if (2U == open_fd)
+			continue;
+
+		if (fds_dir_ko == open_fd)
+			continue;
+
+		{
+			void *xx;
+			err = linted_mem_realloc_array(
+			    &xx, kos_to_close, num_kos_to_close + 1U,
+			    sizeof kos_to_close[0U]);
+			if (err != 0) {
+				linted_log(
+				    LINTED_LOG_ERROR,
+				    "%s: linted_mem_realloc_array: %s",
+				    PACKAGE_NAME,
+				    linted_error_string(err));
+				return EXIT_FAILURE;
+			}
+			kos_to_close = xx;
+		}
+		kos_to_close[num_kos_to_close] = open_fd;
+		++num_kos_to_close;
+	}
+
+	if (-1 == closedir(fds_dir)) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+	}
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR, "%s: closedir: %s",
+		           PACKAGE_NAME, linted_error_string(err));
+		return EXIT_FAILURE;
+	}
+
+	for (size_t ii = 0U; ii < num_kos_to_close; ++ii) {
+		linted_log(LINTED_LOG_ERROR, "%s: fd %u", PACKAGE_NAME,
+		           kos_to_close[ii]);
+		err = linted_ko_close(kos_to_close[ii]);
+		if (err != 0) {
+			linted_log(
+			    LINTED_LOG_ERROR, "%s: linted_ko_close: %s",
+			    PACKAGE_NAME, linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+	}
+#endif
+	linted_log_open(process_name);
 
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars);
 	     ++ii) {

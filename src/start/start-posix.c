@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 			ko = xx;
 		}
 
-		if (ko > 3U) {
+		if (ko > 2U) {
 			linted_ko_close(ko);
 			break;
 		}
@@ -90,7 +90,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	process_basename = basename(process_basename);
 
-	linted_log_open(process_basename);
+	if (!linted_start_config.dont_init_log)
+		linted_log_open(process_basename);
 
 	if (missing_name) {
 		linted_log(LINTED_LOG_ERROR, "missing process name");

@@ -102,7 +102,8 @@ static unsigned char sandbox_start(char const *const process_name,
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
-    .start = sandbox_start};
+    .start = sandbox_start,
+    .dont_handle_signals = true};
 
 /**
  * @todo Write stderr streams of the child to the system log.
