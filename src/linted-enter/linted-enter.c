@@ -24,24 +24,31 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <sched.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+#ifndef __NR_execveat
+#define __NR_execveat 322
+#endif
+
 static uint_fast8_t enter_start(char const *const process_name,
                                 size_t argc, char const *const argv[]);
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-enter",
+	     .dont_handle_signals = true,
     .start = enter_start};
 
 /* Order of entering matters */
-static char const *const namespaces[] = {"user", "pid", "ipc", "mnt",
-                                         "net"};
+
+static char const *const namespaces[] = {"user", "mnt", "pid", "ipc", "net"};
 
 static uint_fast8_t enter_start(char const *const process_name,
                                 size_t argc, char const *const argv[])
@@ -50,6 +57,18 @@ static uint_fast8_t enter_start(char const *const process_name,
 
 	if (argc < 2U)
 		return EXIT_FAILURE;
+
+	linted_ko sh_ko;
+	{
+		linted_ko xx;
+		err = linted_ko_open(&xx, LINTED_KO_CWD, "/bin/sh", 0);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "linted_ko_open: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		sh_ko = xx;
+	}
 
 	pid_t pid = atoi(argv[1U]);
 
@@ -99,14 +118,15 @@ static uint_fast8_t enter_start(char const *const process_name,
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
-
 	/* Open all the fds at once so that one can enter spaces that
 	 * lack /proc.
 	 */
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(namespaces); ++ii) {
 		if (-1 == setns(fds[ii], 0)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
 			linted_log(LINTED_LOG_ERROR, "setns: %s",
-			           linted_error_string(errno));
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -118,7 +138,8 @@ static uint_fast8_t enter_start(char const *const process_name,
 	}
 
 	static const char *args[] = {"/bin/sh", 0};
-	execve(args[0U], (char *const *)args, environ);
+	syscall(__NR_execveat, (int)sh_ko, "",
+			(char *const *)args, environ, AT_EMPTY_PATH);
 
 	linted_log(LINTED_LOG_ERROR, "execve: %s",
 	           linted_error_string(errno));

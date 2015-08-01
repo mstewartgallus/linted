@@ -35,6 +35,7 @@ static struct sock_filter const real_filter[] = {
     /**/ ALLOW(dup2),
     /**/ ALLOW(dup3),
     /**/ ALLOW(execve),
+    /**/ ALLOW(execveat),
     /**/ ALLOW(exit),
     /**/ ALLOW(exit_group),
     /**/ ALLOW(fcntl),

@@ -53,6 +53,10 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 
+#ifndef __NR_execveat
+#define __NR_execveat 322
+#endif
+
 /**
  * @file
  *
@@ -135,8 +139,10 @@ struct first_fork_args {
 struct second_fork_args {
 	char const *const *argv;
 	char const *binary;
+	linted_ko binary_ko;
 	linted_ko err_writer;
 	linted_ko logger_writer;
+	bool use_execveat : 1U;
 	bool use_seccomp : 1U;
 };
 
@@ -848,30 +854,27 @@ first_fork_routine(void *void_args)
 		goto fail;
 	}
 
+
 	/* For some reason we must mount directories after we actually
 	 * become PID 1 in the new pid namespace so that we can mount
 	 * procfs */
+	linted_ko waiter_ko;
+	linted_ko binary_ko;
 	if (mount_args_size > 0U) {
-		err = linted_file_create(0, LINTED_KO_CWD, "waiter", 0U,
-		                         S_IRWXU);
-		if (err != 0)
-			goto fail;
-
-		if (-1 == mount(waiter, "waiter", "none", MS_BIND, 0)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-			goto fail;
+		{
+			linted_ko xx;
+			err = linted_ko_open(&xx, LINTED_KO_CWD, waiter, 0);
+			if (err != 0)
+				goto fail;
+			waiter_ko = xx;
 		}
 
-		err = linted_file_create(0, LINTED_KO_CWD, "init", 0U,
-		                         S_IRWXU);
-		if (err != 0)
-			goto fail;
-
-		if (-1 == mount(binary, "init", "none", MS_BIND, 0)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-			goto fail;
+		{
+			linted_ko xx;
+			err = linted_ko_open(&xx, LINTED_KO_CWD, binary, 0);
+			if (err != 0)
+				goto fail;
+			binary_ko = xx;
 		}
 
 		err = mount_directories(mount_args, mount_args_size);
@@ -920,12 +923,22 @@ first_fork_routine(void *void_args)
 	}
 
 	pid_t grand_child;
-	{
+	if (mount_args_size > 0U) {
 		struct second_fork_args args = {
 		    .err_writer = vfork_err_writer,
 		    .logger_writer = logger_writer,
-		    .binary = mount_args_size > 0U ? "/init" : binary,
+		    .binary_ko = binary_ko,
 		    .argv = command,
+		    .use_execveat = true,
+		    .use_seccomp = use_seccomp};
+		grand_child = safe_vfork(second_fork_routine, &args);
+	} else {
+		struct second_fork_args args = {
+		    .err_writer = vfork_err_writer,
+		    .logger_writer = logger_writer,
+		    .binary = binary,
+		    .argv = command,
+		    .use_execveat = false,
 		    .use_seccomp = use_seccomp};
 		grand_child = safe_vfork(second_fork_routine, &args);
 	}
@@ -956,9 +969,13 @@ first_fork_routine(void *void_args)
 	if (err != 0)
 		goto fail;
 
-	{
-		char const *arguments[] = {waiter_base, 0};
-		execve(mount_args_size > 0U ? "/waiter" : waiter,
+	if (mount_args_size > 0U) {
+		char const *const arguments[] = {waiter_base, 0};
+		syscall(__NR_execveat, (int)waiter_ko, "",
+			(char *const *)arguments, environ, AT_EMPTY_PATH);
+	} else {
+		char const *const arguments[] = {waiter_base, 0};
+		execve(waiter,
 		       (char *const *)arguments, environ);
 	}
 	err = errno;
@@ -978,9 +995,17 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 
 	linted_ko err_writer = args->err_writer;
 	linted_ko logger_writer = args->logger_writer;
-	char const *binary = args->binary;
 	char const *const *argv = args->argv;
 	bool use_seccomp = args->use_seccomp;
+	bool use_execveat = args->use_execveat;
+
+	char const *binary;
+	linted_ko binary_ko;
+	if (use_execveat) {
+		binary_ko = args->binary_ko;
+	} else {
+		binary = args->binary;
+	}
 
 	err = safe_dup2(logger_writer, LINTED_KO_STDOUT);
 	if (err != 0)
@@ -1003,7 +1028,12 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 		}
 	}
 
-	execve(binary, (char *const *)argv, environ);
+	if (use_execveat) {
+		syscall(__NR_execveat, (int)binary_ko, "",
+			(char *const *)argv, environ, AT_EMPTY_PATH);
+	} else {
+		execve(binary, (char *const *)argv, environ);
+	}
 	err = errno;
 
 fail : {
