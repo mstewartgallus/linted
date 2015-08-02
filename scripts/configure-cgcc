@@ -12,7 +12,8 @@ set -u
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SRC="${ROOT}/.."
 
-exec "${SRC}/scripts/archs/configure-x86_64-linux-gnu"\
+exec "${SRC}/configure-defaults"\
+     --host x86_64-linux-gnu\
      --disable-shared\
      --enable-debug\
      CC='cgcc -std=c99'\

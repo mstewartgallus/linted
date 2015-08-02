@@ -15,7 +15,8 @@ JSON_CC="${ROOT}/json-cc.py"
 
 : ${CC:=gcc}
 
-exec "${SRC}/scripts/archs/configure-x86_64-linux-gnu"\
+exec "${SRC}/configure-defaults"\
+     --host x86_64-linux-gnu\
      --enable-debug\
      CC="${JSON_CC} ${CC}"\
      $@

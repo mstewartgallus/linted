@@ -15,56 +15,61 @@
  * on. This is different from build types because some platforms can
  * run or emulate each others' build products.
  *
- * @section x86_64-linux-gnu x86_64 GNU/Linux
+ * @section supported Supported Platforms
+ *
+ * @subsection x86_64-linux-gnu x86_64 GNU/Linux
  *
  * This is the only supported platform.  Other platforms may work but
  * are only worked on for the purpose of making the code more modular
  * and better.
  *
- * @subsection runtime Runtime Dependencies
+ * @subsubsection runtime Runtime Dependencies
  *
- * Direct Library Deps:
+ * Direct library dependencies:
  *
- * libc6
- * libc6-dev
- * libcap-dev
- * libegl1-mesa
- * libegl1-mesa-dev
- * libgl1-mesa-glx
- * libgles2-mesa-dev
- * libglib2.0-0
- * libmagic1
- * libmirclientplatform-mesa
- * libpopt0
- * libpthread-stubs0-dev
- * libsigsegv2
- * libxau-dev
- * libxcb1
- * libxcb1-dev
- * libxcb-xkb-dev
- * libxdmcp-dev
- * libxkbcommon-dev
- * libxkbcommon-x11-dev
- * linux-libc-dev
- * x11proto-damage-dev
- * x11proto-kb-dev
- * x11proto-xf86vidmode-dev
+ * - `libc6`
+ * - `libc6-dev`
+ * - `libcap-dev`
+ * - `libegl1-mesa`
+ * - `libegl1-mesa-dev`
+ * - `libgl1-mesa-glx`
+ * - `libgles2-mesa-dev`
+ * - `libglib2.0-0`
+ * - `libmagic1`
+ * - `libmirclientplatform-mesa`
+ * - `libpopt0`
+ * - `libpthread-stubs0-dev`
+ * - `libsigsegv2`
+ * - `libxau-dev`
+ * - `libxcb1`
+ * - `libxcb1-dev`
+ * - `libxcb-xkb-dev`
+ * - `libxdmcp-dev`
+ * - `libxkbcommon-dev`
+ * - `libxkbcommon-x11-dev`
+ * - `linux-libc-dev`
+ * - `x11proto-damage-dev`
+ * - `x11proto-kb-dev`
+ * - `x11proto-xf86vidmode-dev`
  *
  * Indirect:
- * libdrm2
- * libffi6
- * libgbm1
- * libglapi-mesa
- * libwayland-client0
- * libwayland-server0
- * libx11-6
- * libx11-dev
- * libx11-xcb1
- * libxau6
- * libxcb-dri2-0
- * libxcb-xfixes0
- * libxdmcp6
- * x11proto-core-dev
+ *
+ * - `libdrm2`
+ * - `libffi6`
+ * - `libgbm1`
+ * - `libglapi-mesa`
+ * - `libwayland-client0`
+ * - `libwayland-server0`
+ * - `libx11-6`
+ * - `libx11-dev`
+ * - `libx11-xcb1`
+ * - `libxau6`
+ * - `libxcb-dri2-0`
+ * - `libxcb-xfixes0`
+ * - `libxdmcp6`
+ * - `x11proto-core-dev`
+ *
+ * Dependency descriptions:
  *
  * - libcap2
  *   - Main Site - https://sites.google.com/site/fullycapable/
@@ -172,17 +177,12 @@
  *     - /lib/x86_64-linux-gnu/librt-2.19.so
  * - Unknown user machine that implements the amd64 hardware architecture
  *
- * @section x86_64-linux-gnu-wine x86_64 GNU/Linux Wine
+ * @section unsupported-platforms Unsupported Platforms
  *
- * This is not a supported platform.  It may work but is only worked
- * on for a challenge and for making the code more modular and better.
- * In the future it may be supported.  This is more likely to be
- * supported in the future than x86_64 Microsoft Windows because I
- * have easier access to it.
+ * These are not supported platform.  They may work but are only
+ * worked on for a challenge and for making the code more modular and
+ * better.  They may be supported.
  *
- * @section x86_64-windows x86_64 Microsoft Windows Vista
- *
- * This is not a supported platform.  It may work but is only worked
- * on for a challenge and for making the code more modular and better.
- * In the future it may be supported.
+ * - x86_64 GNU/Linux Wine
+ * - x86_64 Microsoft Windows Vista (and greater)
  */

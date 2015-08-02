@@ -13,12 +13,14 @@
  *
  * A list of types of final build products.
  *
- * @section x86_64-linux-gnu x86_64 Linux GNU
+ * @section supported-builds Supported Builds
+ *
+ * @subsection x86_64-linux-gnu x86_64 Linux GNU with GCC and GNU ld (GNU Binutils)
  *
  * This is the main build.  Other builds may work but are only worked
  * on for the purpose of making the code more modular and better.
  *
- * @subsection buildtime Build Time Dependencies
+ * @subsubsection buildtime Build Time Dependencies
  *
  * - The GNU Compiler Collection
  *   - Main Site - https://www.gnu.org/software/gcc/
@@ -37,20 +39,28 @@
  *   - Main Site - https://www.gnu.org/software/make
  *   - Bug Mailing List - <a href="mailto://bug-make@gnu.org">&lt;bug-make@gnu.org&gt;</a>
  *
- * @section x86_64-w64-mingw32 x86_64 MinGW-w64
+ * @section unsupported Unsupported Builds
  *
  * This is not a supported final build product.  This is only worked
  * on for a challenge and for making the code more modular and better.
  * In the future it may be supported.
+ *
+ * - `aarch64-linux-gnu`
+ * - `arm-linux-androideabi`
+ * - `arm-linux-gnueabi`
+ * - `i686-linux-gnu`
+ * - `i686-w64-mingw32`
+ * - `x86_64-linux-dietlibc`
+ * - `x86_64-linux-gnu`
+ * - `x86_64-linux-musl`
+ * - `x86_64-w64-mingw32`
+ *
+ * @subsection x86_64-w64-mingw32 x86_64 MinGW-w64
  *
  * This build is temporarily out of service until I obtain a newer
  * toolchain.
  *
- * @section asmjs-unknown-emscripten Emscripten
- *
- * This is not a supported final build product.  This is only worked
- * on for a challenge and for making the code more modular and better.
- * In the future it may be supported.
+ * @subsection asmjs-unknown-emscripten Emscripten
  *
  * This build is temporarily out of service until I figure out why
  * Emscripten generates broken code (it seems to generate null

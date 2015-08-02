@@ -9,8 +9,7 @@ set -e
 set -C
 set -u
 
-export PKG_CONFIG_PATH="$SYSROOT/usr/lib"
-export PKG_CONFIG_LIBDIR="$SYSROOT/usr/lib"
+export PKG_CONFIG_PATH="${SYSROOT}/usr/lib/${TARGET}/pkgconfig:${SYSROOT}/usr/${TARGET}/lib/pkgconfig"
 export CFLAGS="--sysroot ${SYSROOT}"
 export CPPFLAGS="--sysroot ${SYSROOT}"
 export LDFLAGS="--sysroot ${SYSROOT}"

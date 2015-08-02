@@ -36,19 +36,26 @@ dist_pkgdefaultconf_DATA=
 dist_pkgdefaultunits_DATA=
 
 AM_CFLAGS=
+AM_CPPFLAGS=
+AM_LDFLAGS=
+
+linted_CLANG_FORMATFLAGS=
+
+EXTRA_DIST+=%D%/configure-defaults
+
 if WINDOWS_API
 AM_CFLAGS+=$(linted_CFLAGS_UNICODE)
 endif
 
-AM_LDFLAGS=-Xcompiler '\
+AM_CPPFLAGS+=-I$(srcdir)/include
+
+AM_LDFLAGS+=-Xcompiler '\
   $(linted_LDFLAGS_LANGUAGE)\
   $(linted_LDFLAGS_OPTIMIZE)\
   $(linted_LDFLAGS_HARDEN)\
   $(linted_LDFLAGS_DEBUG)\
   $(linted_LDFLAGS_DEBUG_INFO)\
   $(linted_LDFLAGS_WARNINGS)'
-
-AM_CPPFLAGS=-I$(srcdir)/include
 
 mostlyclean-local:
 	- find "$(builddir)/src" -type f -name '*.dwo' -exec rm -f '{}' '+'
@@ -58,7 +65,7 @@ indent:
 	find $(srcdir)/src $(srcdir)/include -type f -name '*.[ch]' -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
-linted_CLANG_FORMATFLAGS=-i
+linted_CLANG_FORMATFLAGS+=-i
 
 include docs/Makefile.am
 include scripts/Makefile.am

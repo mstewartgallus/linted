@@ -9,11 +9,10 @@ set -e
 set -C
 set -u
 
-TARGET="$(printf -- '%s' "$0" | cut -d- -f 2-)"
+# Just set the build system to be native by default
 
-SRCDIR="$(cd "$(dirname "$0")" && pwd)/../.."
+SRCDIR="$(cd "$(dirname "$0")" && pwd)"
 
 exec "${SRCDIR}/configure"\
   --build="$("${SRCDIR}/build-aux/config.guess")"\
-  --host="${TARGET}"\
   "$@"

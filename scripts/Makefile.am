@@ -15,22 +15,11 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 EXTRA_DIST+=\
-  %D%/json-cc-files.py\
-  %D%/json-cc.py\
+  %D%/builddeps\
   %D%/configure-cgcc\
-  %D%/json-cc-flags.py\
-  %D%/archs/configure-arm-linux-gnueabihf\
-  %D%/archs/configure-x86_64-w64-mingw32\
-  %D%/archs/configure-arch\
-  %D%/archs/configure-i686-w64-mingw32\
-  %D%/archs/configure-arm-linux-gnueabi\
-  %D%/archs/configure-powerpc64le-linux-gnu\
-  %D%/archs/configure-aarch64-linux-gnu\
-  %D%/archs/configure-powerpc-linux-gnu\
-  %D%/archs/configure-arm-linux-androideabi\
-  %D%/archs/configure-x86_64-linux-gnu\
-  %D%/archs/configure-i686-linux-gnu\
-  %D%/archs/configure-i686-linux-musl\
-  %D%/archs/configure-x86_64-linux-musl\
+  %D%/configure-goto-cc\
   %D%/configure-json-cc\
-  %D%/configure-goto-cc
+  %D%/json-cc-files.py\
+  %D%/json-cc-flags.py\
+  %D%/json-cc.py\
+  %D%/setsysroot
