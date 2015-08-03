@@ -35,7 +35,13 @@
 #include <unistd.h>
 
 #ifndef __NR_execveat
+#if defined __amd64__
 #define __NR_execveat 322
+#elif defined __i386__
+#define __NR_execveat 358
+#else
+#error No execveat system call number is defined for this platform
+#endif
 #endif
 
 static uint_fast8_t enter_start(char const *const process_name,

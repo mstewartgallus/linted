@@ -26,6 +26,11 @@ deps() {
     printf '%s\0' 'libc6-dev'
 
     printf '%s\0' 'x11proto-core-dev'
+    printf '%s\0' "x11proto-damage-dev"
+    printf '%s\0' "x11proto-fixes-dev"
+    printf '%s\0' "x11proto-kb-dev"
+    printf '%s\0' "x11proto-xext-dev"
+    printf '%s\0' "x11proto-xf86vidmode-dev"
 
     case "${ABI}" in
 	'dietlibc')
@@ -138,11 +143,6 @@ deps() {
 	    printf '%s\0' "libxkbcommon-x11-dev:${ARCH}"
 	    printf '%s\0' "libxshmfence-dev:${ARCH}"
 	    printf '%s\0' "libxxf86vm-dev:${ARCH}"
-	    printf '%s\0' "x11proto-damage-dev:${ARCH}"
-	    printf '%s\0' "x11proto-fixes-dev:${ARCH}"
-	    printf '%s\0' "x11proto-kb-dev:${ARCH}"
-	    printf '%s\0' "x11proto-xext-dev:${ARCH}"
-	    printf '%s\0' "x11proto-xf86vidmode-dev:${ARCH}"
 	    ;;
 
 	*)
