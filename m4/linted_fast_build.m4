@@ -8,6 +8,7 @@ dnl WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
 dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
 dnl Speeds up the build
+
 AC_DEFUN([LINTED_FAST_BUILD],[
 dnl
 AC_ARG_ENABLE(
@@ -29,8 +30,11 @@ dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_FAST_BUILD],[dnl
         [-pipe]
         [-Wa,--compress-debug-sections]
-        [-gsplit-dwarf]dnl Separate out the debug info for linking speed
         [-fintegrated-as]       dnl Clang's integrated ASM is faster
+        dnl
+        dnl We could separate out the debug info for linking speed but
+        dnl it seems to cause problems with Wine.
+        dnl [-gsplit-dwarf]dnl
 ])
 dnl
 ])
