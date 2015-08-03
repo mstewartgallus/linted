@@ -25,34 +25,90 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <signal.h>
 #include <stdint.h>
 #include <unistd.h>
 
 linted_error linted_window_write(linted_window window, uint_fast32_t in)
 {
+	linted_error err;
+
 	char buf[LINTED_RPC_UINT32_SIZE];
 	linted_rpc_pack_uint32(in, buf);
 
-	if (-1 == pwrite(window, buf, sizeof buf, 0U)) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
+	/*
+	 * From POSIX
+	 *
+	 * If write() is interrupted by a signal after it successfully
+	 * writes some data, it shall return the number of bytes
+	 * written.
+	 *
+	 * So, make writes atomic by preventing signals during the
+	 * write.
+	 */
+
+	sigset_t oldset;
+	sigfillset(&oldset);
+
+	err = pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
+	if (err != 0)
 		return err;
+
+	if (-1 == pwrite(window, buf, sizeof buf, 0U)) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
 	}
 
-	return 0;
+	linted_error restore_err = pthread_sigmask(SIG_SETMASK, &oldset, 0);
+	if (0 == err)
+		err = restore_err;
+
+        /*
+	 * From POSIX
+	 *
+	 * Writes can be serialized with respect to other reads and
+	 * writes. If a read() of file data can be proven (by any
+	 * means) to occur after a write() of the data, it must
+	 * reflect that write(), even if the calls are made by
+	 * different processes. A similar requirement applies to
+	 * multiple write operations to the same file position. This
+	 * is needed to guarantee the propagation of data from write()
+	 * calls to subsequent read() calls. This requirement is
+	 * particularly significant for networked file systems, where
+	 * some caching schemes violate these semantics.
+	 *
+	 * So, no fdatasync call needs to be made.
+	 */
+
+	return err;
 }
 
 linted_error linted_window_read(linted_window window,
                                 uint_fast32_t *outp)
 {
+	linted_error err;
+
 	char buf[LINTED_RPC_UINT32_SIZE];
+
+	sigset_t oldset;
+	sigfillset(&oldset);
+
+	err = pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
+	if (err != 0)
+		return err;
 
 	ssize_t bytes = pread(window, buf, sizeof buf, 0U);
 	if (-1 == bytes) {
-		linted_error err = errno;
+		err = errno;
 		LINTED_ASSUME(err != 0);
-		return err;
 	}
+
+	linted_error restore_err = pthread_sigmask(SIG_SETMASK, &oldset, 0);
+	if (0 == err)
+		err = restore_err;
+
+	if (err != 0)
+		return err;
 
 	if (bytes != sizeof buf)
 		return EPROTO;
