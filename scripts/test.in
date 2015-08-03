@@ -17,6 +17,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 ${SRCDIR}/src/controller/units\
 :${SRCDIR}/src/updater/units\
 :${SRCDIR}/src/window/units\
+:${SRCDIR}/src/linted-audio/units\
 :${SRCDIR}/src/linted-simulator/units\
 :${SRCDIR}/src/linted-window/units\
 :${SRCDIR}/src/linted-gui/units\
@@ -26,6 +27,9 @@ ${SRCDIR}/src/controller/units\
 : ${LINTED_MONITOR:="${ROOT}/../src/linted-monitor/linted-monitor${EXEEXT}"}
 : ${LINTED_SANDBOX:="${ROOT}/../src/linted-sandbox/linted-sandbox${EXEEXT}"}
 : ${LINTED_WAITER:="${ROOT}/../src/linted-waiter/linted-waiter${EXEEXT}"}
+
+: ${LINTED_AUDIO_FSTAB:="${SRCDIR}/src/linted-audio/audio.fstab"}
+: ${LINTED_AUDIO:="${ROOT}/../src/linted-audio/linted-audio${EXEEXT}"}
 
 : ${LINTED_SIMULATOR_FSTAB:="${SRCDIR}/src/linted-simulator/simulator.fstab"}
 : ${LINTED_SIMULATOR:="${ROOT}/../src/linted-simulator/linted-simulator${EXEEXT}"}
@@ -44,6 +48,8 @@ export LINTED_INIT
 export LINTED_MONITOR
 export LINTED_SANDBOX
 export LINTED_WAITER
+export LINTED_AUDIO_FSTAB
+export LINTED_AUDIO
 export LINTED_SIMULATOR_FSTAB
 export LINTED_SIMULATOR
 export LINTED_GUI_FSTAB

@@ -59,11 +59,12 @@ linted_error linted_window_write(linted_window window, uint_fast32_t in)
 		LINTED_ASSUME(err != 0);
 	}
 
-	linted_error restore_err = pthread_sigmask(SIG_SETMASK, &oldset, 0);
+	linted_error restore_err =
+	    pthread_sigmask(SIG_SETMASK, &oldset, 0);
 	if (0 == err)
 		err = restore_err;
 
-        /*
+	/*
 	 * From POSIX
 	 *
 	 * Writes can be serialized with respect to other reads and
@@ -103,7 +104,8 @@ linted_error linted_window_read(linted_window window,
 		LINTED_ASSUME(err != 0);
 	}
 
-	linted_error restore_err = pthread_sigmask(SIG_SETMASK, &oldset, 0);
+	linted_error restore_err =
+	    pthread_sigmask(SIG_SETMASK, &oldset, 0);
 	if (0 == err)
 		err = restore_err;
 

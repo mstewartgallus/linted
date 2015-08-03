@@ -1,0 +1,36 @@
+# Similar to /etc/fstab but for Linted sandboxing. Paths are
+# interpreted relative to the location Linted chroots to.
+#
+# <file system>	<mount point>	<type>	<options>
+none	../../var/simulator	none	mkdir,nomount
+../../var/simulator	var	none	mkdir,shared,bind
+
+tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
+../../controller	run/controller	none	touch,bind
+../../updater	run/updater	none	touch,bind
+
+none	run/user	none	mkdir,nomount
+none	run/user/1000	none	mkdir,nomount
+
+/run/user/1000/pulse	run/user/1000/pulse	none	mkdir,bind
+
+none	var/lib	none	mkdir,nomount
+/var/lib/dbus	var/lib/dbus	none	mkdir,bind
+
+tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
+/dev/log	dev/log	none	touch,bind
+/dev/null	dev/null	none	touch,ro,bind
+/dev/snd	dev/snd	none	mkdir,bind
+/run/shm	dev/shm	none	mkdir,bind
+/dev/urandom	dev/urandom	none	touch,bind
+
+/etc	etc	none	mkdir,shared,bind
+
+/lib	lib	none	mkdir,shared,bind
+/lib64	lib64	none	mkdir,shared,bind 
+
+/usr	usr	none	mkdir,shared,bind 
+
+tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
+
+/bin	bin	none	mkdir,shared,bind

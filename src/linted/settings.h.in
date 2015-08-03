@@ -9,24 +9,35 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.  See the License for the specific language governing
+ * permissions and limitations under the License.
  */
 #ifndef LINTED_LINTED_SETTINGS_H
 #define LINTED_LINTED_SETTINGS_H
 
 #define LINTED_UNIT_PATH "@LINTED_UNIT_PATH@"
+
 #define LINTED_INIT "@LINTED_INIT@"
+
 #define LINTED_MONITOR "@LINTED_MONITOR@"
+
 #define LINTED_SANDBOX "@LINTED_SANDBOX@"
+
 #define LINTED_WAITER "@LINTED_WAITER@"
+
+#define LINTED_AUDIO "@LINTED_AUDIO@"
+#define LINTED_AUDIO_FSTAB "@LINTED_AUDIO_FSTAB@"
+
 #define LINTED_GUI "@LINTED_GUI@"
 #define LINTED_GUI_FSTAB "@LINTED_GUI_FSTAB@"
+
 #define LINTED_SIMULATOR "@LINTED_SIMULATOR@"
 #define LINTED_SIMULATOR_FSTAB "@LINTED_SIMULATOR_FSTAB@"
+
 #define LINTED_DRAWER "@LINTED_DRAWER@"
 #define LINTED_DRAWER_FSTAB "@LINTED_DRAWER_FSTAB@"
+
 #define LINTED_WINDOW "@LINTED_WINDOW@"
 #define LINTED_WINDOW_FSTAB "@LINTED_WINDOW_FSTAB@"
 

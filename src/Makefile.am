@@ -20,6 +20,7 @@ EXTRA_DIST+=\
   include/linted/test.h\
   include/linted/util.h
 
+include %C%/linted-audio/Makefile.am
 include %C%/linted-control/Makefile.am
 include %C%/linted-drawer/Makefile.am
 include %C%/linted-enter/Makefile.am

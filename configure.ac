@@ -276,6 +276,10 @@ dnl
                 AC_MSG_WARN([Unable to find an OpenGLES version 2 library])
         ])
 dnl
+        PKG_CHECK_MODULES(PULSE, libpulse, [], [
+                AC_MSG_WARN([Unable to find a PulseAudio library])
+        ])
+dnl
 ])
 dnl
 AC_SYS_LARGEFILE
