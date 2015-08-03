@@ -42,7 +42,6 @@
 #include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
-#include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -340,13 +339,6 @@ exit_loop:
 	}
 
 	if (traceme) {
-		if (-1 == ptrace(PTRACE_TRACEME, (pid_t)0, (void *)0,
-		                 (void *)0)) {
-			linted_log(LINTED_LOG_ERROR, "ptrace: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-
 		/* Register with the parent */
 		if (-1 == raise(SIGSTOP)) {
 			linted_log(LINTED_LOG_ERROR, "raise: %s",

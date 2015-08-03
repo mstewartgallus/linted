@@ -56,6 +56,8 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
+
+#include <linux/ptrace.h>
 #endif
 
 #include <sys/stat.h>
@@ -155,18 +157,24 @@ on_stop_request(pid_t manager_pid,
                 struct linted_admin_stop_request const *request,
                 union linted_admin_reply *reply);
 
+static linted_error on_child_stopped(char const *process_name,
+                                     pid_t pid);
+
 static linted_error on_child_trapped(char const *process_name,
                                      bool time_to_exit, pid_t pid,
                                      int exit_status, pid_t manager_pid,
                                      linted_ko cwd,
                                      struct linted_unit_db *unit_db);
 static linted_error on_child_signaled(char const *process_name,
-                                      pid_t pid, int signo);
+                                      pid_t pid, int exit_status);
 static linted_error on_child_about_to_clone(pid_t pid);
 static linted_error
 on_child_about_to_exit(char const *process_name, bool time_to_exit,
                        pid_t pid, pid_t manager_pid, linted_ko cwd,
                        struct linted_unit_db *unit_db);
+static linted_error
+on_child_ptrace_event_stopped(char const *process_name, pid_t pid,
+                              int exit_status);
 static linted_error socket_activate(struct linted_unit_socket *unit);
 static linted_error service_activate(char const *process_name,
                                      struct linted_unit *unit,
@@ -707,7 +715,7 @@ on_error:
 	    linted_admin_in_task_read_to_asynch(admin_in_read_task));
 
 	linted_pid_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
-	                               WEXITED);
+	                               WEXITED | WSTOPPED);
 	linted_asynch_pool_submit(
 	    pool, linted_pid_task_waitid_to_asynch(sandbox_task));
 
@@ -1510,6 +1518,10 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 		/* Do nothing */
 		break;
 
+	case CLD_STOPPED:
+		err = on_child_stopped(process_name, pid);
+		break;
+
 	case CLD_TRAPPED:
 		err = on_child_trapped(process_name, time_to_exit, pid,
 		                       exit_status, manager_pid, cwd,
@@ -1740,6 +1752,10 @@ static linted_error on_child_trapped(char const *process_name,
 		    process_name, time_to_exit, pid, manager_pid, cwd,
 		    unit_db);
 
+	case PTRACE_EVENT_STOP:
+		return on_child_ptrace_event_stopped(
+		    process_name, pid, exit_status & 0xFF);
+
 	case PTRACE_EVENT_VFORK:
 	case PTRACE_EVENT_FORK:
 	case PTRACE_EVENT_CLONE:
@@ -1750,54 +1766,64 @@ static linted_error on_child_trapped(char const *process_name,
 	}
 }
 
-static linted_error on_child_signaled(char const *process_name,
-                                      pid_t pid, int signo)
+static linted_error on_child_stopped(char const *process_name,
+                                     pid_t pid)
 {
 	linted_error err = 0;
 
-	switch (signo) {
-	default:
-		break;
+	linted_error seize_err =
+	    ptrace_seize(pid, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK |
+	                          PTRACE_O_TRACEVFORK);
+	if (0 == err)
+		err = seize_err;
 
-	case SIGSTOP: {
-		signo = 0;
+	linted_error kill_err = linted_pid_kill(pid, SIGCONT);
+	if (0 == err)
+		err = kill_err;
 
-		pid_t self = getpid();
-		{
-			bool xx;
-			err = pid_is_child_of(self, pid, &xx);
-			if (err != 0)
-				break;
-			if (xx)
-				goto on_stopped_child;
-		}
+	return err;
+}
 
-		char name[LINTED_UNIT_NAME_MAX + 1U];
-		err = linted_unit_name(pid, name);
+static linted_error on_child_signaled(char const *process_name,
+                                      pid_t pid, int signo)
+{
+	return ptrace_cont(pid, signo);
+}
+
+static linted_error
+on_child_ptrace_event_stopped(char const *process_name, pid_t pid,
+                              int exit_status)
+{
+	linted_error err = 0;
+
+	pid_t self = getpid();
+
+	bool is_child;
+	{
+		bool xx;
+		err = pid_is_child_of(self, pid, &xx);
 		if (err != 0)
-			return err;
-
-		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "%s: ptracing %" PRIiMAX " %s\n",
-		                       process_name, (intmax_t)pid,
-		                       name);
-
-		err = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
-		break;
+			goto continue_process;
+		is_child = xx;
 	}
 
-	on_stopped_child:
-		err = ptrace_setoptions(pid, PTRACE_O_TRACECLONE |
-		                                 PTRACE_O_TRACEFORK |
-		                                 PTRACE_O_TRACEVFORK);
-		break;
+	if (is_child)
+		goto continue_process;
 
-	case SIGTRAP:
-		signo = 0;
-		break;
-	}
+	char name[LINTED_UNIT_NAME_MAX + 1U];
+	err = linted_unit_name(pid, name);
+	if (err != 0)
+		return err;
 
-	linted_error cont_err = ptrace_cont(pid, signo);
+	linted_io_write_format(LINTED_KO_STDERR, 0,
+	                       "%s: ptracing %" PRIiMAX " %s\n",
+	                       process_name, (intmax_t)pid, name);
+
+	err = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
+
+continue_process:
+	;
+	linted_error cont_err = ptrace_cont(pid, 0);
 	if (0 == err)
 		err = cont_err;
 
