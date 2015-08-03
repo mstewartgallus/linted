@@ -16,8 +16,10 @@ dnl
 dnl
 AC_LANG_PUSH([C])
 m4_foreach_w([linted_the_flag], $2, [
-         AC_MSG_CHECKING([for linker flag linted_the_flag])
-         [LDFLAGS=']linted_the_flag[']
+         [linted_the_flag_var=]linted_the_flag
+
+         AC_MSG_CHECKING([for linker flag ${linted_the_flag_var}])
+         [LDFLAGS="${linted_the_flag_var}"]
          AC_LINK_IFELSE([AC_LANG_SOURCE([
 [#if defined _WIN32]
 [#define WIN32_LEAN_AND_MEAN]

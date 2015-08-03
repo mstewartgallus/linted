@@ -16,6 +16,7 @@
 # permissions and limitations under the License.
 bin_PROGRAMS+=%D%/linted
 
+%C%_linted_DEPS=$(builddir)/%D%/settings.h
 %C%_linted_SOURCES=\
   %D%/linted.c\
   %D%/privilege.c %D%/privilege.h
