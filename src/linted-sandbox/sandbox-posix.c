@@ -179,7 +179,7 @@ static int my_pivot_root(char const *new_root, char const *put_old);
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
     .start = sandbox_start,
-    .dont_handle_signals = true};
+    .dont_init_signals = true};
 
 static unsigned char sandbox_start(char const *const process_name,
                                    size_t argc,

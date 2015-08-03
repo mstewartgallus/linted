@@ -28,8 +28,8 @@ struct linted_start_config {
 	char const *canonical_process_name;
 	unsigned char (*start)(char const *process_name, size_t argc,
 	                       char const *const argv[]);
-	_Bool dont_handle_signals : 1U;
-	_Bool dont_init_log : 1U;
+	_Bool dont_init_signals : 1U;
+	_Bool dont_init_logging : 1U;
 };
 
 extern struct linted_start_config const linted_start_config;

@@ -46,7 +46,7 @@ static linted_error set_name(char const *name);
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-waiter",
-    .dont_handle_signals = true,
+    .dont_init_signals = true,
     .start = waiter_start};
 
 static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};

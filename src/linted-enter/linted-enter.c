@@ -49,7 +49,7 @@ static uint_fast8_t enter_start(char const *const process_name,
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-enter",
-    .dont_handle_signals = true,
+    .dont_init_signals = true,
     .start = enter_start};
 
 /* Order of entering matters */

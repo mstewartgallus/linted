@@ -44,7 +44,7 @@ static linted_error set_child_subreaper(bool value);
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
-    .dont_handle_signals = true,
+    .dont_init_signals = true,
     .start = init_start};
 
 static volatile sig_atomic_t monitor_pid = 0;

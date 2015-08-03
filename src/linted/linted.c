@@ -87,8 +87,8 @@ static linted_error do_help(linted_ko ko, char const *process_name,
 
 struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-linted",
-    .dont_handle_signals = true,
-    .dont_init_log = true,
+    .dont_init_signals = true,
+    .dont_init_logging = true,
     .start = main_start};
 
 static struct envvar const default_envvars[] = {

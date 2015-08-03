@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	process_basename = basename(process_basename);
 
-	if (!linted_start_config.dont_init_log)
+	if (!linted_start_config.dont_init_logging)
 		linted_log_open(process_basename);
 
 	if (missing_name) {
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!linted_start_config.dont_handle_signals) {
+	if (!linted_start_config.dont_init_signals) {
 		err = linted_signal_init();
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
