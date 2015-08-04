@@ -50,7 +50,11 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_OPTIMIZE],[dnl
         [-Wl,--hash-style=gnu]dnl
         [-Wl,--as-needed]dnl
         [-Wl,--gc-sections]dnl
-        [-Wl,-z,combreloc]])
+        [-Wl,-z,combreloc]dnl
+dnl
+        dnl Use large addresses on i386 Windows
+        [-Wl,--large-address-aware]dnl
+])
 AC_SUBST([linted_LDFLAGS_OPTIMIZE])
 dnl
 ])

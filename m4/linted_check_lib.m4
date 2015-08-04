@@ -12,12 +12,13 @@ dnl invoked like LINTED_CHECK_LIB([myvar_lib], [-lm], [sin], [#include <math.h>]
 dnl
 AC_DEFUN([LINTED_CHECK_LIB],[
 dnl
+[linted_checked_lib=]$2
 [linted_old_LIBS="${LIBS}"]
 dnl
 AC_LANG_PUSH([C])
 dnl
 AC_MSG_CHECKING([for library containing ]$3)
-[LIBS="${LIBS} "']$2[']
+[LIBS="${LIBS} ${linted_checked_lib}"]
 AC_LINK_IFELSE([AC_LANG_SOURCE([dnl
 $4
 [#if defined _WIN32]
@@ -43,8 +44,8 @@ $4
 [        return 0;]
 [}]dnl
 ])], [
-         AC_MSG_RESULT($2)
-         $1[=']$2[']
+         AC_MSG_RESULT(${linted_checked_lib})
+         $1[="${linted_checked_lib}"]
          $5
 ], [
          AC_MSG_RESULT([no])

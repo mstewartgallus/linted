@@ -37,7 +37,8 @@ if WINDOWS_API
 %C%_linted_LDADD+=src/utf/libutf.la
 endif
 
-BUILT_SOURCES+=%D%/settings.h
+%D%/%C%_linted-linted.$(OBJEXT): %D%/settings.h
+
 EXTRA_DIST+=%D%/settings.h.in
 MOSTLYCLEANFILES+=%D%/settings.h
 %D%/settings.h: Makefile %D%/settings.h.in

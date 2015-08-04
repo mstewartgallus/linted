@@ -147,6 +147,15 @@ dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
                 [-mwindows]dnl
         ])
+        [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
+        LINTED_CHECK_LDFLAGS([linted_LDFLAGS_TARGET_TYPE], [
+                [-Wl,--tsaware]dnl
+                [-Wl,--subsystem=windows:6.02]dnl
+                [-Wl,--major-os-version=6]dnl
+                [-Wl,--minor-os-version=0.2]dnl
+        ])
+        AC_SUBST([linted_LDFLAGS_TARGET_TYPE])
+
         LINTED_CHECK_CFLAGS([linted_CFLAGS_UNICODE], [
                 [-municode]dnl
         ])

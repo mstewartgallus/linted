@@ -42,6 +42,7 @@ AC_SUBST([linted_CFLAGS_DEBUG_INFO])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_DEBUG_INFO],[dnl
         [-Wl,-export-dynamic]dnl
+        [-Wl,--export-all-symbols]dnl
 ])
 dnl
 AC_SUBST([linted_LDFLAGS_DEBUG_INFO])
