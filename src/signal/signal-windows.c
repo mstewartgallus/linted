@@ -37,7 +37,6 @@
 #include <unistd.h>
 
 #include <windows.h>
-#include <winsock2.h>
 
 /**
  * @bug Either sockets or pipes need to be used
@@ -54,7 +53,6 @@ static linted_ko sigpipe_writer = (linted_ko)-1;
 
 struct linted_signal_task_wait {
 	struct linted_asynch_task *parent;
-	struct linted_asynch_waiter *waiter;
 	void *data;
 	int signo;
 };
@@ -119,21 +117,11 @@ linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
 			goto free_task;
 		parent = xx;
 	}
-	struct linted_asynch_waiter *waiter;
-	{
-		struct linted_asynch_waiter *xx;
-		err = linted_asynch_waiter_create(&xx);
-		if (err != 0)
-			goto free_parent;
-		waiter = xx;
-	}
-	task->waiter = waiter;
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
 	return 0;
-free_parent:
-	linted_asynch_task_destroy(parent);
+
 free_task:
 	linted_mem_free(task);
 	return err;
@@ -142,7 +130,6 @@ free_task:
 void linted_signal_task_wait_destroy(
     struct linted_signal_task_wait *task)
 {
-	linted_asynch_waiter_destroy(task->waiter);
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
@@ -181,10 +168,10 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 	struct linted_signal_task_wait *task_wait =
 	    linted_asynch_task_data(task);
 	linted_error err = 0;
-	struct linted_asynch_waiter *waiter = task_wait->waiter;
 
 	int signo = -1;
 
+retry:
 	for (;;) {
 		char dummy;
 		DWORD xx;
@@ -192,12 +179,6 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 		              0)) {
 			err = GetLastError();
 			LINTED_ASSUME(err != 0);
-
-			if (WSAEWOULDBLOCK == err)
-				break;
-
-			if (WSAEINTR == err)
-				goto resubmit;
 
 			goto complete;
 		}
@@ -216,7 +197,7 @@ void linted_signal_do_wait(struct linted_asynch_pool *pool,
 		goto complete;
 	}
 
-	goto wait_on_poll;
+	goto retry;
 
 complete:
 	task_wait->signo = signo;
@@ -226,15 +207,6 @@ complete:
 	}
 
 	linted_asynch_pool_complete(pool, task, err);
-	return;
-
-resubmit:
-	linted_asynch_pool_resubmit(pool, task);
-	return;
-
-wait_on_poll:
-	linted_asynch_pool_wait_on_poll(pool, waiter, task,
-	                                sigpipe_reader, POLLIN);
 }
 
 char const *linted_signal_string(int signo)
