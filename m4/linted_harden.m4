@@ -41,13 +41,17 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_HARDEN],[dnl
         [-Wl,-z,relro]dnl
         [-Wl,-z,now]dnl
 dnl
-dnl     Use ASLR on ELF
-dnl        [-pie -fPIE]dnl
+dnl     DEP for Windows
+        [-Wl,--nxcompat]dnl
 dnl
-dnl     DEP, code integrity and ASLR all seem to cause problems with Wine
-dnl     [-Wl,--nxcompat]dnl
-dnl     [-Wl,--forceinteg]dnl
-dnl     [-Wl,--dynamicbase]dnl
+dnl     Enforce code integrity checks on Windows
+        [-Wl,--forceinteg]dnl
+dnl
+dnl     Use ASLR on Windows
+        [-Wl,--dynamicbase]dnl
+dnl
+dnl     Use ASLR on ELF
+dnl     [-pie -fPIE]dnl
 ])
 AC_SUBST([linted_LDFLAGS_HARDEN])
 dnl
