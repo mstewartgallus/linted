@@ -35,7 +35,14 @@ MOSTLYCLEANFILES=
 dist_pkgdefaultconf_DATA=
 dist_pkgdefaultunits_DATA=
 
-AM_CFLAGS=
+AM_CFLAGS=\
+ $(linted_CFLAGS_LANGUAGE)\
+ $(linted_CFLAGS_OPTIMIZE)\
+ $(linted_CFLAGS_HARDEN)\
+ $(linted_CFLAGS_DEBUG)\
+ $(linted_CFLAGS_DEBUG_INFO)\
+ $(linted_CFLAGS_WARNINGS)
+
 AM_CPPFLAGS=
 AM_LDFLAGS=
 
@@ -50,16 +57,16 @@ endif
 AM_CPPFLAGS+=-I$(srcdir)/include
 
 AM_LDFLAGS+=\
-  -Xcompiler '\
+  $$(for II in \
   $(linted_LDFLAGS_LANGUAGE)\
   $(linted_LDFLAGS_OPTIMIZE)\
   $(linted_LDFLAGS_HARDEN)\
   $(linted_LDFLAGS_DEBUG)\
   $(linted_LDFLAGS_DEBUG_INFO)\
-  $(linted_LDFLAGS_WARNINGS)'
+  $(linted_LDFLAGS_WARNINGS); do echo -Xcompiler "$$II"; done)
 
 mostlyclean-local:
-	- find "$(builddir)/src" -type f -name '*.dwo' -exec rm -f '{}' '+'
+	- find "$(builddir)/src" -type f -name '*.dwo' -exec rm -f -- '{}' '+'
 
 .PHONY: indent
 indent:

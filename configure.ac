@@ -62,7 +62,8 @@ AS_IF([test "x$host_cpu" = 'xx86_64'], [
 ])
 dnl
 AM_PROG_AR
-# All our libtool libraries are static convenience ones anyway
+dnl
+dnl We only use static convenience libraries anyway
 LT_INIT([disable-shared])
 dnl
 [linted_posix_api_default=no]
@@ -341,13 +342,6 @@ LINTED_ASSERT
 LINTED_DEBUG_INFO
 LINTED_DEBUG
 LINTED_WARNINGS
-dnl
-[CC="${CC} ${linted_CFLAGS_LANGUAGE}"
-CC="${CC} ${linted_CFLAGS_OPTIMIZE}"
-CC="${CC} ${linted_CFLAGS_HARDEN}"
-CC="${CC} ${linted_CFLAGS_DEBUG}"
-CC="${CC} ${linted_CFLAGS_DEBUG_INFO}"
-CC="${CC} ${linted_CFLAGS_WARNINGS}"]
 dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])

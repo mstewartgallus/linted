@@ -10,6 +10,8 @@ dnl
 dnl Autodetects compiler warnings
 AC_DEFUN([LINTED_HARDEN],[
 dnl
+AC_REQUIRE([AC_CANONICAL_HOST])
+dnl
 AC_ARG_ENABLE(
         [harden],
         AS_HELP_STRING(
@@ -33,9 +35,7 @@ dnl No way to test this so it's added always. It won't harm programs
 dnl if it doesn't work.
 dnl        [-D_FORTIFY_SOURCE=2]dnl
 dnl        [-Wl,-Bstatic -fstack-protector-all -Wl,-Bdynamic -Wstack-protector]dnl
-dnl        [-pie -fPIE]dnl
 ])
-AC_SUBST([linted_CFLAGS_HARDEN])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_HARDEN],[dnl
         [-Wl,-z,relro]dnl
@@ -49,10 +49,23 @@ dnl     Enforce code integrity checks on Windows
 dnl
 dnl     Use ASLR on Windows
         [-Wl,--dynamicbase]dnl
-dnl
-dnl     Use ASLR on ELF
-dnl     [-pie -fPIE]dnl
 ])
+dnl
+AS_IF([test "x${host_os}" != "xmingw32" &&
+       test "x${host_os}" != "xmingw32msvc" ], [
+dnl     Use ASLR on ELF
+        LINTED_CHECK_CFLAGS([linted_CFLAGS_HARDEN_ASLR],[dnl
+                  [-fpic -fPIC -fpie -fPIE]dnl
+        ])
+        [linted_CFLAGS_HARDEN="${linted_CFLAGS_HARDEN} ${linted_CFLAGS_HARDEN_ASLR}"]
+dnl
+        LINTED_CHECK_LDFLAGS([linted_LDFLAGS_HARDEN_ASLR],[dnl
+                  [-pie -fpic -fPIC -fpie -fPIE]dnl
+        ])
+        [linted_LDFLAGS_HARDEN="${linted_LDFLAGS_HARDEN} ${linted_LDFLAGS_HARDEN_ASLR}"]
+])
+dnl
+AC_SUBST([linted_CFLAGS_HARDEN])
 AC_SUBST([linted_LDFLAGS_HARDEN])
 dnl
 ])
