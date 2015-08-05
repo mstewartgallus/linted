@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity
+      version="0.0.0.0"
+      processorArchitecture="*"
+      name="com.gitlab.sstewartgallus.linted"
+      type="win32"
+      ></assemblyIdentity>
+  <description>Linted is a program for the purpose of demonstrating
+  practical methods of guarding against software bugs.</description>
+</assembly>

@@ -42,3 +42,8 @@ check_PROGRAMS+=%D%/test_simulator_angle
   -lm\
   src/asynch/libasynch.la\
   src/io/libio.la
+
+if WINDOWS_API
+%C%_linted_simulator_LDADD+=%D%/resources.$(OBJEXT)
+%D%/resources.$(OBJEXT): %D%/simulator.manifest
+endif

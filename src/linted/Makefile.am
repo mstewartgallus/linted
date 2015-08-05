@@ -34,7 +34,12 @@ EXTRA_%C%_linted_SOURCES=\
   src/start/libstart.la
 
 if WINDOWS_API
-%C%_linted_LDADD+=src/utf/libutf.la
+%C%_linted_LDADD+=\
+  src/utf/libutf.la\
+  \
+  %D%/resources.$(OBJEXT)
+
+%D%/resources.$(OBJEXT): %D%/linted.manifest
 endif
 
 %D%/%C%_linted-linted.$(OBJEXT): %D%/settings.h

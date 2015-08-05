@@ -73,6 +73,9 @@ indent:
 	find $(srcdir)/src $(srcdir)/include -type f -name '*.[ch]' -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
+.rc.$(OBJEXT):
+	$(WINDRES) -i $< -o $@ --output-format=coff
+
 linted_CLANG_FORMATFLAGS+=-i
 
 include docs/Makefile.am

@@ -35,5 +35,11 @@ if POSIX_API
 endif
 
 if WINDOWS_API
-%C%_linted_init_LDADD+=src/utf/libutf.la
+%C%_linted_init_LDADD+=\
+  src/utf/libutf.la\
+  \
+  %D%/resources.$(OBJEXT)
+
+%D%/resources.$(OBJEXT): %D%/init.manifest
+
 endif
