@@ -148,6 +148,7 @@ dnl
 dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
                 [-mwindows]dnl
+                [-mno-cygwin]dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
         LINTED_CHECK_LDFLAGS([linted_LDFLAGS_TARGET_TYPE], [
