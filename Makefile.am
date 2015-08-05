@@ -49,7 +49,8 @@ endif
 
 AM_CPPFLAGS+=-I$(srcdir)/include
 
-AM_LDFLAGS+=-Xcompiler '\
+AM_LDFLAGS+=\
+  -Xcompiler '\
   $(linted_LDFLAGS_LANGUAGE)\
   $(linted_LDFLAGS_OPTIMIZE)\
   $(linted_LDFLAGS_HARDEN)\
@@ -63,7 +64,7 @@ mostlyclean-local:
 .PHONY: indent
 indent:
 	find $(srcdir)/src $(srcdir)/include -type f -name '*.[ch]' -exec \
-	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
+ppp	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
 linted_CLANG_FORMATFLAGS+=-i
 

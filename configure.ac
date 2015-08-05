@@ -62,7 +62,8 @@ AS_IF([test "x$host_cpu" = 'xx86_64'], [
 ])
 dnl
 AM_PROG_AR
-LT_INIT
+# All our libtool libraries are static convenience ones anyway
+LT_INIT([disable-shared])
 dnl
 [linted_posix_api_default=no]
 [linted_x11_api_default=no]
