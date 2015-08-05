@@ -71,7 +71,7 @@ mostlyclean-local:
 .PHONY: indent
 indent:
 	find $(srcdir)/src $(srcdir)/include -type f -name '*.[ch]' -exec \
-ppp	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
+	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
 linted_CLANG_FORMATFLAGS+=-i
 

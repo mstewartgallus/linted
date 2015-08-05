@@ -146,8 +146,11 @@ AS_IF([test "x${enable_windows_api}" = "xyes"], [
 dnl
         AC_DEFINE([HAVE_WINDOWS_API], [1], [Define if the Microsoft Windows API is being used.])
 dnl
+        dnl Note that we just use the subsystem option and not
+        dnl -mwindows because some of are executables aren't graphical
+        dnl and don't need to link in all the dialog stuff.
+dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
-                [-mwindows]dnl
                 [-mno-cygwin]dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
