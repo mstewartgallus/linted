@@ -30,6 +30,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 struct linted_pid_task_waitid {
 	struct linted_asynch_task *parent;
