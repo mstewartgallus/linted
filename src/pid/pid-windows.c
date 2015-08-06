@@ -21,6 +21,7 @@
 
 #include <signal.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 struct linted_pid_task_waitid {
 	struct linted_asynch_task *parent;
@@ -87,4 +88,9 @@ void linted_pid_do_waitid(struct linted_asynch_pool *pool,
 {
 	linted_asynch_pool_complete(pool, task,
 	                            LINTED_ERROR_UNIMPLEMENTED);
+}
+
+pid_t linted_pid_get_pid(void)
+{
+	return _getpid();
 }

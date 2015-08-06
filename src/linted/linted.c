@@ -37,7 +37,9 @@
 #include "linted/io.h"
 #include "linted/locale.h"
 #include "linted/log.h"
+#include "linted/pid.h"
 #include "linted/start.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #ifdef HAVE_POSIX_API
@@ -124,6 +126,8 @@ static unsigned char main_start(char const *const process_name,
 		    PACKAGE_NAME, linted_error_string(err));
 		return EXIT_FAILURE;
 	}
+
+	pid_t self = linted_pid_get_pid();
 
 #ifdef HAVE_POSIX_API
 	linted_ko fds_dir_ko;
@@ -238,7 +242,7 @@ static unsigned char main_start(char const *const process_name,
 	{
 		char
 		    pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
-		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)getpid());
+		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)self);
 
 		err =
 		    linted_environment_set("MANAGERPID", pid_str, true);
@@ -318,13 +322,19 @@ static unsigned char main_start(char const *const process_name,
 
 	linted_io_write_format(LINTED_KO_STDOUT, 0,
 	                       "LINTED_PID=%" PRIuMAX "\n",
-	                       (uintmax_t)getpid());
+	                       (uintmax_t)self);
 
-	char *init_dup = strdup(init);
-	if (0 == init_dup) {
-		linted_log(LINTED_LOG_ERROR, "strdup: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
+	char *init_dup;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, init);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_duplicate: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		init_dup = xx;
 	}
 	char *init_base = basename(init_dup);
 

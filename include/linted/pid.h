@@ -115,4 +115,6 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf);
 linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
                                  size_t *lenp);
 
+pid_t linted_pid_get_pid(void);
+
 #endif /* LINTED_PID_H */

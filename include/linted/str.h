@@ -26,6 +26,7 @@
  * @file
  *
  */
+linted_error linted_str_duplicate(char **result, char const *input);
 
 linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
                                char const *str, size_t strsize);

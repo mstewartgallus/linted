@@ -31,6 +31,9 @@ EXTRA_%C%_linted_SOURCES=\
   src/io/libio.la\
   src/locale/liblocale.la\
   src/log/liblog.la\
+  src/pid/libpid.la\
+  src/str/libstr.la\
+  \
   src/start/libstart.la
 
 if WINDOWS_API

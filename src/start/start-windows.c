@@ -29,6 +29,7 @@
 #include "linted/environment.h"
 #include "linted/mem.h"
 #include "linted/signal.h"
+#include "linted/str.h"
 #include "linted/utf.h"
 #include "linted/log.h"
 
@@ -123,23 +124,33 @@ int WINAPI wWinMain(HINSTANCE program_instance,
 		missing_name = true;
 	}
 
-	char *process_basename = strdup(process_name);
-	if (0 == process_basename)
-		return EXIT_FAILURE;
+	char *process_basename;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, process_name);
+		if (err != 0)
+			return EXIT_FAILURE;
+		process_basename = xx;
+	}
+
 	process_basename = basename(process_basename);
 
-	linted_log_open(process_basename);
+	if (!linted_start_config.dont_init_logging)
+		linted_log_open(process_basename);
 
 	if (missing_name) {
 		linted_log(LINTED_LOG_ERROR, "missing process name");
 		return EXIT_FAILURE;
 	}
 
-	err = linted_signal_init();
-	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "linted_signal_init: %s",
-		           linted_error_string(err));
-		return EXIT_FAILURE;
+	if (!linted_start_config.dont_init_signals) {
+		err = linted_signal_init();
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_signal_init: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
 	}
 
 	int error_code;

@@ -154,6 +154,11 @@ dnl
 dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
                 [-mno-cygwin]dnl
+                [-D__MINGW_MSVC_COMPAT_WARNINGS=1]dnl
+dnl
+                dnl Possibly consider changing this later but for now
+                dnl it is too noisy.
+                [-D_CRT_SECURE_NO_WARNINGS=1]dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
         LINTED_CHECK_LDFLAGS([linted_LDFLAGS_TARGET_TYPE], [

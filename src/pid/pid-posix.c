@@ -444,3 +444,8 @@ finish:
 
 	return err;
 }
+
+pid_t linted_pid_get_pid(void)
+{
+	return getpid();
+}
