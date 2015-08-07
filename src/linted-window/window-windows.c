@@ -135,11 +135,28 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		break;
 	}
 
-#if 0
 	static D3D_FEATURE_LEVEL const feature_levels[] = {
 	    D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1,
 	    D3D_FEATURE_LEVEL_10_0,
 	};
+
+	HMODULE d3d11_module = LoadLibraryW(L"d3d11.dll");
+	if (0 == d3d11_module) {
+		linted_log(LINTED_LOG_ERROR,
+		           "Could not find d3d11.dll");
+		return EXIT_FAILURE;
+	}
+
+	SetLastError(0);
+	PFN_D3D11_CREATE_DEVICE my_D3D11CreateDevice =
+	    (PFN_D3D11_CREATE_DEVICE)GetProcAddress(
+	        d3d11_module, "D3D11CreateDevice");
+	err = GetLastError();
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR, "GetProcAddress: %s",
+		           linted_error_string(err));
+		return EXIT_FAILURE;
+	}
 
 	unsigned device_flags = 0U;
 	ID3D11Device *device;
@@ -148,11 +165,14 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		ID3D11Device *xx;
 		D3D_FEATURE_LEVEL yy;
 		ID3D11DeviceContext *zz;
-		HRESULT result = D3D11CreateDevice(
+		HRESULT result = my_D3D11CreateDevice(
 		    0, D3D_DRIVER_TYPE_HARDWARE, 0, device_flags,
-		    feature_levels, LINTED_ARRAY_SIZE(feature_levels),
+		    (D3D_FEATURE_LEVEL const *)feature_levels,
+		    LINTED_ARRAY_SIZE(feature_levels),
 		    D3D11_SDK_VERSION, &xx, &yy, &zz);
 		if (FAILED(result)) {
+			linted_log(LINTED_LOG_ERROR,
+			           "D3D11CreateDevice: 0x%lX", result);
 			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_window;
 		}
@@ -168,6 +188,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			HRESULT result = ID3D11Device_QueryInterface(
 			    device, &uuidof_IDXGIDevice, &xx);
 			if (FAILED(result)) {
+				linted_log(LINTED_LOG_ERROR,
+				           "ID3D11Device_"
+				           "QueryInterface: 0x%lX",
+				           result);
 				err = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
 			}
@@ -180,6 +204,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			HRESULT result =
 			    IDXGIDevice_GetAdapter(dxgi_device, &xx);
 			if (FAILED(result)) {
+				linted_log(LINTED_LOG_ERROR,
+				           "ID3D11Device_"
+				           "GetAdapter: 0x%lX",
+				           result);
 				err = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
 			}
@@ -191,6 +219,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			HRESULT result = IDXGIAdapter_GetParent(
 			    adapter, &uuidof_IDXGIFactory1, &xx);
 			if (FAILED(result)) {
+				linted_log(LINTED_LOG_ERROR,
+				           "IDXGIAdapter_GetParent"
+				           ": 0x%lX",
+				           result);
 				err = LINTED_ERROR_UNIMPLEMENTED;
 				goto destroy_device;
 			}
@@ -219,6 +251,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		HRESULT result = IDXGIFactory1_CreateSwapChain(
 		    dxgi_factory, (IUnknown *)device, &desc, &xx);
 		if (FAILED(result)) {
+			linted_log(LINTED_LOG_ERROR,
+			           "IDXGIFactory1_CreateSwapChain"
+			           ": 0x%lX",
+			           result);
 			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto destroy_device;
 		}
@@ -229,7 +265,7 @@ static unsigned char window_start(char const *process_name, size_t argc,
 	                                    DXGI_MWA_NO_ALT_ENTER);
 
 	IDXGIFactory1_Release(dxgi_factory);
-#endif
+
 	if (0 == UpdateWindow(main_window)) {
 		err = GetLastError();
 		assert(err != 0);
@@ -265,24 +301,20 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	exit_peek_loop:
 		;
-#if 0
 		HRESULT result =
 		    IDXGISwapChain_Present(swap_chain, 0, 0);
 		if (FAILED(result)) {
 			err = LINTED_ERROR_UNIMPLEMENTED;
 			goto release_swap_chain;
 		}
-#endif
 	}
 
 release_swap_chain:
-#if 0
 	IDXGISwapChain_Release(swap_chain);
 
 destroy_device:
 	ID3D11Device_Release(device);
 	ID3D11DeviceContext_Release(device_context);
-#endif
 
 destroy_window:
 	/* In this case the window has not already been destroyed */
@@ -306,6 +338,7 @@ destroy_window:
 
 window_destroyed:
 report_exit_status:
+	linted_log(LINTED_LOG_ERROR, "Error 0x%X", err);
 	/* I'm too lazy to bother with getting and printing the text
 	 * for the error code right now. */
 	return err;
