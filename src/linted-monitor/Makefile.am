@@ -33,6 +33,7 @@ pkglibexec_PROGRAMS+=%D%/linted-monitor
   src/sched/libsched.la\
   src/signal/libsignal.la\
   src/spawn/libspawn.la\
+  src/str/libstr.la\
   src/unit/libunit.la\
   \
   src/admin/libadmin.la

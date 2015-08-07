@@ -21,7 +21,11 @@ EXTRA_%C%_libenvironment_la_SOURCES=\
   %D%/environment-posix.c\
   %D%/environment-windows.c
 
-%C%_libenvironment_la_LIBADD=
+%C%_libenvironment_la_LIBADD=\
+  src/str/libstr.la
+
 if WINDOWS_API
-%C%_libenvironment_la_LIBADD+=src/utf/libutf.la $(CRT_LIBS)
+%C%_libenvironment_la_LIBADD+=\
+  src/utf/libutf.la\
+  $(CRT_LIBS)
 endif

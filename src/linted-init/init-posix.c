@@ -22,6 +22,7 @@
 #include "linted/signal.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -91,11 +92,17 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	char *monitor_dup = strdup(monitor);
-	if (0 == monitor_dup) {
-		linted_log(LINTED_LOG_ERROR, "strdup: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
+	char *monitor_dup;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, monitor);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_duplicate: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		monitor_dup = xx;
 	}
 
 	char *monitor_base = basename(monitor_dup);

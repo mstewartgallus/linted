@@ -19,6 +19,7 @@
 
 #include "linted/conf.h"
 #include "linted/mem.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -667,17 +668,23 @@ linted_conf_add_setting(struct linted_conf *conf,
 
 			for (size_t ii = 0U; ii < additional_values_len;
 			     ++ii) {
-				char *copy =
-				    strdup(additional_values[ii]);
-				if (0 == copy) {
-					err = errno;
-					LINTED_ASSUME(err != 0);
-					for (; ii != 0; --ii)
-						linted_mem_free(
-						    new_value[ii - 1U]);
+				char *copy;
+				{
+					char *xx;
+					err = linted_str_duplicate(
+					    &xx, additional_values[ii]);
+					if (err != 0) {
+						for (; ii != 0; --ii)
+							linted_mem_free(
+							    new_value
+							        [ii -
+							         1U]);
 
-					linted_mem_free(new_value);
-					return err;
+						linted_mem_free(
+						    new_value);
+						return err;
+					}
+					copy = xx;
 				}
 				new_value[setting_values_len + ii] =
 				    copy;
@@ -706,14 +713,18 @@ have_not_found_field:
 		value_copy = xx;
 	}
 	for (size_t ii = 0U; ii < additional_values_len; ++ii) {
-		char *copy = strdup(additional_values[ii]);
-		if (0 == copy) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-			for (size_t jj = 0U; jj < ii; ++jj)
-				linted_mem_free(value_copy[jj]);
-			linted_mem_free(value_copy);
-			return err;
+		char *copy;
+		{
+			char *xx;
+			err = linted_str_duplicate(
+			    &xx, additional_values[ii]);
+			if (err != 0) {
+				for (size_t jj = 0U; jj < ii; ++jj)
+					linted_mem_free(value_copy[jj]);
+				linted_mem_free(value_copy);
+				return err;
+			}
+			copy = xx;
 		}
 		value_copy[ii] = copy;
 	}

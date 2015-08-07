@@ -18,6 +18,7 @@
 #include "linted/dir.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -75,18 +76,22 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	if (dir_only)
 		oflags |= LINTED_KO_DIRECTORY;
 
-	char *pathnamedir_buffer = strdup(pathname);
-	if (0 == pathnamedir_buffer) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
+	char *pathnamedir_buffer;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, pathname);
+		if (err != 0)
+			return err;
+		pathnamedir_buffer = xx;
 	}
 
-	char *pathnamebase_buffer = strdup(pathname);
-	if (0 == pathnamebase_buffer) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto free_pathnamedir_buffer;
+	char *pathnamebase_buffer;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, pathname);
+		if (err != 0)
+			goto free_pathnamedir_buffer;
+		pathnamebase_buffer = xx;
 	}
 
 	char *pathnamedir = dirname(pathnamedir_buffer);

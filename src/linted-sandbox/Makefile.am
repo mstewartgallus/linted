@@ -28,7 +28,8 @@ EXTRA_%C%_linted_sandbox_SOURCES=\
   src/io/libio.la\
   src/ko/libko.la\
   src/log/liblog.la\
-  src/start/libstart.la
+  src/start/libstart.la\
+  src/str/libstr.la
 
 if POSIX_API
 %C%_linted_sandbox_LDADD+=$(CAP_LIBS)

@@ -34,6 +34,7 @@
 #include "linted/signal.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
+#include "linted/str.h"
 #include "linted/unit.h"
 #include "linted/util.h"
 
@@ -1358,11 +1359,13 @@ envvar_allocate_succeeded:
 	envvars[envvars_size] = service_name_setting;
 	envvars[envvars_size + 1U] = 0;
 
-	char *sandbox_dup = strdup(sandbox);
-	if (0 == sandbox_dup) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto free_envvars;
+	char *sandbox_dup;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, sandbox);
+		if (err != 0)
+			goto free_envvars;
+		sandbox_dup = xx;
 	}
 	char *sandbox_base = basename(sandbox_dup);
 
@@ -2108,11 +2111,13 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		if (0 == strcmp("..", name))
 			continue;
 
-		char *name_copy = strdup(name);
-		if (0 == name_copy) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-			goto free_file_names;
+		char *name_copy;
+		{
+			char *xx;
+			err = linted_str_duplicate(&xx, name);
+			if (err != 0)
+				goto free_file_names;
+			name_copy = xx;
 		}
 
 		size_t new_files_count = files_count + 1U;
@@ -2194,20 +2199,27 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 			break;
 
 		case LINTED_UNIT_TYPE_SERVICE: {
-			char *section_name = strdup("Service");
-			if (0 == section_name) {
-				err = errno;
-				LINTED_ASSUME(err != 0);
-				goto close_unit_file;
+			char *section_name;
+			{
+				char *xx;
+				err = linted_str_duplicate(&xx,
+				                           "Service");
+				if (err != 0)
+					goto close_unit_file;
+				section_name = xx;
 			}
 
-			char *env_whitelist =
-			    strdup("X-LintedEnvironmentWhitelist");
-			if (0 == env_whitelist) {
-				err = errno;
-				LINTED_ASSUME(err != 0);
-				linted_mem_free(section_name);
-				goto close_unit_file;
+			char *env_whitelist;
+			{
+				char *xx;
+				err = linted_str_duplicate(
+				    &xx,
+				    "X-LintedEnvironmentWhitelist");
+				if (err != 0) {
+					linted_mem_free(section_name);
+					goto close_unit_file;
+				}
+				env_whitelist = xx;
 			}
 
 			linted_conf_section service;

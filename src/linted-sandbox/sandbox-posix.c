@@ -25,6 +25,7 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -355,18 +356,30 @@ exit_loop:
 
 	char const **command = (char const **)argv + 1U + command_start;
 
-	char *command_dup = strdup(command[0U]);
-	if (0 == command_dup) {
-		linted_log(LINTED_LOG_ERROR, "strdup: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
+	char *command_dup;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, command[0U]);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_duplicate: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		command_dup = xx;
 	}
 
-	char *waiter_dup = strdup(waiter);
-	if (0 == waiter_dup) {
-		linted_log(LINTED_LOG_ERROR, "strdup: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
+	char *waiter_dup;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, waiter);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_duplicate: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		waiter_dup = xx;
 	}
 
 	char const *command_base = basename(command_dup);
@@ -458,47 +471,55 @@ exit_loop:
 			}
 
 			if (fsname != 0) {
-				fsname = strdup(fsname);
-				if (0 == fsname) {
+				char *xx;
+				err = linted_str_duplicate(&xx, fsname);
+				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
-					    "strdup: %s",
-					    linted_error_string(errno));
+					    "linted_str_duplicate: %s",
+					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
+				fsname = xx;
 			}
 
 			if (dir != 0) {
-				dir = strdup(dir);
-				if (0 == dir) {
+				char *xx;
+				err = linted_str_duplicate(&xx, dir);
+				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
-					    "strdup: %s",
-					    linted_error_string(errno));
+					    "linted_str_duplicate: %s",
+					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
+				dir = xx;
 			}
 
 			if (type != 0) {
-				type = strdup(type);
-				if (0 == type) {
+				char *xx;
+				err = linted_str_duplicate(&xx, type);
+				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
-					    "strdup: %s",
-					    linted_error_string(errno));
+					    "linted_str_duplicate: %s",
+					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
+				type = xx;
 			}
 
 			if (data != 0) {
-				data = strdup(data);
-				if (0 == data) {
+				char *xx;
+				err = linted_str_duplicate(&xx, data);
+				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
-					    "strdup: %s",
-					    linted_error_string(errno));
+					    "linted_str_duplicate: %s",
+					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
+				data = xx;
 			}
 
 			mount_args[mount_args_size].fsname = fsname;
@@ -1177,11 +1198,13 @@ parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
 	bool exec = true;
 	char *leftovers = 0;
 
-	char *subopts_str = strdup(opts);
-	if (0 == subopts_str) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
+	char *subopts_str;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, opts);
+		if (err != 0)
+			return err;
+		subopts_str = xx;
 	}
 
 	char *subopts = subopts_str;

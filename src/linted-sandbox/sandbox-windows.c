@@ -304,11 +304,17 @@ exit_loop:
 
 	char const **command = (char const **)argv + 1U + command_start;
 
-	char *command_dup = strdup(command[0U]);
-	if (0 == command_dup) {
-		linted_log(LINTED_LOG_ERROR, "strdup: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
+	char *command_dup;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, command[0U]);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_duplicate: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		command_dup = xx;
 	}
 
 	char const *command_base = basename(command_dup);
@@ -316,11 +322,17 @@ exit_loop:
 	char const *binary = command[0U];
 	command[0U] = command_base;
 
-	char *binary_dup = strdup(binary);
-	if (0 == binary_dup) {
-		linted_log(LINTED_LOG_ERROR, "strdup: %s",
-		           linted_error_string(errno));
-		return EXIT_FAILURE;
+	char *binary_dup;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, binary);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_duplicate: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		binary_dup = xx;
 	}
 	char *binary_base = basename(binary_dup);
 

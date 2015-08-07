@@ -25,6 +25,7 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/signal.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -85,9 +86,14 @@ int main(int argc, char *argv[])
 		missing_name = true;
 	}
 
-	char *process_basename = strdup(process_name);
-	if (0 == process_basename)
-		return EXIT_FAILURE;
+	char *process_basename;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, process_name);
+		if (err != 0)
+			return EXIT_FAILURE;
+		process_basename = xx;
+	}
 	process_basename = basename(process_basename);
 
 	if (!linted_start_config.dont_init_logging)

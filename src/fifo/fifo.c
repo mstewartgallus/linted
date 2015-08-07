@@ -20,6 +20,7 @@
 #include "linted/fifo.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -28,7 +29,6 @@
 #include <libgen.h>
 #include <limits.h>
 #include <stdbool.h>
-#include <string.h>
 #include <sys/stat.h>
 
 linted_error linted_fifo_create(linted_ko *kop, linted_ko dirko,
@@ -98,18 +98,22 @@ linted_error linted_fifo_create(linted_ko *kop, linted_ko dirko,
 	if (fifo_rdwr)
 		oflags |= LINTED_KO_RDWR;
 
-	char *pathnamedir_buffer = strdup(pathname);
-	if (0 == pathnamedir_buffer) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
+	char *pathnamedir_buffer;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, pathname);
+		if (err != 0)
+			return err;
+		pathnamedir_buffer = xx;
 	}
 
-	char *pathnamebase_buffer = strdup(pathname);
-	if (0 == pathnamebase_buffer) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto free_pathnamedir_buffer;
+	char *pathnamebase_buffer;
+	{
+		char *xx;
+		err = linted_str_duplicate(&xx, pathname);
+		if (err != 0)
+			goto free_pathnamedir_buffer;
+		pathnamebase_buffer = xx;
 	}
 
 	char *pathnamedir = dirname(pathnamedir_buffer);

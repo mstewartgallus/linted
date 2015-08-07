@@ -20,6 +20,7 @@
 #include "linted/environment.h"
 
 #include "linted/error.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -60,10 +61,12 @@ linted_error linted_environment_get(char const *key, char **valuep)
 			goto unlock_mutex;
 		}
 
-		value_dup = strdup(value);
-		if (0 == value_dup) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
+		{
+			char *xx;
+			err = linted_str_duplicate(&xx, value);
+			if (err != 0)
+				goto unlock_mutex;
+			value_dup = xx;
 		}
 	}
 
