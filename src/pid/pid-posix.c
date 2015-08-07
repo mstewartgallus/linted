@@ -32,7 +32,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-struct linted_pid_task_waitid {
+struct linted_linted_pid_task_waitid {
 	struct linted_asynch_task *parent;
 	void *data;
 	siginfo_t info;
@@ -41,12 +41,11 @@ struct linted_pid_task_waitid {
 	int options;
 };
 
-linted_error
-linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
-                              void *data)
+linted_error linted_linted_pid_task_waitid_create(
+    struct linted_linted_pid_task_waitid **taskp, void *data)
 {
 	linted_error err;
-	struct linted_pid_task_waitid *task;
+	struct linted_linted_pid_task_waitid *task;
 	{
 		void *xx;
 		err = linted_mem_alloc(&xx, sizeof *task);
@@ -72,38 +71,41 @@ free_task:
 	return err;
 }
 
-void linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task)
+void linted_linted_pid_task_waitid_destroy(
+    struct linted_linted_pid_task_waitid *task)
 {
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void *linted_pid_task_waitid_data(struct linted_pid_task_waitid *task)
+void *linted_linted_pid_task_waitid_data(
+    struct linted_linted_pid_task_waitid *task)
 {
 	return task->data;
 }
 
-struct linted_asynch_task *
-linted_pid_task_waitid_to_asynch(struct linted_pid_task_waitid *task)
+struct linted_asynch_task *linted_linted_pid_task_waitid_to_asynch(
+    struct linted_linted_pid_task_waitid *task)
 {
 	return task->parent;
 }
 
-struct linted_pid_task_waitid *
-linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task)
+struct linted_linted_pid_task_waitid *
+linted_linted_pid_task_waitid_from_asynch(
+    struct linted_asynch_task *task)
 {
 	return linted_asynch_task_data(task);
 }
 
-void linted_pid_task_waitid_info(struct linted_pid_task_waitid *task,
-                                 siginfo_t *info)
+void linted_linted_pid_task_waitid_info(
+    struct linted_linted_pid_task_waitid *task, siginfo_t *info)
 {
 	*info = task->info;
 }
 
-void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
-                                    unsigned task_action, idtype_t type,
-                                    id_t id, int options)
+void linted_linted_pid_task_waitid_prepare(
+    struct linted_linted_pid_task_waitid *task, unsigned task_action,
+    idtype_t type, id_t id, int options)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 	task->idtype = type;
@@ -114,7 +116,7 @@ void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
 void linted_pid_do_waitid(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-	struct linted_pid_task_waitid *task_wait =
+	struct linted_linted_pid_task_waitid *task_wait =
 	    linted_asynch_task_data(task);
 
 	linted_error err = 0;
@@ -136,7 +138,7 @@ void linted_pid_do_waitid(struct linted_asynch_pool *pool,
 	linted_asynch_pool_complete(pool, task, err);
 }
 
-linted_error linted_pid_kill(pid_t pid, int signo)
+linted_error linted_pid_kill(linted_pid pid, int signo)
 {
 	if (pid < 1)
 		return LINTED_ERROR_INVALID_PARAMETER;
@@ -152,7 +154,7 @@ linted_error linted_pid_kill(pid_t pid, int signo)
 	return 0;
 }
 
-linted_error linted_pid_terminate(pid_t pid)
+linted_error linted_linted_piderminate(linted_pid pid)
 {
 	if (pid < 1)
 		return LINTED_ERROR_INVALID_PARAMETER;
@@ -166,12 +168,13 @@ linted_error linted_pid_terminate(pid_t pid)
 	return 0;
 }
 
-linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
+linted_error linted_pid_stat(linted_pid pid,
+                             struct linted_pid_stat *buf)
 {
 	linted_error err = 0;
 
 	char path[sizeof "/proc/" - 1U +
-	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
 	          sizeof "/stat" - 1U + 1U];
 	if (-1 ==
 	    sprintf(path, "/proc/%" PRIuMAX "/stat", (uintmax_t)pid)) {
@@ -221,12 +224,16 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 	}
 
 	/* If some fields are missing just leave them to be zero */
-	if (EOF == sscanf(line, "%d (" /* pid */
-	                  ,
-	                  &buf->pid)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto free_line;
+	{
+		linted_pid xx;
+		if (EOF == sscanf(line, "%" PRIuMAX " (" /* pid */
+		                  ,
+		                  &xx)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			goto free_line;
+		}
+		buf->pid = xx;
 	}
 
 	/* Avoid troubles with processes that have names like ':-) 0 1
@@ -239,68 +246,81 @@ linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf)
 
 	memcpy(buf->comm, start, end - start);
 
-	if (EOF ==
-	    sscanf(end, ")\n"
-	                "%c\n"   /* state */
-	                "%d\n"   /* ppid */
-	                "%d\n"   /* pgrp */
-	                "%d\n"   /* session */
-	                "%d\n"   /* tty_nr */
-	                "%d\n"   /* tpgid */
-	                "%u\n"   /* flags */
-	                "%lu\n"  /* minflt */
-	                "%lu\n"  /* cminflt */
-	                "%lu\n"  /* majflt */
-	                "%lu\n"  /* cmajflt */
-	                "%lu\n"  /* utime */
-	                "%lu\n"  /* stime */
-	                "%ld\n"  /* cutime */
-	                "%ld\n"  /* cstime */
-	                "%ld\n"  /* priority */
-	                "%ld\n"  /* nice */
-	                "%ld\n"  /* num_threads */
-	                "%ld\n"  /* itrealvalue */
-	                "%llu\n" /* starttime */
-	                "%lu\n"  /* vsize */
-	                "%ld\n"  /* rss */
-	                "%lu\n"  /* rsslim */
-	                "%lu\n"  /* startcode */
-	                "%lu\n"  /* endcode */
-	                "%lu\n"  /* startstack */
-	                "%lu\n"  /* kstkesp */
-	                "%lu\n"  /* kstkeip */
-	                "%lu\n"  /* signal */
-	                "%lu\n"  /* blocked */
-	                "%lu\n"  /* sigignore */
-	                "%lu\n"  /* sigcatch */
-	                "%lu\n"  /* wchan */
-	                "%lu\n"  /* nswap */
-	                "%lu\n"  /* cnswap */
-	                "%d\n"   /* exit_signal */
-	                "%d\n"   /* processor */
-	                "%u\n"   /* rt_priority */
-	                "%u\n"   /* policy */
-	                "%llu\n" /* delayacct_blkio_ticks */
-	                "%lu\n"  /* guest_time */
-	                "%ld\n"  /* cguest_time */
-	           ,
-	           &buf->state, &buf->ppid, &buf->pgrp, &buf->session,
-	           &buf->tty_nr, &buf->tpgid, &buf->flags, &buf->minflt,
-	           &buf->cminflt, &buf->majflt, &buf->cmajflt,
-	           &buf->utime, &buf->stime, &buf->cutime, &buf->cstime,
-	           &buf->priority, &buf->nice, &buf->num_threads,
-	           &buf->itrealvalue, &buf->starttime, &buf->vsize,
-	           &buf->rss, &buf->rsslim, &buf->startcode,
-	           &buf->endcode, &buf->startstack, &buf->kstkesp,
-	           &buf->kstkeip, &buf->signal, &buf->blocked,
-	           &buf->sigignore, &buf->sigcatch, &buf->wchan,
-	           &buf->nswap, &buf->cnswap, &buf->exit_signal,
-	           &buf->processor, &buf->rt_priority, &buf->policy,
-	           &buf->delayacct_blkio_ticks, &buf->guest_time,
-	           &buf->cguest_time)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto free_line;
+	{
+		linted_pid ppid;
+		linted_pid pgrp;
+		linted_pid session;
+		linted_pid tpgid;
+		if (EOF ==
+		    sscanf(end, ")\n"
+		                "%c\n"           /* state */
+		                "%" PRIuMAX "\n" /* ppid */
+		                "%" PRIuMAX "\n" /* pgrp */
+		                "%" PRIuMAX "\n" /* session */
+		                "%d\n"           /* tty_nr */
+		                "%" PRIuMAX "\n" /* tpgid */
+		                "%u\n"           /* flags */
+		                "%lu\n"          /* minflt */
+		                "%lu\n"          /* cminflt */
+		                "%lu\n"          /* majflt */
+		                "%lu\n"          /* cmajflt */
+		                "%lu\n"          /* utime */
+		                "%lu\n"          /* stime */
+		                "%ld\n"          /* cutime */
+		                "%ld\n"          /* cstime */
+		                "%ld\n"          /* priority */
+		                "%ld\n"          /* nice */
+		                "%ld\n"          /* num_threads */
+		                "%ld\n"          /* itrealvalue */
+		                "%llu\n"         /* starttime */
+		                "%lu\n"          /* vsize */
+		                "%ld\n"          /* rss */
+		                "%lu\n"          /* rsslim */
+		                "%lu\n"          /* startcode */
+		                "%lu\n"          /* endcode */
+		                "%lu\n"          /* startstack */
+		                "%lu\n"          /* kstkesp */
+		                "%lu\n"          /* kstkeip */
+		                "%lu\n"          /* signal */
+		                "%lu\n"          /* blocked */
+		                "%lu\n"          /* sigignore */
+		                "%lu\n"          /* sigcatch */
+		                "%lu\n"          /* wchan */
+		                "%lu\n"          /* nswap */
+		                "%lu\n"          /* cnswap */
+		                "%d\n"           /* exit_signal */
+		                "%d\n"           /* processor */
+		                "%u\n"           /* rt_priority */
+		                "%u\n"           /* policy */
+		                "%llu\n" /* delayacct_blkio_ticks */
+		                "%lu\n"  /* guest_time */
+		                "%ld\n"  /* cguest_time */
+		           ,
+		           &buf->state, &ppid, &pgrp, &session,
+		           &buf->tty_nr, &tpgid, &buf->flags,
+		           &buf->minflt, &buf->cminflt, &buf->majflt,
+		           &buf->cmajflt, &buf->utime, &buf->stime,
+		           &buf->cutime, &buf->cstime, &buf->priority,
+		           &buf->nice, &buf->num_threads,
+		           &buf->itrealvalue, &buf->starttime,
+		           &buf->vsize, &buf->rss, &buf->rsslim,
+		           &buf->startcode, &buf->endcode,
+		           &buf->startstack, &buf->kstkesp,
+		           &buf->kstkeip, &buf->signal, &buf->blocked,
+		           &buf->sigignore, &buf->sigcatch, &buf->wchan,
+		           &buf->nswap, &buf->cnswap, &buf->exit_signal,
+		           &buf->processor, &buf->rt_priority,
+		           &buf->policy, &buf->delayacct_blkio_ticks,
+		           &buf->guest_time, &buf->cguest_time)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			goto free_line;
+		}
+
+		buf->ppid = ppid;
+		buf->pgrp = pgrp;
+		buf->session = session;
+		buf->tpgid = tpgid;
 	}
 
 free_line:
@@ -315,15 +335,15 @@ free_line:
 	return err;
 }
 
-linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
+linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
                                  size_t *lenp)
 {
 	linted_error err;
 
 	char path[sizeof "/proc/" - 1U +
-	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
 	          sizeof "/task/" - 1U +
-	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
 	          sizeof "/children" - 1U + 1U];
 	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task/%" PRIuMAX
 	                        "/children",
@@ -393,14 +413,14 @@ linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
 
 	size_t ii = 0U;
 	char const *start = buf;
-	pid_t *children = 0;
+	linted_pid *children = 0;
 
 	if (0 == buf)
 		goto finish;
 
 	for (;;) {
 		errno = 0;
-		pid_t child = strtol(start, 0, 10);
+		linted_pid child = strtol(start, 0, 10);
 		err = errno;
 		if (err != 0)
 			goto free_buf;
@@ -446,7 +466,7 @@ finish:
 	return err;
 }
 
-pid_t linted_pid_get_pid(void)
+linted_pid linted_pid_get_pid(void)
 {
 	return getpid();
 }

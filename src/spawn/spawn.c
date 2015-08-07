@@ -23,6 +23,7 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/pid.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -149,7 +150,7 @@ void linted_spawn_file_actions_destroy(
 }
 
 linted_error
-linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
+linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
              struct linted_spawn_file_actions const *file_actions,
              struct linted_spawn_attr const *attr,
              char const *const argv[], char const *const envp[])
@@ -213,7 +214,7 @@ linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		dirko_copy = dirko;
 	}
 
-	pid_t child;
+	linted_pid child;
 	{
 		sigset_t sigset;
 		sigfillset(&sigset);
@@ -233,11 +234,12 @@ linted_spawn(pid_t *childp, linted_ko dirko, char const *binary,
 		                              .envp = envp,
 		                              .dirko = dirko_copy,
 		                              .binary = binary};
-		child = safe_vfork(fork_routine, &fork_args);
-		if (-1 == child) {
+		pid_t xx = safe_vfork(fork_routine, &fork_args);
+		if (-1 == xx) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
 		}
+		child = xx;
 
 		linted_error mask_err =
 		    pthread_sigmask(SIG_SETMASK, &sigset, 0);

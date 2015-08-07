@@ -18,11 +18,19 @@
 
 #include "linted/error.h"
 
+#include <stdint.h>
 #include <sys/types.h>
 
 #if defined HAVE_POSIX_API
 #include <signal.h>
 #include <sys/wait.h>
+#endif
+
+#if defined HAVE_POSIX_API
+typedef uintmax_t linted_pid;
+#else
+/* DWORDs are 32-bit unsigned integers */
+typedef uint_fast32_t linted_pid;
 #endif
 
 /**
@@ -38,10 +46,10 @@
 struct linted_asynch_pool;
 struct linted_asynch_task;
 
-struct linted_pid_task_waitid;
+struct linted_linted_pid_task_waitid;
 
 struct linted_pid_stat {
-	pid_t pid;
+	linted_pid pid;
 	char comm[LINTED_PID_COMM_MAX + 1U];
 	char state;
 	int ppid;
@@ -87,34 +95,36 @@ struct linted_pid_stat {
 	long cguest_time;
 };
 
-linted_error
-linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
-                              void *data);
-void linted_pid_task_waitid_destroy(
-    struct linted_pid_task_waitid *task);
+linted_error linted_linted_pid_task_waitid_create(
+    struct linted_linted_pid_task_waitid **taskp, void *data);
+void linted_linted_pid_task_waitid_destroy(
+    struct linted_linted_pid_task_waitid *task);
 
 #if defined HAVE_POSIX_API
-void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
-                                    unsigned task_action, idtype_t type,
-                                    id_t id, int options);
-void linted_pid_task_waitid_info(struct linted_pid_task_waitid *task,
-                                 siginfo_t *info);
+void linted_linted_pid_task_waitid_prepare(
+    struct linted_linted_pid_task_waitid *task, unsigned task_action,
+    idtype_t type, id_t id, int options);
+void linted_linted_pid_task_waitid_info(
+    struct linted_linted_pid_task_waitid *task, siginfo_t *info);
 #endif
-void *linted_pid_task_waitid_data(struct linted_pid_task_waitid *task);
-struct linted_asynch_task *
-linted_pid_task_waitid_to_asynch(struct linted_pid_task_waitid *task);
-struct linted_pid_task_waitid *
-linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task);
+void *linted_linted_pid_task_waitid_data(
+    struct linted_linted_pid_task_waitid *task);
+struct linted_asynch_task *linted_linted_pid_task_waitid_to_asynch(
+    struct linted_linted_pid_task_waitid *task);
+struct linted_linted_pid_task_waitid *
+linted_linted_pid_task_waitid_from_asynch(
+    struct linted_asynch_task *task);
 
 void linted_pid_do_waitid(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task);
 
-linted_error linted_pid_kill(pid_t pid, int signo);
-linted_error linted_pid_terminate(pid_t pid);
-linted_error linted_pid_stat(pid_t pid, struct linted_pid_stat *buf);
-linted_error linted_pid_children(pid_t pid, pid_t **childrenp,
+linted_error linted_pid_kill(linted_pid pid, int signo);
+linted_error linted_linted_piderminate(linted_pid pid);
+linted_error linted_pid_stat(linted_pid pid,
+                             struct linted_pid_stat *buf);
+linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
                                  size_t *lenp);
 
-pid_t linted_pid_get_pid(void);
+linted_pid linted_pid_get_pid(void);
 
 #endif /* LINTED_PID_H */

@@ -21,6 +21,7 @@
 
 #include <winerror.h>
 
+/* DWORDs are 32-bit unsigned integers */
 typedef uint_fast32_t linted_error;
 
 #define LINTED_ERROR_AGAIN WSAEWOULDBLOCK

@@ -21,6 +21,7 @@
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/pid.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -212,7 +213,7 @@ static void on_sigchld(int signo)
 	linted_error old_err = errno;
 
 	for (;;) {
-		pid_t pid;
+		linted_pid pid;
 		int wait_status;
 		{
 			siginfo_t info;
@@ -233,7 +234,7 @@ static void on_sigchld(int signo)
 			assert(false);
 		}
 
-		if (0 == pid)
+		if (0U == pid)
 			break;
 	}
 

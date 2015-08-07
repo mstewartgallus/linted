@@ -112,9 +112,9 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		                       "%s: spawning %s\n",
 		                       process_name, monitor_base);
 
-		pid_t child;
+		linted_pid child;
 		{
-			pid_t xx;
+			linted_pid xx;
 			err = linted_spawn(
 			    &xx, LINTED_KO_CWD, monitor, 0, 0,
 			    (char const *const[]){monitor_base, 0}, 0);
@@ -128,7 +128,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 		}
 		monitor_pid = child;
 
-		pid_t pid;
+		linted_pid pid;
 		int code;
 		int status;
 		for (;;) {
@@ -207,8 +207,8 @@ static void delegate_signal(int signo)
 
 	/* All signals are blocked here. */
 
-	pid_t the_pid = monitor_pid;
-	if (the_pid > 0) {
+	linted_pid the_pid = monitor_pid;
+	if (the_pid > 0U) {
 		/* If WNOHANG was specified in options and there were
 		 * no children in a waitable state, then waitid()
 		 * returns 0 immediately and the state of the

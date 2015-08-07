@@ -35,6 +35,7 @@
 #include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/io.h"
+#include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/log.h"
 #include "linted/pid.h"
@@ -127,7 +128,7 @@ static unsigned char main_start(char const *const process_name,
 		return EXIT_FAILURE;
 	}
 
-	pid_t self = linted_pid_get_pid();
+	linted_pid self = linted_pid_get_pid();
 
 #ifdef HAVE_POSIX_API
 	linted_ko fds_dir_ko;
@@ -241,7 +242,8 @@ static unsigned char main_start(char const *const process_name,
 
 	{
 		char
-		    pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) + 1U];
+		    pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		            1U];
 		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)self);
 
 		err =

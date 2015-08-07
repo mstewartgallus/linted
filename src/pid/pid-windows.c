@@ -13,6 +13,16 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#define _WIN32_WINNT 0x0600
+
+#ifndef UNICODE
+#define UNICODE
+#endif
+
+#define _UNICODE
+
+#define WIN32_LEAN_AND_MEAN
+
 #include "linted/pid.h"
 
 #include "linted/asynch.h"
@@ -21,7 +31,8 @@
 
 #include <signal.h>
 #include <sys/types.h>
-#include <unistd.h>
+
+#include <windows.h>
 
 struct linted_pid_task_waitid {
 	struct linted_asynch_task *parent;
@@ -90,7 +101,7 @@ void linted_pid_do_waitid(struct linted_asynch_pool *pool,
 	                            LINTED_ERROR_UNIMPLEMENTED);
 }
 
-pid_t linted_pid_get_pid(void)
+linted_pid linted_pid_get_pid(void)
 {
-	return _getpid();
+	return GetCurrentProcessId();
 }

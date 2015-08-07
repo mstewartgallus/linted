@@ -23,10 +23,13 @@ EXTRA_%C%_libstart_la_SOURCES=%D%/start-posix.c %D%/start-windows.c
   src/error/liberror.la\
   src/ko/libko.la\
   src/log/liblog.la\
-  src/signal/libsignal.la\
+  src/signal/libsignal.la
+
+if WINDOWS_API
+%C%_libstart_la_LIBADD+=\
+  src/utf/libutf.la\
+  src/str/libstr.la\
   \
   $(WS2_32_LIBS)
 
-if WINDOWS_API
-%C%_libstart_la_LIBADD+=src/utf/libutf.la
 endif

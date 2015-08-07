@@ -152,7 +152,7 @@
  *
  * <li> [IWYU](https://code.google.com/p/include-what-you-use/)
  * Is a bit buggy.
- * Use like: `make CC='iwyu -I/usr/lib/clang/3.5/include' -k | tee iwyu.log`
+ * Use like: `make CC='iwyu -I/usr/lib/clang/3.6/include' -k | tee iwyu.log`
  * </li>
  *
  * <li> [CBMC](http://www.cprover.org/cbmc/)

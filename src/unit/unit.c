@@ -133,14 +133,15 @@ linted_unit_db_get_unit_by_name(struct linted_unit_db *units,
 }
 
 linted_error
-linted_unit_name(pid_t pid, char name[static LINTED_UNIT_NAME_MAX + 1U])
+linted_unit_name(linted_pid pid,
+                 char name[static LINTED_UNIT_NAME_MAX + 1U])
 {
 	linted_error err;
 
 	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
 
 	char path[sizeof "/proc/" - 1U +
-	          LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+	          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
 	          sizeof "/environ" - 1U + 1U];
 	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/environ",
 	                  (uintmax_t)pid)) {
@@ -231,15 +232,15 @@ free_buf:
 	return err;
 }
 
-linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
+linted_error linted_unit_pid(linted_pid *pidp, linted_pid manager_pid,
                              char const *name)
 {
 	linted_error err = 0;
 
-	pid_t *children;
+	linted_pid *children;
 	size_t len;
 	{
-		pid_t *xx;
+		linted_pid *xx;
 		size_t yy;
 		err = linted_pid_children(manager_pid, &xx, &yy);
 		if (err != 0)
@@ -250,9 +251,10 @@ linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
 	if (0U == len)
 		return ESRCH;
 
-	pid_t pid = -1;
+	linted_pid pid;
+	bool found_child = false;
 	for (size_t ii = 0U; ii < len; ++ii) {
-		pid_t child = children[ii];
+		linted_pid child = children[ii];
 
 		char other_name[LINTED_UNIT_NAME_MAX + 1U];
 		err = linted_unit_name(child, other_name);
@@ -260,6 +262,7 @@ linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
 			goto free_buf;
 
 		if (0 == strcmp(name, other_name)) {
+			found_child = true;
 			pid = child;
 			break;
 		}
@@ -271,7 +274,7 @@ free_buf:
 	if (err != 0)
 		return err;
 
-	if (-1 == pid)
+	if (!found_child)
 		return ESRCH;
 
 	if (pidp != 0)

@@ -19,7 +19,6 @@
 #include "linted/start.h"
 
 #include <stdlib.h>
-#include <unistd.h>
 
 #include <pulse/context.h>
 #include <pulse/error.h>

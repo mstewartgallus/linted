@@ -20,6 +20,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
+#include "linted/pid.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -78,7 +79,7 @@ static uint_fast8_t enter_start(char const *const process_name,
 		sh_ko = xx;
 	}
 
-	pid_t pid = atoi(argv[1U]);
+	linted_pid pid = atoi(argv[1U]);
 
 	{
 		char proc_path[sizeof "/proc/" - 1U +

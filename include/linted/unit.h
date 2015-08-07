@@ -17,6 +17,7 @@
 #define LINTED_UNIT_H
 
 #include "linted/error.h"
+#include "linted/pid.h"
 
 #include <stddef.h>
 #include <sys/types.h>
@@ -57,9 +58,9 @@ linted_unit_db_get_unit_by_name(struct linted_unit_db *unit,
                                 char const *name);
 
 linted_error
-linted_unit_name(pid_t pid,
+linted_unit_name(linted_pid pid,
                  char name[static LINTED_UNIT_NAME_MAX + 1U]);
-linted_error linted_unit_pid(pid_t *pidp, pid_t manager_pid,
+linted_error linted_unit_pid(linted_pid *pidp, linted_pid manager_pid,
                              char const *name);
 
 struct linted_unit {

@@ -18,6 +18,7 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
+#include "linted/pid.h"
 
 #include <sys/types.h>
 
@@ -46,7 +47,7 @@ void linted_spawn_file_actions_set_stderr(
     struct linted_spawn_file_actions *file_actions, linted_ko newko);
 
 linted_error
-linted_spawn(pid_t *childp, linted_ko dirko, char const *path,
+linted_spawn(linted_pid *childp, linted_ko dirko, char const *path,
              struct linted_spawn_file_actions const *file_actions,
              struct linted_spawn_attr const *attr,
              char const *const argv[], char const *const envp[]);
