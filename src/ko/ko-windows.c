@@ -29,6 +29,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <direct.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -153,10 +154,23 @@ linted_ko linted_ko__get_stderr(void)
 
 linted_error linted_ko_change_directory(char const *pathname)
 {
-	if (-1 == _chdir(pathname)) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
+	linted_error err = 0;
+
+	wchar_t *pathname_utf2;
+	{
+		wchar_t *xx;
+		err = linted_utf_1_to_2(pathname, &xx);
+		if (err != 0)
+			return err;
+		pathname_utf2 = xx;
 	}
-	return 0;
+
+	if (-1 == _wchdir(pathname_utf2)) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+	}
+
+	linted_mem_free(pathname_utf2);
+
+	return err;
 }
