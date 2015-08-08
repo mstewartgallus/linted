@@ -312,7 +312,7 @@ on_window_read_err:
 
 		window_model.viewable = true;
 
-		linted_gpu_setwindow(gpu_context, window);
+		linted_gpu_set_x11_window(gpu_context, window);
 		linted_gpu_resize(gpu_context, width, height);
 
 		maybe_idle(idle_task);
@@ -511,7 +511,7 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	}
 
 	if (window_destroyed) {
-		linted_gpu_unsetwindow(gpu_context);
+		linted_gpu_remove_window(gpu_context);
 		window_model->viewable = false;
 	}
 
@@ -670,7 +670,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task)
 	window_model->viewable = true;
 	*windowp = window;
 
-	linted_gpu_setwindow(gpu_context, window);
+	linted_gpu_set_x11_window(gpu_context, window);
 	linted_gpu_resize(gpu_context, width, height);
 
 	maybe_idle(idle_task);

@@ -42,7 +42,7 @@ struct linted_gpu_context {
 	EGLConfig config;
 	EGLContext context;
 
-	linted_gpu_native_window window;
+	linted_gpu_x11_window window;
 
 	struct linted_gpu_update update;
 
@@ -347,8 +347,8 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 }
 
 linted_error
-linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
-                     linted_gpu_native_window new_window)
+linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
+                          linted_gpu_x11_window new_window)
 {
 	if (new_window > UINT32_MAX)
 		return EINVAL;
@@ -356,7 +356,7 @@ linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
 	EGLDisplay display = gpu_context->display;
 	EGLConfig config = gpu_context->config;
 	EGLSurface surface = gpu_context->surface;
-	linted_gpu_native_window window = gpu_context->window;
+	linted_gpu_x11_window window = gpu_context->window;
 
 	if (window == new_window)
 		return 0;
@@ -414,7 +414,7 @@ linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
 }
 
 linted_error
-linted_gpu_unsetwindow(struct linted_gpu_context *gpu_context)
+linted_gpu_remove_window(struct linted_gpu_context *gpu_context)
 {
 	EGLDisplay display = gpu_context->display;
 	EGLSurface surface = gpu_context->surface;

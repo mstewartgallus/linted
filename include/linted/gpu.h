@@ -18,17 +18,15 @@
 
 #include "linted/error.h"
 
+#include <stdint.h>
+
 /**
  * @file
  *
  * Draws graphics using the GPU.
  */
 
-#if defined HAVE_X11_API
-#include "gpu-x11.h"
-#else
-#error no GPU acceleration for this platform has been implemented
-#endif
+typedef uint_fast32_t linted_gpu_x11_window;
 
 struct linted_gpu_context;
 
@@ -47,10 +45,10 @@ linted_error
 linted_gpu_context_destroy(struct linted_gpu_context *gpu_context);
 
 linted_error
-linted_gpu_setwindow(struct linted_gpu_context *gpu_context,
-                     linted_gpu_native_window native_window);
+linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
+                          linted_gpu_x11_window x11_window);
 linted_error
-linted_gpu_unsetwindow(struct linted_gpu_context *gpu_context);
+linted_gpu_remove_window(struct linted_gpu_context *gpu_context);
 
 void linted_gpu_update_state(
     struct linted_gpu_context *gpu_context,
