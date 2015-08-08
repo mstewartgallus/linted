@@ -85,12 +85,15 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 				break;
 			}
 
-			char *section_name =
-			    strndup(line_buffer + 1U, line_size - 2U);
-			if (0 == section_name) {
-				err = errno;
-				LINTED_ASSUME(err != 0);
-				break;
+			char *section_name;
+			{
+				char *xx;
+				err = linted_str_dup_len(
+				    &xx, line_buffer + 1U,
+				    line_size - 2U);
+				if (err != 0)
+					break;
+				section_name = xx;
 			}
 
 			{
@@ -671,7 +674,7 @@ linted_conf_add_setting(struct linted_conf *conf,
 				char *copy;
 				{
 					char *xx;
-					err = linted_str_duplicate(
+					err = linted_str_dup(
 					    &xx, additional_values[ii]);
 					if (err != 0) {
 						for (; ii != 0; --ii)
@@ -716,8 +719,8 @@ have_not_found_field:
 		char *copy;
 		{
 			char *xx;
-			err = linted_str_duplicate(
-			    &xx, additional_values[ii]);
+			err =
+			    linted_str_dup(&xx, additional_values[ii]);
 			if (err != 0) {
 				for (size_t jj = 0U; jj < ii; ++jj)
 					linted_mem_free(value_copy[jj]);

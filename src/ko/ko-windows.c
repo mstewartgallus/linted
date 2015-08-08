@@ -150,3 +150,13 @@ linted_ko linted_ko__get_stderr(void)
 {
 	return (linted_ko)GetStdHandle(STD_ERROR_HANDLE);
 }
+
+linted_error linted_ko_change_directory(char const *pathname)
+{
+	if (-1 == _chdir(pathname)) {
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+	return 0;
+}

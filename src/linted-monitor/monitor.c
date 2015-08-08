@@ -68,9 +68,9 @@
 /* 2^(bits - 1) - 1 */
 /* Sadly, this assumes a twos complement implementation */
 #define PID_MAX                                                        \
-	((pid_t)(                                                      \
-	    (1UL << (unsigned long)(sizeof(pid_t) * CHAR_BIT - 1)) -   \
-	    1))
+	((pid_t)((UINTMAX_C(1)                                         \
+	          << (uintmax_t)(sizeof(pid_t) * CHAR_BIT - 1U)) -     \
+	         1U))
 
 enum { WAITID,
        SIGNAL_WAIT,
@@ -497,9 +497,11 @@ on_error:
 		cwd = xx;
 	}
 
-	if (-1 == chdir(process_runtime_dir_path)) {
-		linted_log(LINTED_LOG_ERROR, "chdir: %s",
-		           linted_error_string(errno));
+	err = linted_ko_change_directory(process_runtime_dir_path);
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR,
+		           "linted_ko_change_directory: %s",
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 
@@ -845,11 +847,14 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 			goto destroy_unit_db;
 		}
 
-		char *unit_name = strndup(file_name, dot - file_name);
-		if (0 == unit_name) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-			goto destroy_unit_db;
+		char *unit_name;
+		{
+			char *xx;
+			err = linted_str_dup_len(&xx, file_name,
+			                         dot - file_name);
+			if (err != 0)
+				goto destroy_unit_db;
+			unit_name = xx;
 		}
 
 		unit->type = unit_type;
@@ -1362,7 +1367,7 @@ envvar_allocate_succeeded:
 	char *sandbox_dup;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, sandbox);
+		err = linted_str_dup(&xx, sandbox);
 		if (err != 0)
 			goto free_envvars;
 		sandbox_dup = xx;
@@ -2028,11 +2033,13 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 			len = dirend - dirstart;
 		}
 
-		char *dir_name = strndup(dirstart, len);
-		if (0 == dir_name) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-			goto free_units;
+		char *dir_name;
+		{
+			char *xx;
+			err = linted_str_dup_len(&xx, dirstart, len);
+			if (err != 0)
+				goto free_units;
+			dir_name = xx;
 		}
 
 		err = add_unit_dir_to_db(db, cwd, dir_name);
@@ -2114,7 +2121,7 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		char *name_copy;
 		{
 			char *xx;
-			err = linted_str_duplicate(&xx, name);
+			err = linted_str_dup(&xx, name);
 			if (err != 0)
 				goto free_file_names;
 			name_copy = xx;
@@ -2202,8 +2209,7 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 			char *section_name;
 			{
 				char *xx;
-				err = linted_str_duplicate(&xx,
-				                           "Service");
+				err = linted_str_dup(&xx, "Service");
 				if (err != 0)
 					goto close_unit_file;
 				section_name = xx;
@@ -2212,7 +2218,7 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 			char *env_whitelist;
 			{
 				char *xx;
-				err = linted_str_duplicate(
+				err = linted_str_dup(
 				    &xx,
 				    "X-LintedEnvironmentWhitelist");
 				if (err != 0) {

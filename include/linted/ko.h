@@ -59,4 +59,6 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
  */
 linted_error linted_ko_close(linted_ko ko);
 
+linted_error linted_ko_change_directory(char const *pathname);
+
 #endif /* LINTED_KO_H */

@@ -189,9 +189,11 @@ static uint_fast8_t control_start(char const *const process_name,
 		process_runtime_dir_path = xx;
 	}
 
-	if (-1 == chdir(process_runtime_dir_path)) {
-		linted_log(LINTED_LOG_ERROR, "chdir: %s",
-		           linted_error_string(errno));
+	err = linted_ko_change_directory(process_runtime_dir_path);
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR,
+		           "linted_ko_change_directory: %s",
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 

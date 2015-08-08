@@ -87,9 +87,11 @@ static uint_fast8_t enter_start(char const *const process_name,
 		               1U];
 		sprintf(proc_path, "/proc/%" PRIuMAX "",
 		        (uintmax_t)pid);
-		if (-1 == chdir(proc_path)) {
-			linted_log(LINTED_LOG_ERROR, "chdir: %s",
-			           linted_error_string(errno));
+		err = linted_ko_change_directory(proc_path);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_ko_change_directory: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -122,9 +124,11 @@ static uint_fast8_t enter_start(char const *const process_name,
 		fds[ii] = xx;
 	}
 
-	if (-1 == chdir("root")) {
-		linted_log(LINTED_LOG_ERROR, "chdir: %s",
-		           linted_error_string(errno));
+	err = linted_ko_change_directory("root");
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR,
+		           "linted_ko_change_directory: %s",
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 	/* Open all the fds at once so that one can enter spaces that
@@ -140,9 +144,11 @@ static uint_fast8_t enter_start(char const *const process_name,
 		}
 	}
 
-	if (-1 == chdir("/")) {
-		linted_log(LINTED_LOG_ERROR, "chdir: %s",
-		           linted_error_string(errno));
+	err = linted_ko_change_directory("/");
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR,
+		           "linted_ko_change_directory: %s",
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 

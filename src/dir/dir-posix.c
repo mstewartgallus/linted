@@ -79,7 +79,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	char *pathnamedir_buffer;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, pathname);
+		err = linted_str_dup(&xx, pathname);
 		if (err != 0)
 			return err;
 		pathnamedir_buffer = xx;
@@ -88,7 +88,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	char *pathnamebase_buffer;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, pathname);
+		err = linted_str_dup(&xx, pathname);
 		if (err != 0)
 			goto free_pathnamedir_buffer;
 		pathnamebase_buffer = xx;

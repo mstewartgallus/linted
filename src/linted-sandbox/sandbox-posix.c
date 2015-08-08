@@ -359,10 +359,10 @@ exit_loop:
 	char *command_dup;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, command[0U]);
+		err = linted_str_dup(&xx, command[0U]);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_duplicate: %s",
+			           "linted_str_dup: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -372,10 +372,10 @@ exit_loop:
 	char *waiter_dup;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, waiter);
+		err = linted_str_dup(&xx, waiter);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_duplicate: %s",
+			           "linted_str_dup: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -472,11 +472,11 @@ exit_loop:
 
 			if (fsname != 0) {
 				char *xx;
-				err = linted_str_duplicate(&xx, fsname);
+				err = linted_str_dup(&xx, fsname);
 				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
-					    "linted_str_duplicate: %s",
+					    "linted_str_dup: %s",
 					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
@@ -485,11 +485,11 @@ exit_loop:
 
 			if (dir != 0) {
 				char *xx;
-				err = linted_str_duplicate(&xx, dir);
+				err = linted_str_dup(&xx, dir);
 				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
-					    "linted_str_duplicate: %s",
+					    "linted_str_dup: %s",
 					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
@@ -498,11 +498,11 @@ exit_loop:
 
 			if (type != 0) {
 				char *xx;
-				err = linted_str_duplicate(&xx, type);
+				err = linted_str_dup(&xx, type);
 				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
-					    "linted_str_duplicate: %s",
+					    "linted_str_dup: %s",
 					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
@@ -511,11 +511,11 @@ exit_loop:
 
 			if (data != 0) {
 				char *xx;
-				err = linted_str_duplicate(&xx, data);
+				err = linted_str_dup(&xx, data);
 				if (err != 0) {
 					linted_log(
 					    LINTED_LOG_ERROR,
-					    "linted_str_duplicate: %s",
+					    "linted_str_dup: %s",
 					    linted_error_string(err));
 					return EXIT_FAILURE;
 				}
@@ -1201,7 +1201,7 @@ parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
 	char *subopts_str;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, opts);
+		err = linted_str_dup(&xx, opts);
 		if (err != 0)
 			return err;
 		subopts_str = xx;

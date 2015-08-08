@@ -307,10 +307,10 @@ exit_loop:
 	char *command_dup;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, command[0U]);
+		err = linted_str_dup(&xx, command[0U]);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_duplicate: %s",
+			           "linted_str_dup: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -325,10 +325,10 @@ exit_loop:
 	char *binary_dup;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, binary);
+		err = linted_str_dup(&xx, binary);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_duplicate: %s",
+			           "linted_str_dup: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}

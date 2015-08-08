@@ -33,7 +33,7 @@ static linted_error valloc_sprintf(char **strbp, size_t *sizep,
                                    const char *fmt, va_list ap)
     LINTED_FORMAT(__printf__, 3, 0);
 
-linted_error linted_str_duplicate(char **resultp, char const *input)
+linted_error linted_str_dup(char **resultp, char const *input)
 {
 	char *result;
 
@@ -52,6 +52,36 @@ linted_error linted_str_duplicate(char **resultp, char const *input)
 	*resultp = result;
 	return 0;
 }
+
+#if defined HAVE_WINDOWS_API
+linted_error linted_str_dup_len(char **resultp, char const *input,
+                                size_t n)
+{
+	char *result = strndup(input, n);
+	if (0 == result) {
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+
+	*resultp = result;
+	return 0;
+}
+#else
+linted_error linted_str_dup_len(char **resultp, char const *input,
+                                size_t n)
+{
+	char *result = strndup(input, n);
+	if (0 == result) {
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+
+	*resultp = result;
+	return 0;
+}
+#endif
 
 linted_error linted_str_append(char **bufp, size_t *capp, size_t *sizep,
                                char const *str, size_t strsize)

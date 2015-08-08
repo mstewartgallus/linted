@@ -63,7 +63,7 @@ linted_error linted_environment_get(char const *key, char **valuep)
 
 		{
 			char *xx;
-			err = linted_str_duplicate(&xx, value);
+			err = linted_str_dup(&xx, value);
 			if (err != 0)
 				goto unlock_mutex;
 			value_dup = xx;

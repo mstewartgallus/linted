@@ -194,3 +194,13 @@ linted_error linted_ko_close(linted_ko ko)
 
 	return err;
 }
+
+linted_error linted_ko_change_directory(char const *pathname)
+{
+	if (-1 == chdir(pathname)) {
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+	return 0;
+}

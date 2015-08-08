@@ -329,10 +329,10 @@ static unsigned char main_start(char const *const process_name,
 	char *init_dup;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, init);
+		err = linted_str_dup(&xx, init);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_duplicate: %s",
+			           "linted_str_dup: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}

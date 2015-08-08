@@ -83,10 +83,10 @@ static unsigned char init_start(char const *process_name, size_t argc,
 	char *monitor_dup;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, monitor);
+		err = linted_str_dup(&xx, monitor);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_duplicate: %s",
+			           "linted_str_dup: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}

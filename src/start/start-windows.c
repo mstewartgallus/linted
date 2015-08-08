@@ -127,7 +127,7 @@ int WINAPI wWinMain(HINSTANCE program_instance,
 	char *process_basename;
 	{
 		char *xx;
-		err = linted_str_duplicate(&xx, process_name);
+		err = linted_str_dup(&xx, process_name);
 		if (err != 0)
 			return EXIT_FAILURE;
 		process_basename = xx;
