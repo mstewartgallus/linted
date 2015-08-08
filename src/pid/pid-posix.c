@@ -32,7 +32,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-struct linted_linted_pid_task_waitid {
+struct linted_pid_task_waitid {
 	struct linted_asynch_task *parent;
 	void *data;
 	siginfo_t info;
@@ -41,11 +41,12 @@ struct linted_linted_pid_task_waitid {
 	int options;
 };
 
-linted_error linted_linted_pid_task_waitid_create(
-    struct linted_linted_pid_task_waitid **taskp, void *data)
+linted_error
+linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
+                              void *data)
 {
 	linted_error err;
-	struct linted_linted_pid_task_waitid *task;
+	struct linted_pid_task_waitid *task;
 	{
 		void *xx;
 		err = linted_mem_alloc(&xx, sizeof *task);
@@ -71,41 +72,38 @@ free_task:
 	return err;
 }
 
-void linted_linted_pid_task_waitid_destroy(
-    struct linted_linted_pid_task_waitid *task)
+void linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task)
 {
 	linted_asynch_task_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void *linted_linted_pid_task_waitid_data(
-    struct linted_linted_pid_task_waitid *task)
+void *linted_pid_task_waitid_data(struct linted_pid_task_waitid *task)
 {
 	return task->data;
 }
 
-struct linted_asynch_task *linted_linted_pid_task_waitid_to_asynch(
-    struct linted_linted_pid_task_waitid *task)
+struct linted_asynch_task *
+linted_pid_task_waitid_to_asynch(struct linted_pid_task_waitid *task)
 {
 	return task->parent;
 }
 
-struct linted_linted_pid_task_waitid *
-linted_linted_pid_task_waitid_from_asynch(
-    struct linted_asynch_task *task)
+struct linted_pid_task_waitid *
+linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task)
 {
 	return linted_asynch_task_data(task);
 }
 
-void linted_linted_pid_task_waitid_info(
-    struct linted_linted_pid_task_waitid *task, siginfo_t *info)
+void linted_pid_task_waitid_info(struct linted_pid_task_waitid *task,
+                                 siginfo_t *info)
 {
 	*info = task->info;
 }
 
-void linted_linted_pid_task_waitid_prepare(
-    struct linted_linted_pid_task_waitid *task, unsigned task_action,
-    idtype_t type, id_t id, int options)
+void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
+                                    unsigned task_action, idtype_t type,
+                                    id_t id, int options)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 	task->idtype = type;
@@ -116,7 +114,7 @@ void linted_linted_pid_task_waitid_prepare(
 void linted_pid_do_waitid(struct linted_asynch_pool *pool,
                           struct linted_asynch_task *task)
 {
-	struct linted_linted_pid_task_waitid *task_wait =
+	struct linted_pid_task_waitid *task_wait =
 	    linted_asynch_task_data(task);
 
 	linted_error err = 0;
@@ -154,7 +152,7 @@ linted_error linted_pid_kill(linted_pid pid, int signo)
 	return 0;
 }
 
-linted_error linted_linted_piderminate(linted_pid pid)
+linted_error linted_pid_terminate(linted_pid pid)
 {
 	if (pid < 1)
 		return LINTED_ERROR_INVALID_PARAMETER;

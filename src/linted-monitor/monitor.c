@@ -580,7 +580,7 @@ on_error:
 	struct kill_read_data kill_read_data;
 
 	struct linted_signal_task_wait *signal_wait_task;
-	struct linted_linted_pid_task_waitid *sandbox_task;
+	struct linted_pid_task_waitid *sandbox_task;
 	struct linted_admin_in_task_read *admin_in_read_task;
 	struct linted_admin_out_task_write *write_task;
 	struct linted_io_task_read *kill_read_task;
@@ -599,14 +599,12 @@ on_error:
 	}
 
 	{
-		struct linted_linted_pid_task_waitid *xx;
-		err = linted_linted_pid_task_waitid_create(
-		    &xx, &sandbox_data);
+		struct linted_pid_task_waitid *xx;
+		err = linted_pid_task_waitid_create(&xx, &sandbox_data);
 		if (err != 0) {
-			linted_log(
-			    LINTED_LOG_ERROR,
-			    "linted_linted_pid_task_waitid_create: %s",
-			    linted_error_string(err));
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_pid_task_waitid_create: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		sandbox_task = xx;
@@ -723,11 +721,10 @@ on_error:
 	    pool,
 	    linted_admin_in_task_read_to_asynch(admin_in_read_task));
 
-	linted_linted_pid_task_waitid_prepare(
-	    sandbox_task, WAITID, P_ALL, -1, WEXITED | WSTOPPED);
+	linted_pid_task_waitid_prepare(sandbox_task, WAITID, P_ALL, -1,
+	                               WEXITED | WSTOPPED);
 	linted_asynch_pool_submit(
-	    pool,
-	    linted_linted_pid_task_waitid_to_asynch(sandbox_task));
+	    pool, linted_pid_task_waitid_to_asynch(sandbox_task));
 
 	static char dummy;
 
@@ -759,7 +756,7 @@ cancel_tasks:
 		err = 0;
 
 	linted_asynch_task_cancel(
-	    linted_linted_pid_task_waitid_to_asynch(sandbox_task));
+	    linted_pid_task_waitid_to_asynch(sandbox_task));
 	linted_asynch_task_cancel(
 	    linted_admin_in_task_read_to_asynch(admin_in_read_task));
 
@@ -1504,10 +1501,10 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	if (err != 0)
 		return err;
 
-	struct linted_linted_pid_task_waitid *sandbox_task =
-	    linted_linted_pid_task_waitid_from_asynch(task);
+	struct linted_pid_task_waitid *sandbox_task =
+	    linted_pid_task_waitid_from_asynch(task);
 	struct wait_service_data *wait_service_data =
-	    linted_linted_pid_task_waitid_data(sandbox_task);
+	    linted_pid_task_waitid_data(sandbox_task);
 	struct linted_asynch_pool *pool = wait_service_data->pool;
 
 	char const *process_name = wait_service_data->process_name;
@@ -1521,8 +1518,7 @@ static linted_error on_process_wait(struct linted_asynch_task *task)
 	int exit_code;
 	{
 		siginfo_t exit_info;
-		linted_linted_pid_task_waitid_info(sandbox_task,
-		                                   &exit_info);
+		linted_pid_task_waitid_info(sandbox_task, &exit_info);
 		pid = exit_info.si_pid;
 		exit_status = exit_info.si_status;
 		exit_code = exit_info.si_code;
@@ -1988,7 +1984,7 @@ pid_find_failure:
 	goto reply;
 
 found_pid:
-	err = linted_linted_piderminate(pid);
+	err = linted_pid_terminate(pid);
 	assert(err != EINVAL);
 	if (err != 0) {
 		if (ESRCH == err)
@@ -2302,7 +2298,7 @@ static linted_error service_children_terminate(linted_pid pid)
 	}
 
 	for (size_t ii = 0U; ii < len; ++ii) {
-		err = linted_linted_piderminate(children[ii]);
+		err = linted_pid_terminate(children[ii]);
 		if (err != 0)
 			goto free_children;
 	}
