@@ -63,6 +63,10 @@ int WINAPI wWinMain(HINSTANCE program_instance,
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);
 
+	/* Prevent DLLs from loading from the current directory */
+	if (!SetDllDirectoryW(L""))
+		return EXIT_FAILURE;
+
 	show_command = show_command_arg;
 
 	linted_error err;
