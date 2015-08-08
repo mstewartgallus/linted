@@ -37,7 +37,9 @@
 #include <stdlib.h>
 
 #include <windows.h>
-#include <d3d11.h>
+#include <d3d9.h>
+
+typedef WINAPI IDirect3D9 *typeof_Direct3DCreate9(UINT SDKVersion);
 
 static GUID const uuidof_IDXGIDevice = {
     0x54ec77fa,
@@ -135,22 +137,16 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		break;
 	}
 
-	static D3D_FEATURE_LEVEL const feature_levels[] = {
-	    D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1,
-	    D3D_FEATURE_LEVEL_10_0,
-	};
-
-	HMODULE d3d11_module = LoadLibraryW(L"d3d11.dll");
-	if (0 == d3d11_module) {
-		linted_log(LINTED_LOG_ERROR,
-		           "Could not find d3d11.dll");
+	HMODULE d3d9_module = LoadLibraryW(L"d3d9.dll");
+	if (0 == d3d9_module) {
+		linted_log(LINTED_LOG_ERROR, "Could not find d3d9.dll");
 		return EXIT_FAILURE;
 	}
 
 	SetLastError(0);
-	PFN_D3D11_CREATE_DEVICE my_D3D11CreateDevice =
-	    (PFN_D3D11_CREATE_DEVICE)GetProcAddress(
-	        d3d11_module, "D3D11CreateDevice");
+	typeof_Direct3DCreate9 *my_Direct3dCreate9 =
+	    (typeof_Direct3DCreate9 *)GetProcAddress(d3d9_module,
+	                                             "Direct3DCreate9");
 	err = GetLastError();
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "GetProcAddress: %s",
@@ -158,118 +154,44 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	unsigned device_flags = 0U;
-	ID3D11Device *device;
-	ID3D11DeviceContext *device_context;
+	IDirect3D9 *direct3d = my_Direct3dCreate9(D3D_SDK_VERSION);
+	if (0 == direct3d) {
+		linted_log(LINTED_LOG_ERROR, "Direct3dCreate9");
+		err = LINTED_ERROR_UNIMPLEMENTED;
+		goto destroy_window;
+	}
+
+	IDirect3DDevice9 *device;
 	{
-		ID3D11Device *xx;
-		D3D_FEATURE_LEVEL yy;
-		ID3D11DeviceContext *zz;
-		HRESULT result = my_D3D11CreateDevice(
-		    0, D3D_DRIVER_TYPE_HARDWARE, 0, device_flags,
-		    (D3D_FEATURE_LEVEL const *)feature_levels,
-		    LINTED_ARRAY_SIZE(feature_levels),
-		    D3D11_SDK_VERSION, &xx, &yy, &zz);
+		D3DPRESENT_PARAMETERS xx = {0};
+		IDirect3DDevice9 *yy;
+
+		xx.BackBufferFormat = D3DFMT_UNKNOWN;
+		xx.MultiSampleType = D3DMULTISAMPLE_NONE;
+		xx.SwapEffect = D3DSWAPEFFECT_FLIP;
+		xx.hDeviceWindow = main_window;
+		xx.Windowed = true;
+		xx.EnableAutoDepthStencil = true;
+		xx.AutoDepthStencilFormat = D3DFMT_R8G8B8;
+		xx.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+
+		HRESULT result = IDirect3D9_CreateDevice(
+		    direct3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL,
+		    main_window, D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+		    &xx, &yy);
 		if (FAILED(result)) {
 			linted_log(LINTED_LOG_ERROR,
-			           "D3D11CreateDevice: 0x%lX", result);
+			           "D3D9CreateDevice: 0x%lX", result);
 			err = LINTED_ERROR_UNIMPLEMENTED;
-			goto destroy_window;
+			goto destroy_direct3d;
 		}
-		device = xx;
-		device_context = zz;
+		device = yy;
 	}
-
-	IDXGIFactory1 *dxgi_factory;
-	{
-		IDXGIDevice *dxgi_device;
-		{
-			void *xx;
-			HRESULT result = ID3D11Device_QueryInterface(
-			    device, &uuidof_IDXGIDevice, &xx);
-			if (FAILED(result)) {
-				linted_log(LINTED_LOG_ERROR,
-				           "ID3D11Device_"
-				           "QueryInterface: 0x%lX",
-				           result);
-				err = LINTED_ERROR_UNIMPLEMENTED;
-				goto destroy_device;
-			}
-			dxgi_device = xx;
-		}
-
-		IDXGIAdapter *adapter;
-		{
-			IDXGIAdapter *xx;
-			HRESULT result =
-			    IDXGIDevice_GetAdapter(dxgi_device, &xx);
-			if (FAILED(result)) {
-				linted_log(LINTED_LOG_ERROR,
-				           "ID3D11Device_"
-				           "GetAdapter: 0x%lX",
-				           result);
-				err = LINTED_ERROR_UNIMPLEMENTED;
-				goto destroy_device;
-			}
-			adapter = xx;
-		}
-
-		{
-			void *xx;
-			HRESULT result = IDXGIAdapter_GetParent(
-			    adapter, &uuidof_IDXGIFactory1, &xx);
-			if (FAILED(result)) {
-				linted_log(LINTED_LOG_ERROR,
-				           "IDXGIAdapter_GetParent"
-				           ": 0x%lX",
-				           result);
-				err = LINTED_ERROR_UNIMPLEMENTED;
-				goto destroy_device;
-			}
-			dxgi_factory = xx;
-		}
-		IDXGIAdapter_Release(adapter);
-		IDXGIDevice_Release(dxgi_device);
-	}
-
-	IDXGISwapChain *swap_chain;
-	{
-		DXGI_SWAP_CHAIN_DESC desc = {0};
-		desc.BufferCount = 1;
-		desc.BufferDesc.Width = 2048U;
-		desc.BufferDesc.Height = 2048U;
-		desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		desc.BufferDesc.RefreshRate.Numerator = 60;
-		desc.BufferDesc.RefreshRate.Denominator = 1;
-		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		desc.OutputWindow = main_window;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Windowed = TRUE;
-
-		IDXGISwapChain *xx;
-		HRESULT result = IDXGIFactory1_CreateSwapChain(
-		    dxgi_factory, (IUnknown *)device, &desc, &xx);
-		if (FAILED(result)) {
-			linted_log(LINTED_LOG_ERROR,
-			           "IDXGIFactory1_CreateSwapChain"
-			           ": 0x%lX",
-			           result);
-			err = LINTED_ERROR_UNIMPLEMENTED;
-			goto destroy_device;
-		}
-		swap_chain = xx;
-	}
-
-	IDXGIFactory1_MakeWindowAssociation(dxgi_factory, main_window,
-	                                    DXGI_MWA_NO_ALT_ENTER);
-
-	IDXGIFactory1_Release(dxgi_factory);
 
 	if (0 == UpdateWindow(main_window)) {
 		err = GetLastError();
 		assert(err != 0);
-		goto release_swap_chain;
+		goto destroy_device;
 	}
 
 	for (;;) {
@@ -286,12 +208,12 @@ static unsigned char window_start(char const *process_name, size_t argc,
 			default:
 				if (WM_QUIT == message.message) {
 					err = message.wParam;
-					goto release_swap_chain;
+					goto destroy_device;
 				}
 
 				if (-1 == TranslateMessage(&message)) {
 					err = GetLastError();
-					goto release_swap_chain;
+					goto destroy_device;
 				}
 
 				DispatchMessage(&message);
@@ -301,20 +223,28 @@ static unsigned char window_start(char const *process_name, size_t argc,
 
 	exit_peek_loop:
 		;
-		HRESULT result =
-		    IDXGISwapChain_Present(swap_chain, 0, 0);
+		HRESULT clear_result = IDirect3DDevice9_Clear(
+		    device, 0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
+
+		    D3DCOLOR_ARGB(255, 0, 255, 255), 0, 0);
+		if (FAILED(clear_result)) {
+			err = LINTED_ERROR_UNIMPLEMENTED;
+			goto destroy_device;
+		}
+
+		HRESULT result = IDirect3DDevice9_Present(
+		    device, 0, 0, main_window, 0);
 		if (FAILED(result)) {
 			err = LINTED_ERROR_UNIMPLEMENTED;
-			goto release_swap_chain;
+			goto destroy_device;
 		}
 	}
 
-release_swap_chain:
-	IDXGISwapChain_Release(swap_chain);
-
 destroy_device:
-	ID3D11Device_Release(device);
-	ID3D11DeviceContext_Release(device_context);
+	IDirect3DDevice9_Release(device);
+
+destroy_direct3d:
+	IDirect3D9_Release(direct3d);
 
 destroy_window:
 	/* In this case the window has not already been destroyed */
