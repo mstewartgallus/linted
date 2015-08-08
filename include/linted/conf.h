@@ -17,9 +17,9 @@
 #define LINTED_CONF_H
 
 #include "linted/error.h"
+#include "linted/ko.h"
 
 #include <stddef.h>
-#include <stdio.h>
 #include <stdint.h>
 
 /**
@@ -52,7 +52,8 @@ linted_error linted_conf_create(struct linted_conf **unitp,
                                 char *file_name);
 
 linted_error linted_conf_parse_file(struct linted_conf *conf,
-                                    FILE *conf_file);
+                                    linted_ko dir_ko,
+                                    char const *file_name);
 
 void linted_conf_put(struct linted_conf *unit);
 

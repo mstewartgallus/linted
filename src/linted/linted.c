@@ -15,10 +15,8 @@
  */
 #include "config.h"
 
-#ifdef HAVE_WINDOWS_API
 #ifndef UNICODE
 #define UNICODE
-#endif
 
 #define _UNICODE
 

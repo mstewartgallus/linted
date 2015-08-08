@@ -21,6 +21,8 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#define _WIN32_WINNT 0x0600
+
 #include "linted/ko.h"
 
 #include "linted/mem.h"
@@ -40,6 +42,7 @@
 #include <unistd.h>
 
 #include <winsock2.h>
+#include <windows.h>
 
 /**
  * @bug dirko is not respected.
@@ -171,6 +174,42 @@ linted_error linted_ko_change_directory(char const *pathname)
 	}
 
 	linted_mem_free(pathname_utf2);
+
+	return err;
+}
+
+linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
+{
+	linted_error err = 0;
+
+	wchar_t *oldpath_utf2;
+	{
+		wchar_t *xx;
+		err = linted_utf_1_to_2(oldpath, &xx);
+		if (err != 0)
+			return err;
+		oldpath_utf2 = xx;
+	}
+
+	wchar_t *newpath_utf2;
+	{
+		wchar_t *xx;
+		err = linted_utf_1_to_2(newpath, &xx);
+		if (err != 0)
+			goto free_oldpath;
+		newpath_utf2 = xx;
+	}
+
+	if (!CreateSymbolicLinkW(newpath_utf2, oldpath_utf2,
+	                         SYMBOLIC_LINK_FLAG_DIRECTORY)) {
+		err = GetLastError();
+		LINTED_ASSUME(err != 0);
+	}
+
+	linted_mem_free(newpath_utf2);
+
+free_oldpath:
+	linted_mem_free(oldpath_utf2);
 
 	return err;
 }

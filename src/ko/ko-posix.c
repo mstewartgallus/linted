@@ -204,3 +204,13 @@ linted_error linted_ko_change_directory(char const *pathname)
 	}
 	return 0;
 }
+
+linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
+{
+	if (-1 == symlink(oldpath, newpath)) {
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+	return 0;
+}

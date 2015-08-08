@@ -34,7 +34,8 @@
 static size_t string_list_size(char const *const *list);
 
 linted_error linted_conf_parse_file(struct linted_conf *conf,
-                                    FILE *conf_file)
+                                    linted_ko dir_ko,
+                                    char const *file_name)
 {
 	linted_error err = 0;
 
@@ -43,6 +44,26 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 
 	linted_conf_section current_section;
 	bool has_current_section = false;
+
+	linted_ko unit_fd;
+	{
+		linted_ko xx;
+		err = linted_ko_open(&xx, dir_ko, file_name,
+		                     LINTED_KO_RDONLY);
+		if (err != 0)
+			return err;
+		unit_fd = xx;
+	}
+
+	FILE *conf_file = fdopen(unit_fd, "r");
+	if (0 == conf_file) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+
+		linted_ko_close(unit_fd);
+
+		return err;
+	}
 
 	for (;;) {
 		size_t line_size;
@@ -245,6 +266,13 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 
 	if (err != 0)
 		linted_conf_put(conf);
+
+	if (EOF == fclose(conf_file)) {
+		if (0 == err) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+		}
+	}
 
 	return err;
 }

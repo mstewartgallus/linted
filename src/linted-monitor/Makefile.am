@@ -17,18 +17,26 @@
 pkglibexec_PROGRAMS+=%D%/linted-monitor
 
 %C%_linted_monitor_SOURCES=%D%/monitor.c
+EXTRA_%C%_linted_monitor_SOURCES=\
+  %D%/monitor-posix.c\
+  %D%/monitor-windows.c
+
 %C%_linted_monitor_LDADD=\
   src/start/libstart.la\
+  \
+  src/error/liberror.la\
+  src/log/liblog.la
+
+if POSIX_API
+%C%_linted_monitor_LDADD+=\
   \
   src/asynch/libasynch.la\
   src/conf/libconf.la\
   src/dir/libdir.la\
-  src/error/liberror.la\
   src/file/libfile.la\
   src/fifo/libfifo.la\
   src/io/libio.la\
   src/ko/libko.la\
-  src/log/liblog.la\
   src/pid/libpid.la\
   src/sched/libsched.la\
   src/signal/libsignal.la\
@@ -37,3 +45,14 @@ pkglibexec_PROGRAMS+=%D%/linted-monitor
   src/unit/libunit.la\
   \
   src/admin/libadmin.la
+
+endif
+
+if WINDOWS_API
+%C%_linted_monitor_LDADD+=\
+  src/utf/libutf.la\
+  \
+  %D%/resources.$(OBJEXT)
+
+%D%/resources.$(OBJEXT): %D%/monitor.manifest
+endif
