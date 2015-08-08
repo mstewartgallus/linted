@@ -53,6 +53,10 @@
  *
  * <li> [Git](http://git-scm.com//)
  * A version control system
+ *
+ * Note that you can sign commits with the `user.signingkey` and
+ * `commit.gpgsign` options.
+ *
  * </li>
  *
  * </ul>
