@@ -1754,6 +1754,7 @@ static linted_error on_child_trapped(char const *process_name,
                                      struct linted_unit_db *unit_db)
 {
 	int event = exit_status >> 8U;
+	exit_status = exit_status & 0xFF;
 	switch (event) {
 	case 0:
 		return on_child_signaled(process_name, pid,
@@ -1765,8 +1766,8 @@ static linted_error on_child_trapped(char const *process_name,
 		    unit_db);
 
 	case PTRACE_EVENT_STOP:
-		return on_child_ptrace_event_stopped(
-		    process_name, pid, exit_status & 0xFF);
+		return on_child_ptrace_event_stopped(process_name, pid,
+		                                     exit_status);
 
 	case PTRACE_EVENT_VFORK:
 	case PTRACE_EVENT_FORK:
