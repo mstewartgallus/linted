@@ -32,14 +32,10 @@
 
 #include <assert.h>
 #include <direct.h>
-#include <fcntl.h>
 #include <limits.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <winsock2.h>
 #include <windows.h>
@@ -168,8 +164,8 @@ linted_error linted_ko_change_directory(char const *pathname)
 		pathname_utf2 = xx;
 	}
 
-	if (-1 == _wchdir(pathname_utf2)) {
-		err = errno;
+	if (!SetCurrentDirectoryW(pathname_utf2)) {
+		err = GetLastError();
 		LINTED_ASSUME(err != 0);
 	}
 

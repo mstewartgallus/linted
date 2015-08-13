@@ -34,7 +34,6 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <signal.h>
-#include <unistd.h>
 
 #include <windows.h>
 
