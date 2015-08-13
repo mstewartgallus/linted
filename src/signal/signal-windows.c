@@ -59,18 +59,11 @@ struct linted_signal_task_wait {
 
 static void write_one(linted_ko ko);
 
-static void report_sigint(int signo);
-static void report_sigterm(int signo);
-
 static int volatile sigint_signalled;
 static int volatile sigterm_signalled;
 
-static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_INT] = SIGINT,
-                                      [LINTED_SIGNAL_TERM] = SIGTERM};
-
-static void (*const sighandlers[NUM_SIGS])(
-    int) = {[LINTED_SIGNAL_INT] = report_sigint,
-            [LINTED_SIGNAL_TERM] = report_sigterm};
+static BOOL WINAPI sigint_handler_routine(DWORD dwCtrlType);
+static BOOL WINAPI sigterm_handler_routine(DWORD dwCtrlType);
 
 linted_error linted_signal_init(void)
 {
@@ -78,15 +71,17 @@ linted_error linted_signal_init(void)
 
 	linted_ko reader;
 	linted_ko writer;
+
 	{
-		int xx[2U];
-		if (-1 == _pipe(xx, 4096U, 0)) {
-			err = errno;
+		HANDLE xx;
+		HANDLE yy;
+		if (!CreatePipe(&xx, &yy, 0, 4096U)) {
+			err = GetLastError();
 			LINTED_ASSUME(err != 0);
 			return err;
 		}
-		reader = (linted_ko)_get_osfhandle(xx[0U]);
-		writer = (linted_ko)_get_osfhandle(xx[1U]);
+		reader = xx;
+		writer = yy;
 	}
 
 	sigpipe_reader = reader;
@@ -235,15 +230,13 @@ char const *linted_signal_string(int signo)
 	}
 }
 
-static void listen_to_signal(size_t ii);
-
 void linted_signal_listen_to_sighup(void)
 {
 }
 
 void linted_signal_listen_to_sigint(void)
 {
-	listen_to_signal(LINTED_SIGNAL_INT);
+	SetConsoleCtrlHandler(sigint_handler_routine, true);
 }
 
 void linted_signal_listen_to_sigquit(void)
@@ -252,37 +245,38 @@ void linted_signal_listen_to_sigquit(void)
 
 void linted_signal_listen_to_sigterm(void)
 {
-	listen_to_signal(LINTED_SIGNAL_TERM);
+	SetConsoleCtrlHandler(sigterm_handler_routine, true);
 }
 
-static void listen_to_signal(size_t ii)
+static BOOL WINAPI sigint_handler_routine(DWORD dwCtrlType)
 {
-	linted_error err;
-	int signo = signals[ii];
-	void (*handler)(int) = sighandlers[ii];
-	if (SIG_ERR == signal(signo, handler)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		assert(false);
+	switch (dwCtrlType) {
+	case CTRL_C_EVENT:
+		__atomic_store_n(&sigint_signalled, 1,
+		                 __ATOMIC_SEQ_CST);
+		write_one(sigpipe_writer);
+		return true;
+
+	default:
+		return false;
 	}
 }
 
-static void report_sigint(int signo)
+static BOOL WINAPI sigterm_handler_routine(DWORD dwCtrlType)
 {
-	linted_error err = errno;
-	signal(SIGINT, report_sigint);
-	__atomic_store_n(&sigint_signalled, 1, __ATOMIC_SEQ_CST);
-	write_one(sigpipe_writer);
-	errno = err;
-}
+	switch (dwCtrlType) {
+	case CTRL_BREAK_EVENT:
+	case CTRL_CLOSE_EVENT:
+	case CTRL_LOGOFF_EVENT:
+	case CTRL_SHUTDOWN_EVENT:
+		__atomic_store_n(&sigterm_signalled, 1,
+		                 __ATOMIC_SEQ_CST);
+		write_one(sigpipe_writer);
+		return true;
 
-static void report_sigterm(int signo)
-{
-	linted_error err = errno;
-	signal(SIGTERM, report_sigterm);
-	__atomic_store_n(&sigterm_signalled, 1, __ATOMIC_SEQ_CST);
-	write_one(sigpipe_writer);
-	errno = err;
+	default:
+		return false;
+	}
 }
 
 static void write_one(linted_ko ko)
@@ -307,11 +301,6 @@ static void write_one(linted_ko ko)
 		if (err != WSAEINTR)
 			break;
 	}
-	/* WSAEWOULDBLOCK is okay it means the pipe is full and that's
-	 * fine.
-	 */
-	if (WSAEWOULDBLOCK == err)
-		err = 0;
 	assert(err != ERROR_INVALID_USER_BUFFER);
 	assert(err != ERROR_NOT_ENOUGH_MEMORY);
 	assert(err != ERROR_NOT_ENOUGH_QUOTA);
