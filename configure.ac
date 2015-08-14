@@ -154,6 +154,10 @@ dnl
 dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
                 [-mno-cygwin]dnl
+dnl
+                dnl Have stricter Windows NT builds
+                [-DSTRICT=1]dnl
+dnl
                 [-D__MINGW_MSVC_COMPAT_WARNINGS=1]dnl
 dnl
                 dnl Possibly consider changing this later but for now
