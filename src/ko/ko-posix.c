@@ -214,3 +214,27 @@ linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
 	}
 	return 0;
 }
+
+
+linted_error linted_ko_real_path(char **resultp, linted_ko dirko, char const *pathname)
+{
+	linted_error err = 0;
+
+	assert(resultp != 0);
+	assert(pathname != 0);
+
+	/* TODO: work on more directories */
+	if (dirko != LINTED_KO_CWD)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	char *result = realpath(pathname, 0);
+	if (0 == result) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+
+	*resultp = result;
+
+	return 0;
+}

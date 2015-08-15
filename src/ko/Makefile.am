@@ -26,5 +26,7 @@ EXTRA_%C%_libko_la_SOURCES=\
 %C%_libko_la_LIBADD=$(WS2_32_LIBS)
 
 if WINDOWS_API
-%C%_libko_la_LIBADD+=src/utf/libutf.la
+%C%_libko_la_LIBADD+=\
+  src/str/libstr.la\
+  src/utf/libutf.la
 endif

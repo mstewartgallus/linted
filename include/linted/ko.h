@@ -64,4 +64,7 @@ linted_error linted_ko_change_directory(char const *pathname);
 linted_error linted_ko_symlink(char const *oldpath,
                                char const *newpath);
 
+linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
+				 char const *pathname);
+
 #endif /* LINTED_KO_H */

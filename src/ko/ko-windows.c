@@ -27,6 +27,7 @@
 
 #include "linted/mem.h"
 #include "linted/error.h"
+#include "linted/str.h"
 #include "linted/utf.h"
 #include "linted/util.h"
 
@@ -90,12 +91,21 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	if (ko_rdwr)
 		desired_access |= GENERIC_READ | GENERIC_WRITE;
 
+	char *real_path;
+	{
+		char *xx;
+		err = linted_ko_real_path(&xx, dirko, pathname);
+		if (err != 0)
+			return err;
+		real_path = xx;
+	}
+
 	wchar_t *pathname_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(pathname, &xx);
+		err = linted_utf_1_to_2(real_path, &xx);
 		if (err != 0)
-			return err;
+			goto free_real_path;
 		pathname_utf2 = xx;
 	}
 
@@ -107,6 +117,9 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	}
 
 	linted_mem_free(pathname_utf2);
+
+free_real_path:
+	linted_mem_free(real_path);
 
 	if (err != 0)
 		return err;
@@ -208,4 +221,30 @@ free_oldpath:
 	linted_mem_free(oldpath_utf2);
 
 	return err;
+}
+
+linted_error linted_ko_real_path(char **resultp, linted_ko dirko, char const *pathname)
+{
+	linted_error err = 0;
+
+	assert(resultp != 0);
+	assert(pathname != 0);
+
+	/* TDOO: work on more directories */
+	if (dirko != LINTED_KO_CWD)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	/* TDOO: actually resolve the path */
+	char *result;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, pathname);
+		if (err != 0)
+			return err;
+		result = xx;
+	}
+
+	*resultp = result;
+
+	return 0;
 }
