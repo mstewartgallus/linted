@@ -223,7 +223,8 @@ free_oldpath:
 	return err;
 }
 
-linted_error linted_ko_real_path(char **resultp, linted_ko dirko, char const *pathname)
+linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
+                                 char const *pathname)
 {
 	linted_error err = 0;
 

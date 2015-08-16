@@ -94,6 +94,12 @@
 
 #endif
 
+#if LINTED_UTIL_HAS_ATTRIBUTE(__warn_unused_result__) || LINTED__IS_GCC
+#define LINTED_WARN_UNUSED __attribute__((__warn_unused_result__))
+#else
+#define LINTED_WARN_UNUSED
+#endif
+
 #if LINTED_UTIL_HAS_ATTRIBUTE(__format__) || LINTED__IS_GCC
 #define LINTED_FORMAT(X, Y, Z) __attribute__((__format__(X, Y, Z)))
 #else

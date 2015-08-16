@@ -13,7 +13,7 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
 
 #include "linted/ko.h"
 #include "linted/util.h"
@@ -22,8 +22,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <signal.h>
 #include <stdbool.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -215,8 +216,8 @@ linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
 	return 0;
 }
 
-
-linted_error linted_ko_real_path(char **resultp, linted_ko dirko, char const *pathname)
+linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
+                                 char const *pathname)
 {
 	linted_error err = 0;
 

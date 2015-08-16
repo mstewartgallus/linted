@@ -17,6 +17,7 @@
 #define LINTED_KO_H
 
 #include "linted/error.h"
+#include "linted/util.h"
 
 #if defined HAVE_WINDOWS_API
 #include "ko-windows.h"
@@ -44,7 +45,8 @@
 #define LINTED_KO_FIFO (1UL << 6U)
 
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
-                            char const *pathname, unsigned long flags);
+                            char const *pathname,
+                            unsigned long flags) LINTED_WARN_UNUSED;
 
 /**
  * The linted_ko_close function closes a kernel object.
@@ -64,7 +66,8 @@ linted_error linted_ko_change_directory(char const *pathname);
 linted_error linted_ko_symlink(char const *oldpath,
                                char const *newpath);
 
-linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
-				 char const *pathname);
+linted_error
+linted_ko_real_path(char **resultp, linted_ko dirko,
+                    char const *pathname) LINTED_WARN_UNUSED;
 
 #endif /* LINTED_KO_H */
