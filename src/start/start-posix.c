@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* This is an awful hack to force the library to be linked in to users.
  */
@@ -131,6 +132,8 @@ int main(int argc, char *argv[])
 		           linted_error_string(errno));
 		return EXIT_FAILURE;
 	}
+
+	tzset();
 
 	return linted_start_config.start(process_basename, argc,
 	                                 (char const *const *)argv);
