@@ -254,6 +254,7 @@
  * <ul>
  * <li> [The CERT C Coding Standards](https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard) </li>
  * <li> [EC-- Rule Set](http://www.leshatton.org/ISOC_subset1103.html) </li>
+ * <li> [Defensive Coding](https://docs.fedoraproject.org/en-US/Fedora_Security_Team/1/html/Defensive_Coding) </li>
  * <li> [Cryptography Coding Standard](https://cryptocoding.net/index.php/Coding_rules)
  *
  * Note that this standard currently has dangerous and incorrect
