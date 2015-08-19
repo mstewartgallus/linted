@@ -39,6 +39,8 @@ dnl
         [-fvisibility=hidden]dnl This gets around a few redirections
                              dnl and prevents symbol conflicts
         [-Bsymbolic]dnl Also gets around some more redirections
+dnl
+        [-flto]dnl
 ])
 AC_SUBST([linted_CFLAGS_OPTIMIZE])
 dnl
@@ -54,6 +56,9 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_OPTIMIZE],[dnl
 dnl
         dnl Use large addresses on i386 Windows
         [-Wl,--large-address-aware]dnl
+dnl
+        [-flto]dnl
+        [-fuse-linker-plugin]dnl
 ])
 AC_SUBST([linted_LDFLAGS_OPTIMIZE])
 dnl
