@@ -42,6 +42,8 @@ int linted_start_show_command(void);
 #ifndef LINTED_START__NO_MAIN
 
 #if defined HAVE_WINDOWS_API
+#include <windows.h>
+
 int linted_start__wWinMain(void *program_instance,
                            void *prev_instance_unused,
                            wchar_t *command_line_unused,

@@ -53,7 +53,7 @@ int linted_start_show_command(void)
 	return show_command;
 }
 
-int linted_start_wWinMain(HINSTANCE program_instance,
+int linted_start__wWinMain(HINSTANCE program_instance,
                           HINSTANCE prev_instance_unused,
                           wchar_t *command_line_unused,
                           int show_command_arg)
