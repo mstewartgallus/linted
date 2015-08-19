@@ -163,28 +163,28 @@ void linted_queue_recv(struct linted_queue *queue,
 	}
 
 	/* The nodes next to the tip are the head */
-	struct linted_queue_node *removed = queue->head;
-	if (removed != 0)
-		goto got_node;
+	struct linted_queue_node *removed;
+	for (;;) {
+		removed = queue->head;
+		if (removed != 0)
+			break;
 
-	do {
 		err = pthread_cond_wait(&queue->gains_member,
 		                        &queue->lock);
 		if (err != 0) {
 			assert(err != EINVAL);
 			assert(false);
 		}
+	}
 
-		removed = queue->head;
-	} while (removed == 0);
+	struct linted_queue_node **tailp = queue->tailp;
+	struct linted_queue_node *head = removed->next;
 
-got_node:
-	if (queue->tailp == &removed->next)
-		queue->tailp = &queue->head;
+	if (tailp == &removed->next)
+		tailp = &queue->head;
 
-	queue->head = removed->next;
-
-	/* The fast path doesn't bother with the handler */
+	queue->head = head;
+	queue->tailp = tailp;
 
 	err = pthread_mutex_unlock(&queue->lock);
 	if (err != 0) {
