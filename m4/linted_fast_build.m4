@@ -37,5 +37,8 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_FAST_BUILD],[dnl
         dnl [-gsplit-dwarf]dnl
 ])
 dnl
+LINTED_CHECK_CFLAGS([linted_LDFLAGS_FAST_BUILD],[dnl
+        [-fuse-ld=gold]
+])
 ])
 ])

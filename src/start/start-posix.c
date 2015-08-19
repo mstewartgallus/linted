@@ -14,8 +14,9 @@
  * permissions and limitations under the License.
  */
 #define _POSIX_C_SOURCE 200809L
+#define LINTED_START__NO_MAIN 1
 
-#define LINTED_START_OBJECT
+#include "config.h"
 
 #include "linted/start.h"
 
@@ -37,13 +38,9 @@
 #include <string.h>
 #include <time.h>
 
-/* This is an awful hack to force the library to be linked in to users.
- */
-char const linted_start__useme;
-
 static void do_nothing(int signo);
 
-int main(int argc, char *argv[])
+int linted_start__main(int argc, char *argv[])
 {
 	linted_error err = 0;
 

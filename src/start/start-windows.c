@@ -20,8 +20,9 @@
 #define _UNICODE
 
 #define WIN32_LEAN_AND_MEAN
+#define LINTED_START__NO_MAIN 1
 
-#define LINTED_START_OBJECT
+#include "config.h"
 
 #include "linted/start.h"
 
@@ -47,18 +48,15 @@
 
 static int show_command;
 
-/* This is an awful hack to force the library to be linked in to users.
- */
-char const linted_start__useme;
-
 int linted_start_show_command(void)
 {
 	return show_command;
 }
 
-int WINAPI wWinMain(HINSTANCE program_instance,
-                    HINSTANCE prev_instance_unused,
-                    wchar_t *command_line_unused, int show_command_arg)
+int linted_start_wWinMain(HINSTANCE program_instance,
+                          HINSTANCE prev_instance_unused,
+                          wchar_t *command_line_unused,
+                          int show_command_arg)
 {
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);

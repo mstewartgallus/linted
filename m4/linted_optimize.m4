@@ -40,9 +40,9 @@ dnl
                              dnl and prevents symbol conflicts
         [-Bsymbolic]dnl Also gets around some more redirections
 ])
+AC_SUBST([linted_CFLAGS_OPTIMIZE])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_OPTIMIZE],[dnl
-        [-fuse-linker-plugin]dnl
         [-Wl,-O1]dnl
         [-Wl,-X] [-Wl,--discard-locals]dnl Remove compiler generated
                                        dnl symbols

@@ -40,6 +40,7 @@ AC_PROG_CC
 dnl
 LINTED_FAST_BUILD
 [CC="${CC} ${linted_CFLAGS_FAST_BUILD}"]
+[CC="${CC} ${linted_LDFLAGS_FAST_BUILD}"]
 dnl
 linted_target_host_flag="-target $host"
 LINTED_CHECK_CFLAG([linted_CFLAGS_HOSTFLAGS], [$linted_target_host_flag])

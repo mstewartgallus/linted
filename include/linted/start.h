@@ -38,10 +38,32 @@ extern struct linted_start_config const linted_start_config;
 int linted_start_show_command(void);
 #endif
 
-extern char const linted_start__useme;
+/* This is an awful hack to get linking to work right */
+#ifndef LINTED_START__NO_MAIN
 
-#ifndef LINTED_START_OBJECT
-void const *const linted_start__user = &linted_start__useme;
+#if defined HAVE_WINDOWS_API
+int linted_start__wWinMain(void *program_instance,
+                           void *prev_instance_unused,
+                           wchar_t *command_line_unused,
+                           int show_command_arg);
+
+int WINAPI wWinMain(HINSTANCE program_instance,
+                    HINSTANCE prev_instance_unused,
+                    wchar_t *command_line_unused, int show_command_arg)
+{
+	return linted_start__wWinMain(
+	    program_instance, prev_instance_unused, command_line_unused,
+	    show_command_arg);
+}
+#else
+extern int linted_start__main(int argc, char *argv[]);
+
+int main(int argc, char *argv[])
+{
+	return linted_start__main(argc, argv);
+}
+#endif
+
 #endif
 
 #endif /* LINTED_START_H */

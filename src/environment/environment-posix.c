@@ -73,6 +73,7 @@ linted_error linted_environment_get(char const *key, char **valuep)
 unlock_mutex:
 	pthread_mutex_unlock(&mutex);
 
-	*valuep = value_dup;
+	if (0 == err)
+		*valuep = value_dup;
 	return err;
 }

@@ -28,11 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* This is an awful hack to force the library to be linked in to users.
- */
-char const linted_start__useme;
-
-int main(int argc, char *argv[])
+int linted_start__main(int argc, char *argv[])
 {
 	linted_error err = 0;
 
