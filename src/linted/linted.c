@@ -221,6 +221,7 @@ static unsigned char main_start(char const *const process_name,
 	/* Deliberately don't check the closed fds */
 	for (size_t ii = 0U; ii < num_kos_to_close; ++ii)
 		linted_ko_close(kos_to_close[ii]);
+	linted_mem_free(kos_to_close);
 #endif
 	linted_log_open(process_name);
 

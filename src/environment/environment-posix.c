@@ -23,26 +23,38 @@
 #include "linted/str.h"
 #include "linted/util.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex;
 
 linted_error linted_environment_set(char const *key, char const *value,
                                     _Bool overwrite)
 {
 	linted_error err = 0;
 
-	pthread_mutex_lock(&mutex);
+	err = pthread_mutex_lock(&mutex);
+	if (err != 0) {
+		assert(err != EDEADLK);
+		assert(false);
+	}
 
 	if (-1 == setenv(key, value, overwrite)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 	}
 
-	pthread_mutex_unlock(&mutex);
+	{
+		linted_error unlock_err = pthread_mutex_unlock(&mutex);
+		if (unlock_err != 0) {
+			assert(unlock_err != EPERM);
+			assert(false);
+		}
+	}
 
 	return err;
 }
@@ -51,29 +63,38 @@ linted_error linted_environment_get(char const *key, char **valuep)
 {
 	linted_error err = 0;
 
-	pthread_mutex_lock(&mutex);
-
-	char *value_dup;
-	{
-		char const *value = getenv(key);
-		if (0 == value) {
-			value_dup = 0;
-			goto unlock_mutex;
-		}
-
-		{
-			char *xx;
-			err = linted_str_dup(&xx, value);
-			if (err != 0)
-				goto unlock_mutex;
-			value_dup = xx;
-		}
+	err = pthread_mutex_lock(&mutex);
+	if (err != 0) {
+		assert(err != EDEADLK);
+		assert(false);
 	}
 
-unlock_mutex:
-	pthread_mutex_unlock(&mutex);
+	char *value_dup = 0;
+
+	char const *value = getenv(key);
+	if (0 == value)
+		goto unlock_mutex;
+
+	{
+		char *xx;
+		err = linted_str_dup(&xx, value);
+		if (err != 0)
+			goto unlock_mutex;
+		value_dup = xx;
+	}
+
+unlock_mutex : {
+	linted_error unlock_err = pthread_mutex_unlock(&mutex);
+	if (unlock_err != 0) {
+		assert(unlock_err != EPERM);
+		assert(false);
+	}
+}
 
 	if (0 == err)
 		*valuep = value_dup;
+
 	return err;
 }
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;

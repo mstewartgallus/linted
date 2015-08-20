@@ -306,6 +306,9 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 		assert(err_egl != EGL_BAD_CONFIG);
 
 		switch (err_egl) {
+		default:
+			assert(false);
+
 		/* Maybe the current surface or context can
 		 * become invalidated somehow? */
 		case EGL_CONTEXT_LOST:
@@ -320,8 +323,6 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 				err = ENOMEM;
 			break;
 		}
-
-		assert(false);
 	}
 
 	if (EGL_FALSE == eglTerminate(display)) {

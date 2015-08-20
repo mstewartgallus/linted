@@ -54,9 +54,9 @@ int linted_start_show_command(void)
 }
 
 int linted_start__wWinMain(HINSTANCE program_instance,
-                          HINSTANCE prev_instance_unused,
-                          wchar_t *command_line_unused,
-                          int show_command_arg)
+                           HINSTANCE prev_instance_unused,
+                           wchar_t *command_line_unused,
+                           int show_command_arg)
 {
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);
