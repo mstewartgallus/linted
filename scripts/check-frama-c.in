@@ -13,24 +13,30 @@ SCRIPTS="@srcdir@"
 BINARY="$1"
 
 : ${LINTED_FRAMA_C:=frama-c}
+: ${STDLIB:=no}
 
 source_cflags() {
     for II in $("${SCRIPTS}/json-cc-flags.py" "${BINARY}"); do
-        printf '%s\n' -cpp-extra-args="${II}"
+        printf -- '%s\n' -cpp-extra-args="${II}"
     done
-}
-
-frama_c_stdlib() {
-    printf '%s\n' -cpp-extra-args="-I$("${LINTED_FRAMA_C}" -print-share-path)/libc"
 }
 
 source_files() {
     "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
-(source_cflags && frama_c_stdlib && source_files) | \
-xargs --delimiter='\n' -- \
-"${LINTED_FRAMA_C}"\
+(
+    source_cflags
+    if test "x${STDLIB}" = 'xyes'
+    then
+        printf -- '%s\n' -frama-c-stdlib
+    else
+        printf -- '%s\n' -no-frama-c-stdlib
+    fi
+    source_files
+) | \
+    xargs --delimiter='\n' -- \
+    "${LINTED_FRAMA_C}"\
     -quiet\
     -journal-disable\
     -pp-annot\
