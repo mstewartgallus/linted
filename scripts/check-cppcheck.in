@@ -38,4 +38,7 @@ xargs --delimiter='\n' -- \
     --enable=portability\
     --enable=information\
     --enable=missingInclude\
+    --platform=unix64\
+    --std=c99\
+    --std=posix\
     --template='{file}:{line}: ({id}) {message}'
