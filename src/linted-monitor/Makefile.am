@@ -37,6 +37,7 @@ if POSIX_API
   src/fifo/libfifo.la\
   src/io/libio.la\
   src/ko/libko.la\
+  src/path/libpath.la\
   src/pid/libpid.la\
   src/sched/libsched.la\
   src/signal/libsignal.la\

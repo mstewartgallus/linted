@@ -25,6 +25,7 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/path.h"
 #include "linted/pid.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
@@ -278,32 +279,6 @@ static unsigned char monitor_start(char const *process_name,
 		waiter = xx;
 	}
 
-	char const *data_dir_path;
-	{
-		char *xx;
-		err = linted_environment_get("XDG_DATA_HOME", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		data_dir_path = xx;
-	}
-
-	char const *runtime_dir_path;
-	{
-		char *xx;
-		err = linted_environment_get("XDG_RUNTIME_DIR", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		runtime_dir_path = xx;
-	}
-
 	if (0 == manager_pid_str) {
 		linted_log(LINTED_LOG_ERROR,
 		           "%s is a required environment variable",
@@ -329,23 +304,6 @@ static unsigned char monitor_start(char const *process_name,
 		linted_log(LINTED_LOG_ERROR,
 		           "%s is a required environment variable",
 		           "LINTED_WAITER");
-		return EXIT_FAILURE;
-	}
-
-	/**
-	 * @todo Use fallbacks for missing XDG environment variables.
-	 */
-	if (0 == runtime_dir_path) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "XDG_RUNTIME_HOME");
-		return EXIT_FAILURE;
-	}
-
-	if (0 == data_dir_path) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "XDG_DATA_HOME");
 		return EXIT_FAILURE;
 	}
 
@@ -400,25 +358,28 @@ on_error:
 	char *package_runtime_dir_path;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/%s", runtime_dir_path,
-		                   PACKAGE_TARNAME)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
+		err = linted_path_package_runtime_dir(&xx);
+		if (err != 0) {
+			linted_log(
+			    LINTED_LOG_ERROR,
+			    "linted_path_package_runtime_dir: %s",
+			    linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		package_runtime_dir_path = xx;
 	}
 
-	char *package_data_dir_path;
+	char *package_data_home_path;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/%s", data_dir_path,
-		                   PACKAGE_TARNAME)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
+		err = linted_path_package_data_home(&xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_path_package_data_home: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		package_data_dir_path = xx;
+		package_data_home_path = xx;
 	}
 
 	char *process_runtime_dir_path;
@@ -434,17 +395,17 @@ on_error:
 		process_runtime_dir_path = xx;
 	}
 
-	char *process_data_dir_path;
+	char *process_data_home_path;
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "%s/%" PRIuMAX,
-		                   package_data_dir_path,
+		                   package_data_home_path,
 		                   (uintmax_t)manager_pid)) {
 			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
-		process_data_dir_path = xx;
+		process_data_home_path = xx;
 	}
 
 	err = linted_dir_create(0, LINTED_KO_CWD,
@@ -455,8 +416,8 @@ on_error:
 		return EXIT_FAILURE;
 	}
 
-	err = linted_dir_create(0, LINTED_KO_CWD, package_data_dir_path,
-	                        0U, S_IRWXU);
+	err = linted_dir_create(0, LINTED_KO_CWD,
+	                        package_data_home_path, 0U, S_IRWXU);
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_dir_create: %s",
 		           linted_error_string(err));
@@ -471,8 +432,8 @@ on_error:
 		return EXIT_FAILURE;
 	}
 
-	err = linted_dir_create(0, LINTED_KO_CWD, process_data_dir_path,
-	                        0U, S_IRWXU);
+	err = linted_dir_create(0, LINTED_KO_CWD,
+	                        process_data_home_path, 0U, S_IRWXU);
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_dir_create: %s",
 		           linted_error_string(err));
@@ -501,7 +462,7 @@ on_error:
 		return EXIT_FAILURE;
 	}
 
-	err = linted_ko_symlink(process_data_dir_path, "var");
+	err = linted_ko_symlink(process_data_home_path, "var");
 	if (err != 0) {
 		if (errno != EEXIST) {
 			linted_log(LINTED_LOG_ERROR,

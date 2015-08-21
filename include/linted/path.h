@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,22 +13,18 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LINTED_LOG_H
-#define LINTED_LOG_H
+#ifndef LINTED_PATH_H
+#define LINTED_PATH_H
 
-#include "linted/util.h"
+#include "linted/error.h"
 
 /**
  * @file
  *
- * Abstracts over the system logger.
+ * Provides standard filesystem paths
  */
 
-enum { LINTED_LOG_ERROR = 3, LINTED_LOG_WARNING = 4 };
-typedef unsigned char linted_log_level;
+linted_error linted_path_package_runtime_dir(char **packagep);
+linted_error linted_path_package_data_home(char **packagep);
 
-void linted_log_open(char const *ident);
-void linted_log(linted_log_level log_level, char const *format, ...)
-    LINTED_FORMAT(__printf__, 2, 3);
-
-#endif /* LINTED_LOG_H */
+#endif /* LINTED_PATH_H */
