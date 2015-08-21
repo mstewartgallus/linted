@@ -365,7 +365,8 @@ AC_CONFIG_FILES([scripts/test
                  scripts/check-frama-c
                  scripts/check-iwyu
                  scripts/check-splint
-                 scripts/check-sparse],[
+                 scripts/check-sparse
+                 scripts/cpa-config],[
                  chmod u+x "${ac_file}"
 ])
 dnl
