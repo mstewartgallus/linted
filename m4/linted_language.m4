@@ -15,6 +15,7 @@ dnl preprocessor, compiler and linker options.
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_LANGUAGE],[
         [-std=c99]dnl
+        [-fno-rtti -fno-exceptions]dnl
         [-pedantic-errors]dnl
 ])
 AC_SUBST([linted_CFLAGS_LANGUAGE])
