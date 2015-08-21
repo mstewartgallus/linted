@@ -35,6 +35,16 @@ MOSTLYCLEANFILES=
 dist_pkgdefaultconf_DATA=
 dist_pkgdefaultunits_DATA=
 
+SUFFIXES=
+
+AM_CPPFLAGS=
+AM_LDFLAGS=
+
+linted_CLANG_FORMATFLAGS=
+
+
+EXTRA_DIST+=%D%/configure-defaults
+
 AM_CFLAGS=\
  $(linted_CFLAGS_LANGUAGE)\
  $(linted_CFLAGS_OPTIMIZE)\
@@ -42,13 +52,6 @@ AM_CFLAGS=\
  $(linted_CFLAGS_DEBUG)\
  $(linted_CFLAGS_DEBUG_INFO)\
  $(linted_CFLAGS_WARNINGS)
-
-AM_CPPFLAGS=
-AM_LDFLAGS=
-
-linted_CLANG_FORMATFLAGS=
-
-EXTRA_DIST+=%D%/configure-defaults
 
 if WINDOWS_API
 AM_CFLAGS+=$(linted_CFLAGS_UNICODE)
@@ -73,10 +76,11 @@ indent:
 	find $(srcdir)/src $(srcdir)/include -type f -name '*.[ch]' -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
+linted_CLANG_FORMATFLAGS+=-i
+
+SUFFIXES+= .rc
 .rc.$(OBJEXT):
 	$(WINDRES) -i $< -o $@ --output-format=coff
-
-linted_CLANG_FORMATFLAGS+=-i
 
 include docs/Makefile.am
 include scripts/Makefile.am

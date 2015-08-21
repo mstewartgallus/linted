@@ -36,30 +36,42 @@ EXTRA_DIST+=\
   %D%/check-sparse.in\
   %D%/cpa-config.in
 MOSTLYCLEANFILES+=\
-  %D%/test\
-  %D%/check-cbmc\
-  %D%/check-cpa\
-  %D%/check-clang-analysis\
-  %D%/check-cppcheck\
-  %D%/check-frama-c\
-  %D%/check-iwyu\
-  %D%/check-splint\
-  %D%/check-sparse\
-  %D%/cpa-config
+  %D%/test.out\
+  %D%/check-cbmc.out\
+  %D%/check-cpa.out\
+  %D%/check-clang-analysis.out\
+  %D%/check-cppcheck.out\
+  %D%/check-frama-c.out\
+  %D%/check-iwyu.out\
+  %D%/check-splint.out\
+  %D%/check-sparse.out\
+  %D%/cpa-config.out
 
 all:\
-  %D%/test\
-  %D%/check-cbmc\
-  %D%/check-cpa\
-  %D%/check-clang-analysis\
-  %D%/check-cppcheck\
-  %D%/check-frama-c\
-  %D%/check-iwyu\
-  %D%/check-splint\
-  %D%/check-sparse\
-  %D%/cpa-config
+  %D%/test.out\
+  %D%/check-cbmc.out\
+  %D%/check-cpa.out\
+  %D%/check-clang-analysis.out\
+  %D%/check-cppcheck.out\
+  %D%/check-frama-c.out\
+  %D%/check-iwyu.out\
+  %D%/check-splint.out\
+  %D%/check-sparse.out\
+  %D%/cpa-config.out
 
-%D%/%: %D%/%.in Makefile
+%D%/test.out: Makefile
+%D%/check-cbmc.out: Makefile
+%D%/check-cpa.out: Makefile
+%D%/check-clang-analysis.out: Makefile
+%D%/check-cppcheck.out: Makefile
+%D%/check-frama-c.out: Makefile
+%D%/check-iwyu.out: Makefile
+%D%/check-splint.out: Makefile
+%D%/check-sparse.out: Makefile
+%D%/cpa-config.out: Makefile
+
+SUFFIXES+= .out .in
+.in.out:
 	sed \
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEXT)|g'\
