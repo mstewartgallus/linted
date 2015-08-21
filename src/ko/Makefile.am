@@ -30,3 +30,11 @@ if WINDOWS_API
   src/str/libstr.la\
   src/utf/libutf.la
 endif
+
+TESTS+=%D%/test_ko
+check_PROGRAMS+=%D%/test_ko
+
+%C%_test_ko_SOURCES=%D%/ko-test.c
+%C%_test_ko_LDADD=\
+ src/ko/libko.la\
+ src/io/libio.la
