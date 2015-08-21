@@ -15,7 +15,7 @@ realpath() (
     pwd
 )
 
-SRCDIR="@top_srcdir@"
+SRCDIR="@srcdir@"
 EXEEXT="@EXEEXT@"
 ROOT="$(realpath "$(dirname "$0")")"
 BUILDDIR="$(realpath "${ROOT}/..")"

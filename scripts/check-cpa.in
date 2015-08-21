@@ -9,7 +9,7 @@ set -e
 set -C
 set -u
 
-SCRIPTS="@srcdir@"
+SCRIPTS="@srcdir@/scripts"
 BINARY="$1"
 
 : ${LINTED_CPA:=cpa.sh}

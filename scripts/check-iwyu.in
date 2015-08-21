@@ -17,7 +17,7 @@ source_files() {
     "${SCRIPTS}/json-cc-files.py" "${BINARY}"
 }
 
-SCRIPTS="@srcdir@"
+SCRIPTS="@srcdir@/scripts"
 BINARY="$1"
 
 : ${LINTED_IWYU:=iwyu}

@@ -23,3 +23,45 @@ EXTRA_DIST+=\
   %D%/json-cc-flags.py\
   %D%/json-cc.py\
   %D%/setsysroot
+
+EXTRA_DIST+=\
+  %D%/test.in\
+  %D%/check-cbmc.in\
+  %D%/check-cpa.in\
+  %D%/check-clang-analysis.in\
+  %D%/check-cppcheck.in\
+  %D%/check-frama-c.in\
+  %D%/check-iwyu.in\
+  %D%/check-splint.in\
+  %D%/check-sparse.in\
+  %D%/cpa-config.in
+MOSTLYCLEANFILES+=\
+  %D%/test\
+  %D%/check-cbmc\
+  %D%/check-cpa\
+  %D%/check-clang-analysis\
+  %D%/check-cppcheck\
+  %D%/check-frama-c\
+  %D%/check-iwyu\
+  %D%/check-splint\
+  %D%/check-sparse\
+  %D%/cpa-config
+
+all:\
+  %D%/test\
+  %D%/check-cbmc\
+  %D%/check-cpa\
+  %D%/check-clang-analysis\
+  %D%/check-cppcheck\
+  %D%/check-frama-c\
+  %D%/check-iwyu\
+  %D%/check-splint\
+  %D%/check-sparse\
+  %D%/cpa-config
+
+%D%/%: %D%/%.in Makefile
+	sed \
+	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
+	  -e 's|[@]EXEEXT[@]|$(EXEXT)|g'\
+	  $< > $@
+	chmod u+x $@

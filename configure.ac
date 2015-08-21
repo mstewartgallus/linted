@@ -357,17 +357,5 @@ LINTED_WARNINGS
 dnl
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([scripts/test
-                 scripts/check-cbmc
-                 scripts/check-cpa
-                 scripts/check-clang-analysis
-                 scripts/check-cppcheck
-                 scripts/check-frama-c
-                 scripts/check-iwyu
-                 scripts/check-splint
-                 scripts/check-sparse
-                 scripts/cpa-config],[
-                 chmod u+x "${ac_file}"
-])
 dnl
 AC_OUTPUT

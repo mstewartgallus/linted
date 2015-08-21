@@ -1,5 +1,5 @@
 parser.usePreprocessor = true
-parser.preprocessor = cpp -I. -I@srcdir@/../include
+parser.preprocessor = cpp -I. -I@srcdir@/include
 
 cpa = cpa.arg.ARGCPA
 ARGCPA.cpa = cpa.composite.CompositeCPA

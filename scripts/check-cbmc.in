@@ -12,7 +12,7 @@ set -u
 # This is not a real verification because our programs are unbounded
 # and is only a basic double check.
 
-SCRIPTS="@srcdir@"
+SCRIPTS="@srcdir@/scripts"
 BINARY="$1"
 
 shift

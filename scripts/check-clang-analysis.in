@@ -40,7 +40,7 @@ checkers() {
     done
 }
 
-SCRIPTS="@srcdir@"
+SCRIPTS="@srcdir@/scripts"
 BINARY="$1"
 
 : ${LINTED_CLANG:=clang}
