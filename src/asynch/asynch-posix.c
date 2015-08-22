@@ -1181,6 +1181,11 @@ static void *poller_routine(void *arg)
 			err = poll_one(ko, flags, &xx);
 			if (EINTR == err)
 				goto wait_on_poll;
+			/* POSIX allows EAGAIN to return here if there
+			 * is a temporary inability to allocate memory
+			 * to service the request. */
+			if (EAGAIN == err)
+				goto wait_on_poll;
 			if (err != 0)
 				goto complete_task;
 			revents = xx;

@@ -133,6 +133,8 @@ poll_for_readability:
 		err = poll_one(ko, POLLIN, &xx);
 		if (EINTR == err)
 			goto poll_for_readability;
+		if (EAGAIN == err)
+			goto poll_for_readability;
 		if (err != 0)
 			goto finish_reading;
 		revents = xx;
@@ -217,6 +219,8 @@ poll_for_writeability:
 		short xx;
 		err = poll_one(ko, POLLOUT, &xx);
 		if (EINTR == err)
+			goto poll_for_writeability;
+		if (EAGAIN == err)
 			goto poll_for_writeability;
 		if (err != 0)
 			goto get_sigpipe;
