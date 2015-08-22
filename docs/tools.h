@@ -24,7 +24,6 @@
  * <li> [Infer](http://fbinfer.com/) </li>
  * <li> [joern](https://github.com/fabsx00/joern) </li>
  * <li> [KLEE](https://klee.github.io/) </li>
- * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/) </li>
  * <li> [Oink](http://daniel-wilkerson.appspot.com/oink/index.html) </li>
  * <li> [Overture Tool](http://overturetool.org/) </li>
  * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
@@ -33,6 +32,7 @@
  * <li> [S-Spider](https://code.google.com/p/s-spider/) </li>
  * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
  * <li> [TLA+](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html) </li>
+ * <li> [OWASP's Dependency Check](https://bintray.com/jeremy-long/owasp/dependency-check) </li>
  * <li> [unifdef](http://dotat.at/prog/unifdef/) </li>
  * <li> [Why3](http://why3.lri.fr/) </li>
  * <li> [Vera++](https://bitbucket.org/verateam/vera/wiki/Home) </li>
@@ -201,6 +201,14 @@
  * @section rejected Rejected Tools
  *
  * <ul>
+ *
+ * <li [Divine](http://divine.fi.muni.cz/manual.html#installation)
+ * - It does not compile properly.
+ * </li>
+ *
+ * <li> [MOPS](http://web.cs.ucdavis.edu/~hchen/mops/)
+ * - It does not compile properly.
+ * </li>
  *
  * <li> [VOGL](https://github.com/ValveSoftware/vogl)
  * - It doesn't support EGL.  See the issue at
