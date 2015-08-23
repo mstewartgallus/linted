@@ -82,7 +82,6 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 		return err;
 	}
 
-	runtime_dir_path = "/tmp";
 	linted_log(LINTED_LOG_WARNING,
 	           "%s not set, falling back to runtime directory %s",
 	           "XDG_RUNTIME_DIR", "/tmp");
