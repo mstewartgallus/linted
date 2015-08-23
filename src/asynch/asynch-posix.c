@@ -862,6 +862,15 @@ struct wait_manager {
 };
 
 static void *master_poller_routine(void *arg);
+static linted_error
+do_task_for_event(struct linted_asynch_pool *asynch_pool,
+                  struct linted_asynch_waiter *waiter, short revents);
+static linted_error recv_waiters(struct linted_asynch_pool *asynch_pool,
+                                 struct pollfd *pollfds,
+                                 struct linted_asynch_waiter **waiters,
+                                 struct waiter_queue *waiter_queue,
+                                 int fd, size_t max_tasks,
+                                 short revents);
 
 static linted_error wait_manager_create(
     struct wait_manager **managerp, struct waiter_queue *waiter_queue,
@@ -972,8 +981,6 @@ static void *master_poller_routine(void *arg)
 	size_t max_tasks = pool->poller_count;
 	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
 
-	pthread_t self = pthread_self();
-
 	for (size_t ii = 0U; ii < max_tasks + 1U; ++ii) {
 		pollfds[ii].fd = -1;
 		pollfds[ii].events = 0;
@@ -1007,6 +1014,7 @@ static void *master_poller_routine(void *arg)
 		}
 
 		for (size_t ii = 0U; ii < 1U + max_tasks; ++ii) {
+			int fd = pollfds[ii].fd;
 			short revents = pollfds[ii].revents;
 
 			if (0 == revents)
@@ -1016,141 +1024,24 @@ static void *master_poller_routine(void *arg)
 				break;
 			--numpolled;
 
-			bool has_pollerr = (revents & POLLERR) != 0;
-			bool has_pollhup = (revents & POLLHUP) != 0;
-			bool has_pollnval = (revents & POLLNVAL) != 0;
-			bool has_pollin = (revents & POLLIN) != 0;
+			if (ii != 0U) {
+				pollfds[ii].fd = -1;
 
-			if (0U == ii) {
-				assert(!has_pollerr);
-				assert(!has_pollhup);
-				assert(!has_pollnval);
-
-				assert(has_pollin);
-
-				for (;;) {
-					for (;;) {
-						uint64_t xx;
-						if (-1 ==
-						    read(pollfds[ii].fd,
-						         &xx,
-						         sizeof xx)) {
-							err = errno;
-							assert(err !=
-							       0);
-							if (EINTR ==
-							    err)
-								continue;
-							if (EAGAIN ==
-							    err)
-								break;
-							assert(0);
-						}
-						break;
-					}
-
-					struct linted_asynch_waiter *
-					    waiter;
-					{
-						struct
-						    linted_asynch_waiter *
-						        xx;
-						err = waiter_try_recv(
-						    waiter_queue, &xx);
-						if (EAGAIN == err)
-							break;
-						waiter = xx;
-					}
-
-					if (waiter->thread_canceller)
-						goto exit_mainloop;
-
-					linted_ko ko = waiter->ko;
-					struct linted_asynch_task *
-					    task = waiter->task;
-					unsigned short flags =
-					    waiter->flags;
-
-					if (canceller_check_or_register(
-					        &task->canceller,
-					        self)) {
-						err =
-						    LINTED_ERROR_CANCELLED;
-						linted_asynch_pool_complete(
-						    asynch_pool, task,
-						    err);
-						continue;
-					}
-
-					for (size_t jj = 0U;
-					     jj < max_tasks; ++jj) {
-						if (-1 ==
-						    pollfds[1U + jj]
-						        .fd) {
-							pollfds[1U + jj]
-							    .fd = ko;
-							pollfds[1U + jj]
-							    .events =
-							    flags;
-							waiters[jj] =
-							    waiter;
-							goto finish;
-						}
-					}
-					assert(0);
-
-				finish:
-					continue;
-				}
+				err = do_task_for_event(
+				    asynch_pool, waiters[ii - 1U],
+				    revents);
+				if (err != 0)
+					goto exit_mainloop;
 				continue;
 			}
 
-			pollfds[ii].fd = -1;
-
-			struct linted_asynch_waiter *waiter =
-			    waiters[ii - 1U];
-			struct linted_asynch_task *task = waiter->task;
-			linted_ko ko = waiter->ko;
-
-			if (has_pollnval) {
-				err = LINTED_ERROR_INVALID_KO;
-				goto complete_task;
+			err = recv_waiters(asynch_pool, pollfds,
+			                   waiters, waiter_queue, fd,
+			                   max_tasks, revents);
+			if (ECANCELED == err) {
+				err = 0;
+				goto exit_mainloop;
 			}
-
-			if (has_pollhup) {
-				err = EPIPE;
-				goto complete_task;
-			}
-
-			if (has_pollerr) {
-				int xx;
-				socklen_t yy = sizeof xx;
-				if (-1 == getsockopt(ko, SOL_SOCKET,
-				                     SO_ERROR, &xx,
-				                     &yy)) {
-					err = errno;
-					goto complete_task;
-				}
-				err = xx;
-				/* If another poller got the error then
-				 * we
-				 * could get zero instead so just
-				 * resubmit in
-				 * that case.
-				 */
-				if (err != 0)
-					goto complete_task;
-			}
-
-			waiter->revents = revents;
-
-			linted_asynch_pool_resubmit(asynch_pool, task);
-			continue;
-
-		complete_task:
-			linted_asynch_pool_complete(asynch_pool, task,
-			                            err);
-			continue;
 		}
 
 	check_cancellers:
@@ -1158,18 +1049,144 @@ static void *master_poller_routine(void *arg)
 			if (-1 == pollfds[1U + ii].fd)
 				continue;
 
+			struct linted_asynch_waiter *waiter =
+			    waiters[ii];
+			struct linted_asynch_task *task = waiter->task;
+
+			pthread_t self = pthread_self();
+
 			if (!canceller_check_or_register(
-			        &waiters[ii]->task->canceller, self))
+			        &task->canceller, self))
 				continue;
 
 			pollfds[1U + ii].fd = -1;
 
 			linted_asynch_pool_complete(
-			    asynch_pool, waiters[ii]->task,
-			    LINTED_ERROR_CANCELLED);
+			    asynch_pool, task, LINTED_ERROR_CANCELLED);
 		}
 	}
 exit_mainloop:
+	return 0;
+}
+
+static linted_error recv_waiters(struct linted_asynch_pool *asynch_pool,
+                                 struct pollfd *pollfds,
+                                 struct linted_asynch_waiter **waiters,
+                                 struct waiter_queue *waiter_queue,
+                                 int fd, size_t max_tasks,
+                                 short revents)
+{
+	linted_error err = 0;
+
+	bool has_pollerr = (revents & POLLERR) != 0;
+	bool has_pollhup = (revents & POLLHUP) != 0;
+	bool has_pollnval = (revents & POLLNVAL) != 0;
+	bool has_pollin = (revents & POLLIN) != 0;
+
+	assert(!has_pollerr);
+	assert(!has_pollhup);
+	assert(!has_pollnval);
+
+	assert(has_pollin);
+
+	for (;;) {
+		uint64_t xx;
+		if (-1 == read(fd, &xx, sizeof xx)) {
+			err = errno;
+			assert(err != 0);
+			if (EINTR == err)
+				continue;
+			if (EAGAIN == err)
+				break;
+			assert(0);
+		}
+		break;
+	}
+
+	for (;;) {
+		struct linted_asynch_waiter *waiter;
+		{
+			struct linted_asynch_waiter *xx;
+			err = waiter_try_recv(waiter_queue, &xx);
+			if (EAGAIN == err)
+				break;
+			waiter = xx;
+		}
+
+		if (waiter->thread_canceller)
+			return ECANCELED;
+
+		linted_ko ko = waiter->ko;
+		struct linted_asynch_task *task = waiter->task;
+		unsigned short flags = waiter->flags;
+
+		pthread_t self = pthread_self();
+		if (canceller_check_or_register(&task->canceller,
+		                                self)) {
+			err = LINTED_ERROR_CANCELLED;
+			goto complete_task;
+		}
+
+		for (size_t jj = 0U; jj < max_tasks; ++jj) {
+			if (-1 == pollfds[1U + jj].fd) {
+				pollfds[1U + jj].fd = ko;
+				pollfds[1U + jj].events = flags;
+				waiters[jj] = waiter;
+				goto finish;
+			}
+		}
+		assert(0);
+
+	finish:
+		continue;
+
+	complete_task:
+		linted_asynch_pool_complete(asynch_pool, task, err);
+		continue;
+	}
+
+	return 0;
+}
+
+static linted_error
+do_task_for_event(struct linted_asynch_pool *asynch_pool,
+                  struct linted_asynch_waiter *waiter, short revents)
+{
+	struct linted_asynch_task *task = waiter->task;
+	linted_ko ko = waiter->ko;
+
+	bool has_pollerr = (revents & POLLERR) != 0;
+	bool has_pollnval = (revents & POLLNVAL) != 0;
+
+	linted_error err = 0;
+
+	if (has_pollnval) {
+		err = LINTED_ERROR_INVALID_KO;
+		goto complete_task;
+	}
+
+	if (has_pollerr) {
+		int xx;
+		socklen_t yy = sizeof xx;
+		if (-1 ==
+		    getsockopt(ko, SOL_SOCKET, SO_ERROR, &xx, &yy)) {
+			err = errno;
+			goto complete_task;
+		}
+		err = xx;
+		/* If another poller got the error then we could get
+		 * zero instead so just resubmit in that case.
+		 */
+		if (err != 0)
+			goto complete_task;
+	}
+
+	waiter->revents = revents;
+	linted_asynch_pool_resubmit(asynch_pool, task);
+	return 0;
+
+complete_task:
+	linted_asynch_pool_complete(asynch_pool, task, err);
 	return 0;
 }
 

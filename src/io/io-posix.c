@@ -613,6 +613,10 @@ void linted_io_do_read(struct linted_asynch_pool *pool,
 	if (err != 0)
 		goto complete_task;
 
+	/* Hangup or nothing more to read */
+	if (0 == result)
+		goto complete_task;
+
 	size_t bytes_read_delta = result;
 
 	bytes_read += bytes_read_delta;
