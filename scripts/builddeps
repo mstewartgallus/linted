@@ -32,6 +32,14 @@ deps() {
     printf '%s\0' "x11proto-xext-dev"
     printf '%s\0' "x11proto-xf86vidmode-dev"
 
+    case "${OS}" in
+	'linux-gnu')
+	    printf '%s\0' "linux-libc-dev:${ARCH}"
+	    ;;
+	*)
+	    ;;
+    esac
+
     case "${ABI}" in
 	'dietlibc')
 	    printf '%s\0' 'dietlibc-dev'
@@ -114,7 +122,6 @@ deps() {
 	    printf '%s\0' "libxkbcommon-dev:${ARCH}"
 	    printf '%s\0' "libxkbcommon-x11-0:${ARCH}"
 	    printf '%s\0' "libxkbcommon-x11-dev:${ARCH}"
-	    printf '%s\0' "linux-libc-dev:${ARCH}"
 
 	    printf '%s\0' "libasyncns0:${ARCH}"
 	    printf '%s\0' "libdbus-1-3:${ARCH}"

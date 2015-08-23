@@ -66,6 +66,19 @@
  *
  * <ul>
  *
+ * <li> [GDB](https://www.gnu.org/software/gdb/)
+ *
+ * See http://tromey.com/blog/?p=734 for how to set up multiprocess
+ * debugging.
+ *
+ * <code>
+ * (gdb) set detach-on-fork off
+ * (gdb) set target-async on
+ * (gdb) set non-stop on
+ * (gdb) set pagination off
+ * </code>
+ * </li>
+ *
  * <li> GLibc Memory Allocator Debug Environment Variables
  * They are `MALLOC_CHECK_` and `MALLOC_PERTURB_`.
  * </li>

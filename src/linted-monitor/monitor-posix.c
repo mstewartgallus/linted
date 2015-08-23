@@ -56,7 +56,10 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 
-#include <linux/ptrace.h>
+#ifndef PTRACE_EVENT_STOP
+#define PTRACE_EVENT_STOP 128
+#endif
+
 #endif
 
 #include <sys/stat.h>

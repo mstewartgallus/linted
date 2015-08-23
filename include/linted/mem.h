@@ -133,7 +133,10 @@ static inline linted_error linted_mem_realloc_array(void **memp,
 static inline void linted_mem_free(void *memory)
 {
 	extern void free(void *ptr);
-	free(memory);
+	/* This is primarily for making debugging easier and not for
+	 * any sort of optimization */
+	if (memory != 0)
+		free(memory);
 }
 
 #endif /* LINTED_MEM_H */
