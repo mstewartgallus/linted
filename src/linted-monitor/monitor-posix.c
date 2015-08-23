@@ -1696,7 +1696,7 @@ static linted_error on_kill_read(struct linted_asynch_task *task)
 		if (kill_err != ESRCH) {
 			assert(kill_err != EINVAL);
 			assert(kill_err != EPERM);
-			assert(0 == err);
+			assert(0 == kill_err);
 		}
 	}
 
