@@ -286,7 +286,7 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 
 		child = clone(
 		    fork_routine, child_stack + page_size + stack_size,
-		    SIGCHLD | CLONE_VM | clone_flags, &fork_args);
+		    SIGCHLD | clone_flags, &fork_args);
 		assert(child != 0);
 
 		linted_error mask_err =
