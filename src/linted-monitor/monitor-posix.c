@@ -1397,11 +1397,25 @@ envvar_allocate_succeeded:
 		args[1U + num_options + 1U + ii] = exec_start[ii];
 	args[args_size] = 0;
 
-	err = linted_spawn(0, cwd, sandbox, 0, 0, args,
+	struct linted_spawn_attr *attr;
+	{
+		struct linted_spawn_attr *xx;
+		err = linted_spawn_attr_init(&xx);
+		if (err != 0)
+			goto free_args;
+		attr = xx;
+	}
+
+	linted_spawn_attr_set_untraced(attr);
+
+	err = linted_spawn(0, cwd, sandbox, 0, attr, args,
 	                   (char const *const *)envvars);
 
 	/* Let the child be leaked, we'll get the wait later */
 
+	linted_spawn_attr_destroy(attr);
+
+free_args:
 	linted_mem_free(args);
 
 free_sandbox_dup:
