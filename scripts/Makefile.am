@@ -72,6 +72,7 @@ all:\
 
 SUFFIXES+= .out .in
 .in.out:
+	$(MKDIR_P) "$$(dirname $@)"
 	sed \
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEXT)|g'\
