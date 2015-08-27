@@ -19,7 +19,6 @@
  * <li> [AFL](http://lcamtuf.coredump.cx/afl/) </li>
  * <li> [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
  * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
- * <li> [Eclipse's CODAN](http://wiki.eclipse.org/CDT/designs/StaticAnalysis) </li>
  * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve) </li>
  * <li> [Infer](http://fbinfer.com/) </li>
  * <li> [joern](https://github.com/fabsx00/joern) </li>
@@ -226,6 +225,22 @@
  * <li> [VOGL](https://github.com/ValveSoftware/vogl)
  * - It doesn't support EGL.  See the issue at
  *   https://github.com/ValveSoftware/vogl/issues/193
+ * </li>
+ *
+ * <li> [Eclipse's CODAN and builtin analyzers](http://wiki.eclipse.org/CDT/designs/StaticAnalysis)
+ * - Projects can be easily imported into Eclipse via the Autotools
+ *   project import tool.
+ *
+ * - I haven't investigated if there is a way to get CODAN to work in
+ *   a command line style and not only from the Eclipse GUI.
+ *
+ * - Most of CODANs analyzers are very dumb.
+ *
+ * - Eclipse seems to be analyzing even unused source files such as
+ *   are used for different platforms builds which error out.
+ *
+ * - A unified analyzer framework might make it easier to plugin
+ *   multiple static analyzers in the future.
  * </li>
  *
  * <li> [GLSL-Debugger](https://glsl-debugger.github.io/)
