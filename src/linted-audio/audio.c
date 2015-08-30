@@ -36,9 +36,37 @@
 #include <pulse/proplist.h>
 #include <pulse/stream.h>
 
+#define A_TONE 440
 #define SAMPLE_RATE 44100U
 
-static short sampledata[300000U];
+static short sampledata[80U * 4096U];
+
+static double square_wave(size_t ii, double freq, double amplitude,
+                          double sample_rate)
+{
+	double frequency = freq / (double)sample_rate;
+	size_t period = 1 / frequency;
+
+	return amplitude * ((ii % period + (period / 2U)) / period);
+}
+
+static double triangle_wave(size_t ii, double freq, double amplitude,
+                            double sample_rate)
+{
+	double frequency = freq / (double)sample_rate;
+	size_t period = 1 / frequency;
+
+	return amplitude * (ii % period) / (double)period;
+}
+
+static double sin_wave(size_t ii, double freq, double amplitude,
+                       double sample_rate)
+{
+	double frequency = freq / (double)sample_rate;
+	double tau = 6.28318530718;
+
+	return amplitude * sin(tau * frequency * ii);
+}
 
 static pa_sample_spec test_sample_spec = {
     .format = PA_SAMPLE_S16LE, .rate = SAMPLE_RATE, .channels = 1U};
@@ -58,10 +86,10 @@ static unsigned char audio_start(char const *const process_name,
                                  size_t argc, char const *const argv[])
 {
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(sampledata); ++ii)
-		sampledata[ii] = 8000.0 *
-		                 cos(5000 * (double)ii / SAMPLE_RATE) *
-		                 cos(50 * (double)ii / SAMPLE_RATE) *
-		                 cos(5 * (double)ii / SAMPLE_RATE);
+		sampledata[ii] =
+		    triangle_wave(ii, A_TONE, 8000, SAMPLE_RATE) *
+		    square_wave(ii, A_TONE / 100.0, 1, SAMPLE_RATE) *
+		    sin_wave(ii, A_TONE / 1000.0, 1, SAMPLE_RATE);
 
 	pa_mainloop *mainloop = pa_mainloop_new();
 	if (0 == mainloop) {
