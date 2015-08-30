@@ -332,7 +332,7 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	}
 on_window_read_err:
 	if (EPROTO == err) {
-		err = 0;
+		/* Do nothing */
 	} else if (err != 0) {
 		return err;
 	} else {

@@ -1039,7 +1039,6 @@ static void *master_poller_routine(void *arg)
 			                   waiters, waiter_queue, fd,
 			                   max_tasks, revents);
 			if (ECANCELED == err) {
-				err = 0;
 				goto exit_mainloop;
 			}
 		}

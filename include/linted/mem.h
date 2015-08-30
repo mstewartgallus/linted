@@ -26,6 +26,10 @@
  * Allocates memory.
  */
 
+/* For consistent platform behaviour we return the null pointer on
+ * zero sized allocations.
+ */
+
 static inline linted_error
 linted_mem_safe_multiply(size_t nmemb, size_t size, size_t *resultp)
 {
@@ -40,9 +44,14 @@ static inline linted_error linted_mem_alloc(void **memp, size_t size)
 {
 	extern void *malloc(size_t size);
 
-	void *memory = malloc(size);
-	if (size > 0U && 0 == memory)
-		return LINTED_ERROR_OUT_OF_MEMORY;
+	void *memory;
+	if (0U == size) {
+		memory = 0;
+	} else {
+		memory = malloc(size);
+		if (0 == memory)
+			return LINTED_ERROR_OUT_OF_MEMORY;
+	}
 
 	*memp = memory;
 	return 0;
@@ -60,9 +69,14 @@ linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 	if (err != 0)
 		return err;
 
-	void *memory = malloc(total);
-	if (total > 0U && 0 == memory)
-		return LINTED_ERROR_OUT_OF_MEMORY;
+	void *memory;
+	if (0U == size) {
+		memory = 0;
+	} else {
+		memory = malloc(total);
+		if (0 == memory)
+			return LINTED_ERROR_OUT_OF_MEMORY;
+	}
 
 	*memp = memory;
 	return 0;
@@ -73,9 +87,14 @@ static inline linted_error linted_mem_alloc_zeroed(void **memp,
 {
 	extern void *calloc(size_t nmemb, size_t size);
 
-	void *memory = calloc(1U, size);
-	if (size > 0U && 0 == memory)
-		return LINTED_ERROR_OUT_OF_MEMORY;
+	void *memory;
+	if (0U == size) {
+		memory = 0;
+	} else {
+		memory = calloc(1U, size);
+		if (0 == memory)
+			return LINTED_ERROR_OUT_OF_MEMORY;
+	}
 
 	*memp = memory;
 	return 0;
@@ -99,10 +118,17 @@ static inline linted_error linted_mem_realloc(void **memp, void *memory,
                                               size_t new_size)
 {
 	extern void *realloc(void *ptr, size_t size);
+	extern void free(void *ptr);
 
-	void *new_memory = realloc(memory, new_size);
-	if (new_size > 0U && 0 == new_memory)
-		return LINTED_ERROR_OUT_OF_MEMORY;
+	void *new_memory;
+	if (0U == new_size) {
+		free(memory);
+		new_memory = 0;
+	} else {
+		new_memory = realloc(memory, new_size);
+		if (0 == new_memory)
+			return LINTED_ERROR_OUT_OF_MEMORY;
+	}
 
 	*memp = new_memory;
 	return 0;
@@ -114,6 +140,7 @@ static inline linted_error linted_mem_realloc_array(void **memp,
                                                     size_t size)
 {
 	extern void *realloc(void *ptr, size_t size);
+	extern void free(void *ptr);
 
 	linted_error err;
 
@@ -122,9 +149,15 @@ static inline linted_error linted_mem_realloc_array(void **memp,
 	if (err != 0)
 		return err;
 
-	void *new_memory = realloc(memory, total);
-	if (total > 0U && 0 == new_memory)
-		return LINTED_ERROR_OUT_OF_MEMORY;
+	void *new_memory;
+	if (0U == total) {
+		free(memory);
+		new_memory = 0;
+	} else {
+		new_memory = realloc(memory, total);
+		if (0 == new_memory)
+			return LINTED_ERROR_OUT_OF_MEMORY;
+	}
 
 	*memp = new_memory;
 	return 0;
@@ -133,6 +166,7 @@ static inline linted_error linted_mem_realloc_array(void **memp,
 static inline void linted_mem_free(void *memory)
 {
 	extern void free(void *ptr);
+
 	/* This is primarily for making debugging easier and not for
 	 * any sort of optimization */
 	if (memory != 0)
