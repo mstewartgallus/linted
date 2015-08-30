@@ -1,5 +1,5 @@
 #! /usr/bin/env python3.3
-# Copyright 2014 Steven Stewart-Gallus
+# Copyright 2014, 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -9,9 +9,9 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.  See the License for the specific language governing
+# permissions and limitations under the License.
 import os
 import subprocess
 import sys
@@ -19,10 +19,14 @@ import json
 from collections import namedtuple
 
 def go():
-    cc = sys.argv[1]
-    files, flags, makeflags, linking, output = parse(sys.argv[2:])
+    arguments = sys.argv
+
+    _, cc, *argument_tail = arguments
+    files, flags, makeflags, linking, output = parse(argument_tail)
 
     if len(makeflags) > 0:
+        preprocessor_command = [cc, '-E']
+
         output_args = []
         if output != None:
             output_args = ['-o', output]
@@ -31,7 +35,13 @@ def go():
         if linking:
             link_args = ['-c']
 
-        subprocess.check_call([cc, '-E'] + output_args + makeflags + link_args + flags + files)
+        preprocessor_command.extend(output_args)
+        preprocessor_command.extend(makeflags)
+        preprocessor_command.extend(link_args)
+        preprocessor_command.extend(flags)
+        preprocessor_command.extend(files)
+
+        subprocess.check_call(preprocessor_command)
         # Fall through
 
     if '-dM' in flags or '-E' in makeflags:
@@ -39,8 +49,9 @@ def go():
 
     if 0 == len(files):
         raise Exception('Some files are needed!')
-    elif linking:
-        if output == None:
+
+    if linking:
+        if None == output:
             output = 'a.out'
 
         files_json = []
@@ -62,32 +73,34 @@ def go():
                 'files': files_json
             }))
 
-    else:
-        if 1 == len(files):
-            input_file = files[0]
+        return
 
-            if output == None:
-                output = input_file.replace('.c', '.o')
+    if 1 == len(files):
+        input_file = files[0]
 
-            exit_status = subprocess.call([cc, '-std=gnu99'] + flags + [input_file, '-o/dev/null'])
-            if exit_status != 0:
-                sys.exit(exit_status)
+        if output == None:
+            output = input_file.replace('.c', '.o')
 
-            with open(output, 'w') as outputfile:
-                outputfile.write(json.dumps({
-                    'flags': flags,
-                    'files': [input_file]
-                }))
-        else:
-            if output == None:
-                raise Exception('cannot specify -o with -c with multiple files')
+        exit_status = subprocess.call([cc, '-std=gnu99'] + flags + [input_file, '-o/dev/null'])
+        if exit_status != 0:
+            sys.exit(exit_status)
 
-            for input_file in files:
-                with open(input_file.replace('.c', '.o'), 'w') as outputfile:
-                    outputfile.write(json.dumps({
-                        'flags': flags,
-                        'files': [input_file]
-                    }))
+        with open(output, 'w') as outputfile:
+            outputfile.write(json.dumps({
+                'flags': flags,
+                'files': [input_file]
+            }))
+        return
+
+    if output == None:
+        raise Exception('cannot specify -o with -c with multiple files')
+
+    for input_file in files:
+        with open(input_file.replace('.c', '.o'), 'w') as outputfile:
+            outputfile.write(json.dumps({
+                'flags': flags,
+                'files': [input_file]
+            }))
 
 Arguments = namedtuple('Arguments',
                        ('files', 'flags', 'makeflags', 'linking', 'output'))
