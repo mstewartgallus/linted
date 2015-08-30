@@ -54,6 +54,10 @@ void linted_log(linted_log_level log_level, char const *format, ...)
 		priority = LOG_WARNING;
 		break;
 
+	case LINTED_LOG_INFO:
+		priority = LOG_INFO;
+		break;
+
 	default:
 		assert(false);
 		return;

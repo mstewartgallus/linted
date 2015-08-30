@@ -20,8 +20,12 @@ pkglibexec_PROGRAMS+=%D%/linted-audio
 %C%_linted_audio_LDADD=\
   src/start/libstart.la\
   \
+  src/error/liberror.la\
+  src/io/libio.la\
+  src/ko/libko.la\
   src/log/liblog.la\
   \
+  -lm\
   $(PULSE_LIBS)
 
 %C%_linted_audio_CPPFLAGS=\

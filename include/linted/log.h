@@ -24,7 +24,9 @@
  * Abstracts over the system logger.
  */
 
-enum { LINTED_LOG_ERROR = 3, LINTED_LOG_WARNING = 4 };
+enum { LINTED_LOG_ERROR = 3,
+       LINTED_LOG_WARNING = 4,
+       LINTED_LOG_INFO = 6 };
 typedef unsigned char linted_log_level;
 
 void linted_log_open(char const *ident);
