@@ -9,36 +9,34 @@ set -e
 set -C
 set -u
 
-SCRIPTS="@srcdir@/scripts"
-BINARY="$1"
+go() {
+    SCRIPTS="@srcdir@/scripts"
+    : ${LINTED_CPPCHECK:=cppcheck}
 
-: ${LINTED_CPPCHECK:=cppcheck}
-
-source_cflags() {
-    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+    for BINARY in $(make -s list-programs)
+    do
+        ("${SCRIPTS}/json-cc-flags.py" "${BINARY}" && "${SCRIPTS}/json-cc-files.py" "${BINARY}") | \
+             xargs --delimiter='\n' -- \
+            "${LINTED_CPPCHECK}"\
+            -D__linux__\
+            -D__unix__\
+            -D__amd64__\
+            -I'/usr/include'\
+            -I'/usr/include/x86_64-linux-gnu'\
+            -I'/usr/lib/clang/3.6/include'\
+            --quiet\
+            --enable=warning\
+            --enable=style\
+            --enable=performance\
+            --enable=portability\
+            --enable=information\
+            --enable=missingInclude\
+            --platform=unix64\
+            --std=c99\
+            --std=posix\
+            --template='{file}:{line}: ({id}) {message}' & :
+    done
+    wait
 }
 
-source_files() {
-    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
-}
-
-(source_cflags && source_files) | \
-xargs --delimiter='\n' -- \
-"${LINTED_CPPCHECK}"\
-    -D__linux__\
-    -D__unix__\
-    -D__amd64__\
-    -I'/usr/include'\
-    -I'/usr/include/x86_64-linux-gnu'\
-    -I'/usr/lib/clang/3.6/include'\
-    --quiet\
-    --enable=warning\
-    --enable=style\
-    --enable=performance\
-    --enable=portability\
-    --enable=information\
-    --enable=missingInclude\
-    --platform=unix64\
-    --std=c99\
-    --std=posix\
-    --template='{file}:{line}: ({id}) {message}'
+go "$@"

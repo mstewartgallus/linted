@@ -9,30 +9,29 @@ set -e
 set -C
 set -u
 
-SCRIPTS="@srcdir@/scripts"
-BINARY="$1"
 
-: ${LINTED_SPLINT:=splint}
+go() {
+    SCRIPTS="@srcdir@/scripts"
+    : ${LINTED_SPLINT:=splint}
 
-source_cflags() {
-    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+    for BINARY in $(make -s list-programs)
+    do
+        ("${SCRIPTS}/json-cc-flags.py" "${BINARY}" && "${SCRIPTS}/json-cc-files.py" "${BINARY}") | \
+            xargs --delimiter='\n' -- \
+            "${LINTED_SPLINT}"\
+                  -D__linux__\
+                  -D__unix__\
+                  -D__amd64__\
+                  -systemdirs '/usr/include:/usr/include/x86_64-linux-gnu:/usr/lib/clang/3.5/include'\
+                  +posixstrictlib\
+                  -type\
+                  -shadow\
+                  -nestedextern\
+                  -globs\
+                  -mustfreefresh\
+                  -compdef & :
+    done
+    wait
 }
 
-source_files() {
-    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
-}
-
-(source_cflags && source_files) | \
-xargs --delimiter='\n' -- \
-"${LINTED_SPLINT}"\
-    -D__linux__\
-    -D__unix__\
-    -D__amd64__\
-    -systemdirs '/usr/include:/usr/include/x86_64-linux-gnu:/usr/lib/clang/3.5/include'\
-    +posixstrictlib\
-    -type\
-    -shadow\
-    -nestedextern\
-    -globs\
-    -mustfreefresh\
-    -compdef
+go "$@"

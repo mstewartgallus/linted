@@ -10,26 +10,261 @@ set -C
 set -u
 
 go() {
-    (checkers && source_cflags && printf -- '--\n' && source_files) | \
-    xargs --delimiter='\n' -- "${LINTED_CLANG}"\
-    --analyze\
-    \
-    -w\
-    -Qunused-arguments\
-    -Wno-unknown-warning-option\
-    -Xclang -analyzer-output=text\
-    -Xclang -o-
+    SCRIPTS="@srcdir@/scripts"
+    : ${LINTED_CLANG:=clang-3.6}
+
+    for BINARY in $(make -s list-programs)
+    do
+        (checkers && source_cflags "${BINARY}" && printf -- '--\n' && source_files "${BINARY}") | \
+            xargs --delimiter='\n' -- "${LINTED_CLANG}"\
+            --analyze\
+            \
+            -w\
+            -Qunused-arguments\
+            -Wno-unknown-warning-option\
+            -Xclang -analyzer-output=text\
+            -Xclang -o- & :
+    done
+    wait
 }
 
 source_cflags() {
-    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+    "${SCRIPTS}/json-cc-flags.py" "${1}"
 }
 
 source_files() {
-    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
+    "${SCRIPTS}/json-cc-files.py" "${1}"
 }
 
 checkers() {
+    DISABLED=$(
+	# Sadly we need to use vfork sometimes
+	# Warn on uses of the 'vfork' function
+	printf '%s\n' 'security.insecureAPI.vfork'
+
+	# Check unreachable code
+	# Too many false positives on code of the form
+
+	# #define LINTED_ASSUME_UNREACHABLE() \
+	# do {                                \
+	#         extern void abort(void);    \
+	#         abort();                    \
+	# } while (0)
+
+	# for the while (0)
+
+	printf '%s\n' 'alpha.deadcode.UnreachableCode'
+    )
+
+    ENABLED=$(
+	# Way too many false positives
+	# Check for cast from non-struct pointer to struct pointer
+	printf '%s\n' 'alpha.core.CastToStruct'
+
+	# Warn about assigning non-{0,1} values to Boolean variables
+	printf '%s\n' 'alpha.core.BoolAssignment'
+
+	# Check for logical errors for function calls and Objective-C
+	# message expressions (e.g., uninitialized arguments, null
+	# function pointers, and pointer to undefined variables)
+	printf '%s\n' 'alpha.core.CallAndMessageUnInitRefArg'
+
+	# Check when casting a malloc'ed type T, whether the size is a
+	# multiple of the size of T
+	printf '%s\n' 'alpha.core.CastSize'
+
+	# Check for assignment of a fixed address to a pointer
+	printf '%s\n' 'alpha.core.FixedAddr'
+	# Warn about unintended use of identical expressions in operators
+	printf '%s\n' 'alpha.core.IdenticalExpr'
+	# Check for pointer arithmetic on locations other than array elements
+	printf '%s\n' 'alpha.core.PointerArithm'
+	# Check for pointer subtractions on two pointers pointing to different
+	# memory chunks
+	printf '%s\n' 'alpha.core.PointerSub'
+	# Warn about unintended use of sizeof() on pointer expressions
+	printf '%s\n' 'alpha.core.SizeofPtr'
+
+	# Check for division by variable that is later compared against
+	# 0. Either the comparison is useless or there is division by
+	# zero.
+	printf '%s\n' 'alpha.core.TestAfterDivZero'
+
+	# Check virtual function calls during construction or destruction
+	printf '%s\n' 'alpha.cplusplus.VirtualCall'
+
+	# Warn about Objective-C classes that lack a correct implementation of
+	# -dealloc
+	printf '%s\n' 'alpha.osx.cocoa.Dealloc'
+	# Check for direct assignments to instance variables
+	printf '%s\n' 'alpha.osx.cocoa.DirectIvarAssignment'
+	# Check for direct assignments to instance variables in the methods
+	# annotated with objc_no_direct_instance_variable_assignment
+	printf '%s\n' 'alpha.osx.cocoa.DirectIvarAssignmentForAnnotatedFunctions'
+	# Check that the invalidatable instance variables are invalidated in
+	# the methods annotated with objc_instance_variable_invalidator
+	printf '%s\n' 'alpha.osx.cocoa.InstanceVariableInvalidation'
+	# Check that the invalidation methods are present in classes that
+	# contain invalidatable instance variables
+	printf '%s\n' 'alpha.osx.cocoa.MissingInvalidationMethod'
+
+	# Warn about buffer overflows (older checker)
+	printf '%s\n' 'alpha.security.ArrayBound'
+	# Warn about buffer overflows (newer checker)
+	printf '%s\n' 'alpha.security.ArrayBoundV2'
+	# Check for overflows in the arguments to malloc()
+	printf '%s\n' 'alpha.security.MallocOverflow'
+	# Check for an out-of-bound pointer being returned to callers
+	printf '%s\n' 'alpha.security.ReturnPtrRange'
+	# Generate taint information used by other checkers
+	printf '%s\n' 'alpha.security.taint.TaintPropagation'
+
+	# Check improper use of chroot
+	printf '%s\n' 'alpha.unix.Chroot'
+	# Check for memory leaks, double free, and use-after-free
+	# problems. Traces memory managed by malloc()/free(). Assumes that all
+	# user-defined functions which might free a pointer are annotated.
+	printf '%s\n' 'alpha.unix.MallocWithAnnotations'
+	# Simple lock -> unlock checker
+	printf '%s\n' 'alpha.unix.PthreadLock'
+	# Check for misuses of stream APIs
+	printf '%s\n' 'alpha.unix.SimpleStream'
+	# Check stream handling functions
+	printf '%s\n' 'alpha.unix.Stream'
+	# Checks for overlap in two buffer arguments
+	printf '%s\n' 'alpha.unix.cstring.BufferOverlap'
+	# Check for arguments which are not null-terminating strings
+	printf '%s\n' 'alpha.unix.cstring.NotNullTerminated'
+	# Check for out-of-bounds access in string functions
+	printf '%s\n' 'alpha.unix.cstring.OutOfBounds'
+
+	# Check for logical errors for function calls and Objective-C message
+	# expressions (e.g., uninitialized arguments, null function pointers)
+	printf '%s\n' 'core.CallAndMessage'
+	# Check for division by zero
+	printf '%s\n' 'core.DivideZero'
+	# Generate dynamic type information
+	printf '%s\n' 'core.DynamicTypePropagation'
+	# Check for null pointers passed as arguments to a function whose
+	# arguments are references or marked with the 'nonnull' attribute
+	printf '%s\n' 'core.NonNullParamChecker'
+	# Check for dereferences of null pointers
+	printf '%s\n' 'core.NullDereference'
+	# Check that addresses to stack memory do not escape the function
+	printf '%s\n' 'core.StackAddressEscape'
+	# Check for undefined results of binary operators
+	printf '%s\n' 'core.UndefinedBinaryOperatorResult'
+	# Check for declarations of VLA of undefined or zero size
+	printf '%s\n' 'core.VLASize'
+	# Evaluate compiler builtin functions (e.g., alloca())
+	printf '%s\n' 'core.builtin.BuiltinFunctions'
+	# Evaluate panic functions that are known to not return to the caller
+	printf '%s\n' 'core.builtin.NoReturnFunctions'
+	# Check for uninitialized values used as array subscripts
+	printf '%s\n' 'core.uninitialized.ArraySubscript'
+	# Check for assigning uninitialized values
+	printf '%s\n' 'core.uninitialized.Assign'
+	# Check for uninitialized values used as branch conditions
+	printf '%s\n' 'core.uninitialized.Branch'
+	# Check for blocks that capture uninitialized values
+	printf '%s\n' 'core.uninitialized.CapturedBlockVariable'
+	# Check for uninitialized values being returned to the caller
+	printf '%s\n' 'core.uninitialized.UndefReturn'
+
+	# Check for double-free and use-after-free problems. Traces memory
+	# managed by new/delete.
+	printf '%s\n' 'cplusplus.NewDelete'
+
+	# Check for memory leaks. Traces memory managed by new/delete.
+	printf '%s\n' 'cplusplus.NewDeleteLeaks'
+
+	# Check for values stored to variables that are never read
+	# afterwards
+	printf '%s\n' 'deadcode.DeadStores'
+
+	# Check code for LLVM codebase conventions
+	printf '%s\n' 'llvm.Conventions'
+
+	# Check for proper uses of various Apple APIs
+	printf '%s\n' 'osx.API'
+	# Check for proper uses of Secure Keychain APIs
+	printf '%s\n' 'osx.SecKeychainAPI'
+	# Check for nil pointers used as mutexes for @synchronized
+	printf '%s\n' 'osx.cocoa.AtSync'
+	# Check for sending 'retain', 'release', or 'autorelease' directly to a Class
+	printf '%s\n' 'osx.cocoa.ClassRelease'
+	# Warn about Objective-C method signatures with type incompatibilities
+	printf '%s\n' 'osx.cocoa.IncompatibleMethodTypes'
+	# Improved modeling of loops using Cocoa collection types
+	printf '%s\n' 'osx.cocoa.Loops'
+	# Warn about Objective-C methods that lack a necessary call to super
+	printf '%s\n' 'osx.cocoa.MissingSuperCall'
+	# Warn for suboptimal uses of NSAutoreleasePool in Objective-C GC mode
+	printf '%s\n' 'osx.cocoa.NSAutoreleasePool'
+	# Check usage of NSError** parameters
+	printf '%s\n' 'osx.cocoa.NSError'
+	# Check for prohibited nil arguments to ObjC method calls
+	printf '%s\n' 'osx.cocoa.NilArg'
+	# Model the APIs that are guaranteed to return a non-nil value
+	printf '%s\n' 'osx.cocoa.NonNilReturnValue'
+	# Check for leaks and improper reference count managementModel the
+	# APIs that are guaranteed to return a non-nil value
+	printf '%s\n' 'osx.cocoa.RetainCount'
+	# Check that 'self' is properly initialized inside an initializer method
+	printf '%s\n' 'osx.cocoa.SelfInit'
+	# Warn about private ivars that are never used
+	printf '%s\n' 'osx.cocoa.UnusedIvars'
+	# Check for passing non-Objective-C types to variadic collection
+	# initialization methods that expect only Objective-C types
+	printf '%s\n' 'osx.cocoa.VariadicMethodTypes'
+	# Check usage of CFErrorRef* parameters
+	printf '%s\n' 'osx.coreFoundation.CFError'
+	# Check for proper uses of CFNumberCreate
+	printf '%s\n' 'osx.coreFoundation.CFNumber'
+	# Check for null arguments to CFRetain/CFRelease/CFMakeCollectable
+	printf '%s\n' 'osx.coreFoundation.CFRetainRelease'
+	# Checks for index out-of-bounds when using 'CFArray' API
+	printf '%s\n' 'osx.coreFoundation.containers.OutOfBounds'
+	# Warns if 'CFArray', 'CFDictionary', 'CFSet' are created with
+	# non-pointer-size values
+	printf '%s\n' 'osx.coreFoundation.containers.PointerSizedValues'
+
+	# Warn on using a floating point value as a loop counter (CERT:
+	# FLP30-C, FLP30-CPP)
+	printf '%s\n' 'security.FloatLoopCounter'
+
+	# Warn on uses of functions whose return values must be always checked
+	printf '%s\n' 'security.insecureAPI.UncheckedReturn'
+	# Warn on uses of the 'getpw' function
+	printf '%s\n' 'security.insecureAPI.getpw'
+	# Warn on uses of the 'gets' function
+	printf '%s\n' 'security.insecureAPI.gets'
+	# Warn when 'mkstemp' is passed fewer than 6 X's in the format string
+	printf '%s\n' 'security.insecureAPI.mkstemp'
+	# Warn on uses of the 'mktemp' function
+	printf '%s\n' 'security.insecureAPI.mktemp'
+	# Warn on uses of the 'rand', 'random', and related functions
+	printf '%s\n' 'security.insecureAPI.rand'
+	# Warn on uses of the 'strcpy' and 'strcat' functions
+	printf '%s\n' 'security.insecureAPI.strcpy'
+
+
+	# Check calls to various UNIX/Posix functions
+	printf '%s\n' 'unix.API'
+	# Check for memory leaks, double free, and use-after-free
+	# problems. Traces memory managed by malloc()/free().
+	printf '%s\n' 'unix.Malloc'
+	# Check for dubious malloc arguments involving sizeof
+	printf '%s\n' 'unix.MallocSizeof'
+	# Check for mismatched deallocators.
+	printf '%s\n' 'unix.MismatchedDeallocator'
+	# Check the size argument passed into C string functions for common
+	# erroneous patterns
+	printf '%s\n' 'unix.cstring.BadSizeArg'
+	# Check for null pointers being passed as arguments to C string functions
+	printf '%s\n' 'unix.cstring.NullArg'
+    )
+
     for II in ${ENABLED}; do
         printf '%s\n' -Xanalyzer
         printf '%s\n' -analyzer-checker="${II}"
@@ -40,237 +275,4 @@ checkers() {
     done
 }
 
-SCRIPTS="@srcdir@/scripts"
-BINARY="$1"
-
-: ${LINTED_CLANG:=clang}
-
-DISABLED=$(
-    # Sadly we need to use vfork sometimes
-    # Warn on uses of the 'vfork' function
-    printf '%s\n' 'security.insecureAPI.vfork'
-
-    # Check unreachable code
-    # Too many false positives on code of the form
-
-    # #define LINTED_ASSUME_UNREACHABLE() \
-    # do {                                \
-    #         extern void abort(void);    \
-    #         abort();                    \
-    # } while (0)
-
-    # for the while (0)
-
-    printf '%s\n' 'alpha.deadcode.UnreachableCode'
-)
-
-ENABLED=$(
-    # Way too many false positives
-    # Check for cast from non-struct pointer to struct pointer
-    printf '%s\n' 'alpha.core.CastToStruct'
-
-    # Warn about assigning non-{0,1} values to Boolean variables
-    printf '%s\n' 'alpha.core.BoolAssignment'
-
-    # Check for logical errors for function calls and Objective-C
-    # message expressions (e.g., uninitialized arguments, null
-    # function pointers, and pointer to undefined variables)
-    printf '%s\n' 'alpha.core.CallAndMessageUnInitRefArg'
-
-    # Check when casting a malloc'ed type T, whether the size is a
-    # multiple of the size of T
-    printf '%s\n' 'alpha.core.CastSize'
-
-    # Check for assignment of a fixed address to a pointer
-    printf '%s\n' 'alpha.core.FixedAddr'
-    # Warn about unintended use of identical expressions in operators
-    printf '%s\n' 'alpha.core.IdenticalExpr'
-    # Check for pointer arithmetic on locations other than array elements
-    printf '%s\n' 'alpha.core.PointerArithm'
-    # Check for pointer subtractions on two pointers pointing to different
-    # memory chunks
-    printf '%s\n' 'alpha.core.PointerSub'
-    # Warn about unintended use of sizeof() on pointer expressions
-    printf '%s\n' 'alpha.core.SizeofPtr'
-
-    # Check for division by variable that is later compared against
-    # 0. Either the comparison is useless or there is division by
-    # zero.
-    printf '%s\n' 'alpha.core.TestAfterDivZero'
-
-    # Check virtual function calls during construction or destruction
-    printf '%s\n' 'alpha.cplusplus.VirtualCall'
-
-    # Warn about Objective-C classes that lack a correct implementation of
-    # -dealloc
-    printf '%s\n' 'alpha.osx.cocoa.Dealloc'
-    # Check for direct assignments to instance variables
-    printf '%s\n' 'alpha.osx.cocoa.DirectIvarAssignment'
-    # Check for direct assignments to instance variables in the methods
-    # annotated with objc_no_direct_instance_variable_assignment
-    printf '%s\n' 'alpha.osx.cocoa.DirectIvarAssignmentForAnnotatedFunctions'
-    # Check that the invalidatable instance variables are invalidated in
-    # the methods annotated with objc_instance_variable_invalidator
-    printf '%s\n' 'alpha.osx.cocoa.InstanceVariableInvalidation'
-    # Check that the invalidation methods are present in classes that
-    # contain invalidatable instance variables
-    printf '%s\n' 'alpha.osx.cocoa.MissingInvalidationMethod'
-
-    # Warn about buffer overflows (older checker)
-    printf '%s\n' 'alpha.security.ArrayBound'
-    # Warn about buffer overflows (newer checker)
-    printf '%s\n' 'alpha.security.ArrayBoundV2'
-    # Check for overflows in the arguments to malloc()
-    printf '%s\n' 'alpha.security.MallocOverflow'
-    # Check for an out-of-bound pointer being returned to callers
-    printf '%s\n' 'alpha.security.ReturnPtrRange'
-    # Generate taint information used by other checkers
-    printf '%s\n' 'alpha.security.taint.TaintPropagation'
-
-    # Check improper use of chroot
-    printf '%s\n' 'alpha.unix.Chroot'
-    # Check for memory leaks, double free, and use-after-free
-    # problems. Traces memory managed by malloc()/free(). Assumes that all
-    # user-defined functions which might free a pointer are annotated.
-    printf '%s\n' 'alpha.unix.MallocWithAnnotations'
-    # Simple lock -> unlock checker
-    printf '%s\n' 'alpha.unix.PthreadLock'
-    # Check for misuses of stream APIs
-    printf '%s\n' 'alpha.unix.SimpleStream'
-    # Check stream handling functions
-    printf '%s\n' 'alpha.unix.Stream'
-    # Checks for overlap in two buffer arguments
-    printf '%s\n' 'alpha.unix.cstring.BufferOverlap'
-    # Check for arguments which are not null-terminating strings
-    printf '%s\n' 'alpha.unix.cstring.NotNullTerminated'
-    # Check for out-of-bounds access in string functions
-    printf '%s\n' 'alpha.unix.cstring.OutOfBounds'
-
-    # Check for logical errors for function calls and Objective-C message
-    # expressions (e.g., uninitialized arguments, null function pointers)
-    printf '%s\n' 'core.CallAndMessage'
-    # Check for division by zero
-    printf '%s\n' 'core.DivideZero'
-    # Generate dynamic type information
-    printf '%s\n' 'core.DynamicTypePropagation'
-    # Check for null pointers passed as arguments to a function whose
-    # arguments are references or marked with the 'nonnull' attribute
-    printf '%s\n' 'core.NonNullParamChecker'
-    # Check for dereferences of null pointers
-    printf '%s\n' 'core.NullDereference'
-    # Check that addresses to stack memory do not escape the function
-    printf '%s\n' 'core.StackAddressEscape'
-    # Check for undefined results of binary operators
-    printf '%s\n' 'core.UndefinedBinaryOperatorResult'
-    # Check for declarations of VLA of undefined or zero size
-    printf '%s\n' 'core.VLASize'
-    # Evaluate compiler builtin functions (e.g., alloca())
-    printf '%s\n' 'core.builtin.BuiltinFunctions'
-    # Evaluate panic functions that are known to not return to the caller
-    printf '%s\n' 'core.builtin.NoReturnFunctions'
-    # Check for uninitialized values used as array subscripts
-    printf '%s\n' 'core.uninitialized.ArraySubscript'
-    # Check for assigning uninitialized values
-    printf '%s\n' 'core.uninitialized.Assign'
-    # Check for uninitialized values used as branch conditions
-    printf '%s\n' 'core.uninitialized.Branch'
-    # Check for blocks that capture uninitialized values
-    printf '%s\n' 'core.uninitialized.CapturedBlockVariable'
-    # Check for uninitialized values being returned to the caller
-    printf '%s\n' 'core.uninitialized.UndefReturn'
-
-    # Check for double-free and use-after-free problems. Traces memory
-    # managed by new/delete.
-    printf '%s\n' 'cplusplus.NewDelete'
-
-    # Check for memory leaks. Traces memory managed by new/delete.
-    printf '%s\n' 'cplusplus.NewDeleteLeaks'
-
-    # Check for values stored to variables that are never read
-    # afterwards
-    printf '%s\n' 'deadcode.DeadStores'
-
-    # Check code for LLVM codebase conventions
-    printf '%s\n' 'llvm.Conventions'
-
-    # Check for proper uses of various Apple APIs
-    printf '%s\n' 'osx.API'
-    # Check for proper uses of Secure Keychain APIs
-    printf '%s\n' 'osx.SecKeychainAPI'
-    # Check for nil pointers used as mutexes for @synchronized
-    printf '%s\n' 'osx.cocoa.AtSync'
-    # Check for sending 'retain', 'release', or 'autorelease' directly to a Class
-    printf '%s\n' 'osx.cocoa.ClassRelease'
-    # Warn about Objective-C method signatures with type incompatibilities
-    printf '%s\n' 'osx.cocoa.IncompatibleMethodTypes'
-    # Improved modeling of loops using Cocoa collection types
-    printf '%s\n' 'osx.cocoa.Loops'
-    # Warn about Objective-C methods that lack a necessary call to super
-    printf '%s\n' 'osx.cocoa.MissingSuperCall'
-    # Warn for suboptimal uses of NSAutoreleasePool in Objective-C GC mode
-    printf '%s\n' 'osx.cocoa.NSAutoreleasePool'
-    # Check usage of NSError** parameters
-    printf '%s\n' 'osx.cocoa.NSError'
-    # Check for prohibited nil arguments to ObjC method calls
-    printf '%s\n' 'osx.cocoa.NilArg'
-    # Model the APIs that are guaranteed to return a non-nil value
-    printf '%s\n' 'osx.cocoa.NonNilReturnValue'
-    # Check for leaks and improper reference count managementModel the
-    # APIs that are guaranteed to return a non-nil value
-    printf '%s\n' 'osx.cocoa.RetainCount'
-    # Check that 'self' is properly initialized inside an initializer method
-    printf '%s\n' 'osx.cocoa.SelfInit'
-    # Warn about private ivars that are never used
-    printf '%s\n' 'osx.cocoa.UnusedIvars'
-    # Check for passing non-Objective-C types to variadic collection
-    # initialization methods that expect only Objective-C types
-    printf '%s\n' 'osx.cocoa.VariadicMethodTypes'
-    # Check usage of CFErrorRef* parameters
-    printf '%s\n' 'osx.coreFoundation.CFError'
-    # Check for proper uses of CFNumberCreate
-    printf '%s\n' 'osx.coreFoundation.CFNumber'
-    # Check for null arguments to CFRetain/CFRelease/CFMakeCollectable
-    printf '%s\n' 'osx.coreFoundation.CFRetainRelease'
-    # Checks for index out-of-bounds when using 'CFArray' API
-    printf '%s\n' 'osx.coreFoundation.containers.OutOfBounds'
-    # Warns if 'CFArray', 'CFDictionary', 'CFSet' are created with
-    # non-pointer-size values
-    printf '%s\n' 'osx.coreFoundation.containers.PointerSizedValues'
-
-    # Warn on using a floating point value as a loop counter (CERT:
-    # FLP30-C, FLP30-CPP)
-    printf '%s\n' 'security.FloatLoopCounter'
-
-    # Warn on uses of functions whose return values must be always checked
-    printf '%s\n' 'security.insecureAPI.UncheckedReturn'
-    # Warn on uses of the 'getpw' function
-    printf '%s\n' 'security.insecureAPI.getpw'
-    # Warn on uses of the 'gets' function
-    printf '%s\n' 'security.insecureAPI.gets'
-    # Warn when 'mkstemp' is passed fewer than 6 X's in the format string
-    printf '%s\n' 'security.insecureAPI.mkstemp'
-    # Warn on uses of the 'mktemp' function
-    printf '%s\n' 'security.insecureAPI.mktemp'
-    # Warn on uses of the 'rand', 'random', and related functions
-    printf '%s\n' 'security.insecureAPI.rand'
-    # Warn on uses of the 'strcpy' and 'strcat' functions
-    printf '%s\n' 'security.insecureAPI.strcpy'
-
-
-    # Check calls to various UNIX/Posix functions
-    printf '%s\n' 'unix.API'
-    # Check for memory leaks, double free, and use-after-free
-    # problems. Traces memory managed by malloc()/free().
-    printf '%s\n' 'unix.Malloc'
-    # Check for dubious malloc arguments involving sizeof
-    printf '%s\n' 'unix.MallocSizeof'
-    # Check for mismatched deallocators.
-    printf '%s\n' 'unix.MismatchedDeallocator'
-    # Check the size argument passed into C string functions for common
-    # erroneous patterns
-    printf '%s\n' 'unix.cstring.BadSizeArg'
-    # Check for null pointers being passed as arguments to C string functions
-    printf '%s\n' 'unix.cstring.NullArg'
-)
-
-go
+go "$@"

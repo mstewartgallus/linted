@@ -9,23 +9,21 @@ set -e
 set -C
 set -u
 
-source_cflags() {
-    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+go() {
+    SCRIPTS="@srcdir@/scripts"
+    : ${LINTED_IWYU:=iwyu}
+
+    for BINARY in $(make -s list-programs)
+    do
+        "${SCRIPTS}/json-cc-files.py" "${BINARY}" | {
+            while IFS='' read -r II
+            do
+                "${SCRIPTS}/json-cc-flags.py" "${BINARY}" | xargs --delimiter='\n' -- "${LINTED_IWYU}" "${II}"  & :
+            done
+            wait
+        } & :
+    done
+    wait
 }
 
-source_files() {
-    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
-}
-
-SCRIPTS="@srcdir@/scripts"
-BINARY="$1"
-
-: ${LINTED_IWYU:=iwyu}
-
-source_files | (while IFS='' read -r II
-do
-    source_cflags | xargs --delimiter='\n' -- "${LINTED_IWYU}" "${II}"  & :
-done
-
-wait
-)
+go "$@"

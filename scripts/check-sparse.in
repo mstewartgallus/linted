@@ -9,31 +9,29 @@ set -e
 set -C
 set -u
 
-SCRIPTS="@srcdir@/scripts"
-BINARY="$1"
+go() {
+    SCRIPTS="@srcdir@/scripts"
+    : ${LINTED_SPARSE:=sparse}
 
-: ${LINTED_SPARSE:=sparse}
-
-source_cflags() {
-    "${SCRIPTS}/json-cc-flags.py" "${BINARY}"
+    for BINARY in $(make -s list-programs)
+    do
+        ("${SCRIPTS}/json-cc-flags.py" "${BINARY}" && "${SCRIPTS}/json-cc-files.py" "${BINARY}") | \
+            xargs --delimiter='\n' -- \
+            "${LINTED_SPARSE}"\
+                -D__linux__\
+                -D__unix__\
+                -D__amd64__\
+                -gcc-base-dir '/usr/lib/gcc/x86_64-linux-gnu/4.8.2'\
+                -I/usr/include/x86_64-linux-gnu\
+                -Wsparse-all\
+                -Wno-declaration-after-statement\
+                -Wno-non-pointer-null\
+                -Wno-transparent-union\
+                -Wno-undef\
+                -Wno-cast-truncate\
+                -Wno-missing-braces & :
+    done
+    wait
 }
 
-source_files() {
-    "${SCRIPTS}/json-cc-files.py" "${BINARY}"
-}
-
-(source_cflags && source_files) | \
-xargs --delimiter='\n' -- \
-"${LINTED_SPARSE}"\
-    -D__linux__\
-    -D__unix__\
-    -D__amd64__\
-    -gcc-base-dir '/usr/lib/gcc/x86_64-linux-gnu/4.8.2'\
-    -I/usr/include/x86_64-linux-gnu\
-    -Wsparse-all\
-    -Wno-declaration-after-statement\
-    -Wno-non-pointer-null\
-    -Wno-transparent-union\
-    -Wno-undef\
-    -Wno-cast-truncate\
-    -Wno-missing-braces
+go "$@"

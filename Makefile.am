@@ -76,6 +76,10 @@ indent:
 	find $(srcdir)/src $(srcdir)/include -type f -name '*.[ch]' -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
+.PHONY: list-programs
+list-programs:
+	@for II in $(PROGRAMS) $(check_PROGRAMS); do printf -- '%s\n' "$${II}"; done
+
 linted_CLANG_FORMATFLAGS+=-i
 
 SUFFIXES+= .rc
