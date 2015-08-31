@@ -57,6 +57,11 @@
  *
  * @subsection x86_64-w64-mingw32 x86_64 MinGW-w64
  *
+ * Options that don't work well with Windows NT builds:
+ * - `-gplit-dwarf`
+ * - `-flto`
+ * - `-fstack-protector`
+ *
  * Functions in the CRT that can be replaced with Win32 functions see
  * https://support.microsoft.com/en-us/kb/99456
  *

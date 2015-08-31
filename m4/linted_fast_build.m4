@@ -29,16 +29,18 @@ AS_IF([test "x${enable_fast_build}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_FAST_BUILD],[dnl
         [-pipe]
-        [-Wa,--compress-debug-sections]
         [-fintegrated-as]       dnl Clang's integrated ASM is faster
         dnl
         dnl We could separate out the debug info for linking speed but
         dnl it seems to cause problems with Wine.
         dnl [-gsplit-dwarf]dnl
 ])
+AC_SUBST([linted_CFLAGS_FAST_BUILD])
 dnl
-LINTED_CHECK_CFLAGS([linted_LDFLAGS_FAST_BUILD],[dnl
+LINTED_CHECK_LDFLAGS([linted_LDFLAGS_FAST_BUILD],[dnl
+        [-Wa,--compress-debug-sections]
         [-fuse-ld=gold]
 ])
+AC_SUBST([linted_LDFLAGS_FAST_BUILD])
 ])
 ])

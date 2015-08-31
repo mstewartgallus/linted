@@ -36,7 +36,6 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG_INFO],[dnl
         dnl
         dnl Allow better backtraces
         [-rdynamic]dnl
-        [-gsplit-dwarf]dnl
 ])
 dnl
 AC_SUBST([linted_CFLAGS_DEBUG_INFO])

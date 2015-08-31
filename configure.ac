@@ -41,24 +41,15 @@ LINTED_FAST_BUILD
 [CC="${CC} ${linted_LDFLAGS_FAST_BUILD}"]
 dnl
 linted_target_host_flag="-target ${host_alias}"
-LINTED_CHECK_CFLAG([linted_CFLAGS_HOSTFLAGS], [$linted_target_host_flag])
-AS_IF([test "x$linted_CFLAGS_HOSTFLAGS" != "x"], [
-   [CC="${CC} ${linted_CFLAGS_HOSTFLAGS}"]
-])
+LINTED_CHECK_LDFLAG([linted_CFLAGS_HOSTFLAGS_TARGET], [$linted_target_host_flag])
 dnl
 AS_IF([test "x${host_cpu}" = xi386 || test "x${host_cpu}" = xi686], [
-      LINTED_CHECK_CFLAG([linted_CFLAGS_HOSTFLAGS], [-m32])
-      AS_IF([test "x$linted_CFLAGS_HOSTFLAGS" != "x"], [
-           [CC="${CC} ${linted_CFLAGS_HOSTFLAGS}"]
-      ])
+      LINTED_CHECK_LDFLAGS([linted_CFLAGS_HOSTFLAGS_BITS], [-m32])
 ])
-dnl
 AS_IF([test "x${host_cpu}" = 'xx86_64'], [
-      LINTED_CHECK_CFLAG([linted_CFLAGS_HOSTFLAGS], [-m64])
-      AS_IF([test "x$linted_CFLAGS_HOSTFLAGS" != "x"], [
-           [CC="${CC} ${linted_CFLAGS_HOSTFLAGS}"]
-      ])
+      LINTED_CHECK_LDFLAGS([linted_CFLAGS_HOSTFLAGS_BITS], [-m64])
 ])
+[CC="${CC} ${linted_CFLAGS_HOSTFLAGS_TARGET} ${linted_CFLAGS_HOSTFLAGS_BITS}"]
 dnl
 AM_PROG_AR
 dnl

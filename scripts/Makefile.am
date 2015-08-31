@@ -75,6 +75,6 @@ SUFFIXES+= .out .in
 	$(MKDIR_P) "$$(dirname $@)"
 	sed \
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
-	  -e 's|[@]EXEEXT[@]|$(EXEXT)|g'\
+	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
 	  $< > $@
 	chmod u+x $@
