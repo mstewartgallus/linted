@@ -29,12 +29,10 @@ AS_IF([test "x${CFLAGS}" = "x"], [
 ])
 dnl
 AC_CANONICAL_HOST
-AS_IF([test "x${cross_compiling}" = "xno"], [
-        AC_MSG_WARN([dnl
-[Native and cross builds do not result in the exact same binaries.]
-[Explicitly set the --host and --build options and do not use native builds.]dnl
-])
-])
+dnl
+dnl Explicitly set this so that we always use the cross compilation
+dnl tests for the same build results from native and cross builds.
+[cross_compiling=yes]
 dnl
 AC_PROG_CC
 dnl
@@ -42,20 +40,20 @@ LINTED_FAST_BUILD
 [CC="${CC} ${linted_CFLAGS_FAST_BUILD}"]
 [CC="${CC} ${linted_LDFLAGS_FAST_BUILD}"]
 dnl
-linted_target_host_flag="-target $host"
+linted_target_host_flag="-target ${host_alias}"
 LINTED_CHECK_CFLAG([linted_CFLAGS_HOSTFLAGS], [$linted_target_host_flag])
 AS_IF([test "x$linted_CFLAGS_HOSTFLAGS" != "x"], [
    [CC="${CC} ${linted_CFLAGS_HOSTFLAGS}"]
 ])
 dnl
-AS_IF([test "x$host_cpu" = xi386 || test "x$host_cpu" = xi686], [
+AS_IF([test "x${host_cpu}" = xi386 || test "x${host_cpu}" = xi686], [
       LINTED_CHECK_CFLAG([linted_CFLAGS_HOSTFLAGS], [-m32])
       AS_IF([test "x$linted_CFLAGS_HOSTFLAGS" != "x"], [
            [CC="${CC} ${linted_CFLAGS_HOSTFLAGS}"]
       ])
 ])
 dnl
-AS_IF([test "x$host_cpu" = 'xx86_64'], [
+AS_IF([test "x${host_cpu}" = 'xx86_64'], [
       LINTED_CHECK_CFLAG([linted_CFLAGS_HOSTFLAGS], [-m64])
       AS_IF([test "x$linted_CFLAGS_HOSTFLAGS" != "x"], [
            [CC="${CC} ${linted_CFLAGS_HOSTFLAGS}"]
