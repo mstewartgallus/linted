@@ -16,20 +16,12 @@
 #include "config.h"
 
 #include "linted/error.h"
-#include "linted/io.h"
-#include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
-#include "linted/util.h"
 
-#include <arpa/inet.h>
-#include <errno.h>
 #include <math.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include <pulse/context.h>
 #include <pulse/error.h>

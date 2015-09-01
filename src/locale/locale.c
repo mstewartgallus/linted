@@ -17,6 +17,7 @@
 
 #include "linted/locale.h"
 
+#include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"

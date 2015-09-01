@@ -34,11 +34,9 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <syscall.h>
 #include <sys/mman.h>
-#include <ucontext.h>
 #include <unistd.h>
 
 #ifndef __NR_execveat

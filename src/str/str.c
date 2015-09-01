@@ -19,6 +19,7 @@
 
 #include "linted/str.h"
 
+#include "linted/error.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 

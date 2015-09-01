@@ -18,7 +18,7 @@ go() {
         "${SCRIPTS}/json-cc-files.py" "${BINARY}" | {
             while IFS='' read -r II
             do
-                "${SCRIPTS}/json-cc-flags.py" "${BINARY}" | xargs --delimiter='\n' -- "${LINTED_IWYU}" "${II}"  & :
+                "${SCRIPTS}/json-cc-flags.py" "${BINARY}" | xargs --delimiter='\n' -- "${LINTED_IWYU}" -I/usr/lib/clang/3.6/include "${II}"  & :
             done
             wait
         } & :

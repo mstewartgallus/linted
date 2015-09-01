@@ -17,6 +17,7 @@
 
 #include "linted/updater.h"
 
+#include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"

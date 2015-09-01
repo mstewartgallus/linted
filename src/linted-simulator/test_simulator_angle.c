@@ -18,7 +18,6 @@
 #include "sim.h"
 
 #include "linted/test.h"
-#include "linted/util.h"
 
 #include <stdlib.h>
 

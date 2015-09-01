@@ -37,7 +37,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 static uint_fast8_t control_start(char const *const process_name,
                                   size_t argc,

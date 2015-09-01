@@ -16,6 +16,8 @@
 #include "config.h"
 
 #include "linted/xcb.h"
+
+#include "linted/error.h"
 #include "linted/util.h"
 
 #include <errno.h>

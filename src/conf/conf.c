@@ -18,6 +18,8 @@
 #include "config.h"
 
 #include "linted/conf.h"
+#include "linted/error.h"
+#include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/str.h"
 #include "linted/util.h"
