@@ -10,6 +10,7 @@ dnl
 dnl Autodetects compiler warnings
 AC_DEFUN([LINTED_WARNINGS],[
 LINTED_CHECK_CFLAGS([linted_CFLAGS_WARNINGS],[
+        [-Qunused-arguments]dnl
         [-Werror=unknown-warning-option]dnl
 dnl
         [-Wall]dnl

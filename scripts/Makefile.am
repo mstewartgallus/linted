@@ -19,6 +19,7 @@ EXTRA_DIST+=\
   %D%/configure-cgcc\
   %D%/configure-goto-cc\
   %D%/configure-json-cc\
+  %D%/make-defaults\
   %D%/json-cc-files.py\
   %D%/json-cc-flags.py\
   %D%/json-cc.py\

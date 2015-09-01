@@ -125,8 +125,11 @@
 #define LINTED_NO_SANITIZE_ADDRESS
 #endif
 
+#define LINTED_STATIC_ASSERT_CONCAT_(A, B) A##B
+#define LINTED_STATIC_ASSERT_CONCAT(A, B)                              \
+	LINTED_STATIC_ASSERT_CONCAT_(A, B)
 #define LINTED_STATIC_ASSERT(...)                                      \
-	static char                                                    \
-	    _static_assertion_dummy[2U * ((_Bool)__VA_ARGS__) + 1U]
+	enum { LINTED_STATIC_ASSERT_CONCAT(assert_line_, __LINE__) =   \
+		   1U / (!!(__VA_ARGS__)) }
 
 #endif /* LINTED_UTIL_H */

@@ -37,15 +37,18 @@ dist_pkgdefaultunits_DATA=
 
 SUFFIXES=
 
+AM_LIBTOOLFLAGS=
 AM_CPPFLAGS=
+AM_CFLAGS=
 AM_LDFLAGS=
 
 linted_CLANG_FORMATFLAGS=
 
-
 EXTRA_DIST+=%D%/configure-defaults
 
-AM_CFLAGS=\
+AM_LIBTOOLFLAGS+=--silent
+
+AM_CFLAGS+=\
   $(linted_CFLAGS_FAST_BUILD)\
   $(linted_CFLAGS_LANGUAGE)\
   $(linted_CFLAGS_OPTIMIZE)\

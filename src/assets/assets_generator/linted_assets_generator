@@ -25,7 +25,9 @@ fi
 export PYTHONDONTWRITEBYTECODE=1
 
 exec "${BLENDER}" \
+    --verbose 0\
     --factory-startup\
+    -noglsl\
     -noaudio\
     -nojoystick\
     --background \

@@ -1344,7 +1344,7 @@ envvar_allocate_succeeded:
 	    {"--nonewprivs", 0, no_new_privs},
 	    {"--dropcaps", 0, drop_caps},
 	    {"--chdir", chdir_path, chdir_path != 0},
-	    {"--priority", prio_str, prio_str != 0},
+	    {"--priority", prio_str, true},
 	    {"--clone-newuser", 0, clone_newuser},
 	    {"--clone-newpid", 0, clone_newpid},
 	    {"--clone-newipc", 0, clone_newipc},
