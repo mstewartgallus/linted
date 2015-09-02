@@ -214,7 +214,7 @@
  *
  * <ul>
  *
- * <li [Divine](http://divine.fi.muni.cz/manual.html#installation)
+ * <li> [Divine](http://divine.fi.muni.cz/manual.html#installation)
  * - It does not compile properly.
  * </li>
  *

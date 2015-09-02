@@ -27,39 +27,21 @@ Some of these methods of guarding against software bugs include:
   - we guard against inheriting corrupted state by
     - execveing new process images from binaries
     - sanitizing unclosed file descriptors at process startup
-- toolchain hardening options including
-  - the GNU linker options for
-    - marking global symbols readonly after they are resolved with -z,relro
-    - resolving symbols immediately with -z,now
-    - marking the stack not executable with -z,noexecstack
-  - the GNU Compiler Collection (GCC) options for
-    - stack smashing protection with -fstack-protector-all
-    - position independent executable support with -pie and -fPIE
-- linters including:
-  - Clang's static analysis
-  - Cppcheck
+- toolchain hardening options
+- linters and static analysis tools
 
 We plan on also guarding against bugs with:
 
-- operating system level sandboxing of process
-  - resource limits with setrlimit
-  - capabilities using one of
-    - Seccomp
-    - Ftrace
-    - SELinux
-    - AppArmor
-- static analysis tools including:
-  - Frama C
-  - CBMC
-- a formalized system of IPC using
+- operating system level process sandboxing
+  - operating system resource limits
+  - operating system capabilities
+- formal analysis tools
+- a formalized model of IPC using
   - temporal logic tools to prove theorems about various safety and
     liveness properties
 - extensive testing with
   - unit tests
   - fuzz tests
-  - under tools such as
-    - Valgrind
-    - electric fence or duma
 
 A few explicitly labeled files (such as this README) are distributed
 under much more simple and less restrictive licences than the Apache

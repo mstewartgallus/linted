@@ -17,6 +17,7 @@
 EXTRA_DIST+=\
   %D%/builds.h\
   %D%/coding.h\
+  %D%/guarding.h\
   %D%/platforms.h\
   %D%/process-management.h\
   %D%/todo.h\

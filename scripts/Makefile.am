@@ -34,7 +34,6 @@ EXTRA_DIST+=\
   %D%/check-frama-c.in\
   %D%/check-iwyu.in\
   %D%/check-splint.in\
-  %D%/check-sparse.in\
   %D%/cpa-config.in
 MOSTLYCLEANFILES+=\
   %D%/test.out\
@@ -45,7 +44,6 @@ MOSTLYCLEANFILES+=\
   %D%/check-frama-c.out\
   %D%/check-iwyu.out\
   %D%/check-splint.out\
-  %D%/check-sparse.out\
   %D%/cpa-config.out
 
 all:\
@@ -57,7 +55,6 @@ all:\
   %D%/check-frama-c.out\
   %D%/check-iwyu.out\
   %D%/check-splint.out\
-  %D%/check-sparse.out\
   %D%/cpa-config.out
 
 %D%/test.out: Makefile
@@ -68,7 +65,6 @@ all:\
 %D%/check-frama-c.out: Makefile
 %D%/check-iwyu.out: Makefile
 %D%/check-splint.out: Makefile
-%D%/check-sparse.out: Makefile
 %D%/cpa-config.out: Makefile
 
 SUFFIXES+= .out .in

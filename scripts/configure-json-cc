@@ -17,6 +17,8 @@ JSON_CC="${ROOT}/json-cc.py"
 
 exec "${SRC}/configure-defaults"\
      --host x86_64-linux-gnu\
+     --disable-optimize\
+     --disable-harden\
      --enable-debug\
      CC="${JSON_CC} ${CC}"\
      $@
