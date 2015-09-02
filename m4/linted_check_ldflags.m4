@@ -19,6 +19,7 @@ m4_foreach_w([linted_the_flag], $2, [
          [linted_the_flag_var=]linted_the_flag
 
          AC_MSG_CHECKING([for linker flag ${linted_the_flag_var}])
+         [linted_old_checked_LDFLAGS="${LDFLAGS}"]
          [LDFLAGS="${LDFLAGS} ${linted_the_flag_var}"]
          AC_LINK_IFELSE([AC_LANG_SOURCE([
 [#if defined _WIN32]
@@ -46,6 +47,7 @@ m4_foreach_w([linted_the_flag], $2, [
                  $1[="$]$1[ ${linted_the_flag_var}"]
          ], [
                  AC_MSG_RESULT([no])
+                 [LDFLAGS="${linted_old_checked_LDFLAGS}"]
          ])
 ])
 dnl

@@ -23,6 +23,7 @@ m4_foreach_w([linted_the_flag], $2, [
         [linted_the_flag_var=]linted_the_flag
 
         AC_MSG_CHECKING([for C compiler flag ${linted_the_flag_var}])
+        [linted_old_checked_CFLAGS="${CFLAGS}"]
         [CFLAGS="${CFLAGS} ${linted_the_flag_var}"]
 dnl
         [ac_c_werror_flag='yes']
@@ -36,6 +37,7 @@ dnl
         ],
         [
                  AC_MSG_RESULT([no])
+                 [CFLAGS="${linted_old_checked_CFLAGS}"]
         ])
 ])
 dnl
