@@ -69,9 +69,9 @@ all:\
 
 SUFFIXES+= .out .in
 .in.out:
-	$(MKDIR_P) "$$(dirname $@)"
-	sed \
+	$(AM_V_at) $(MKDIR_P) "$$(dirname $@)"
+	$(linted_V_SED) sed \
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
 	  $< > $@
-	chmod u+x $@
+	$(AM_V_at) chmod u+x $@

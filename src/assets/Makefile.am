@@ -27,6 +27,11 @@ EXTRA_DIST+=\
   %D%/assets_generator/linted_assets_generator\
   %D%/assets_generator/linted_assets_generator.py
 
+linted_V_BLENDER= $(linted_v_BLENDER_@AM_V@)
+linted_v_BLENDER_= $(linted_v_BLENDER_@AM_DEFAULT_V@)
+linted_v_BLENDER_0= @echo "  BLENDER " $@;
+linted_v_BLENDER_1 = 
+
 MOSTLYCLEANFILES+=%D%/assets.c
 %D%/assets.c:\
   %D%/assets/assets.py\
@@ -36,6 +41,6 @@ MOSTLYCLEANFILES+=%D%/assets.c
   \
   %D%/assets_generator/linted_assets_generator\
   %D%/assets_generator/linted_assets_generator.py
-	BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
+	$(linted_V_BLENDER) BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
 	  $(srcdir)/%D%/assets/assets.py\
 	  --output=$@

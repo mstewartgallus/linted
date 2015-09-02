@@ -52,7 +52,7 @@ endif
 EXTRA_DIST+=%D%/settings.h.in
 MOSTLYCLEANFILES+=%D%/settings.h
 %D%/settings.h: Makefile %D%/settings.h.in
-	sed \
+	$(linted_V_SED) sed \
 	  -e 's|[@]LINTED_UNIT_PATH[@]|$(pkgunitsdir):$(pkgdefaultunitsdir)|g'\
 	  -e 's|[@]LINTED_INIT[@]|$(pkglibexecdir)/linted-init$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_MONITOR[@]|$(pkglibexecdir)/linted-monitor$(EXEEXT)|g'\

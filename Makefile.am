@@ -94,6 +94,11 @@ SUFFIXES+= .rc
 .rc.$(OBJEXT):
 	$(WINDRES) -i $< -o $@ --output-format=coff
 
+linted_V_SED = $(linted_v_SED_@AM_V@)
+linted_v_SED_ = $(linted_v_SED_@AM_DEFAULT_V@)
+linted_v_SED_0 = @echo "  SED     " $@;
+linted_v_SED_1 = 
+
 include docs/Makefile.am
 include scripts/Makefile.am
 include src/Makefile.am
