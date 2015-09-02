@@ -18,6 +18,10 @@ pkgconfdir=$(sysconfdir)/$(PACKAGE)
 pkgdefaultconfdir=$(datadir)/factory/$(PACKAGE)/etc
 pkgdefaultunitsdir=$(pkgdefaultconfdir)/units
 
+if HAVE_VALGRIND
+LOG_COMPILER=$(VALGRIND) --
+endif
+
 TESTS=
 XFAIL_TESTS=
 

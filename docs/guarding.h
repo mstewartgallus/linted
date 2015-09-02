@@ -24,7 +24,10 @@
  * <li> @see scripts/check-clang-analysis.in </li>
  * <li> @see scripts/check-iwyu.in </li>
  * </ul></li>
- * </ul>
+ * <li> A few unit tests (we need more) </li>
+ * <li> Unit tests are also run under Valgrind (alternate dynamic
+ * checkers like electric fence or duma might have advantages) </li>
+ * </li> </ul>
  *
  * @section potential Potential Techniques
  * - Use `setrlimit` to limit resources in individual processes.  I am
@@ -46,9 +49,6 @@
  * - Testing:
  *   - Using unit tests
  *   - Using fuzz tests
- *   - Under tools like
- *     - Valgrind
- *     - electric fence or duma
  *
  * - Toolchain hardening:
  *   - stack smashing protection with -fstack-protector-all
