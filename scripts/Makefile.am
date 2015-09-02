@@ -16,7 +16,6 @@
 # permissions and limitations under the License.
 EXTRA_DIST+=\
   %D%/builddeps\
-  %D%/configure-cgcc\
   %D%/configure-goto-cc\
   %D%/configure-json-cc\
   %D%/make-defaults\
