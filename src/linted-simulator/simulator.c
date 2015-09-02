@@ -114,7 +114,7 @@ static sim_uint absolute(sim_int x);
 static sim_int min_int(sim_int x, sim_int y);
 static sim_int sign(sim_int x);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator",
     .start = sim_start};
 

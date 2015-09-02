@@ -122,7 +122,7 @@ static void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y,
                     struct window_model const *window_model,
                     struct controller_data *controller_data);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-gui", .start = gui_start};
 
 static unsigned char gui_start(char const *process_name, size_t argc,

@@ -53,10 +53,7 @@ int linted_start_show_command(void)
 	return show_command;
 }
 
-int linted_start__wWinMain(HINSTANCE program_instance,
-                           HINSTANCE prev_instance_unused,
-                           wchar_t *command_line_unused,
-                           int show_command_arg)
+int linted_start__main(struct linted_start_config const *config)
 {
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);
@@ -65,7 +62,14 @@ int linted_start__wWinMain(HINSTANCE program_instance,
 	if (!SetDllDirectoryW(L""))
 		return EXIT_FAILURE;
 
-	show_command = show_command_arg;
+	{
+		STARTUPINFO info = {0};
+		GetStartupInfo(&info);
+		show_command =
+		    (info.dwFlags & STARTF_USESHOWWINDOW) != 0
+		        ? info.wShowWindow
+		        : SW_SHOWDEFAULT;
+	}
 
 	linted_error err;
 
@@ -121,8 +125,7 @@ int linted_start__wWinMain(HINSTANCE program_instance,
 	} else if (argc > 0) {
 		process_name = argv[0U];
 	} else {
-		process_name =
-		    linted_start_config.canonical_process_name;
+		process_name = config->canonical_process_name;
 		missing_name = true;
 	}
 
@@ -137,7 +140,7 @@ int linted_start__wWinMain(HINSTANCE program_instance,
 
 	process_basename = basename(process_basename);
 
-	if (!linted_start_config.dont_init_logging)
+	if (!config->dont_init_logging)
 		linted_log_open(process_basename);
 
 	if (missing_name) {
@@ -145,7 +148,7 @@ int linted_start__wWinMain(HINSTANCE program_instance,
 		return EXIT_FAILURE;
 	}
 
-	if (!linted_start_config.dont_init_signals) {
+	if (!config->dont_init_signals) {
 		err = linted_signal_init();
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
@@ -166,6 +169,6 @@ int linted_start__wWinMain(HINSTANCE program_instance,
 		return EXIT_FAILURE;
 	}
 
-	return linted_start_config.start(process_basename, argc,
-	                                 (char const *const *)argv);
+	return config->start(process_basename, argc,
+	                     (char const *const *)argv);
 }

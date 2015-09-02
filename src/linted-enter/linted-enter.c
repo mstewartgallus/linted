@@ -48,7 +48,7 @@
 static uint_fast8_t enter_start(char const *const process_name,
                                 size_t argc, char const *const argv[]);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-enter",
     .dont_init_signals = true,
     .start = enter_start};

@@ -177,7 +177,7 @@ static linted_error safe_dup2(int oldfd, int newfd);
 static pid_t safe_vfork(int (*f)(void *), void *args);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
     .start = sandbox_start,
     .dont_init_signals = true};

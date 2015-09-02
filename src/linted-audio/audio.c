@@ -72,7 +72,7 @@ static void on_ok_to_write(pa_stream *s, size_t nbytes, void *userdata);
 static unsigned char audio_start(char const *const process_name,
                                  size_t argc, char const *const argv[]);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-audio",
     .start = audio_start};
 

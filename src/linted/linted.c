@@ -86,7 +86,7 @@ static linted_error do_help(linted_ko ko, char const *process_name,
                             char const *package_url,
                             char const *package_bugreport);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-linted",
     .dont_init_signals = true,
     .dont_init_logging = true,

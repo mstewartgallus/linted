@@ -207,7 +207,7 @@ static linted_error ptrace_setoptions(linted_pid pid, unsigned options);
 static linted_error ptrace_geteventmsg(linted_pid pid,
                                        unsigned long *msg);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor",
     .start = monitor_start};
 

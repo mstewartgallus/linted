@@ -97,7 +97,7 @@ static linted_error on_receive_notice(struct linted_asynch_task *task);
 
 static void maybe_idle(struct linted_sched_task_idle *task);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-drawer",
     .start = drawer_start};
 

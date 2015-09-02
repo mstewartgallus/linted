@@ -62,7 +62,7 @@ static linted_error stop_help(linted_ko ko, char const *process_name,
 static linted_error failure(linted_ko ko, char const *process_name,
                             char const *message, linted_error err);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-control",
     .start = control_start};
 

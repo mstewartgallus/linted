@@ -43,7 +43,7 @@ static unsigned char init_start(char const *process_name, size_t argc,
 static void delegate_signal(int signo);
 static linted_error set_child_subreaper(bool value);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
     .dont_init_signals = true,
     .start = init_start};

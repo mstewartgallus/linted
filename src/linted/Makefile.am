@@ -42,6 +42,8 @@ if WINDOWS_API
   \
   %D%/resources.$(OBJEXT)
 
+%C%_linted_LDFLAGS=-Xcompiler -Wl,-e -Xcompiler -Wl,wmain
+
 %D%/resources.$(OBJEXT): %D%/linted.manifest
 endif
 

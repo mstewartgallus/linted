@@ -31,5 +31,4 @@ if WINDOWS_API
   src/utf/libutf.la\
   \
   $(WS2_32_LIBS)
-
 endif

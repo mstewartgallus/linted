@@ -9,6 +9,23 @@ dnl implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 dnl
 dnl Autodetects compiler warnings
 AC_DEFUN([LINTED_WARNINGS],[
+dnl
+AC_ARG_ENABLE(
+        [warnings],
+        AS_HELP_STRING(
+                [--disable-warnings],
+                [disable adjustments for speeding up the build]),
+        [
+         [enable_warnings=badval]
+         AS_IF([test "x${enableval}" = "xyes"], [[enable_warnings=yes]])
+         AS_IF([test "x${enableval}" = "xno"], [[enable_warnings=no]])
+         AS_IF([test "x${enable_warnings}" = "xbadval"], [
+          AC_MSG_ERROR([bad value "${enableval}" for --disable-warnings])])
+        ],
+        [[enable_warnings='yes']])
+dnl
+AS_IF([test "x${enable_warnings}" != "xno"], [
+dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_WARNINGS],[
         [-Qunused-arguments]dnl
         [-Werror=unknown-warning-option]dnl
@@ -51,4 +68,6 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_WARNINGS],[
         [-Wl,--no-allow-shlib-undefined]dnl
 ])
 AC_SUBST([linted_LDFLAGS_WARNINGS])
+dnl
+])
 ])

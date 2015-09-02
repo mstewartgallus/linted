@@ -18,6 +18,10 @@
 
 #include <stddef.h>
 
+#if defined HAVE_WINDOWS_API
+#include <windows.h>
+#endif
+
 /**
  * @file
  *
@@ -32,40 +36,38 @@ struct linted_start_config {
 	_Bool dont_init_logging : 1U;
 };
 
-extern struct linted_start_config const linted_start_config;
+static struct linted_start_config const linted_start_config;
 
 #if defined HAVE_WINDOWS_API
 int linted_start_show_command(void);
+
+int linted_start__main(struct linted_start_config const *config);
+#else
+int linted_start__main(struct linted_start_config const *config,
+                       int argc, char *argv[]);
 #endif
 
 /* This is an awful hack to get linking to work right */
 #ifndef LINTED_START__NO_MAIN
-
 #if defined HAVE_WINDOWS_API
-#include <windows.h>
-
-int linted_start__wWinMain(void *program_instance,
-                           void *prev_instance_unused,
-                           wchar_t *command_line_unused,
-                           int show_command_arg);
-
-int WINAPI wWinMain(HINSTANCE program_instance,
-                    HINSTANCE prev_instance_unused,
-                    wchar_t *command_line_unused, int show_command_arg)
+/* Hack around a bug in wclang by defining both of these. */
+int WinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
+            char *command_line_unused, int show_command_arg)
 {
-	return linted_start__wWinMain(
-	    program_instance, prev_instance_unused, command_line_unused,
-	    show_command_arg);
+	return linted_start__main(&linted_start_config);
+}
+
+int wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
+             wchar_t *command_line_unused, int show_command_arg)
+{
+	return linted_start__main(&linted_start_config);
 }
 #else
-extern int linted_start__main(int argc, char *argv[]);
-
 int main(int argc, char *argv[])
 {
-	return linted_start__main(argc, argv);
+	return linted_start__main(&linted_start_config, argc, argv);
 }
 #endif
-
 #endif
 
 #endif /* LINTED_START_H */

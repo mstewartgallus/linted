@@ -40,7 +40,8 @@
 
 static void do_nothing(int signo);
 
-int linted_start__main(int argc, char *argv[])
+int linted_start__main(struct linted_start_config const *config,
+                       int argc, char *argv[])
 {
 	linted_error err = 0;
 
@@ -79,8 +80,7 @@ int linted_start__main(int argc, char *argv[])
 	} else if (argc > 0) {
 		process_name = argv[0U];
 	} else {
-		process_name =
-		    linted_start_config.canonical_process_name;
+		process_name = config->canonical_process_name;
 		missing_name = true;
 	}
 
@@ -94,7 +94,7 @@ int linted_start__main(int argc, char *argv[])
 	}
 	process_basename = basename(process_basename);
 
-	if (!linted_start_config.dont_init_logging)
+	if (!config->dont_init_logging)
 		linted_log_open(process_basename);
 
 	if (missing_name) {
@@ -114,7 +114,7 @@ int linted_start__main(int argc, char *argv[])
 		}
 	}
 
-	if (!linted_start_config.dont_init_signals) {
+	if (!config->dont_init_signals) {
 		err = linted_signal_init();
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
@@ -132,8 +132,8 @@ int linted_start__main(int argc, char *argv[])
 
 	tzset();
 
-	return linted_start_config.start(process_basename, argc,
-	                                 (char const *const *)argv);
+	return config->start(process_basename, argc,
+	                     (char const *const *)argv);
 }
 
 static void do_nothing(int signo)

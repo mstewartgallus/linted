@@ -51,7 +51,7 @@
 static unsigned char init_start(char const *process_name, size_t argc,
                                 char const *const argv[]);
 
-struct linted_start_config const linted_start_config = {
+static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
     .start = init_start};
 
