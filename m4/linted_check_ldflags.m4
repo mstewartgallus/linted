@@ -19,7 +19,7 @@ m4_foreach_w([linted_the_flag], $2, [
          [linted_the_flag_var=]linted_the_flag
 
          AC_MSG_CHECKING([for linker flag ${linted_the_flag_var}])
-         [LDFLAGS="${linted_the_flag_var}"]
+         [LDFLAGS="${LDFLAGS} ${linted_the_flag_var}"]
          AC_LINK_IFELSE([AC_LANG_SOURCE([
 [#if defined _WIN32]
 [#define WIN32_LEAN_AND_MEAN]
@@ -43,7 +43,7 @@ m4_foreach_w([linted_the_flag], $2, [
 [}]
 ])], [
                  AC_MSG_RESULT([yes])
-                 $1[="$]$1[ $LDFLAGS"]
+                 $1[="$]$1[ ${linted_the_flag_var}"]
          ], [
                  AC_MSG_RESULT([no])
          ])

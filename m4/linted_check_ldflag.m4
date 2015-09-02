@@ -17,7 +17,7 @@ dnl
 AC_LANG_PUSH([C])
 dnl
 AC_MSG_CHECKING([for linker flag $2])
-[LDFLAGS=]$2
+[LDFLAGS="${LDFLAGS} $2"]
 dnl
 AC_LINK_IFELSE([AC_LANG_SOURCE([
 [#if defined _WIN32]
@@ -42,7 +42,7 @@ AC_LINK_IFELSE([AC_LANG_SOURCE([
 [}]
 ])], [
          AC_MSG_RESULT([yes])
-         $1[="$LDFLAGS"]
+         $1[=]$2
 ], [
          $1[='']
          AC_MSG_RESULT([no])

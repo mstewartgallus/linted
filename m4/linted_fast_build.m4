@@ -27,8 +27,9 @@ AC_ARG_ENABLE(
 dnl
 AS_IF([test "x${enable_fast_build}" != "xno"], [
 dnl
-LINTED_CHECK_CFLAGS([linted_CFLAGS_FAST_BUILD],[dnl
+LINTED_CHECK_CFLAGS([linted_LDFLAGS_FAST_BUILD],[dnl
         [-pipe]
+        [-fuse-ld=gold]
         [-fintegrated-as]       dnl Clang's integrated ASM is faster
         [-Wa,--compress-debug-sections]
         dnl
@@ -38,9 +39,5 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_FAST_BUILD],[dnl
 ])
 AC_SUBST([linted_CFLAGS_FAST_BUILD])
 dnl
-LINTED_CHECK_LDFLAGS([linted_LDFLAGS_FAST_BUILD],[dnl
-        [-fuse-ld=gold]
-])
-AC_SUBST([linted_LDFLAGS_FAST_BUILD])
 ])
 ])

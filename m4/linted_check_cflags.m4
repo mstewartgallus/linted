@@ -23,7 +23,7 @@ m4_foreach_w([linted_the_flag], $2, [
         [linted_the_flag_var=]linted_the_flag
 
         AC_MSG_CHECKING([for C compiler flag ${linted_the_flag_var}])
-        [CFLAGS="${linted_the_flag_var}"]
+        [CFLAGS="${CFLAGS} ${linted_the_flag_var}"]
 dnl
         [ac_c_werror_flag='yes']
 dnl
@@ -32,7 +32,7 @@ dnl
             void nonempty_translation_unit_E5XlWC(void) { }
         ]])], [
                  AC_MSG_RESULT([yes])
-                 $1[="$]$1[ $CFLAGS"]
+                 $1[="$]$1[ ${linted_the_flag_var}"]
         ],
         [
                  AC_MSG_RESULT([no])
