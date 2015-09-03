@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <libgen.h>
 #include <mntent.h>
+#include <wordexp.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -154,10 +155,8 @@ struct second_fork_args {
 	char const *binary;
 	struct rlimit_arg const *rlimit_args;
 	size_t rlimit_args_size;
-	linted_ko binary_ko;
 	linted_ko err_writer;
 	linted_ko logger_writer;
-	bool use_execveat : 1U;
 	bool use_seccomp : 1U;
 };
 
@@ -407,33 +406,93 @@ exit_loop:
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = 0;
 	if (fstab != 0) {
-		FILE *fstab_file = setmntent(fstab, "re");
+		FILE *fstab_file = fopen(fstab, "re");
 		if (0 == fstab_file) {
-			linted_log(LINTED_LOG_ERROR, "setmntent: %s",
+			linted_log(LINTED_LOG_ERROR, "fopen: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
+		char *buf = 0;
+		size_t buf_size = 0U;
 		for (;;) {
 			errno = 0;
-			struct mntent *entry = getmntent(fstab_file);
-			if (0 == entry) {
-				err = errno;
-				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "getmntent: %s",
-					    linted_error_string(err));
-					return EXIT_FAILURE;
+			size_t line_size;
+			{
+				char *xx = buf;
+				size_t yy = buf_size;
+				ssize_t zz =
+				    getline(&xx, &yy, fstab_file);
+				if (zz < 0) {
+					err = errno;
+					if (err != 0) {
+						linted_log(
+						    LINTED_LOG_ERROR,
+						    "getlines: %s",
+						    linted_error_string(
+						        err));
+						return EXIT_FAILURE;
+					}
+					break;
 				}
-				break;
+				buf = xx;
+				buf_size = yy;
+				line_size = zz;
 			}
 
-			char const *fsname = entry->mnt_fsname;
-			char const *dir = entry->mnt_dir;
-			char const *type = entry->mnt_type;
-			char const *opts = entry->mnt_opts;
+			if ('#' == buf[0U])
+				continue;
 
+			if ('\0' == buf[0U])
+				continue;
+
+			char *end = strchr(buf, '\n');
+			if (end != 0)
+				*end = '\0';
+
+			wordexp_t expr;
+			switch (wordexp(buf, &expr, WRDE_NOCMD)) {
+			case WRDE_BADCHAR:
+			case WRDE_CMDSUB:
+			case WRDE_SYNTAX:
+				err = EINVAL;
+				break;
+
+			case WRDE_NOSPACE:
+				err = ENOMEM;
+				break;
+			}
+			if (err != 0) {
+				linted_log(LINTED_LOG_ERROR,
+				           "wordexp(%s): %s", buf,
+				           linted_error_string(err));
+				return EXIT_FAILURE;
+			}
+			char const *const *words =
+			    (char const *const *)expr.we_wordv;
+
+			char const *fsname = 0;
+			char const *dir = 0;
+			char const *type = 0;
+			char const *opts = 0;
+
+			fsname = words[0U];
+			if (0 == fsname)
+				goto free_words;
+
+			dir = words[1U];
+			if (0 == dir)
+				goto parse_expr;
+
+			type = words[2U];
+			if (0 == type)
+				goto parse_expr;
+
+			opts = words[3U];
+			if (0 == type)
+				goto parse_expr;
+
+		parse_expr:
 			if (0 == strcmp("none", fsname))
 				fsname = 0;
 
@@ -551,10 +610,13 @@ exit_loop:
 			mount_args[mount_args_size].nomount_flag =
 			    nomount_flag;
 			mount_args_size = new_mount_args_size;
+
+		free_words:
+			wordfree(&expr);
 		}
 
-		if (endmntent(fstab_file) != 1) {
-			linted_log(LINTED_LOG_ERROR, "endmntent: %s",
+		if (fclose(fstab_file) != 0) {
+			linted_log(LINTED_LOG_ERROR, "fclose: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -899,7 +961,6 @@ first_fork_routine(void *void_args)
 	 * become PID 1 in the new pid namespace so that we can mount
 	 * procfs */
 	linted_ko waiter_ko;
-	linted_ko binary_ko;
 	if (mount_args_size > 0U) {
 		{
 			linted_ko xx;
@@ -908,15 +969,6 @@ first_fork_routine(void *void_args)
 			if (err != 0)
 				goto fail;
 			waiter_ko = xx;
-		}
-
-		{
-			linted_ko xx;
-			err = linted_ko_open(&xx, LINTED_KO_CWD, binary,
-			                     0);
-			if (err != 0)
-				goto fail;
-			binary_ko = xx;
 		}
 
 		err = mount_directories(mount_args, mount_args_size);
@@ -965,27 +1017,15 @@ first_fork_routine(void *void_args)
 	}
 
 	pid_t grand_child;
-	if (mount_args_size > 0U) {
-		struct second_fork_args args = {
-		    .err_writer = vfork_err_writer,
-		    .rlimit_args = rlimit_args,
-		    .rlimit_args_size = rlimit_args_size,
-		    .logger_writer = logger_writer,
-		    .binary_ko = binary_ko,
-		    .argv = command,
-		    .use_execveat = true,
-		    .use_seccomp = use_seccomp};
-		grand_child = safe_vfork(second_fork_routine, &args);
-	} else {
-		struct second_fork_args args = {
-		    .err_writer = vfork_err_writer,
-		    .logger_writer = logger_writer,
-		    .binary = binary,
-		    .argv = command,
-		    .use_execveat = false,
-		    .use_seccomp = use_seccomp};
-		grand_child = safe_vfork(second_fork_routine, &args);
-	}
+	struct second_fork_args args = {.err_writer = vfork_err_writer,
+	                                .rlimit_args = rlimit_args,
+	                                .rlimit_args_size =
+	                                    rlimit_args_size,
+	                                .logger_writer = logger_writer,
+	                                .binary = binary,
+	                                .argv = command,
+	                                .use_seccomp = use_seccomp};
+	grand_child = safe_vfork(second_fork_routine, &args);
 	if (-1 == grand_child) {
 		err = errno;
 		goto fail;
@@ -1043,15 +1083,8 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	linted_ko logger_writer = args->logger_writer;
 	char const *const *argv = args->argv;
 	bool use_seccomp = args->use_seccomp;
-	bool use_execveat = args->use_execveat;
 
-	char const *binary;
-	linted_ko binary_ko;
-	if (use_execveat) {
-		binary_ko = args->binary_ko;
-	} else {
-		binary = args->binary;
-	}
+	char const *binary = args->binary;
 
 	err = safe_dup2(logger_writer, LINTED_KO_STDOUT);
 	if (err != 0)
@@ -1087,12 +1120,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 		}
 	}
 
-	if (use_execveat) {
-		syscall(__NR_execveat, (int)binary_ko, "",
-		        (char *const *)argv, environ, AT_EMPTY_PATH);
-	} else {
-		execve(binary, (char *const *)argv, environ);
-	}
+	execve(binary, (char *const *)argv, environ);
 	err = errno;
 
 fail : {

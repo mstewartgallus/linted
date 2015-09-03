@@ -2,6 +2,9 @@
 # interpreted relative to the location Linted chroots to.
 #
 # <file system>	<mount point>	<type>	<options>
+none	boot	none	mkdir,nomount
+"${LINTED_AUDIO}"	boot/linted-audio	none	touch,shared,bind
+
 none	../../var/simulator	none	mkdir,nomount
 ../../var/simulator	var	none	mkdir,shared,bind
 
