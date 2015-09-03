@@ -40,6 +40,7 @@ dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_HARDEN],[dnl
         [-Wl,-z,relro]dnl
         [-Wl,-z,now]dnl
+        [-Wl,--rosegment]dnl
 dnl
 dnl     DEP for Windows
         [-Wl,--nxcompat]dnl

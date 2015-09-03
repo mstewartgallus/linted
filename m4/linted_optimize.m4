@@ -59,6 +59,8 @@ dnl
 dnl
         [-flto]dnl
         [-fuse-linker-plugin]dnl
+dnl
+        [-Wl,--icf=safe]dnl
 ])
 AC_SUBST([linted_LDFLAGS_OPTIMIZE])
 dnl
