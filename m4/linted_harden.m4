@@ -29,11 +29,11 @@ dnl
 AS_IF([test "x${enable_harden}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_HARDEN],[dnl
-dnl These flags seem to screw up with Wine
-dnl
 dnl No way to test this so it's added always. It won't harm programs
 dnl if it doesn't work.
-dnl        [-D_FORTIFY_SOURCE=2]dnl
+        [-D_FORTIFY_SOURCE=2]dnl
+dnl
+dnl Stack protection seems to mess up Wine
 dnl        [-Wl,-Bstatic -fstack-protector-all -Wl,-Bdynamic -Wstack-protector]dnl
 ])
 dnl
