@@ -105,6 +105,11 @@ struct mount_args {
 	bool nomount_flag : 1U;
 };
 
+struct rlimit_arg {
+	struct rlimit limit;
+	int resource;
+};
+
 static struct sock_fprog const default_filter;
 
 static char const *const argstrs[] = {
@@ -129,6 +134,8 @@ static char const *const argstrs[] = {
 
 struct first_fork_args {
 	char const *chdir_path;
+	struct rlimit_arg const *rlimit_args;
+	size_t rlimit_args_size;
 	cap_t caps;
 	struct mount_args *mount_args;
 	size_t mount_args_size;
@@ -145,12 +152,21 @@ struct first_fork_args {
 struct second_fork_args {
 	char const *const *argv;
 	char const *binary;
+	struct rlimit_arg const *rlimit_args;
+	size_t rlimit_args_size;
 	linted_ko binary_ko;
 	linted_ko err_writer;
 	linted_ko logger_writer;
 	bool use_execveat : 1U;
 	bool use_seccomp : 1U;
 };
+
+static struct rlimit_arg const default_rlimit_args[] = {
+    {.resource = RLIMIT_NOFILE,
+     .limit = {.rlim_cur = 15, .rlim_max = 15}},
+    {.resource = RLIMIT_LOCKS, .limit = {.rlim_cur = 0, .rlim_max = 0}},
+    {.resource = RLIMIT_MSGQUEUE,
+     .limit = {.rlim_cur = 0, .rlim_max = 0}}};
 
 static unsigned char sandbox_start(char const *const process_name,
                                    size_t argc,
@@ -698,6 +714,9 @@ exit_loop:
 	{
 		struct first_fork_args args = {
 		    .err_writer = err_writer,
+		    .rlimit_args = default_rlimit_args,
+		    .rlimit_args_size =
+		        LINTED_ARRAY_SIZE(default_rlimit_args),
 		    .logger_reader = logger_reader,
 		    .logger_writer = logger_writer,
 		    .chdir_path = chdir_path,
@@ -845,6 +864,9 @@ first_fork_routine(void *void_args)
 
 	struct first_fork_args const *first_fork_args = void_args;
 
+	struct rlimit_arg const *rlimit_args =
+	    first_fork_args->rlimit_args;
+	size_t rlimit_args_size = first_fork_args->rlimit_args_size;
 	linted_ko err_writer = first_fork_args->err_writer;
 	linted_ko logger_reader = first_fork_args->logger_reader;
 	linted_ko logger_writer = first_fork_args->logger_writer;
@@ -946,6 +968,8 @@ first_fork_routine(void *void_args)
 	if (mount_args_size > 0U) {
 		struct second_fork_args args = {
 		    .err_writer = vfork_err_writer,
+		    .rlimit_args = rlimit_args,
+		    .rlimit_args_size = rlimit_args_size,
 		    .logger_writer = logger_writer,
 		    .binary_ko = binary_ko,
 		    .argv = command,
@@ -1013,6 +1037,8 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 
 	struct second_fork_args const *args = arg;
 
+	struct rlimit_arg const *rlimit_args = args->rlimit_args;
+	size_t rlimit_args_size = args->rlimit_args_size;
 	linted_ko err_writer = args->err_writer;
 	linted_ko logger_writer = args->logger_writer;
 	char const *const *argv = args->argv;
@@ -1034,6 +1060,19 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	err = safe_dup2(logger_writer, LINTED_KO_STDERR);
 	if (err != 0)
 		goto fail;
+
+	for (size_t ii = 0U; ii < rlimit_args_size; ++ii) {
+		struct rlimit_arg const *rlimit_arg = &rlimit_args[ii];
+
+		if (-1 == setrlimit(rlimit_arg->resource,
+		                    &rlimit_arg->limit)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+
+			assert(err != EINVAL);
+			goto fail;
+		}
+	}
 
 	/* Do seccomp filter last of all */
 	if (use_seccomp) {
