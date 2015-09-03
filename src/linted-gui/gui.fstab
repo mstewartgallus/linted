@@ -3,7 +3,7 @@
 #
 # <file system>	<mount point>	<type>	<options>
 none	boot	none	mkdir,nomount
-"${LINTED_GUI}"	boot/linted-gui	none	touch,shared,bind
+"${LINTED_GUI}"	boot/linted-gui	none	touch,ro,bind
 
 none	../../var/gui	none	mkdir,nomount
 ../../var/gui	var	none	mkdir,shared,bind

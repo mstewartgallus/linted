@@ -3,7 +3,7 @@
 #
 # <file system>	<mount point>	<type>	<options>
 none	boot	none	mkdir,nomount
-"${LINTED_WINDOW}"	boot/linted-window	none	touch,shared,bind
+"${LINTED_WINDOW}"	boot/linted-window	none	touch,ro,bind
 
 none	../../var/window	none	mkdir,nomount
 ../../var/window	var	none	mkdir,shared,bind

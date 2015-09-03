@@ -3,7 +3,7 @@
 #
 # <file system>	<mount point>	<type>	<options>
 none	boot	none	mkdir,nomount
-"${LINTED_SIMULATOR}"	boot/linted-simulator	none	touch,shared,bind
+"${LINTED_SIMULATOR}"	boot/linted-simulator	none	touch,ro,bind
 
 none	../../var/simulator	none	mkdir,nomount
 ../../var/simulator	var	none	mkdir,shared,bind
