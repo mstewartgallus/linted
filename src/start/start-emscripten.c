@@ -17,7 +17,7 @@
 
 #include "linted/start.h"
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/log.h"

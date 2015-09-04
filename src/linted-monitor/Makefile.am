@@ -30,7 +30,7 @@ EXTRA_%C%_linted_monitor_SOURCES=\
 if POSIX_API
 %C%_linted_monitor_LDADD+=\
   \
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   src/conf/libconf.la\
   src/dir/libdir.la\
   src/file/libfile.la\

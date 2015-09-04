@@ -72,7 +72,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		return LINTED_ERROR_INVALID_PARAMETER;
 
 	/*
-	 * Always, be safe for execs and use O_NONBLOCK because asynch
+	 * Always, be safe for execs and use O_NONBLOCK because async
 	 * functions handle that anyways and open may block otherwise.
 	 */
 	int oflags = O_CLOEXEC | O_NOCTTY;

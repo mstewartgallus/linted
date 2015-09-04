@@ -16,7 +16,7 @@
 #ifndef LINTED_PID_H
 #define LINTED_PID_H
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/error.h"
 
 #include <stdint.h>
@@ -44,8 +44,8 @@ typedef uint_fast32_t linted_pid;
 
 #define LINTED_PID_COMM_MAX 16U
 
-struct linted_asynch_pool;
-struct linted_asynch_task;
+struct linted_async_pool;
+struct linted_async_task;
 
 struct linted_pid_task_waitid;
 
@@ -105,19 +105,19 @@ void linted_pid_task_waitid_destroy(
 #if defined HAVE_POSIX_API
 void linted_pid_task_waitid_prepare(
     struct linted_pid_task_waitid *task,
-    union linted_asynch_action task_action, idtype_t type, id_t id,
+    union linted_async_action task_action, idtype_t type, id_t id,
     int options);
 void linted_pid_task_waitid_info(struct linted_pid_task_waitid *task,
                                  siginfo_t *info);
 #endif
 void *linted_pid_task_waitid_data(struct linted_pid_task_waitid *task);
-struct linted_asynch_task *
-linted_pid_task_waitid_to_asynch(struct linted_pid_task_waitid *task);
+struct linted_async_task *
+linted_pid_task_waitid_to_async(struct linted_pid_task_waitid *task);
 struct linted_pid_task_waitid *
-linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task);
+linted_pid_task_waitid_from_async(struct linted_async_task *task);
 
-void linted_pid_do_waitid(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task);
+void linted_pid_do_waitid(struct linted_async_pool *pool,
+                          struct linted_async_task *task);
 
 linted_error linted_pid_kill(linted_pid pid, int signo);
 linted_error linted_pid_terminate(linted_pid pid);

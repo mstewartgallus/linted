@@ -16,7 +16,7 @@
 #ifndef LINTED_CONTROLLER_H
 #define LINTED_CONTROLLER_H
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 
@@ -50,17 +50,15 @@ linted_error linted_controller_task_send_create(
 void linted_controller_task_send_destroy(
     struct linted_controller_task_send *task);
 
-struct linted_asynch_task *linted_controller_task_send_to_asynch(
+struct linted_async_task *linted_controller_task_send_to_async(
     struct linted_controller_task_send *task);
 struct linted_controller_task_send *
-linted_controller_task_send_from_asynch(
-    struct linted_asynch_task *task);
+linted_controller_task_send_from_async(struct linted_async_task *task);
 void *linted_controller_task_send_data(
     struct linted_controller_task_send *task);
 void linted_controller_task_send_prepare(
     struct linted_controller_task_send *task,
-    union linted_asynch_action task_action,
-    linted_controller controller,
+    union linted_async_action task_action, linted_controller controller,
     struct linted_controller_message const *message);
 
 linted_error linted_controller_task_receive_create(
@@ -68,16 +66,16 @@ linted_error linted_controller_task_receive_create(
 void linted_controller_task_receive_destroy(
     struct linted_controller_task_receive *task);
 
-struct linted_asynch_task *linted_controller_task_receive_to_asynch(
+struct linted_async_task *linted_controller_task_receive_to_async(
     struct linted_controller_task_receive *task);
 struct linted_controller_task_receive *
-linted_controller_task_receive_from_asynch(
-    struct linted_asynch_task *task);
+linted_controller_task_receive_from_async(
+    struct linted_async_task *task);
 void *linted_controller_task_receive_data(
     struct linted_controller_task_receive *task);
 void linted_controller_task_receive_prepare(
     struct linted_controller_task_receive *task,
-    union linted_asynch_action task_action,
+    union linted_async_action task_action,
     linted_controller controller);
 
 linted_error linted_controller_decode(

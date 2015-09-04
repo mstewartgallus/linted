@@ -236,24 +236,24 @@ linted_admin_in_write(linted_admin_in admin,
 
 void linted_admin_in_task_read_prepare(
     struct linted_admin_in_task_read *task,
-    union linted_asynch_action task_action, linted_ko ko)
+    union linted_async_action task_action, linted_ko ko)
 {
 	linted_io_task_read_prepare(task->parent, task_action, ko,
 	                            task->request,
 	                            sizeof task->request);
 }
 
-struct linted_asynch_task *linted_admin_in_task_read_to_asynch(
+struct linted_async_task *linted_admin_in_task_read_to_async(
     struct linted_admin_in_task_read *task)
 {
-	return linted_io_task_read_to_asynch(task->parent);
+	return linted_io_task_read_to_async(task->parent);
 }
 
 struct linted_admin_in_task_read *
-linted_admin_in_task_read_from_asynch(struct linted_asynch_task *task)
+linted_admin_in_task_read_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_read_data(
-	    linted_io_task_read_from_asynch(task));
+	    linted_io_task_read_from_async(task));
 }
 
 linted_error linted_admin_out_task_write_create(
@@ -300,7 +300,7 @@ void *linted_admin_out_task_write_data(
 
 void linted_admin_out_task_write_prepare(
     struct linted_admin_out_task_write *task,
-    union linted_asynch_action task_action, linted_ko ko,
+    union linted_async_action task_action, linted_ko ko,
     union linted_admin_reply const *reply)
 {
 	linted_admin_type type = reply->type;
@@ -344,17 +344,17 @@ void linted_admin_out_task_write_prepare(
 	memcpy(task->reply, raw, sizeof raw);
 }
 
-struct linted_asynch_task *linted_admin_out_task_write_to_asynch(
+struct linted_async_task *linted_admin_out_task_write_to_async(
     struct linted_admin_out_task_write *task)
 {
-	return linted_io_task_write_to_asynch(task->parent);
+	return linted_io_task_write_to_async(task->parent);
 }
 
 struct linted_admin_out_task_write *
-linted_admin_out_task_write_from_asynch(struct linted_asynch_task *task)
+linted_admin_out_task_write_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_write_data(
-	    linted_io_task_write_from_asynch(task));
+	    linted_io_task_write_from_async(task));
 }
 
 linted_error linted_admin_out_read(linted_admin_out admin,

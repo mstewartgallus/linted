@@ -20,6 +20,6 @@ noinst_LTLIBRARIES+=%D%/libadmin.la
   %D%/admin.c\
   include/linted/admin.h
 %C%_libadmin_la_LIBADD=\
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   src/io/libio.la\
   src/ko/libko.la

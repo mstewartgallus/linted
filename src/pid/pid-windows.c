@@ -25,7 +25,7 @@
 
 #include "linted/pid.h"
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
@@ -35,7 +35,7 @@
 #include <windows.h>
 
 struct linted_pid_task_waitid {
-	struct linted_asynch_task *parent;
+	struct linted_async_task *parent;
 	void *data;
 	int options;
 };
@@ -53,10 +53,10 @@ linted_pid_task_waitid_create(struct linted_pid_task_waitid **taskp,
 			return err;
 		task = xx;
 	}
-	struct linted_asynch_task *parent;
+	struct linted_async_task *parent;
 	{
-		struct linted_asynch_task *xx;
-		err = linted_asynch_task_create(
+		struct linted_async_task *xx;
+		err = linted_async_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_WAITID);
 		if (err != 0)
 			goto free_task;
@@ -73,7 +73,7 @@ free_task:
 
 void linted_pid_task_waitid_destroy(struct linted_pid_task_waitid *task)
 {
-	linted_asynch_task_destroy(task->parent);
+	linted_async_task_destroy(task->parent);
 	linted_mem_free(task);
 }
 
@@ -82,23 +82,23 @@ void *linted_pid_task_waitid_data(struct linted_pid_task_waitid *task)
 	return task->data;
 }
 
-struct linted_asynch_task *
-linted_pid_task_waitid_to_asynch(struct linted_pid_task_waitid *task)
+struct linted_async_task *
+linted_pid_task_waitid_to_async(struct linted_pid_task_waitid *task)
 {
 	return task->parent;
 }
 
 struct linted_pid_task_waitid *
-linted_pid_task_waitid_from_asynch(struct linted_asynch_task *task)
+linted_pid_task_waitid_from_async(struct linted_async_task *task)
 {
-	return linted_asynch_task_data(task);
+	return linted_async_task_data(task);
 }
 
-void linted_pid_do_waitid(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task)
+void linted_pid_do_waitid(struct linted_async_pool *pool,
+                          struct linted_async_task *task)
 {
-	linted_asynch_pool_complete(pool, task,
-	                            LINTED_ERROR_UNIMPLEMENTED);
+	linted_async_pool_complete(pool, task,
+	                           LINTED_ERROR_UNIMPLEMENTED);
 }
 
 linted_pid linted_pid_get_pid(void)

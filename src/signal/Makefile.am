@@ -19,6 +19,6 @@ noinst_LTLIBRARIES+=%D%/libsignal.la
 %C%_libsignal_la_SOURCES=%D%/signal.c include/linted/signal.h
 EXTRA_%C%_libsignal_la_SOURCES=%D%/signal-posix.c %D%/signal-windows.c
 %C%_libsignal_la_LIBADD=\
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   src/fifo/libfifo.la\
   src/io/libio.la

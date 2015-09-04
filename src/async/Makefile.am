@@ -14,24 +14,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
-noinst_LTLIBRARIES+=%D%/libasynch.la
+noinst_LTLIBRARIES+=%D%/libasync.la
 
-%C%_libasynch_la_SOURCES=%D%/asynch.c include/linted/asynch.h
-EXTRA_%C%_libasynch_la_SOURCES=\
-  %D%/asynch-emscripten.c\
-  %D%/asynch-posix.c\
-  %D%/asynch-windows.c
-%C%_libasynch_la_LIBADD=\
+%C%_libasync_la_SOURCES=%D%/async.c include/linted/async.h
+EXTRA_%C%_libasync_la_SOURCES=\
+  %D%/async-emscripten.c\
+  %D%/async-posix.c\
+  %D%/async-windows.c
+%C%_libasync_la_LIBADD=\
   src/ko/libko.la\
   src/channel/libchannel.la\
   src/queue/libqueue.la\
   $(WS2_32_LIBS)
 
-TESTS+=%D%/test_asynch
-check_PROGRAMS+=%D%/test_asynch
-%C%_test_asynch_SOURCES=%D%/test_asynch.c
-%C%_test_asynch_LDADD=\
- src/asynch/libasynch.la\
+TESTS+=%D%/test_async
+check_PROGRAMS+=%D%/test_async
+%C%_test_async_SOURCES=%D%/test_async.c
+%C%_test_async_LDADD=\
+ src/async/libasync.la\
  src/log/liblog.la\
  src/sched/libsched.la\
  src/start/libstart.la

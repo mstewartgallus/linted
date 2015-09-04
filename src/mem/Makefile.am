@@ -20,5 +20,5 @@ TESTS+=%D%/test_mem
 check_PROGRAMS+=%D%/test_mem
 %C%_test_mem_SOURCES=%D%/test_mem.c
 %C%_test_mem_LDADD=\
- src/asynch/libasynch.la\
+ src/async/libasync.la\
  src/io/libio.la

@@ -16,7 +16,7 @@
 #ifndef LINTED_SIGNAL_H
 #define LINTED_SIGNAL_H
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/error.h"
 
 #include <stddef.h>
@@ -27,8 +27,8 @@
  * Signal handling.
  */
 
-struct linted_asynch_pool;
-struct linted_asynch_task;
+struct linted_async_pool;
+struct linted_async_task;
 
 struct linted_signal_task_wait;
 
@@ -42,18 +42,18 @@ void linted_signal_task_wait_destroy(
 
 void linted_signal_task_wait_prepare(
     struct linted_signal_task_wait *task,
-    union linted_asynch_action task_action);
+    union linted_async_action task_action);
 
 void *
 linted_signal_task_wait_data(struct linted_signal_task_wait *task);
 int linted_signal_task_wait_signo(struct linted_signal_task_wait *task);
-struct linted_asynch_task *
-linted_signal_task_wait_to_asynch(struct linted_signal_task_wait *task);
+struct linted_async_task *
+linted_signal_task_wait_to_async(struct linted_signal_task_wait *task);
 struct linted_signal_task_wait *
-linted_signal_task_wait_from_asynch(struct linted_asynch_task *task);
+linted_signal_task_wait_from_async(struct linted_async_task *task);
 
-void linted_signal_do_wait(struct linted_asynch_pool *pool,
-                           struct linted_asynch_task *task);
+void linted_signal_do_wait(struct linted_async_pool *pool,
+                           struct linted_async_task *task);
 
 void linted_signal_listen_to_sighup(void);
 void linted_signal_listen_to_sigint(void);

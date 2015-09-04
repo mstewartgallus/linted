@@ -25,7 +25,7 @@
 
 #include "linted/signal.h"
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
@@ -51,7 +51,7 @@ static linted_ko sigpipe_reader = (linted_ko)-1;
 static linted_ko sigpipe_writer = (linted_ko)-1;
 
 struct linted_signal_task_wait {
-	struct linted_asynch_task *parent;
+	struct linted_async_task *parent;
 	void *data;
 	int signo;
 };
@@ -102,10 +102,10 @@ linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
 			return err;
 		task = xx;
 	}
-	struct linted_asynch_task *parent;
+	struct linted_async_task *parent;
 	{
-		struct linted_asynch_task *xx;
-		err = linted_asynch_task_create(
+		struct linted_async_task *xx;
+		err = linted_async_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_SIGNAL_WAIT);
 		if (err != 0)
 			goto free_task;
@@ -124,7 +124,7 @@ free_task:
 void linted_signal_task_wait_destroy(
     struct linted_signal_task_wait *task)
 {
-	linted_asynch_task_destroy(task->parent);
+	linted_async_task_destroy(task->parent);
 	linted_mem_free(task);
 }
 
@@ -141,26 +141,26 @@ int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
 void linted_signal_task_wait_prepare(
     struct linted_signal_task_wait *task, unsigned task_action)
 {
-	linted_asynch_task_prepare(task->parent, task_action);
+	linted_async_task_prepare(task->parent, task_action);
 }
 
-struct linted_asynch_task *
-linted_signal_task_wait_to_asynch(struct linted_signal_task_wait *task)
+struct linted_async_task *
+linted_signal_task_wait_to_async(struct linted_signal_task_wait *task)
 {
 	return task->parent;
 }
 
 struct linted_signal_task_wait *
-linted_signal_task_wait_from_asynch(struct linted_asynch_task *task)
+linted_signal_task_wait_from_async(struct linted_async_task *task)
 {
-	return linted_asynch_task_data(task);
+	return linted_async_task_data(task);
 }
 
-void linted_signal_do_wait(struct linted_asynch_pool *pool,
-                           struct linted_asynch_task *task)
+void linted_signal_do_wait(struct linted_async_pool *pool,
+                           struct linted_async_task *task)
 {
 	struct linted_signal_task_wait *task_wait =
-	    linted_asynch_task_data(task);
+	    linted_async_task_data(task);
 	linted_error err = 0;
 
 	int signo = -1;
@@ -200,7 +200,7 @@ complete:
 		write_one(sigpipe_writer);
 	}
 
-	linted_asynch_pool_complete(pool, task, err);
+	linted_async_pool_complete(pool, task, err);
 }
 
 char const *linted_signal_string(int signo)

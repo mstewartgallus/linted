@@ -16,7 +16,7 @@
 #ifndef LINTED_SCHED_H
 #define LINTED_SCHED_H
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/error.h"
 
 /**
@@ -27,8 +27,8 @@
 
 typedef int linted_sched_priority;
 
-struct linted_asynch_pool;
-struct linted_asynch_task;
+struct linted_async_pool;
+struct linted_async_task;
 
 struct linted_sched_task_idle;
 struct linted_sched_task_sleep_until;
@@ -46,13 +46,13 @@ void linted_sched_task_idle_destroy(
     struct linted_sched_task_idle *task);
 
 void *linted_sched_task_idle_data(struct linted_sched_task_idle *task);
-struct linted_asynch_task *
-linted_sched_task_idle_to_asynch(struct linted_sched_task_idle *task);
+struct linted_async_task *
+linted_sched_task_idle_to_async(struct linted_sched_task_idle *task);
 struct linted_sched_task_idle *
-linted_sched_task_idle_from_asynch(struct linted_asynch_task *task);
+linted_sched_task_idle_from_async(struct linted_async_task *task);
 void linted_sched_task_idle_prepare(
     struct linted_sched_task_idle *task,
-    union linted_asynch_action task_action);
+    union linted_async_action task_action);
 
 linted_error linted_sched_task_sleep_until_create(
     struct linted_sched_task_sleep_until **taskp, void *data);
@@ -61,20 +61,20 @@ void linted_sched_task_sleep_until_destroy(
 
 void linted_sched_task_sleep_until_prepare(
     struct linted_sched_task_sleep_until *task,
-    union linted_asynch_action task_action, struct timespec const *req);
+    union linted_async_action task_action, struct timespec const *req);
 void linted_sched_task_sleep_until_time(
     struct linted_sched_task_sleep_until *task, struct timespec *time);
 
 void *linted_sched_task_sleep_until_data(
     struct linted_sched_task_sleep_until *task);
-struct linted_asynch_task *linted_sched_task_sleep_until_to_asynch(
+struct linted_async_task *linted_sched_task_sleep_until_to_async(
     struct linted_sched_task_sleep_until *task);
 struct linted_sched_task_sleep_until *
-linted_sched_task_sleep_until_from_asynch(
-    struct linted_asynch_task *task);
+linted_sched_task_sleep_until_from_async(
+    struct linted_async_task *task);
 
-void linted_sched_do_idle(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task);
-void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
-                                 struct linted_asynch_task *task);
+void linted_sched_do_idle(struct linted_async_pool *pool,
+                          struct linted_async_task *task);
+void linted_sched_do_sleep_until(struct linted_async_pool *pool,
+                                 struct linted_async_task *task);
 #endif /* LINTED_SCHED_H */

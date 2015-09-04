@@ -20,7 +20,7 @@ pkglibexec_PROGRAMS+=%D%/linted-drawer
 %C%_linted_drawer_LDADD=\
   src/start/libstart.la\
   \
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   src/error/liberror.la\
   src/gpu/libgpu.la\
   src/ko/libko.la\

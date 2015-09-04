@@ -28,8 +28,8 @@
  * Monitor, probe and control an init process.
  */
 
-struct linted_asynch_pool;
-struct linted_asynch_task;
+struct linted_async_pool;
+struct linted_async_task;
 
 typedef linted_ko linted_admin_in;
 typedef linted_ko linted_admin_out;
@@ -89,11 +89,11 @@ void *
 linted_admin_in_task_read_data(struct linted_admin_in_task_read *task);
 void linted_admin_in_task_read_prepare(
     struct linted_admin_in_task_read *task,
-    union linted_asynch_action task_action, linted_ko ko);
-struct linted_asynch_task *linted_admin_in_task_read_to_asynch(
+    union linted_async_action task_action, linted_ko ko);
+struct linted_async_task *linted_admin_in_task_read_to_async(
     struct linted_admin_in_task_read *task);
 struct linted_admin_in_task_read *
-linted_admin_in_task_read_from_asynch(struct linted_asynch_task *task);
+linted_admin_in_task_read_from_async(struct linted_async_task *task);
 
 linted_error linted_admin_out_task_write_create(
     struct linted_admin_out_task_write **taskp, void *data);
@@ -102,15 +102,14 @@ void linted_admin_out_task_write_destroy(
 
 void linted_admin_out_task_write_prepare(
     struct linted_admin_out_task_write *task,
-    union linted_asynch_action task_action, linted_ko ko,
+    union linted_async_action task_action, linted_ko ko,
     union linted_admin_reply const *reply);
 void *linted_admin_out_task_write_data(
     struct linted_admin_out_task_write *task);
-struct linted_asynch_task *linted_admin_out_task_write_to_asynch(
+struct linted_async_task *linted_admin_out_task_write_to_async(
     struct linted_admin_out_task_write *task);
 struct linted_admin_out_task_write *
-linted_admin_out_task_write_from_asynch(
-    struct linted_asynch_task *task);
+linted_admin_out_task_write_from_async(struct linted_async_task *task);
 
 linted_error
 linted_admin_in_write(linted_admin_in admin,

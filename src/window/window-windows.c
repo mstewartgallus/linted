@@ -138,16 +138,16 @@ void linted_window_task_watch_prepare(
 }
 
 struct linted_window_task_watch *
-linted_window_task_watch_from_asynch(struct linted_asynch_task *task)
+linted_window_task_watch_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_read_data(
-	    linted_io_task_read_from_asynch(task));
+	    linted_io_task_read_from_async(task));
 }
 
-struct linted_asynch_task *linted_window_task_watch_to_asynch(
-    struct linted_window_task_watch *task)
+struct linted_async_task *
+linted_window_task_watch_to_async(struct linted_window_task_watch *task)
 {
-	return linted_io_task_read_to_asynch(task->parent);
+	return linted_io_task_read_to_async(task->parent);
 }
 
 void *
@@ -203,16 +203,16 @@ void linted_window_task_notify_prepare(
 }
 
 struct linted_window_task_notify *
-linted_window_task_notify_from_asynch(struct linted_asynch_task *task)
+linted_window_task_notify_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_write_data(
-	    linted_io_task_write_from_asynch(task));
+	    linted_io_task_write_from_async(task));
 }
 
-struct linted_asynch_task *linted_window_task_notify_to_asynch(
+struct linted_async_task *linted_window_task_notify_to_async(
     struct linted_window_task_notify *task)
 {
-	return linted_io_task_write_to_asynch(task->parent);
+	return linted_io_task_write_to_async(task->parent);
 }
 
 void *

@@ -17,7 +17,7 @@
 
 #include "config.h"
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/sched.h"
@@ -32,18 +32,18 @@
 enum { ON_IDLE };
 
 struct idle_data {
-	struct linted_asynch_pool *pool;
+	struct linted_async_pool *pool;
 	unsigned long idle_count;
 };
 
 static unsigned char test_start(char const *process_name, size_t argc,
                                 char const *const argv[]);
 
-static void dispatch(struct linted_asynch_task *task);
-static void on_idle(struct linted_asynch_task *task);
+static void dispatch(struct linted_async_task *task);
+static void on_idle(struct linted_async_task *task);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-asynch-test",
+    .canonical_process_name = PACKAGE_NAME "-async-test",
     .start = test_start};
 
 static unsigned char test_start(char const *process_name, size_t argc,
@@ -65,13 +65,13 @@ static unsigned char test_start(char const *process_name, size_t argc,
 		}
 	}
 
-	struct linted_asynch_pool *pool;
+	struct linted_async_pool *pool;
 	{
-		struct linted_asynch_pool *xx;
-		err = linted_asynch_pool_create(&xx, MAX_TASKS);
+		struct linted_async_pool *xx;
+		err = linted_async_pool_create(&xx, MAX_TASKS);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_asynch_pool_create: %s",
+			           "linted_async_pool_create: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -84,23 +84,23 @@ static unsigned char test_start(char const *process_name, size_t argc,
 
 		linted_sched_task_idle_prepare(
 		    idle_task[ii],
-		    (union linted_asynch_action){.u64 = ON_IDLE});
+		    (union linted_async_action){.u64 = ON_IDLE});
 	}
 
 	for (size_t ii = 0U; ii < MAX_TASKS; ++ii) {
-		linted_asynch_pool_submit(
+		linted_async_pool_submit(
 		    pool,
-		    linted_sched_task_idle_to_asynch(idle_task[ii]));
+		    linted_sched_task_idle_to_async(idle_task[ii]));
 	}
 
 	for (;;) {
-		struct linted_asynch_task *completed_task;
+		struct linted_async_task *completed_task;
 		{
-			struct linted_asynch_task *xx;
-			err = linted_asynch_pool_wait(pool, &xx);
+			struct linted_async_task *xx;
+			err = linted_async_pool_wait(pool, &xx);
 			if (err != 0) {
 				linted_log(LINTED_LOG_ERROR,
-				           "linted_asynch_pool_wait: "
+				           "linted_async_pool_wait: "
 				           "%s",
 				           linted_error_string(err));
 				return EXIT_FAILURE;
@@ -119,10 +119,10 @@ static unsigned char test_start(char const *process_name, size_t argc,
 		continue;
 	}
 exit_loop:
-	err = linted_asynch_pool_destroy(pool);
+	err = linted_async_pool_destroy(pool);
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR,
-		           "linted_asynch_pool_destroy: %s",
+		           "linted_async_pool_destroy: %s",
 		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
@@ -130,9 +130,9 @@ exit_loop:
 	return EXIT_SUCCESS;
 }
 
-static void dispatch(struct linted_asynch_task *task)
+static void dispatch(struct linted_async_task *task)
 {
-	switch (linted_asynch_task_action(task).u64) {
+	switch (linted_async_task_action(task).u64) {
 	case ON_IDLE:
 		on_idle(task);
 		break;
@@ -142,11 +142,11 @@ static void dispatch(struct linted_asynch_task *task)
 	}
 }
 
-static void on_idle(struct linted_asynch_task *task)
+static void on_idle(struct linted_async_task *task)
 {
 	linted_error err;
 
-	err = linted_asynch_task_err(task);
+	err = linted_async_task_err(task);
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_sched_idle: %s",
 		           linted_error_string(err));
@@ -154,7 +154,7 @@ static void on_idle(struct linted_asynch_task *task)
 	}
 
 	struct linted_sched_task_idle *idle_task =
-	    linted_sched_task_idle_from_asynch(task);
+	    linted_sched_task_idle_from_async(task);
 	struct idle_data *idle_data =
 	    linted_sched_task_idle_data(idle_task);
 
@@ -163,6 +163,6 @@ static void on_idle(struct linted_asynch_task *task)
 		return;
 	idle_data->idle_count = count - 1U;
 	linted_sched_task_idle_prepare(
-	    idle_task, (union linted_asynch_action){.u64 = ON_IDLE});
-	linted_asynch_pool_submit(idle_data->pool, task);
+	    idle_task, (union linted_async_action){.u64 = ON_IDLE});
+	linted_async_pool_submit(idle_data->pool, task);
 }

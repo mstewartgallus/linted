@@ -21,7 +21,7 @@ EXTRA_%C%_linted_window_SOURCES=%D%/window-x11.c %D%/window-windows.c
 %C%_linted_window_LDADD=\
   src/start/libstart.la\
   \
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   src/error/liberror.la\
   src/ko/libko.la\
   src/log/liblog.la\

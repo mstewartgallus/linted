@@ -26,7 +26,7 @@
 
 #include "linted/start.h"
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/environment.h"
 #include "linted/mem.h"
 #include "linted/signal.h"

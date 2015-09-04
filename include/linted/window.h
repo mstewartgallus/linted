@@ -16,7 +16,7 @@
 #ifndef LINTED_WINDOW_H
 #define LINTED_WINDOW_H
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 
@@ -28,7 +28,7 @@
  * Communicates user input to another process.
  */
 
-struct linted_asynch_task;
+struct linted_async_task;
 
 typedef linted_ko linted_window;
 typedef linted_ko linted_window_notifier;
@@ -49,10 +49,10 @@ void linted_window_task_watch_destroy(
 
 void linted_window_task_watch_prepare(
     struct linted_window_task_watch *task,
-    union linted_asynch_action task_action, linted_ko notifier);
+    union linted_async_action task_action, linted_ko notifier);
 struct linted_window_task_watch *
-linted_window_task_watch_from_asynch(struct linted_asynch_task *task);
-struct linted_asynch_task *linted_window_task_watch_to_asynch(
+linted_window_task_watch_from_async(struct linted_async_task *task);
+struct linted_async_task *linted_window_task_watch_to_async(
     struct linted_window_task_watch *task);
 void *
 linted_window_task_watch_data(struct linted_window_task_watch *task);
@@ -64,10 +64,10 @@ void linted_window_task_notify_destroy(
 
 void linted_window_task_notify_prepare(
     struct linted_window_task_notify *task,
-    union linted_asynch_action task_action, linted_ko notifier);
+    union linted_async_action task_action, linted_ko notifier);
 struct linted_window_task_notify *
-linted_window_task_notify_from_asynch(struct linted_asynch_task *task);
-struct linted_asynch_task *linted_window_task_notify_to_asynch(
+linted_window_task_notify_from_async(struct linted_async_task *task);
+struct linted_async_task *linted_window_task_notify_to_async(
     struct linted_window_task_notify *task);
 void *
 linted_window_task_notify_data(struct linted_window_task_notify *task);

@@ -19,5 +19,5 @@ noinst_LTLIBRARIES+=%D%/libsched.la
 %C%_libsched_la_SOURCES=%D%/sched.c include/linted/sched.h
 EXTRA_%C%_libsched_la_SOURCES=%D%/sched-posix.c %D%/sched-windows.c
 %C%_libsched_la_LIBADD=\
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   $(REALTIME_LIBS)

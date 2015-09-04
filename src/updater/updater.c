@@ -77,7 +77,7 @@ void linted_updater_task_receive_destroy(
 
 void linted_updater_task_receive_prepare(
     struct linted_updater_task_receive *task,
-    union linted_asynch_action task_action, linted_ko updater)
+    union linted_async_action task_action, linted_ko updater)
 {
 	linted_io_task_read_prepare(task->parent, task_action, updater,
 	                            task->message,
@@ -85,16 +85,16 @@ void linted_updater_task_receive_prepare(
 }
 
 struct linted_updater_task_receive *
-linted_updater_task_receive_from_asynch(struct linted_asynch_task *task)
+linted_updater_task_receive_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_read_data(
-	    linted_io_task_read_from_asynch(task));
+	    linted_io_task_read_from_async(task));
 }
 
-struct linted_asynch_task *linted_updater_task_receive_to_asynch(
+struct linted_async_task *linted_updater_task_receive_to_async(
     struct linted_updater_task_receive *task)
 {
-	return linted_io_task_read_to_asynch(task->parent);
+	return linted_io_task_read_to_async(task->parent);
 }
 
 void *linted_updater_task_receive_data(
@@ -142,7 +142,7 @@ void linted_updater_task_send_destroy(
 
 void linted_updater_task_send_prepare(
     struct linted_updater_task_send *task,
-    union linted_asynch_action task_action, linted_ko updater,
+    union linted_async_action task_action, linted_ko updater,
     struct linted_updater_update const *update)
 {
 	linted_io_task_write_prepare(task->parent, task_action, updater,
@@ -167,16 +167,16 @@ void linted_updater_task_send_prepare(
 }
 
 struct linted_updater_task_send *
-linted_updater_task_send_from_asynch(struct linted_asynch_task *task)
+linted_updater_task_send_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_write_data(
-	    linted_io_task_write_from_asynch(task));
+	    linted_io_task_write_from_async(task));
 }
 
-struct linted_asynch_task *linted_updater_task_send_to_asynch(
-    struct linted_updater_task_send *task)
+struct linted_async_task *
+linted_updater_task_send_to_async(struct linted_updater_task_send *task)
 {
-	return linted_io_task_write_to_asynch(task->parent);
+	return linted_io_task_write_to_async(task->parent);
 }
 
 void *

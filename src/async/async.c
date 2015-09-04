@@ -67,10 +67,10 @@
  * You may think we could use libaio and `io_setup` can statically
  * allocate a work queue that is `max_tasks` large for us but as of
  * yet there would be no point as we cannot take advantage of the
- * syscalls that libaio provides asynchronous implementations
- * of. libaio provides asynchronous implementations of `pread`,
+ * syscalls that libaio provides asyncronous implementations
+ * of. libaio provides asyncronous implementations of `pread`,
  * `pwrite`, `fsync`, `fdatasync`, `preadv` and `pwritev`. libaio
- * defines a constant for running `poll` asynchronously that we could
+ * defines a constant for running `poll` asyncronously that we could
  * use but the command was never implemented.
  *
  * @subsection openbsd OpenBSD AIO
@@ -80,11 +80,11 @@
  */
 
 #if defined HAVE_WINDOWS_API
-#include "asynch-windows.c"
+#include "async-windows.c"
 #elif defined HAVE_EMSCRIPTEN_API
-#include "asynch-emscripten.c"
+#include "async-emscripten.c"
 #elif defined HAVE_POSIX_API
-#include "asynch-posix.c"
+#include "async-posix.c"
 #else
-#error no asynchronous IO implementation for this platform
+#error no asyncronous IO implementation for this platform
 #endif

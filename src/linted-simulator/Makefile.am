@@ -21,7 +21,7 @@ pkglibexec_PROGRAMS+=%D%/linted-simulator
   -lm\
   src/start/libstart.la\
   \
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\
@@ -40,7 +40,7 @@ check_PROGRAMS+=%D%/test_simulator_angle
 %C%_test_simulator_angle_SOURCES=%D%/test_simulator_angle.c
 %C%_test_simulator_angle_LDADD=\
   -lm\
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   src/io/libio.la
 
 if WINDOWS_API

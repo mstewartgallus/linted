@@ -17,7 +17,7 @@
 
 #include "linted/sched.h"
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
@@ -25,7 +25,7 @@
 #include <time.h>
 
 struct linted_sched_task_sleep_until {
-	struct linted_asynch_task *parent;
+	struct linted_async_task *parent;
 	void *data;
 	struct timespec time;
 };
@@ -40,8 +40,8 @@ linted_error
 linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
                               void *data)
 {
-	struct linted_asynch_task *xx;
-	linted_error err = linted_asynch_task_create(
+	struct linted_async_task *xx;
+	linted_error err = linted_async_task_create(
 	    &xx, data, LINTED_ASYNCH_TASK_IDLE);
 	if (err != 0)
 		return err;
@@ -52,22 +52,22 @@ linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
 
 void linted_sched_task_idle_destroy(struct linted_sched_task_idle *task)
 {
-	linted_asynch_task_destroy((void *)task);
+	linted_async_task_destroy((void *)task);
 }
 
 void *linted_sched_task_idle_data(struct linted_sched_task_idle *task)
 {
-	return linted_asynch_task_data((void *)task);
+	return linted_async_task_data((void *)task);
 }
 
-struct linted_asynch_task *
-linted_sched_task_idle_to_asynch(struct linted_sched_task_idle *task)
+struct linted_async_task *
+linted_sched_task_idle_to_async(struct linted_sched_task_idle *task)
 {
 	return (void *)task;
 }
 
 struct linted_sched_task_idle *
-linted_sched_task_idle_from_asynch(struct linted_asynch_task *task)
+linted_sched_task_idle_from_async(struct linted_async_task *task)
 {
 	return (void *)task;
 }
@@ -75,7 +75,7 @@ linted_sched_task_idle_from_asynch(struct linted_asynch_task *task)
 void linted_sched_task_idle_prepare(struct linted_sched_task_idle *task,
                                     unsigned task_action)
 {
-	linted_asynch_task_prepare((void *)task, task_action);
+	linted_async_task_prepare((void *)task, task_action);
 }
 
 linted_error linted_sched_task_sleep_until_create(
@@ -90,10 +90,10 @@ linted_error linted_sched_task_sleep_until_create(
 			return err;
 		task = xx;
 	}
-	struct linted_asynch_task *parent;
+	struct linted_async_task *parent;
 	{
-		struct linted_asynch_task *xx;
-		err = linted_asynch_task_create(
+		struct linted_async_task *xx;
+		err = linted_async_task_create(
 		    &xx, task, LINTED_ASYNCH_TASK_SLEEP_UNTIL);
 		if (err != 0)
 			goto free_task;
@@ -111,7 +111,7 @@ free_task:
 void linted_sched_task_sleep_until_destroy(
     struct linted_sched_task_sleep_until *task)
 {
-	linted_asynch_task_destroy(task->parent);
+	linted_async_task_destroy(task->parent);
 	linted_mem_free(task);
 }
 
@@ -131,32 +131,31 @@ void linted_sched_task_sleep_until_prepare(
     struct linted_sched_task_sleep_until *task, unsigned task_action,
     struct timespec const *req)
 {
-	linted_asynch_task_prepare(task->parent, task_action);
+	linted_async_task_prepare(task->parent, task_action);
 	task->time = *req;
 }
 
-struct linted_asynch_task *linted_sched_task_sleep_until_to_asynch(
+struct linted_async_task *linted_sched_task_sleep_until_to_async(
     struct linted_sched_task_sleep_until *task)
 {
 	return task->parent;
 }
 
 struct linted_sched_task_sleep_until *
-linted_sched_task_sleep_until_from_asynch(
-    struct linted_asynch_task *task)
+linted_sched_task_sleep_until_from_async(struct linted_async_task *task)
 {
-	return linted_asynch_task_data(task);
+	return linted_async_task_data(task);
 }
 
-void linted_sched_do_idle(struct linted_asynch_pool *pool,
-                          struct linted_asynch_task *task)
+void linted_sched_do_idle(struct linted_async_pool *pool,
+                          struct linted_async_task *task)
 {
-	linted_asynch_pool_complete(pool, task, 0);
+	linted_async_pool_complete(pool, task, 0);
 }
 
-void linted_sched_do_sleep_until(struct linted_asynch_pool *pool,
-                                 struct linted_asynch_task *task)
+void linted_sched_do_sleep_until(struct linted_async_pool *pool,
+                                 struct linted_async_task *task)
 {
-	linted_asynch_pool_complete(pool, task,
-	                            LINTED_ERROR_UNIMPLEMENTED);
+	linted_async_pool_complete(pool, task,
+	                           LINTED_ERROR_UNIMPLEMENTED);
 }

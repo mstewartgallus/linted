@@ -21,7 +21,7 @@ EXTRA_%C%_linted_sandbox_SOURCES=\
   %D%/sandbox-windows.c %D%/sandbox-posix.c\
   %D%/sandbox-i386.c %D%/sandbox-amd64.c
 %C%_linted_sandbox_LDADD=\
-  src/asynch/libasynch.la\
+  src/async/libasync.la\
   src/dir/libdir.la\
   src/error/liberror.la\
   src/fifo/libfifo.la\

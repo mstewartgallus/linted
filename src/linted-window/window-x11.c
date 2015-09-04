@@ -15,7 +15,7 @@
  */
 #define _POSIX_C_SOURCE 200112L
 
-#include "linted/asynch.h"
+#include "linted/async.h"
 #include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/io.h"
@@ -45,20 +45,20 @@ enum { ON_POLL_CONN, ON_SENT_NOTICE, MAX_TASKS };
 
 struct poll_conn_data {
 	xcb_connection_t *connection;
-	struct linted_asynch_pool *pool;
+	struct linted_async_pool *pool;
 	bool *time_to_quit;
 };
 
 struct notice_data {
-	struct linted_asynch_pool *pool;
+	struct linted_async_pool *pool;
 };
 
 static unsigned char window_start(char const *process_name, size_t argc,
                                   char const *const argv[]);
 
-static linted_error dispatch(struct linted_asynch_task *task);
-static linted_error on_poll_conn(struct linted_asynch_task *task);
-static linted_error on_sent_notice(struct linted_asynch_task *task);
+static linted_error dispatch(struct linted_async_task *task);
+static linted_error on_poll_conn(struct linted_async_task *task);
+static linted_error on_sent_notice(struct linted_async_task *task);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-window",
@@ -175,10 +175,10 @@ static unsigned char window_start(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	struct linted_asynch_pool *pool;
+	struct linted_async_pool *pool;
 	{
-		struct linted_asynch_pool *xx;
-		err = linted_asynch_pool_create(&xx, MAX_TASKS);
+		struct linted_async_pool *xx;
+		err = linted_async_pool_create(&xx, MAX_TASKS);
 		if (err != 0)
 			return err;
 		pool = xx;
@@ -477,34 +477,34 @@ get_hostname_succeeded:
 
 	linted_window_task_notify_prepare(
 	    gui_notice_task,
-	    (union linted_asynch_action){.u64 = ON_SENT_NOTICE},
+	    (union linted_async_action){.u64 = ON_SENT_NOTICE},
 	    gui_notifier);
-	linted_asynch_pool_submit(
-	    pool, linted_window_task_notify_to_asynch(gui_notice_task));
+	linted_async_pool_submit(
+	    pool, linted_window_task_notify_to_async(gui_notice_task));
 
 	linted_window_task_notify_prepare(
 	    drawer_notice_task,
-	    (union linted_asynch_action){.u64 = ON_SENT_NOTICE},
+	    (union linted_async_action){.u64 = ON_SENT_NOTICE},
 	    drawer_notifier);
-	linted_asynch_pool_submit(
+	linted_async_pool_submit(
 	    pool,
-	    linted_window_task_notify_to_asynch(drawer_notice_task));
+	    linted_window_task_notify_to_async(drawer_notice_task));
 
 	linted_io_task_poll_prepare(
 	    poll_conn_task,
-	    (union linted_asynch_action){.u64 = ON_POLL_CONN},
+	    (union linted_async_action){.u64 = ON_POLL_CONN},
 	    xcb_get_file_descriptor(connection), POLLIN);
-	linted_asynch_pool_submit(
-	    pool, linted_io_task_poll_to_asynch(poll_conn_task));
+	linted_async_pool_submit(
+	    pool, linted_io_task_poll_to_async(poll_conn_task));
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
 		time_to_quit = false;
 
-		struct linted_asynch_task *completed_task;
+		struct linted_async_task *completed_task;
 		{
-			struct linted_asynch_task *xx;
-			err = linted_asynch_pool_wait(pool, &xx);
+			struct linted_async_task *xx;
+			err = linted_async_pool_wait(pool, &xx);
 			if (err != 0)
 				goto stop_pool;
 			completed_task = xx;
@@ -518,26 +518,26 @@ get_hostname_succeeded:
 	}
 
 stop_pool:
-	linted_asynch_task_cancel(
-	    linted_window_task_notify_to_asynch(gui_notice_task));
-	linted_asynch_task_cancel(
-	    linted_window_task_notify_to_asynch(drawer_notice_task));
-	linted_asynch_task_cancel(
-	    linted_io_task_poll_to_asynch(poll_conn_task));
+	linted_async_task_cancel(
+	    linted_window_task_notify_to_async(gui_notice_task));
+	linted_async_task_cancel(
+	    linted_window_task_notify_to_async(drawer_notice_task));
+	linted_async_task_cancel(
+	    linted_io_task_poll_to_async(poll_conn_task));
 
 	for (;;) {
-		struct linted_asynch_task *completed_task;
+		struct linted_async_task *completed_task;
 		linted_error poll_err;
 		{
-			struct linted_asynch_task *xx;
-			poll_err = linted_asynch_pool_poll(pool, &xx);
+			struct linted_async_task *xx;
+			poll_err = linted_async_pool_poll(pool, &xx);
 			if (LINTED_ERROR_AGAIN == poll_err)
 				break;
 			completed_task = xx;
 		}
 
 		linted_error dispatch_err =
-		    linted_asynch_task_err(completed_task);
+		    linted_async_task_err(completed_task);
 		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
 			err = dispatch_err;
 	}
@@ -561,7 +561,7 @@ close_display:
 	xcb_disconnect(connection);
 
 destroy_pool : {
-	linted_error destroy_err = linted_asynch_pool_destroy(pool);
+	linted_error destroy_err = linted_async_pool_destroy(pool);
 	if (0 == err)
 		err = destroy_err;
 }
@@ -597,9 +597,9 @@ destroy_pool : {
 	return err;
 }
 
-static linted_error dispatch(struct linted_asynch_task *task)
+static linted_error dispatch(struct linted_async_task *task)
 {
-	switch (linted_asynch_task_action(task).u64) {
+	switch (linted_async_task_action(task).u64) {
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
@@ -611,21 +611,21 @@ static linted_error dispatch(struct linted_asynch_task *task)
 	}
 }
 
-static linted_error on_poll_conn(struct linted_asynch_task *task)
+static linted_error on_poll_conn(struct linted_async_task *task)
 {
 	linted_error err;
 
-	err = linted_asynch_task_err(task);
+	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 
 	struct linted_io_task_poll *poll_conn_task =
-	    linted_io_task_poll_from_asynch(task);
+	    linted_io_task_poll_from_async(task);
 	struct poll_conn_data *poll_conn_data =
 	    linted_io_task_poll_data(poll_conn_task);
 
 	xcb_connection_t *connection = poll_conn_data->connection;
-	struct linted_asynch_pool *pool = poll_conn_data->pool;
+	struct linted_async_pool *pool = poll_conn_data->pool;
 	bool *time_to_quitp = poll_conn_data->time_to_quit;
 
 	for (;;) {
@@ -660,18 +660,18 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 
 	linted_io_task_poll_prepare(
 	    poll_conn_task,
-	    (union linted_asynch_action){.u64 = ON_POLL_CONN},
+	    (union linted_async_action){.u64 = ON_POLL_CONN},
 	    xcb_get_file_descriptor(connection), POLLIN);
-	linted_asynch_pool_submit(pool, task);
+	linted_async_pool_submit(pool, task);
 
 	return 0;
 }
 
-static linted_error on_sent_notice(struct linted_asynch_task *task)
+static linted_error on_sent_notice(struct linted_async_task *task)
 {
 	linted_error err;
 
-	err = linted_asynch_task_err(task);
+	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 
