@@ -417,14 +417,17 @@ on_window_read_err:
 		                        controller_task, controller);
 	}
 
-	linted_window_task_watch_prepare(notice_task, ON_RECEIVE_NOTICE,
-	                                 notifier);
+	linted_window_task_watch_prepare(
+	    notice_task,
+	    (union linted_asynch_action){.u64 = ON_RECEIVE_NOTICE},
+	    notifier);
 	linted_asynch_pool_submit(
 	    pool, linted_window_task_watch_to_asynch(notice_task));
 
-	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
-	                            xcb_get_file_descriptor(connection),
-	                            POLLIN);
+	linted_io_task_poll_prepare(
+	    poll_conn_task,
+	    (union linted_asynch_action){.u64 = ON_POLL_CONN},
+	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_asynch_pool_submit(
 	    pool, linted_io_task_poll_to_asynch(poll_conn_task));
 
@@ -503,7 +506,7 @@ destroy_pool : {
 
 static linted_error dispatch(struct linted_asynch_task *task)
 {
-	switch (linted_asynch_task_action(task)) {
+	switch (linted_asynch_task_action(task).u64) {
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
@@ -902,9 +905,10 @@ static void maybe_update_controller(
 
 	struct controller_task_data *controller_task_data =
 	    linted_controller_task_send_data(controller_task);
-	linted_controller_task_send_prepare(controller_task,
-	                                    ON_SENT_CONTROL, controller,
-	                                    &controller_data->update);
+	linted_controller_task_send_prepare(
+	    controller_task,
+	    (union linted_asynch_action){.u64 = ON_SENT_CONTROL},
+	    controller, &controller_data->update);
 	controller_task_data->controller_data = controller_data;
 	controller_task_data->pool = pool;
 	controller_task_data->controller = controller;

@@ -16,6 +16,7 @@
 #ifndef LINTED_UPDATER_H
 #define LINTED_UPDATER_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 
@@ -64,8 +65,8 @@ void linted_updater_task_receive_destroy(
     struct linted_updater_task_receive *task);
 
 void linted_updater_task_receive_prepare(
-    struct linted_updater_task_receive *task, unsigned task_action,
-    linted_ko updater);
+    struct linted_updater_task_receive *task,
+    union linted_asynch_action task_action, linted_ko updater);
 struct linted_asynch_task *linted_updater_task_receive_to_asynch(
     struct linted_updater_task_receive *task);
 struct linted_updater_task_receive *
@@ -81,8 +82,9 @@ void linted_updater_task_send_destroy(
     struct linted_updater_task_send *task);
 
 void linted_updater_task_send_prepare(
-    struct linted_updater_task_send *task, unsigned task_action,
-    linted_ko updater, struct linted_updater_update const *update);
+    struct linted_updater_task_send *task,
+    union linted_asynch_action task_action, linted_ko updater,
+    struct linted_updater_update const *update);
 struct linted_asynch_task *linted_updater_task_send_to_asynch(
     struct linted_updater_task_send *task);
 struct linted_updater_task_send *

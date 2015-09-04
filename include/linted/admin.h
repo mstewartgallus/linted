@@ -88,8 +88,8 @@ void linted_admin_in_task_read_request(
 void *
 linted_admin_in_task_read_data(struct linted_admin_in_task_read *task);
 void linted_admin_in_task_read_prepare(
-    struct linted_admin_in_task_read *task, unsigned task_action,
-    linted_ko ko);
+    struct linted_admin_in_task_read *task,
+    union linted_asynch_action task_action, linted_ko ko);
 struct linted_asynch_task *linted_admin_in_task_read_to_asynch(
     struct linted_admin_in_task_read *task);
 struct linted_admin_in_task_read *
@@ -101,8 +101,9 @@ void linted_admin_out_task_write_destroy(
     struct linted_admin_out_task_write *task);
 
 void linted_admin_out_task_write_prepare(
-    struct linted_admin_out_task_write *task, unsigned task_action,
-    linted_ko ko, union linted_admin_reply const *reply);
+    struct linted_admin_out_task_write *task,
+    union linted_asynch_action task_action, linted_ko ko,
+    union linted_admin_reply const *reply);
 void *linted_admin_out_task_write_data(
     struct linted_admin_out_task_write *task);
 struct linted_asynch_task *linted_admin_out_task_write_to_asynch(

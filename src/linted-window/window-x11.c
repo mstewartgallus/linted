@@ -475,20 +475,25 @@ get_hostname_succeeded:
 	if (err != 0)
 		goto destroy_window;
 
-	linted_window_task_notify_prepare(gui_notice_task,
-	                                  ON_SENT_NOTICE, gui_notifier);
+	linted_window_task_notify_prepare(
+	    gui_notice_task,
+	    (union linted_asynch_action){.u64 = ON_SENT_NOTICE},
+	    gui_notifier);
 	linted_asynch_pool_submit(
 	    pool, linted_window_task_notify_to_asynch(gui_notice_task));
 
 	linted_window_task_notify_prepare(
-	    drawer_notice_task, ON_SENT_NOTICE, drawer_notifier);
+	    drawer_notice_task,
+	    (union linted_asynch_action){.u64 = ON_SENT_NOTICE},
+	    drawer_notifier);
 	linted_asynch_pool_submit(
 	    pool,
 	    linted_window_task_notify_to_asynch(drawer_notice_task));
 
-	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
-	                            xcb_get_file_descriptor(connection),
-	                            POLLIN);
+	linted_io_task_poll_prepare(
+	    poll_conn_task,
+	    (union linted_asynch_action){.u64 = ON_POLL_CONN},
+	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_asynch_pool_submit(
 	    pool, linted_io_task_poll_to_asynch(poll_conn_task));
 
@@ -594,7 +599,7 @@ destroy_pool : {
 
 static linted_error dispatch(struct linted_asynch_task *task)
 {
-	switch (linted_asynch_task_action(task)) {
+	switch (linted_asynch_task_action(task).u64) {
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
@@ -653,9 +658,10 @@ static linted_error on_poll_conn(struct linted_asynch_task *task)
 	poll_conn_data->pool = pool;
 	poll_conn_data->connection = connection;
 
-	linted_io_task_poll_prepare(poll_conn_task, ON_POLL_CONN,
-	                            xcb_get_file_descriptor(connection),
-	                            POLLIN);
+	linted_io_task_poll_prepare(
+	    poll_conn_task,
+	    (union linted_asynch_action){.u64 = ON_POLL_CONN},
+	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_asynch_pool_submit(pool, task);
 
 	return 0;

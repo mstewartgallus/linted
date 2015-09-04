@@ -16,6 +16,7 @@
 #ifndef LINTED_PID_H
 #define LINTED_PID_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 
 #include <stdint.h>
@@ -102,9 +103,10 @@ void linted_pid_task_waitid_destroy(
     struct linted_pid_task_waitid *task);
 
 #if defined HAVE_POSIX_API
-void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
-                                    unsigned task_action, idtype_t type,
-                                    id_t id, int options);
+void linted_pid_task_waitid_prepare(
+    struct linted_pid_task_waitid *task,
+    union linted_asynch_action task_action, idtype_t type, id_t id,
+    int options);
 void linted_pid_task_waitid_info(struct linted_pid_task_waitid *task,
                                  siginfo_t *info);
 #endif

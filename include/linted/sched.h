@@ -16,6 +16,7 @@
 #ifndef LINTED_SCHED_H
 #define LINTED_SCHED_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 
 /**
@@ -49,8 +50,9 @@ struct linted_asynch_task *
 linted_sched_task_idle_to_asynch(struct linted_sched_task_idle *task);
 struct linted_sched_task_idle *
 linted_sched_task_idle_from_asynch(struct linted_asynch_task *task);
-void linted_sched_task_idle_prepare(struct linted_sched_task_idle *task,
-                                    unsigned task_action);
+void linted_sched_task_idle_prepare(
+    struct linted_sched_task_idle *task,
+    union linted_asynch_action task_action);
 
 linted_error linted_sched_task_sleep_until_create(
     struct linted_sched_task_sleep_until **taskp, void *data);
@@ -58,8 +60,8 @@ void linted_sched_task_sleep_until_destroy(
     struct linted_sched_task_sleep_until *task);
 
 void linted_sched_task_sleep_until_prepare(
-    struct linted_sched_task_sleep_until *task, unsigned task_action,
-    struct timespec const *req);
+    struct linted_sched_task_sleep_until *task,
+    union linted_asynch_action task_action, struct timespec const *req);
 void linted_sched_task_sleep_until_time(
     struct linted_sched_task_sleep_until *task, struct timespec *time);
 

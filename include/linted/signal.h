@@ -16,6 +16,7 @@
 #ifndef LINTED_SIGNAL_H
 #define LINTED_SIGNAL_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 
 #include <stddef.h>
@@ -40,7 +41,8 @@ void linted_signal_task_wait_destroy(
     struct linted_signal_task_wait *task);
 
 void linted_signal_task_wait_prepare(
-    struct linted_signal_task_wait *task, unsigned task_action);
+    struct linted_signal_task_wait *task,
+    union linted_asynch_action task_action);
 
 void *
 linted_signal_task_wait_data(struct linted_signal_task_wait *task);

@@ -101,9 +101,10 @@ void linted_pid_task_waitid_info(struct linted_pid_task_waitid *task,
 	*info = task->info;
 }
 
-void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
-                                    unsigned task_action, idtype_t type,
-                                    id_t id, int options)
+void linted_pid_task_waitid_prepare(
+    struct linted_pid_task_waitid *task,
+    union linted_asynch_action task_action, idtype_t type, id_t id,
+    int options)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 	task->idtype = type;

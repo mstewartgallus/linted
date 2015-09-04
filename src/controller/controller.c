@@ -96,7 +96,8 @@ void *linted_controller_task_send_data(
 }
 
 void linted_controller_task_send_prepare(
-    struct linted_controller_task_send *task, unsigned task_action,
+    struct linted_controller_task_send *task,
+    union linted_asynch_action task_action,
     linted_controller controller,
     struct linted_controller_message const *message)
 {
@@ -177,7 +178,8 @@ void *linted_controller_task_receive_data(
 }
 
 void linted_controller_task_receive_prepare(
-    struct linted_controller_task_receive *task, unsigned task_action,
+    struct linted_controller_task_receive *task,
+    union linted_asynch_action task_action,
     linted_controller controller)
 {
 	linted_io_task_read_prepare(task->parent, task_action,

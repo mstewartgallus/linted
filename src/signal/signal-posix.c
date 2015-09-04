@@ -156,7 +156,8 @@ int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
 }
 
 void linted_signal_task_wait_prepare(
-    struct linted_signal_task_wait *task, unsigned task_action)
+    struct linted_signal_task_wait *task,
+    union linted_asynch_action task_action)
 {
 	linted_asynch_task_prepare(task->parent, task_action);
 }

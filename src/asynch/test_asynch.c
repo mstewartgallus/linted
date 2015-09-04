@@ -82,7 +82,9 @@ static unsigned char test_start(char const *process_name, size_t argc,
 		idle_data[ii].pool = pool;
 		idle_data[ii].idle_count = 100U;
 
-		linted_sched_task_idle_prepare(idle_task[ii], ON_IDLE);
+		linted_sched_task_idle_prepare(
+		    idle_task[ii],
+		    (union linted_asynch_action){.u64 = ON_IDLE});
 	}
 
 	for (size_t ii = 0U; ii < MAX_TASKS; ++ii) {
@@ -130,7 +132,7 @@ exit_loop:
 
 static void dispatch(struct linted_asynch_task *task)
 {
-	switch (linted_asynch_task_action(task)) {
+	switch (linted_asynch_task_action(task).u64) {
 	case ON_IDLE:
 		on_idle(task);
 		break;
@@ -160,6 +162,7 @@ static void on_idle(struct linted_asynch_task *task)
 	if (0U == count)
 		return;
 	idle_data->idle_count = count - 1U;
-	linted_sched_task_idle_prepare(idle_task, ON_IDLE);
+	linted_sched_task_idle_prepare(
+	    idle_task, (union linted_asynch_action){.u64 = ON_IDLE});
 	linted_asynch_pool_submit(idle_data->pool, task);
 }

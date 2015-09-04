@@ -235,8 +235,8 @@ linted_admin_in_write(linted_admin_in admin,
 }
 
 void linted_admin_in_task_read_prepare(
-    struct linted_admin_in_task_read *task, unsigned task_action,
-    linted_ko ko)
+    struct linted_admin_in_task_read *task,
+    union linted_asynch_action task_action, linted_ko ko)
 {
 	linted_io_task_read_prepare(task->parent, task_action, ko,
 	                            task->request,
@@ -299,8 +299,9 @@ void *linted_admin_out_task_write_data(
 }
 
 void linted_admin_out_task_write_prepare(
-    struct linted_admin_out_task_write *task, unsigned task_action,
-    linted_ko ko, union linted_admin_reply const *reply)
+    struct linted_admin_out_task_write *task,
+    union linted_asynch_action task_action, linted_ko ko,
+    union linted_admin_reply const *reply)
 {
 	linted_admin_type type = reply->type;
 

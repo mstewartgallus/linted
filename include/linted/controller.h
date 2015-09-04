@@ -16,6 +16,7 @@
 #ifndef LINTED_CONTROLLER_H
 #define LINTED_CONTROLLER_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 
@@ -57,7 +58,8 @@ linted_controller_task_send_from_asynch(
 void *linted_controller_task_send_data(
     struct linted_controller_task_send *task);
 void linted_controller_task_send_prepare(
-    struct linted_controller_task_send *task, unsigned task_action,
+    struct linted_controller_task_send *task,
+    union linted_asynch_action task_action,
     linted_controller controller,
     struct linted_controller_message const *message);
 
@@ -74,7 +76,8 @@ linted_controller_task_receive_from_asynch(
 void *linted_controller_task_receive_data(
     struct linted_controller_task_receive *task);
 void linted_controller_task_receive_prepare(
-    struct linted_controller_task_receive *task, unsigned task_action,
+    struct linted_controller_task_receive *task,
+    union linted_asynch_action task_action,
     linted_controller controller);
 
 linted_error linted_controller_decode(

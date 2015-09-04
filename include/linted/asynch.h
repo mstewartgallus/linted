@@ -45,6 +45,18 @@ typedef unsigned char linted_asynch_type;
 struct linted_asynch_task;
 struct linted_asynch_waiter;
 
+union linted_asynch_action {
+	void *ptr;
+	/* By C standards at least 8 bits long */
+	unsigned char u8;
+	/* By C standards at least 16 bits long */
+	unsigned short u16;
+	/* By C standards at least 32 bits long */
+	unsigned long u32;
+	/* By C standards at least 64 bits long */
+	unsigned long long u64;
+};
+
 linted_error
 linted_asynch_pool_create(struct linted_asynch_pool **poolp,
                           unsigned max_tasks);
@@ -84,8 +96,9 @@ void linted_asynch_task_destroy(struct linted_asynch_task *task);
 
 void linted_asynch_task_cancel(struct linted_asynch_task *task);
 void linted_asynch_task_prepare(struct linted_asynch_task *task,
-                                unsigned task_action);
-unsigned linted_asynch_task_action(struct linted_asynch_task *task);
+                                union linted_asynch_action task_action);
+union linted_asynch_action
+linted_asynch_task_action(struct linted_asynch_task *task);
 linted_error linted_asynch_task_err(struct linted_asynch_task *task);
 
 void *linted_asynch_task_data(struct linted_asynch_task *task);

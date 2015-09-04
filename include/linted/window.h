@@ -16,6 +16,7 @@
 #ifndef LINTED_WINDOW_H
 #define LINTED_WINDOW_H
 
+#include "linted/asynch.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 
@@ -47,8 +48,8 @@ void linted_window_task_watch_destroy(
     struct linted_window_task_watch *task);
 
 void linted_window_task_watch_prepare(
-    struct linted_window_task_watch *task, unsigned task_action,
-    linted_ko notifier);
+    struct linted_window_task_watch *task,
+    union linted_asynch_action task_action, linted_ko notifier);
 struct linted_window_task_watch *
 linted_window_task_watch_from_asynch(struct linted_asynch_task *task);
 struct linted_asynch_task *linted_window_task_watch_to_asynch(
@@ -62,8 +63,8 @@ void linted_window_task_notify_destroy(
     struct linted_window_task_notify *task);
 
 void linted_window_task_notify_prepare(
-    struct linted_window_task_notify *task, unsigned task_action,
-    linted_ko notifier);
+    struct linted_window_task_notify *task,
+    union linted_asynch_action task_action, linted_ko notifier);
 struct linted_window_task_notify *
 linted_window_task_notify_from_asynch(struct linted_asynch_task *task);
 struct linted_asynch_task *linted_window_task_notify_to_asynch(

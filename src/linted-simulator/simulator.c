@@ -232,13 +232,18 @@ static unsigned char sim_start(char const *const process_name,
 			goto stop_pool;
 
 		linted_sched_task_sleep_until_prepare(
-		    tick_task, ON_READ_TIMER, &now);
+		    tick_task,
+		    (union linted_asynch_action){.u64 = ON_READ_TIMER},
+		    &now);
 	}
 	linted_asynch_pool_submit(
 	    pool, linted_sched_task_sleep_until_to_asynch(tick_task));
 
 	linted_controller_task_receive_prepare(
-	    controller_task, ON_RECEIVE_CONTROLLER_EVENT, controller);
+	    controller_task,
+	    (union linted_asynch_action){
+	        .u64 = ON_RECEIVE_CONTROLLER_EVENT},
+	    controller);
 	linted_asynch_pool_submit(
 	    pool,
 	    linted_controller_task_receive_to_asynch(controller_task));
@@ -306,7 +311,7 @@ exit:
 
 static linted_error dispatch(struct linted_asynch_task *completed_task)
 {
-	switch (linted_asynch_task_action(completed_task)) {
+	switch (linted_asynch_task_action(completed_task).u64) {
 	case ON_READ_TIMER:
 		return on_read_timer(completed_task);
 
@@ -365,7 +370,9 @@ static linted_error on_read_timer(struct linted_asynch_task *task)
 	{
 		struct timespec xx = next_tick_time;
 		linted_sched_task_sleep_until_prepare(
-		    timer_task, ON_READ_TIMER, &xx);
+		    timer_task,
+		    (union linted_asynch_action){.u64 = ON_READ_TIMER},
+		    &xx);
 	}
 	linted_asynch_pool_submit(pool, task);
 
@@ -499,7 +506,10 @@ static void maybe_update(linted_updater updater, struct state *state,
 	{
 		struct linted_updater_update xx = update;
 		linted_updater_task_send_prepare(
-		    updater_task, ON_SENT_UPDATER_EVENT, updater, &xx);
+		    updater_task,
+		    (union linted_asynch_action){
+		        .u64 = ON_SENT_UPDATER_EVENT},
+		    updater, &xx);
 	}
 	linted_asynch_pool_submit(
 	    pool, linted_updater_task_send_to_asynch(updater_task));

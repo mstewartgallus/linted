@@ -148,7 +148,7 @@ struct linted_asynch_task {
 	struct canceller canceller;
 	void *data;
 	linted_error err;
-	unsigned task_action;
+	union linted_asynch_action task_action;
 	linted_asynch_type type;
 	bool thread_canceller : 1U;
 };
@@ -434,13 +434,14 @@ void linted_asynch_task_cancel(struct linted_asynch_task *task)
 }
 
 void linted_asynch_task_prepare(struct linted_asynch_task *task,
-                                unsigned task_action)
+                                union linted_asynch_action task_action)
 {
 	assert(task != 0);
 	task->task_action = task_action;
 }
 
-unsigned linted_asynch_task_action(struct linted_asynch_task *task)
+union linted_asynch_action
+linted_asynch_task_action(struct linted_asynch_task *task)
 {
 	assert(task != 0);
 	return task->task_action;
