@@ -21,8 +21,13 @@ WARNINGS = YES
 WARN_IF_UNDOCUMENTED = NO
 
 RECURSIVE = YES
-INPUT = "@srcdir@/include" "@srcdir@/src" "@srcdir@/docs"
-STRIP_FROM_PATH = "@srcdir@"
+INPUT =\
+  "@srcdir@/include"\
+  "@srcdir@/src"\
+  "@srcdir@/docs"\
+  "@srcdir@/m4"\
+  "@srcdir@/scripts"
+STRIP_FROM_PATH="@srcdir@"
 
 EXCLUDE_SYMBOLS = *_
 

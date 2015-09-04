@@ -15,6 +15,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 EXTRA_DIST+=\
+  %D%/Doxyfile.in\
   %D%/builds.h\
   %D%/coding.h\
   %D%/guarding.h\
@@ -23,10 +24,14 @@ EXTRA_DIST+=\
   %D%/todo.h\
   %D%/tools.h
 
-.PHONY: doxygen
-doxygen:
-	sed \
+%D%/Doxyfile.out: %D%/Doxyfile.in Makefile
+	$(MKDIR_P) "$$(dirname $@)"
+	$(linted_V_SED) sed \
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
 	  -e 's|[@]PACKAGE_NAME[@]|$(PACKAGE_NAME)|g'\
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
-	  $(srcdir)/Doxyfile.in | (unset POSIXLY_CORRECT; exec doxygen -)
+	< $< > $@
+
+.PHONY: doxygen
+doxygen: %D%/Doxyfile.out
+	unset POSIXLY_CORRECT; exec doxygen $<

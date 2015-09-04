@@ -13,12 +13,22 @@
  *
  * @section used Used Techniques
  * <ul>
- * <li> Processs Isolation, see in particular: <ul>
- * <li> @see src/linted-monitor </li>
- * <li> @see src/linted-sandbox </li>
+ * <li> Processs Isolation, in particular: <ul>
+ * <li> @see src/linted-monitor/monitor.c </li>
+ * <li> @see src/linted-sandbox/sandbox.c </li>
  * <li> @see src/linted/linted.c (prevents file descriptor leaks) </li>
+ * <li> we use sandbox specific chroots</li>
+ * <li> we use new namespaces for sandboxes (`CLONE_NEWUSER`, `CLONE_NEWIPC`,
+ * `CLONE_NEWNS`, `CLONE_NEWUTS`, `CLONE_NEWNET`, `CLONE_NEWPID`) </li>
+ * <li> we sanitize environment variables </li>
+ * <li> we set a generic low scheduling policy for sandboxes </li>
+ * <li> we use a generic Seccomp policy for sandboxes </li>
+ * <li> we use generic resource limits for sandboxes </li>
  * </ul></li>
- * <li> Toolchain hardening options, see: @see m4/linted_harden.m4 </li>
+ * <li> Toolchain hardening options:<ul>
+ * <li> @see m4/linted_harden.m4 </li>
+ * <li> position independent executables </li>
+ * </ul></li>
  * <li> Program linters, see: <ul>
  * <li> @see scripts/check-cppcheck.in </li>
  * <li> @see scripts/check-clang-analysis.in </li>
@@ -30,11 +40,11 @@
  * </li> </ul>
  *
  * @section potential Potential Techniques
- * - Use `setrlimit` to limit resources in individual processes.  I am
- *   not sure how it works with `CLONE_NEWUSER`.
+ * - Use fine-grained and sandbox specific scheduling policies
+ * - Use fine-grained and sandbox specific seccomp policies
+ * - Use fine-grained and sandbox specific resource limits
  *
- * - Restrict Capabilities
- *   - Seccomp
+ * - Restrict Capabilities:
  *   - Ftrace
  *   - SELinux
  *   - AppArmor
@@ -47,10 +57,9 @@
  *   - Our interprocess interactions might be a good area to formalize.
  *
  * - Testing:
- *   - Using unit tests
+ *   - Using much more unit tests
  *   - Using fuzz tests
  *
  * - Toolchain hardening:
  *   - stack smashing protection with -fstack-protector-all
- *   - position independent executable support with -pie and -fPIE
  */
