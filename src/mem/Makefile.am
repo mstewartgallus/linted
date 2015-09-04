@@ -15,10 +15,9 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 EXTRA_DIST+=include/linted/mem.h
+
 TESTS+=%D%/test_mem
-
 check_PROGRAMS+=%D%/test_mem
-
 %C%_test_mem_SOURCES=%D%/test_mem.c
 %C%_test_mem_LDADD=\
  src/asynch/libasynch.la\

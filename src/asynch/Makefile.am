@@ -26,3 +26,12 @@ EXTRA_%C%_libasynch_la_SOURCES=\
   src/channel/libchannel.la\
   src/queue/libqueue.la\
   $(WS2_32_LIBS)
+
+TESTS+=%D%/test_asynch
+check_PROGRAMS+=%D%/test_asynch
+%C%_test_asynch_SOURCES=%D%/test_asynch.c
+%C%_test_asynch_LDADD=\
+ src/asynch/libasynch.la\
+ src/log/liblog.la\
+ src/sched/libsched.la\
+ src/start/libstart.la
