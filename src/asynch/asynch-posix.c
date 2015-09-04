@@ -867,13 +867,13 @@ struct wait_manager {
 static void *master_poller_routine(void *arg);
 static linted_error
 do_task_for_event(struct linted_asynch_pool *asynch_pool,
-                  struct linted_asynch_waiter *waiter, uint32_t revents);
+                  struct linted_asynch_waiter *waiter,
+                  uint32_t revents);
 static linted_error recv_waiters(struct linted_asynch_pool *asynch_pool,
-  				linted_ko epoll_ko,
+                                 linted_ko epoll_ko,
                                  struct linted_asynch_waiter **waiters,
                                  struct waiter_queue *waiter_queue,
-                                 size_t max_tasks,
-                                 uint32_t revents);
+                                 size_t max_tasks, uint32_t revents);
 
 static linted_error wait_manager_create(
     struct wait_manager **managerp, struct waiter_queue *waiter_queue,
@@ -911,7 +911,7 @@ static linted_error wait_manager_create(
 		                             sizeof epoll_events[0U]);
 		if (err != 0)
 			goto free_waiters;
-		 epoll_events = xx;
+		epoll_events = xx;
 	}
 
 	int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
@@ -995,7 +995,7 @@ static void *master_poller_routine(void *arg)
 	struct waiter_queue *waiter_queue = pool->waiter_queue;
 	struct linted_asynch_waiter **waiters = pool->waiters;
 	linted_ko epoll_ko = pool->epoll_ko;
-	struct epoll_event *epoll_events= pool->epoll_events;
+	struct epoll_event *epoll_events = pool->epoll_events;
 	size_t max_tasks = pool->poller_count;
 	struct linted_asynch_pool *asynch_pool = pool->asynch_pool;
 
@@ -1007,17 +1007,19 @@ static void *master_poller_routine(void *arg)
 		struct epoll_event xx = {0};
 		xx.events = EPOLLIN;
 		xx.data.u64 = 0U;
-		if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_ADD, waiter_ko(waiter_queue), &xx)) {
+		if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_ADD,
+		                    waiter_ko(waiter_queue), &xx)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
 			goto exit_mainloop;
 		}
-	}	
+	}
 
 	for (;;) {
 		int numpolled;
 		for (;;) {
-			numpolled = epoll_wait(epoll_ko, epoll_events, 1U + max_tasks, -1);
+			numpolled = epoll_wait(epoll_ko, epoll_events,
+			                       1U + max_tasks, -1);
 			if (-1 == numpolled) {
 				err = errno;
 				LINTED_ASSUME(err != 0);
@@ -1048,12 +1050,14 @@ static void *master_poller_routine(void *arg)
 				if (err != 0)
 					goto exit_mainloop;
 				int fd = waiters[index - 1U]->ko;
-				if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_DEL, fd, 0)) {
+				if (-1 == epoll_ctl(epoll_ko,
+				                    EPOLL_CTL_DEL, fd,
+				                    0)) {
 					err = errno;
 					LINTED_ASSUME(err != 0);
 					goto exit_mainloop;
 				}
-	
+
 				waiters[index - 1U] = 0;
 				continue;
 			}
@@ -1081,7 +1085,8 @@ static void *master_poller_routine(void *arg)
 			        &task->canceller, self))
 				continue;
 
-			if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_DEL, waiter->ko, 0)) {
+			if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_DEL,
+			                    waiter->ko, 0)) {
 				assert(0);
 			}
 			waiters[ii] = 0;
@@ -1095,11 +1100,10 @@ exit_mainloop:
 }
 
 static linted_error recv_waiters(struct linted_asynch_pool *asynch_pool,
-  				linted_ko epoll_ko,
+                                 linted_ko epoll_ko,
                                  struct linted_asynch_waiter **waiters,
                                  struct waiter_queue *waiter_queue,
-                    		size_t max_tasks,
-                                 uint32_t revents)
+                                 size_t max_tasks, uint32_t revents)
 {
 	linted_error err = 0;
 
@@ -1114,7 +1118,8 @@ static linted_error recv_waiters(struct linted_asynch_pool *asynch_pool,
 
 	for (;;) {
 		uint64_t xx;
-		if (-1 == read(waiter_ko(waiter_queue), &xx, sizeof xx)) {
+		if (-1 ==
+		    read(waiter_ko(waiter_queue), &xx, sizeof xx)) {
 			err = errno;
 			assert(err != 0);
 			if (EINTR == err)
@@ -1162,14 +1167,15 @@ static linted_error recv_waiters(struct linted_asynch_pool *asynch_pool,
 
 		{
 			struct epoll_event xx = {0};
-			xx.events = flags;
+			xx.events = flags | EPOLLONESHOT | EPOLLET;
 			xx.data.u64 = 1U + jj;
-			if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_ADD, ko, &xx)) {
+			if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_ADD, ko,
+			                    &xx)) {
 				err = errno;
 				LINTED_ASSUME(err != 0);
 				return err;
 			}
-		}	
+		}
 		continue;
 
 	complete_task:
