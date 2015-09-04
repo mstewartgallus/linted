@@ -19,6 +19,7 @@ noinst_LTLIBRARIES+=%D%/libspawn.la
 %C%_libspawn_la_SOURCES=%D%/spawn.c include/linted/spawn.h
 %C%_libspawn_la_LIBADD=\
   src/asynch/libasynch.la\
+  src/fifo/libfifo.la\
   src/file/libfile.la\
   src/io/libio.la\
   src/ko/libko.la

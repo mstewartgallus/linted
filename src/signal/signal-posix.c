@@ -18,6 +18,7 @@
 #include "linted/signal.h"
 
 #include "linted/asynch.h"
+#include "linted/fifo.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
@@ -79,14 +80,13 @@ linted_error linted_signal_init(void)
 	linted_ko reader;
 	linted_ko writer;
 	{
-		int xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
+		linted_ko xx;
+		linted_ko yy;
+		err = linted_fifo_pair(&xx, &yy, 0);
+		if (err != 0)
 			return err;
-		}
-		reader = xx[0U];
-		writer = xx[1U];
+		reader = xx;
+		writer = yy;
 	}
 
 	sigpipe_reader = reader;

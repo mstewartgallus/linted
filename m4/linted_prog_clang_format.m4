@@ -11,5 +11,7 @@ AC_DEFUN([LINTED_PROG_CLANG_FORMAT],[
 dnl
 AC_ARG_VAR([CLANG_FORMAT], [The Clang Format formatting tool])
 dnl
-test -z "${CLANG_FORMAT}" && AC_CHECK_PROGS([CLANG_FORMAT], [clang-format])
+test -z "${CLANG_FORMAT}" && AC_CHECK_PROGS([CLANG_FORMAT], [dnl
+	clang-format dnl
+	clang-format-3.6])
 ])

@@ -13,7 +13,7 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -30,8 +30,27 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
-linted_error linted_fifo_create(linted_ko *kop, linted_ko dirko,
+linted_error linted_fifo_pair(linted_fifo *readerp,
+                              linted_fifo *writerp, unsigned long flags)
+{
+	if (flags != 0U)
+		return EINVAL;
+
+	int xx[2U];
+	if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+
+	*readerp = xx[0U];
+	*writerp = xx[1U];
+	return 0;
+}
+
+linted_error linted_fifo_create(linted_fifo *kop, linted_ko dirko,
                                 char const *pathname,
                                 unsigned long flags, mode_t mode)
 {

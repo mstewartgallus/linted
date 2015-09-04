@@ -20,6 +20,7 @@
 #include "linted/spawn.h"
 
 #include "linted/error.h"
+#include "linted/fifo.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
@@ -211,14 +212,13 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
-		int xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
+		linted_ko xx;
+		linted_ko yy;
+		err = linted_fifo_pair(&xx, &yy, 0);
+		if (err != 0)
 			goto unmap_stack;
-		}
-		err_reader = xx[0U];
-		err_writer = xx[1U];
+		err_reader = xx;
+		err_writer = yy;
 	}
 
 	/* Greater than standard input, standard output and standard

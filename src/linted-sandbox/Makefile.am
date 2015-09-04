@@ -24,6 +24,7 @@ EXTRA_%C%_linted_sandbox_SOURCES=\
   src/asynch/libasynch.la\
   src/dir/libdir.la\
   src/error/liberror.la\
+  src/fifo/libfifo.la\
   src/file/libfile.la\
   src/io/libio.la\
   src/ko/libko.la\

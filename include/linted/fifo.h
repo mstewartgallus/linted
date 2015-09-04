@@ -39,4 +39,8 @@ linted_error linted_fifo_create(linted_fifo *fifop, linted_ko dirko,
                                 char const *pathname,
                                 unsigned long flags, mode_t mode);
 
+linted_error linted_fifo_pair(linted_fifo *readerp,
+                              linted_fifo *writerp,
+                              unsigned long flags);
+
 #endif /* LINTED_FIFO_H */

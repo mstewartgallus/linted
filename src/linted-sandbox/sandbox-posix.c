@@ -20,6 +20,7 @@
 #include "linted/dir.h"
 #include "linted/error.h"
 #include "linted/file.h"
+#include "linted/fifo.h"
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
@@ -29,6 +30,7 @@
 #include "linted/util.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -187,6 +189,8 @@ mount_directories(struct mount_args const *mount_args, size_t size);
 
 static linted_error set_child_subreaper(bool v);
 static linted_error set_no_new_privs(bool b);
+
+static linted_error parse_int(char const *str, int *resultp);
 
 static linted_error safe_dup2(int oldfd, int newfd);
 static pid_t safe_vfork(int (*f)(void *), void *args);
@@ -369,19 +373,30 @@ exit_loop:
 		}
 	}
 
-	char const **command = (char const **)argv + 1U + command_start;
-
-	char *command_dup;
+	char const *const *command = argv + 1U + command_start;
+	size_t command_size = argc - (1U + command_start);
+	char **command_dup;
 	{
-		char *xx;
-		err = linted_str_dup(&xx, command[0U]);
+		void *xx;
+		err = linted_mem_alloc_array(&xx, command_size + 1U,
+		                             sizeof command_dup[0U]);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_mem_alloc_array: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		command_dup = xx;
+	}
+	command_dup[command_size] = 0;
+	for (size_t ii = 0U; ii < command_size; ++ii) {
+		err = linted_str_dup(&command_dup[ii], command[ii]);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_str_dup: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		command_dup = xx;
 	}
 
 	char *waiter_dup;
@@ -397,11 +412,24 @@ exit_loop:
 		waiter_dup = xx;
 	}
 
-	char const *command_base = basename(command_dup);
+	char *command_base = basename(command_dup[0U]);
+	command_dup[0U] = command_base;
+
 	char const *waiter_base = basename(waiter_dup);
 
 	char const *binary = command[0U];
-	command[0U] = command_base;
+
+	int prio_val;
+	if (priority != 0) {
+		int xx;
+		err = parse_int(priority, &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		prio_val = xx;
+	}
 
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = 0;
@@ -446,9 +474,8 @@ exit_loop:
 			if ('\0' == buf[0U])
 				continue;
 
-			char *end = strchr(buf, '\n');
-			if (end != 0)
-				*end = '\0';
+			if ('\n' == buf[line_size - 1U])
+				buf[line_size - 1U] = '\0';
 
 			wordexp_t expr;
 			switch (wordexp(buf, &expr, WRDE_NOCMD)) {
@@ -597,18 +624,16 @@ exit_loop:
 				data = xx;
 			}
 
-			mount_args[mount_args_size].fsname = fsname;
-			mount_args[mount_args_size].dir = dir;
-			mount_args[mount_args_size].type = type;
-			mount_args[mount_args_size].data = data;
-			mount_args[mount_args_size].mountflags =
-			    mountflags;
-			mount_args[mount_args_size].mkdir_flag =
-			    mkdir_flag;
-			mount_args[mount_args_size].touch_flag =
-			    touch_flag;
-			mount_args[mount_args_size].nomount_flag =
-			    nomount_flag;
+			struct mount_args *new_mount_arg =
+			    &mount_args[mount_args_size];
+			new_mount_arg->fsname = fsname;
+			new_mount_arg->dir = dir;
+			new_mount_arg->type = type;
+			new_mount_arg->data = data;
+			new_mount_arg->mountflags = mountflags;
+			new_mount_arg->mkdir_flag = mkdir_flag;
+			new_mount_arg->touch_flag = touch_flag;
+			new_mount_arg->nomount_flag = nomount_flag;
 			mount_args_size = new_mount_args_size;
 
 		free_words:
@@ -620,6 +645,64 @@ exit_loop:
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
+	}
+
+	gid_t gid = getgid();
+	uid_t uid = getuid();
+
+	gid_t mapped_gid = gid;
+	uid_t mapped_uid = uid;
+
+	char const *uid_map;
+	char const *gid_map;
+
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_uid, uid)) {
+			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		uid_map = xx;
+	}
+
+	{
+		char *xx;
+		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_gid, gid)) {
+			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		gid_map = xx;
+	}
+
+	linted_ko logger_reader;
+	linted_ko logger_writer;
+	{
+		int xx[2U];
+		if (-1 == pipe2(xx, O_CLOEXEC)) {
+			linted_log(LINTED_LOG_ERROR, "pipe2: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+		logger_reader = xx[0U];
+		logger_writer = xx[1U];
+	}
+
+	linted_ko err_reader;
+	linted_ko err_writer;
+	{
+		linted_ko xx;
+		linted_ko yy;
+		err = linted_fifo_pair(&xx, &yy, 0);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_fifo_pair: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		err_reader = xx;
+		err_writer = yy;
 	}
 
 	cap_t caps = 0;
@@ -653,42 +736,14 @@ exit_loop:
 		}
 	}
 
+	/* Only start actually dropping privileges now */
+
 	if (priority != 0) {
-		if (-1 ==
-		    setpriority(PRIO_PROCESS, 0, atoi(priority))) {
+		if (-1 == setpriority(PRIO_PROCESS, 0, prio_val)) {
 			linted_log(LINTED_LOG_ERROR, "setpriority: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
-	}
-
-	gid_t gid = getgid();
-	uid_t uid = getuid();
-
-	gid_t mapped_gid = gid;
-	uid_t mapped_uid = uid;
-
-	char const *uid_map;
-	char const *gid_map;
-
-	{
-		char *xx;
-		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_uid, uid)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-		uid_map = xx;
-	}
-
-	{
-		char *xx;
-		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_gid, gid)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-		gid_map = xx;
 	}
 
 	if (no_new_privs) {
@@ -746,32 +801,6 @@ exit_loop:
 		}
 	}
 
-	linted_ko logger_reader;
-	linted_ko logger_writer;
-	{
-		int xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC)) {
-			linted_log(LINTED_LOG_ERROR, "pipe2: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-		logger_reader = xx[0U];
-		logger_writer = xx[1U];
-	}
-
-	linted_ko err_reader;
-	linted_ko err_writer;
-	{
-		int xx[2U];
-		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
-			linted_log(LINTED_LOG_ERROR, "pipe2: %s",
-			           linted_error_string(errno));
-			return EXIT_FAILURE;
-		}
-		err_reader = xx[0U];
-		err_writer = xx[1U];
-	}
-
 	pid_t child;
 	{
 		struct first_fork_args args = {
@@ -790,7 +819,6 @@ exit_loop:
 		    .waiter = waiter,
 		    .command = command,
 		    .binary = binary};
-
 		child = safe_vfork(first_fork_routine, &args);
 	}
 	if (-1 == child) {
@@ -822,11 +850,11 @@ close_err_reader:
 		return EXIT_FAILURE;
 	}
 
-	linted_ko_close(LINTED_KO_STDIN);
-	linted_ko_close(LINTED_KO_STDOUT);
-
 	if (!wait)
 		return EXIT_SUCCESS;
+
+	linted_ko_close(LINTED_KO_STDIN);
+	linted_ko_close(LINTED_KO_STDOUT);
 
 	for (;;) {
 		int xx;
@@ -1353,27 +1381,25 @@ free_subopts_str:
 	if (readwrite && readonly)
 		return EINVAL;
 
+	/*
+	 * Due to a completely idiotic kernel bug (see
+	 * https://bugzilla.kernel.org/show_bug.cgi?id=24912) using a
+	 *recursive
+	 * bind mount as readonly would fail completely silently and
+	 *there is
+	 * no way to workaround this.
+	 *
+	 * Even after working around by remounting it will fail for the
+	 * recursive case. For example, /home directory that is
+	 *recursively
+	 * bind mounted as readonly and that has encrypted user
+	 *directories as
+	 * an example. The /home directory will be readonly but the user
+	 * directory /home/user will not be.
+	 */
+
 	if (bind && (rec || shared || slave) &&
 	    (readonly || !suid || !dev || !exec))
-		/*
-		 * Due to a completely idiotic kernel bug (see
-		 * https://bugzilla.kernel.org/show_bug.cgi?id=24912)
-		 *using a
-		 * recursive bind mount as readonly would fail
-		 *completely
-		 * silently and there is no way to workaround this.
-		 *
-		 * Even after working around by remounting it will fail
-		 *for
-		 * the recursive case. For example, /home directory that
-		 *is
-		 * recursively bind mounted as readonly and that has
-		 *encrypted
-		 * user directories as an example. The /home directory
-		 *will be
-		 * readonly but the user directory /home/user will not
-		 *be.
-		 */
 		return EINVAL;
 
 	if (mkdir_flag && touch_flag)
@@ -1497,6 +1523,40 @@ LINTED_NO_SANITIZE_ADDRESS static int
 my_pivot_root(char const *new_root, char const *put_old)
 {
 	return syscall(__NR_pivot_root, new_root, put_old);
+}
+
+static linted_error parse_int(char const *str, int *resultp)
+{
+	linted_error err = 0;
+
+	char start = str[0U];
+
+	if (isspace(start))
+		return EINVAL;
+	if ('+' == start)
+		return EINVAL;
+	if ('-' == start)
+		return ERANGE;
+
+	errno = 0;
+	long yy;
+	char *endptr;
+	{
+		char *xx;
+		yy = strtol(str, &xx, 10);
+		endptr = xx;
+	}
+	err = errno;
+	if (err != 0)
+		return err;
+
+	if (*endptr != '\0')
+		return EINVAL;
+	if (yy > INT_MAX)
+		return ERANGE;
+
+	*resultp = yy;
+	return 0;
 }
 
 #if defined __amd64__
