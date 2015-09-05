@@ -45,7 +45,7 @@ typedef unsigned char linted_async_type;
 struct linted_async_task;
 struct linted_async_waiter;
 
-union linted_async_action {
+union linted_async_ck {
 	void *ptr;
 	/* By C standards at least 8 bits long */
 	unsigned char u8;
@@ -94,9 +94,9 @@ void linted_async_task_destroy(struct linted_async_task *task);
 
 void linted_async_task_cancel(struct linted_async_task *task);
 void linted_async_task_prepare(struct linted_async_task *task,
-                               union linted_async_action task_action);
-union linted_async_action
-linted_async_task_action(struct linted_async_task *task);
+                               union linted_async_ck task_ck);
+union linted_async_ck
+linted_async_task_ck(struct linted_async_task *task);
 linted_error linted_async_task_err(struct linted_async_task *task);
 
 void *linted_async_task_data(struct linted_async_task *task);

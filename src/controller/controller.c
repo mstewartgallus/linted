@@ -97,11 +97,11 @@ void *linted_controller_task_send_data(
 
 void linted_controller_task_send_prepare(
     struct linted_controller_task_send *task,
-    union linted_async_action task_action, linted_controller controller,
+    union linted_async_ck task_ck, linted_controller controller,
     struct linted_controller_message const *message)
 {
-	linted_io_task_write_prepare(task->parent, task_action,
-	                             controller, task->message,
+	linted_io_task_write_prepare(task->parent, task_ck, controller,
+	                             task->message,
 	                             sizeof task->message);
 
 	char *tip = task->message;
@@ -178,10 +178,10 @@ void *linted_controller_task_receive_data(
 
 void linted_controller_task_receive_prepare(
     struct linted_controller_task_receive *task,
-    union linted_async_action task_action, linted_controller controller)
+    union linted_async_ck task_ck, linted_controller controller)
 {
-	linted_io_task_read_prepare(task->parent, task_action,
-	                            controller, task->message,
+	linted_io_task_read_prepare(task->parent, task_ck, controller,
+	                            task->message,
 	                            sizeof task->message);
 }
 

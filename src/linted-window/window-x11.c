@@ -477,14 +477,14 @@ get_hostname_succeeded:
 
 	linted_window_task_notify_prepare(
 	    gui_notice_task,
-	    (union linted_async_action){.u64 = ON_SENT_NOTICE},
+	    (union linted_async_ck){.u64 = ON_SENT_NOTICE},
 	    gui_notifier);
 	linted_async_pool_submit(
 	    pool, linted_window_task_notify_to_async(gui_notice_task));
 
 	linted_window_task_notify_prepare(
 	    drawer_notice_task,
-	    (union linted_async_action){.u64 = ON_SENT_NOTICE},
+	    (union linted_async_ck){.u64 = ON_SENT_NOTICE},
 	    drawer_notifier);
 	linted_async_pool_submit(
 	    pool,
@@ -492,7 +492,7 @@ get_hostname_succeeded:
 
 	linted_io_task_poll_prepare(
 	    poll_conn_task,
-	    (union linted_async_action){.u64 = ON_POLL_CONN},
+	    (union linted_async_ck){.u64 = ON_POLL_CONN},
 	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_async_pool_submit(
 	    pool, linted_io_task_poll_to_async(poll_conn_task));
@@ -599,7 +599,7 @@ destroy_pool : {
 
 static linted_error dispatch(struct linted_async_task *task)
 {
-	switch (linted_async_task_action(task).u64) {
+	switch (linted_async_task_ck(task).u64) {
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
@@ -660,7 +660,7 @@ static linted_error on_poll_conn(struct linted_async_task *task)
 
 	linted_io_task_poll_prepare(
 	    poll_conn_task,
-	    (union linted_async_action){.u64 = ON_POLL_CONN},
+	    (union linted_async_ck){.u64 = ON_POLL_CONN},
 	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_async_pool_submit(pool, task);
 

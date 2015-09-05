@@ -103,10 +103,10 @@ void linted_pid_task_waitid_destroy(
     struct linted_pid_task_waitid *task);
 
 #if defined HAVE_POSIX_API
-void linted_pid_task_waitid_prepare(
-    struct linted_pid_task_waitid *task,
-    union linted_async_action task_action, idtype_t type, id_t id,
-    int options);
+void linted_pid_task_waitid_prepare(struct linted_pid_task_waitid *task,
+                                    union linted_async_ck task_ck,
+                                    idtype_t type, id_t id,
+                                    int options);
 void linted_pid_task_waitid_info(struct linted_pid_task_waitid *task,
                                  siginfo_t *info);
 #endif

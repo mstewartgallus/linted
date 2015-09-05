@@ -42,7 +42,7 @@ void linted_signal_task_wait_destroy(
 
 void linted_signal_task_wait_prepare(
     struct linted_signal_task_wait *task,
-    union linted_async_action task_action);
+    union linted_async_ck task_ck);
 
 void *
 linted_signal_task_wait_data(struct linted_signal_task_wait *task);

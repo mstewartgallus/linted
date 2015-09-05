@@ -352,10 +352,10 @@ void linted_io_task_poll_destroy(struct linted_io_task_poll *task)
 }
 
 void linted_io_task_poll_prepare(struct linted_io_task_poll *task,
-                                 unsigned task_action, linted_ko ko,
+                                 unsigned task_ck, linted_ko ko,
                                  int flags)
 {
-	linted_async_task_prepare(task->parent, task_action);
+	linted_async_task_prepare(task->parent, task_ck);
 	task->ko = ko;
 	task->events = flags;
 }
@@ -429,10 +429,10 @@ void linted_io_task_read_destroy(struct linted_io_task_read *task)
 }
 
 void linted_io_task_read_prepare(struct linted_io_task_read *task,
-                                 unsigned task_action, linted_ko ko,
+                                 unsigned task_ck, linted_ko ko,
                                  char *buf, size_t size)
 {
-	linted_async_task_prepare(task->parent, task_action);
+	linted_async_task_prepare(task->parent, task_ck);
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
@@ -518,10 +518,10 @@ void linted_io_task_write_destroy(struct linted_io_task_write *task)
 }
 
 void linted_io_task_write_prepare(struct linted_io_task_write *task,
-                                  unsigned task_action, linted_ko ko,
+                                  unsigned task_ck, linted_ko ko,
                                   char const *buf, size_t size)
 {
-	linted_async_task_prepare(task->parent, task_action);
+	linted_async_task_prepare(task->parent, task_ck);
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;

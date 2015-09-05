@@ -73,9 +73,9 @@ linted_sched_task_idle_from_async(struct linted_async_task *task)
 }
 
 void linted_sched_task_idle_prepare(struct linted_sched_task_idle *task,
-                                    unsigned task_action)
+                                    unsigned task_ck)
 {
-	linted_async_task_prepare((void *)task, task_action);
+	linted_async_task_prepare((void *)task, task_ck);
 }
 
 linted_error linted_sched_task_sleep_until_create(
@@ -128,10 +128,10 @@ void linted_sched_task_sleep_until_time(
 }
 
 void linted_sched_task_sleep_until_prepare(
-    struct linted_sched_task_sleep_until *task, unsigned task_action,
+    struct linted_sched_task_sleep_until *task, unsigned task_ck,
     struct timespec const *req)
 {
-	linted_async_task_prepare(task->parent, task_action);
+	linted_async_task_prepare(task->parent, task_ck);
 	task->time = *req;
 }
 

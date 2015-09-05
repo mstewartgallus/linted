@@ -419,14 +419,14 @@ on_window_read_err:
 
 	linted_window_task_watch_prepare(
 	    notice_task,
-	    (union linted_async_action){.u64 = ON_RECEIVE_NOTICE},
+	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
 	    notifier);
 	linted_async_pool_submit(
 	    pool, linted_window_task_watch_to_async(notice_task));
 
 	linted_io_task_poll_prepare(
 	    poll_conn_task,
-	    (union linted_async_action){.u64 = ON_POLL_CONN},
+	    (union linted_async_ck){.u64 = ON_POLL_CONN},
 	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_async_pool_submit(
 	    pool, linted_io_task_poll_to_async(poll_conn_task));
@@ -505,7 +505,7 @@ destroy_pool : {
 
 static linted_error dispatch(struct linted_async_task *task)
 {
-	switch (linted_async_task_action(task).u64) {
+	switch (linted_async_task_ck(task).u64) {
 	case ON_POLL_CONN:
 		return on_poll_conn(task);
 
@@ -906,8 +906,8 @@ static void maybe_update_controller(
 	    linted_controller_task_send_data(controller_task);
 	linted_controller_task_send_prepare(
 	    controller_task,
-	    (union linted_async_action){.u64 = ON_SENT_CONTROL},
-	    controller, &controller_data->update);
+	    (union linted_async_ck){.u64 = ON_SENT_CONTROL}, controller,
+	    &controller_data->update);
 	controller_task_data->controller_data = controller_data;
 	controller_task_data->pool = pool;
 	controller_task_data->controller = controller;

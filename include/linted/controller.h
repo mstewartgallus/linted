@@ -58,7 +58,7 @@ void *linted_controller_task_send_data(
     struct linted_controller_task_send *task);
 void linted_controller_task_send_prepare(
     struct linted_controller_task_send *task,
-    union linted_async_action task_action, linted_controller controller,
+    union linted_async_ck task_ck, linted_controller controller,
     struct linted_controller_message const *message);
 
 linted_error linted_controller_task_receive_create(
@@ -75,8 +75,7 @@ void *linted_controller_task_receive_data(
     struct linted_controller_task_receive *task);
 void linted_controller_task_receive_prepare(
     struct linted_controller_task_receive *task,
-    union linted_async_action task_action,
-    linted_controller controller);
+    union linted_async_ck task_ck, linted_controller controller);
 
 linted_error linted_controller_decode(
     struct linted_controller_task_receive const *task,

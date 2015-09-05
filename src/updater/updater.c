@@ -77,9 +77,9 @@ void linted_updater_task_receive_destroy(
 
 void linted_updater_task_receive_prepare(
     struct linted_updater_task_receive *task,
-    union linted_async_action task_action, linted_ko updater)
+    union linted_async_ck task_ck, linted_ko updater)
 {
-	linted_io_task_read_prepare(task->parent, task_action, updater,
+	linted_io_task_read_prepare(task->parent, task_ck, updater,
 	                            task->message,
 	                            sizeof task->message);
 }
@@ -142,10 +142,10 @@ void linted_updater_task_send_destroy(
 
 void linted_updater_task_send_prepare(
     struct linted_updater_task_send *task,
-    union linted_async_action task_action, linted_ko updater,
+    union linted_async_ck task_ck, linted_ko updater,
     struct linted_updater_update const *update)
 {
-	linted_io_task_write_prepare(task->parent, task_action, updater,
+	linted_io_task_write_prepare(task->parent, task_ck, updater,
 	                             task->message,
 	                             sizeof task->message);
 

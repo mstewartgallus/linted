@@ -320,22 +320,21 @@ on_window_read_err:
 
 	linted_window_task_watch_prepare(
 	    notice_task,
-	    (union linted_async_action){.u64 = ON_RECEIVE_NOTICE},
+	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
 	    notifier);
 	linted_async_pool_submit(
 	    pool, linted_window_task_watch_to_async(notice_task));
 
 	linted_io_task_poll_prepare(
 	    poll_conn_task,
-	    (union linted_async_action){.u64 = ON_POLL_CONN},
+	    (union linted_async_ck){.u64 = ON_POLL_CONN},
 	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_async_pool_submit(
 	    pool, linted_io_task_poll_to_async(poll_conn_task));
 
 	linted_updater_task_receive_prepare(
 	    updater_task,
-	    (union linted_async_action){.u64 = ON_RECEIVE_UPDATE},
-	    updater);
+	    (union linted_async_ck){.u64 = ON_RECEIVE_UPDATE}, updater);
 	linted_async_pool_submit(
 	    pool, linted_updater_task_receive_to_async(updater_task));
 
@@ -410,7 +409,7 @@ destroy_pool : {
 
 static linted_error dispatch(struct linted_async_task *task)
 {
-	switch (linted_async_task_action(task).u64) {
+	switch (linted_async_task_ck(task).u64) {
 	case ON_IDLE:
 		return on_idle(task);
 
@@ -525,7 +524,7 @@ static linted_error on_poll_conn(struct linted_async_task *task)
 
 	linted_io_task_poll_prepare(
 	    poll_conn_task,
-	    (union linted_async_action){.u64 = ON_POLL_CONN},
+	    (union linted_async_ck){.u64 = ON_POLL_CONN},
 	    xcb_get_file_descriptor(connection), POLLIN);
 	poll_conn_data->window_model = window_model;
 	poll_conn_data->pool = pool;
@@ -700,7 +699,7 @@ static void maybe_idle(struct linted_sched_task_idle *task)
 	task_data->idle_in_progress = true;
 
 	linted_sched_task_idle_prepare(
-	    task, (union linted_async_action){.u64 = ON_IDLE});
+	    task, (union linted_async_ck){.u64 = ON_IDLE});
 	linted_async_pool_submit(task_data->pool,
 	                         linted_sched_task_idle_to_async(task));
 }

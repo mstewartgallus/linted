@@ -236,9 +236,9 @@ linted_admin_in_write(linted_admin_in admin,
 
 void linted_admin_in_task_read_prepare(
     struct linted_admin_in_task_read *task,
-    union linted_async_action task_action, linted_ko ko)
+    union linted_async_ck task_ck, linted_ko ko)
 {
-	linted_io_task_read_prepare(task->parent, task_action, ko,
+	linted_io_task_read_prepare(task->parent, task_ck, ko,
 	                            task->request,
 	                            sizeof task->request);
 }
@@ -300,7 +300,7 @@ void *linted_admin_out_task_write_data(
 
 void linted_admin_out_task_write_prepare(
     struct linted_admin_out_task_write *task,
-    union linted_async_action task_action, linted_ko ko,
+    union linted_async_ck task_ck, linted_ko ko,
     union linted_admin_reply const *reply)
 {
 	linted_admin_type type = reply->type;
@@ -339,7 +339,7 @@ void linted_admin_out_task_write_prepare(
 		assert(0);
 	}
 
-	linted_io_task_write_prepare(task->parent, task_action, ko,
+	linted_io_task_write_prepare(task->parent, task_ck, ko,
 	                             task->reply, sizeof task->reply);
 	memcpy(task->reply, raw, sizeof raw);
 }
