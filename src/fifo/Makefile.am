@@ -17,6 +17,9 @@
 
 noinst_LTLIBRARIES+=%D%/libfifo.la
 %C%_libfifo_la_SOURCES=%D%/fifo.c include/linted/fifo.h
+EXTRA_%C%_libfifo_la_SOURCES=\
+  %D%/fifo-posix.c\
+  %D%/fifo-windows.c
 %C%_linted_LDLIBS=\
   src/ko/libko.la\
   src/str/libstr.la

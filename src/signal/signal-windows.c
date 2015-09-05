@@ -27,6 +27,7 @@
 
 #include "linted/async.h"
 #include "linted/mem.h"
+#include "linted/fifo.h"
 #include "linted/util.h"
 
 #include <assert.h>
@@ -70,19 +71,15 @@ linted_error linted_signal_init(void)
 
 	linted_ko reader;
 	linted_ko writer;
-
 	{
-		HANDLE xx;
-		HANDLE yy;
-		if (!CreatePipe(&xx, &yy, 0, 4096U)) {
-			err = GetLastError();
-			LINTED_ASSUME(err != 0);
+		linted_ko xx;
+		linted_ko yy;
+		err = linted_fifo_pair(&xx, &yy, 0);
+		if (err != 0)
 			return err;
-		}
 		reader = xx;
 		writer = yy;
 	}
-
 	sigpipe_reader = reader;
 	sigpipe_writer = writer;
 
@@ -139,7 +136,7 @@ int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
 }
 
 void linted_signal_task_wait_prepare(
-    struct linted_signal_task_wait *task, unsigned task_ck)
+    struct linted_signal_task_wait *task, union linted_async_ck task_ck)
 {
 	linted_async_task_prepare(task->parent, task_ck);
 }
