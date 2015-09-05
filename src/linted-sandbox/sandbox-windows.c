@@ -32,6 +32,7 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/start.h"
+#include "linted/str.h"
 #include "linted/utf.h"
 #include "linted/util.h"
 

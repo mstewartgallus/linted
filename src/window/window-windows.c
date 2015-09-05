@@ -130,8 +130,8 @@ void linted_window_task_watch_destroy(
 }
 
 void linted_window_task_watch_prepare(
-    struct linted_window_task_watch *task, unsigned task_ck,
-    linted_ko notifier)
+    struct linted_window_task_watch *task,
+    union linted_async_ck task_ck, linted_ko notifier)
 {
 	linted_io_task_read_prepare(task->parent, task_ck, notifier,
 	                            task->dummy, sizeof task->dummy);
@@ -195,8 +195,8 @@ void linted_window_task_notify_destroy(
 static const char dummy[1U];
 
 void linted_window_task_notify_prepare(
-    struct linted_window_task_notify *task, unsigned task_ck,
-    linted_ko notifier)
+    struct linted_window_task_notify *task,
+    union linted_async_ck task_ck, linted_ko notifier)
 {
 	linted_io_task_write_prepare(task->parent, task_ck, notifier,
 	                             dummy, sizeof dummy);

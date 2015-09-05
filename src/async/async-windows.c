@@ -398,7 +398,8 @@ void linted_async_task_prepare(struct linted_async_task *task,
 	task->task_ck = task_ck;
 }
 
-union linted_async_ck linted_async_task_ck(struct linted_async_task *task)
+union linted_async_ck
+linted_async_task_ck(struct linted_async_task *task)
 {
 	return task->task_ck;
 }

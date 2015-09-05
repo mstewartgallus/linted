@@ -153,6 +153,7 @@ dnl
                 dnl Possibly consider changing this later but for now
                 dnl it is too noisy.
                 [-D_CRT_SECURE_NO_WARNINGS=1]dnl
+                [-D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1]dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
         LINTED_CHECK_LDFLAGS([linted_LDFLAGS_TARGET_TYPE], [

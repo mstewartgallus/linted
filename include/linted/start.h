@@ -51,14 +51,16 @@ int linted_start__main(struct linted_start_config const *config,
 #ifndef LINTED_START__NO_MAIN
 #if defined HAVE_WINDOWS_API
 /* Hack around a bug in wclang by defining both of these. */
-int WinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
-            char *command_line_unused, int show_command_arg)
+int WINAPI WinMain(HINSTANCE program_instance,
+                   HINSTANCE prev_instance_unused,
+                   char *command_line_unused, int show_command_arg)
 {
 	return linted_start__main(&linted_start_config);
 }
 
-int wWinMain(HINSTANCE program_instance, HINSTANCE prev_instance_unused,
-             wchar_t *command_line_unused, int show_command_arg)
+int WINAPI wWinMain(HINSTANCE program_instance,
+                    HINSTANCE prev_instance_unused,
+                    wchar_t *command_line_unused, int show_command_arg)
 {
 	return linted_start__main(&linted_start_config);
 }
