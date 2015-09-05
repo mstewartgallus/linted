@@ -266,21 +266,18 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	}
 
 	struct gui gui = {0};
-	gui.width = 1;
-	gui.height = 1;
-	gui.window = 0;
-	gui.pool = pool;
-	gui.connection = connection;
-	gui.controller = controller;
-	gui.window_ko = window_ko;
-	gui.controller_task = controller_task;
-	gui.pool = pool;
+
 	gui.connection = connection;
 	gui.controller = controller;
 	gui.controller_task = controller_task;
 	gui.device_id = device_id;
+	gui.height = 1;
 	gui.keyboard_state = &keyboard_state;
 	gui.keymap = keymap;
+	gui.pool = pool;
+	gui.width = 1;
+	gui.window = 0;
+	gui.window_ko = window_ko;
 
 	{
 		uint_fast32_t xx;
