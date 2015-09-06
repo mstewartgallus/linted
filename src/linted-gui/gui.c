@@ -59,32 +59,47 @@ static uint32_t const window_opts[] = {
 
 struct gui {
 	struct linted_controller_message update;
-	xcb_connection_t *connection;
+
 	struct linted_async_pool *pool;
 	struct linted_controller_task_send *controller_task;
-	struct xkb_state **keyboard_state;
+	struct linted_io_task_poll *poll_conn_task;
+	struct linted_window_task_watch *notice_task;
+	struct xkb_context *keyboard_ctx;
 	struct xkb_keymap *keymap;
-	linted_ko controller;
+	struct xkb_state *keyboard_state;
+
 	int32_t device_id;
-	xcb_window_t window;
+	linted_ko controller;
+	linted_ko notifier;
 	linted_window window_ko;
 	unsigned width;
+	xcb_connection_t *connection;
+	xcb_window_t window;
 	unsigned height;
 	bool update_pending : 1U;
 	bool update_in_progress : 1U;
 };
 
-static unsigned char gui_start(char const *process_name, size_t argc,
-                               char const *const argv[]);
+static unsigned char start(char const *process_name, size_t argc,
+                           char const *const argv[]);
+
+static linted_error gui_init(struct gui *gui,
+                             struct linted_async_pool *pool,
+                             char const *window_path,
+                             char const *window_notifier,
+                             char const *controller_path);
+static linted_error gui_stop(struct gui *gui);
+static linted_error gui_destroy(struct gui *gui);
 
 static linted_error dispatch(struct gui *gui,
                              struct linted_async_task *task);
-static linted_error on_poll_conn(struct gui *gui,
-                                 struct linted_async_task *task);
-static linted_error on_receive_notice(struct gui *gui,
+static linted_error gui_on_conn_ready(struct gui *gui,
                                       struct linted_async_task *task);
-static linted_error on_sent_control(struct gui *gui,
-                                    struct linted_async_task *task);
+static linted_error
+gui_on_window_change(struct gui *gui, struct linted_async_task *task);
+static linted_error
+gui_on_sent_controller_state(struct gui *gui,
+                             struct linted_async_task *task);
 
 static void maybe_update_controller(struct gui *gui);
 
@@ -96,10 +111,10 @@ static void on_tilt(struct gui *gui, int_fast32_t mouse_x,
                     int_fast32_t mouse_y);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-gui", .start = gui_start};
+    .canonical_process_name = PACKAGE_NAME "-gui", .start = start};
 
-static unsigned char gui_start(char const *process_name, size_t argc,
-                               char const *const argv[])
+static unsigned char start(char const *process_name, size_t argc,
+                           char const *const argv[])
 {
 	linted_error err = 0;
 
@@ -113,17 +128,92 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 	char const *window_notifier_path = argv[2U];
 	char const *controller_path = argv[3U];
 
+	struct linted_async_pool *pool;
+	{
+		struct linted_async_pool *xx;
+		err = linted_async_pool_create(&xx, MAX_TASKS);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_async_pool_create: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		pool = xx;
+	}
+
+	static struct gui gui = {0};
+	err = gui_init(&gui, pool, window_path, window_notifier_path,
+	               controller_path);
+	if (err != 0)
+		goto destroy_pool;
+
+	/* TODO: Detect SIGTERM and exit normally */
+	for (;;) {
+		struct linted_async_task *completed_task;
+		{
+			struct linted_async_task *xx;
+			err = linted_async_pool_wait(pool, &xx);
+			if (err != 0)
+				goto stop_pool;
+			completed_task = xx;
+		}
+
+		err = dispatch(&gui, completed_task);
+		if (err != 0)
+			goto stop_pool;
+	}
+
+stop_pool:
+	gui_stop(&gui);
+
+	for (;;) {
+		struct linted_async_task *task;
+		linted_error poll_err;
+		{
+			struct linted_async_task *xx;
+			poll_err = linted_async_pool_poll(pool, &xx);
+			if (LINTED_ERROR_AGAIN == poll_err)
+				break;
+			task = xx;
+		}
+
+		linted_error dispatch_err = linted_async_task_err(task);
+		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
+			err = dispatch_err;
+	}
+
+	gui_destroy(&gui);
+
+destroy_pool:
+	;
+	linted_error destroy_err = linted_async_pool_destroy(pool);
+	if (0 == err)
+		err = destroy_err;
+
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR, "%s",
+		           linted_error_string(err));
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+static linted_error gui_init(struct gui *gui,
+                             struct linted_async_pool *pool,
+                             char const *window_path,
+                             char const *window_notifier_path,
+                             char const *controller_path)
+{
+	linted_error err = 0;
+
 	linted_window window_ko;
 	{
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD, window_path,
 		                     LINTED_KO_RDWR);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_open: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
+		if (err != 0)
+			return err;
 		window_ko = xx;
 	}
 
@@ -133,12 +223,8 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		err = linted_ko_open(&xx, LINTED_KO_CWD,
 		                     window_notifier_path,
 		                     LINTED_KO_RDWR);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_open: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
+		if (err != 0)
+			goto close_window_ko;
 		notifier = xx;
 	}
 
@@ -147,56 +233,42 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD,
 		                     controller_path, LINTED_KO_RDWR);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_open: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
+		if (err != 0)
+			goto close_notifier;
 		controller = xx;
 	}
 
-	struct linted_async_pool *pool;
-	{
-		struct linted_async_pool *xx;
-		err = linted_async_pool_create(&xx, MAX_TASKS);
-		if (err != 0)
-			return err;
-		pool = xx;
-	}
-
 	struct linted_window_task_watch *notice_task;
-	struct linted_controller_task_send *controller_task;
-	struct linted_io_task_poll *poll_conn_task;
-
 	{
 		struct linted_window_task_watch *xx;
 		err = linted_window_task_watch_create(&xx, 0);
 		if (err != 0)
-			goto destroy_pool;
+			goto close_controller;
 		notice_task = xx;
 	}
 
+	struct linted_controller_task_send *controller_task;
 	{
 		struct linted_controller_task_send *xx;
 		err = linted_controller_task_send_create(&xx, 0);
 		if (err != 0)
-			goto destroy_pool;
+			goto destroy_notice_task;
 		controller_task = xx;
 	}
 
+	struct linted_io_task_poll *poll_conn_task;
 	{
 		struct linted_io_task_poll *xx;
 		err = linted_io_task_poll_create(&xx, 0);
 		if (err != 0)
-			goto destroy_pool;
+			goto destroy_controller_task;
 		poll_conn_task = xx;
 	}
 
 	xcb_connection_t *connection = xcb_connect(0, 0);
 	if (0 == connection) {
 		err = LINTED_ERROR_UNIMPLEMENTED;
-		goto destroy_pool;
+		goto destroy_poll_conn_task;
 	}
 	err = linted_xcb_conn_error(connection);
 	if (err != 0)
@@ -265,51 +337,53 @@ static unsigned char gui_start(char const *process_name, size_t argc,
 		goto destroy_keymap;
 	}
 
-	struct gui gui = {0};
-
-	gui.connection = connection;
-	gui.controller = controller;
-	gui.controller_task = controller_task;
-	gui.device_id = device_id;
-	gui.height = 1;
-	gui.keyboard_state = &keyboard_state;
-	gui.keymap = keymap;
-	gui.pool = pool;
-	gui.width = 1;
-	gui.window = 0;
-	gui.window_ko = window_ko;
+	gui->connection = connection;
+	gui->controller = controller;
+	gui->notifier = notifier;
+	gui->controller_task = controller_task;
+	gui->device_id = device_id;
+	gui->height = 1;
+	gui->keyboard_ctx = keyboard_ctx;
+	gui->keyboard_state = keyboard_state;
+	gui->keymap = keymap;
+	gui->notice_task = notice_task;
+	gui->poll_conn_task = poll_conn_task;
+	gui->pool = pool;
+	gui->width = 1;
+	gui->window = 0;
+	gui->window_ko = window_ko;
 
 	{
 		uint_fast32_t xx;
 		err = linted_window_read(window_ko, &xx);
 		if (err != 0)
 			goto on_window_read_err;
-		gui.window = xx;
+		gui->window = xx;
 	}
 on_window_read_err:
 	if (EPROTO == err) {
 		/* Do nothing */
 	} else if (err != 0) {
-		return err;
+		goto destroy_keyboard_state;
 	} else {
-		xcb_change_window_attributes(connection, gui.window,
+		xcb_change_window_attributes(connection, gui->window,
 		                             XCB_CW_EVENT_MASK,
 		                             window_opts);
 		err = linted_xcb_conn_error(connection);
 		if (err != 0)
-			return err;
+			goto destroy_keyboard_state;
 
 		xcb_get_geometry_cookie_t geom_ck =
-		    xcb_get_geometry(connection, gui.window);
+		    xcb_get_geometry(connection, gui->window);
 		err = linted_xcb_conn_error(connection);
 		if (err != 0)
-			return err;
+			goto destroy_keyboard_state;
 
 		xcb_query_pointer_cookie_t point_ck =
-		    xcb_query_pointer(connection, gui.window);
+		    xcb_query_pointer(connection, gui->window);
 		err = linted_xcb_conn_error(connection);
 		if (err != 0)
-			return err;
+			goto destroy_keyboard_state;
 
 		unsigned width, height;
 		{
@@ -324,12 +398,12 @@ on_window_read_err:
 
 			err = linted_xcb_conn_error(connection);
 			if (err != 0)
-				return err;
+				goto destroy_keyboard_state;
 
 			if (error != 0) {
 				err = linted_xcb_error(error);
 				linted_mem_free(error);
-				return err;
+				goto destroy_keyboard_state;
 			}
 
 			width = reply->width;
@@ -351,12 +425,12 @@ on_window_read_err:
 
 			err = linted_xcb_conn_error(connection);
 			if (err != 0)
-				return err;
+				goto destroy_keyboard_state;
 
 			if (error != 0) {
 				err = linted_xcb_error(error);
 				linted_mem_free(error);
-				return err;
+				goto destroy_keyboard_state;
 			}
 
 			x = reply->win_x;
@@ -365,12 +439,12 @@ on_window_read_err:
 			linted_mem_free(reply);
 		}
 
-		gui.width = width;
-		gui.height = height;
+		gui->width = width;
+		gui->height = height;
 
-		on_tilt(&gui, x, y);
+		on_tilt(gui, x, y);
 
-		maybe_update_controller(&gui);
+		maybe_update_controller(gui);
 	}
 
 	linted_window_task_watch_prepare(
@@ -387,46 +461,9 @@ on_window_read_err:
 	linted_async_pool_submit(
 	    pool, linted_io_task_poll_to_async(poll_conn_task));
 
-	/* TODO: Detect SIGTERM and exit normally */
-	for (;;) {
-		struct linted_async_task *completed_task;
-		{
-			struct linted_async_task *xx;
-			err = linted_async_pool_wait(pool, &xx);
-			if (err != 0)
-				goto stop_pool;
-			completed_task = xx;
-		}
+	return 0;
 
-		err = dispatch(&gui, completed_task);
-		if (err != 0)
-			goto stop_pool;
-	}
-
-stop_pool:
-	linted_async_task_cancel(
-	    linted_window_task_watch_to_async(notice_task));
-	linted_async_task_cancel(
-	    linted_controller_task_send_to_async(controller_task));
-	linted_async_task_cancel(
-	    linted_io_task_poll_to_async(poll_conn_task));
-
-	for (;;) {
-		struct linted_async_task *task;
-		linted_error poll_err;
-		{
-			struct linted_async_task *xx;
-			poll_err = linted_async_pool_poll(pool, &xx);
-			if (LINTED_ERROR_AGAIN == poll_err)
-				break;
-			task = xx;
-		}
-
-		linted_error dispatch_err = linted_async_task_err(task);
-		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
-			err = dispatch_err;
-	}
-
+destroy_keyboard_state:
 	xkb_state_unref(keyboard_state);
 
 destroy_keymap:
@@ -438,25 +475,83 @@ destroy_keyboard_ctx:
 close_connection:
 	xcb_disconnect(connection);
 
-destroy_pool : {
-	linted_error destroy_err = linted_async_pool_destroy(pool);
-	if (0 == err)
-		err = destroy_err;
+destroy_poll_conn_task:
+	linted_io_task_poll_destroy(poll_conn_task);
+
+destroy_controller_task:
+	linted_controller_task_send_destroy(controller_task);
+
+destroy_notice_task:
+	linted_window_task_watch_destroy(notice_task);
+
+close_controller:
+	linted_ko_close(controller);
+
+close_notifier:
+	linted_ko_close(notifier);
+
+close_window_ko:
+	linted_ko_close(window_ko);
+
+	return err;
 }
 
-	/* Insure that the tasks are in proper scope until they are
-	 * terminated */
-	(void)notice_task;
-	(void)controller_task;
-	(void)poll_conn_task;
+static linted_error gui_stop(struct gui *gui)
+{
+	struct linted_window_task_watch *notice_task = gui->notice_task;
+	struct linted_controller_task_send *controller_task =
+	    gui->controller_task;
+	struct linted_io_task_poll *poll_conn_task =
+	    gui->poll_conn_task;
 
-	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "%s",
-		           linted_error_string(err));
-		return EXIT_FAILURE;
-	}
+	linted_async_task_cancel(
+	    linted_window_task_watch_to_async(notice_task));
+	linted_async_task_cancel(
+	    linted_controller_task_send_to_async(controller_task));
+	linted_async_task_cancel(
+	    linted_io_task_poll_to_async(poll_conn_task));
 
-	return EXIT_SUCCESS;
+	return 0;
+}
+
+static linted_error gui_destroy(struct gui *gui)
+{
+	linted_ko window_ko = gui->window_ko;
+	linted_ko notifier = gui->notifier;
+	linted_ko controller = gui->controller;
+
+	struct linted_window_task_watch *notice_task = gui->notice_task;
+	struct linted_controller_task_send *controller_task =
+	    gui->controller_task;
+	struct linted_io_task_poll *poll_conn_task =
+	    gui->poll_conn_task;
+
+	xcb_connection_t *connection = gui->connection;
+	struct xkb_context *keyboard_ctx = gui->keyboard_ctx;
+	struct xkb_keymap *keymap = gui->keymap;
+	struct xkb_state *keyboard_state = gui->keyboard_state;
+
+	xkb_state_unref(keyboard_state);
+
+	xkb_keymap_unref(keymap);
+
+	xkb_context_unref(keyboard_ctx);
+
+	xcb_disconnect(connection);
+
+	linted_io_task_poll_destroy(poll_conn_task);
+
+	linted_controller_task_send_destroy(controller_task);
+
+	linted_window_task_watch_destroy(notice_task);
+
+	linted_ko_close(controller);
+
+	linted_ko_close(notifier);
+
+	linted_ko_close(window_ko);
+
+	return 0;
 }
 
 static linted_error dispatch(struct gui *gui,
@@ -464,21 +559,21 @@ static linted_error dispatch(struct gui *gui,
 {
 	switch (linted_async_task_ck(task).u64) {
 	case ON_POLL_CONN:
-		return on_poll_conn(gui, task);
+		return gui_on_conn_ready(gui, task);
 
 	case ON_RECEIVE_NOTICE:
-		return on_receive_notice(gui, task);
+		return gui_on_window_change(gui, task);
 
 	case ON_SENT_CONTROL:
-		return on_sent_control(gui, task);
+		return gui_on_sent_controller_state(gui, task);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error on_poll_conn(struct gui *gui,
-                                 struct linted_async_task *task)
+static linted_error gui_on_conn_ready(struct gui *gui,
+                                      struct linted_async_task *task)
 {
 	linted_error err;
 
@@ -491,7 +586,7 @@ static linted_error on_poll_conn(struct gui *gui,
 
 	struct linted_async_pool *pool = gui->pool;
 	int32_t device_id = gui->device_id;
-	struct xkb_state **keyboard_state = gui->keyboard_state;
+	struct xkb_state *keyboard_state = gui->keyboard_state;
 	struct xkb_keymap *keymap = gui->keymap;
 
 	bool had_focus_change = false;
@@ -570,7 +665,7 @@ static linted_error on_poll_conn(struct gui *gui,
 			    (void *)event;
 			xcb_keycode_t keycode = key_event->detail;
 			xkb_keysym_t keysym = xkb_state_key_get_one_sym(
-			    *keyboard_state, keycode);
+			    keyboard_state, keycode);
 			switch (keysym) {
 			case XKB_KEY_space:
 				goto jump;
@@ -640,8 +735,8 @@ static linted_error on_poll_conn(struct gui *gui,
 		struct xkb_state *new_state =
 		    xkb_x11_state_new_from_device(keymap, connection,
 		                                  device_id);
-		xkb_state_unref(*keyboard_state);
-		*keyboard_state = new_state;
+		xkb_state_unref(keyboard_state);
+		gui->keyboard_state = new_state;
 	}
 
 	if (had_focus_change) {
@@ -680,8 +775,8 @@ clear:
 	return 0;
 }
 
-static linted_error on_receive_notice(struct gui *gui,
-                                      struct linted_async_task *task)
+static linted_error gui_on_window_change(struct gui *gui,
+                                         struct linted_async_task *task)
 {
 	linted_error err;
 
@@ -793,8 +888,9 @@ reset_notice:
 	return err;
 }
 
-static linted_error on_sent_control(struct gui *gui,
-                                    struct linted_async_task *task)
+static linted_error
+gui_on_sent_controller_state(struct gui *gui,
+                             struct linted_async_task *task)
 {
 	linted_error err;
 
