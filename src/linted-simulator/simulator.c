@@ -75,21 +75,30 @@ struct simulator {
 	struct linted_async_pool *pool;
 	struct linted_updater_task_send *updater_task;
 	struct linted_controller_task_receive *controller_task;
+	struct linted_sched_task_sleep_until *tick_task;
 	linted_ko updater;
+	linted_ko controller;
 };
 
-static unsigned char sim_start(char const *const process_name,
-                               size_t argc, char const *const argv[]);
+static unsigned char start(char const *const process_name, size_t argc,
+                           char const *const argv[]);
+
+static linted_error sim_init(struct simulator *simulator,
+                             struct linted_async_pool *pool,
+                             char const *controller_path,
+                             char const *updater_path);
+static linted_error sim_stop(struct simulator *simulator);
+static linted_error sim_destroy(struct simulator *simulator);
+
 static linted_error dispatch(struct simulator *simulator,
                              struct linted_async_task *task);
-
-static linted_error on_read_timer(struct simulator *simulator,
-                                  struct linted_async_task *task);
+static linted_error sim_on_tick(struct simulator *simulator,
+                                struct linted_async_task *task);
 static linted_error
-on_controller_receive(struct simulator *simulator,
-                      struct linted_async_task *task);
-static linted_error on_sent_update(struct simulator *simulator,
-                                   struct linted_async_task *task);
+sim_on_controller_event(struct simulator *simulator,
+                        struct linted_async_task *task);
+static linted_error sim_on_update(struct simulator *simulator,
+                                  struct linted_async_task *task);
 
 static void maybe_update(struct simulator *simulator,
                          linted_updater updater, struct state *state,
@@ -109,10 +118,10 @@ static sim_int sign(sim_int x);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator",
-    .start = sim_start};
+    .start = start};
 
-static unsigned char sim_start(char const *const process_name,
-                               size_t argc, char const *const argv[])
+static unsigned char start(char const *const process_name, size_t argc,
+                           char const *const argv[])
 {
 	linted_error err;
 
@@ -125,110 +134,23 @@ static unsigned char sim_start(char const *const process_name,
 	char const *controller_path = argv[1U];
 	char const *updater_path = argv[2U];
 
-	linted_controller controller;
-	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     controller_path, LINTED_KO_RDWR);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_open: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		controller = xx;
-	}
-
-	linted_ko updater;
-	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, updater_path,
-		                     LINTED_KO_RDWR);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_open: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		updater = xx;
-	}
-
 	struct linted_async_pool *pool;
 	{
 		struct linted_async_pool *xx;
 		err = linted_async_pool_create(&xx, MAX_TASKS);
-		if (err != 0)
-			goto exit;
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_async_pool_create: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
 		pool = xx;
 	}
 
-	struct linted_sched_task_sleep_until *tick_task;
-	struct linted_controller_task_receive *controller_task;
-	struct linted_updater_task_send *updater_task;
-
-	{
-		struct linted_sched_task_sleep_until *xx;
-		err = linted_sched_task_sleep_until_create(&xx, 0);
-		if (err != 0)
-			goto destroy_pool;
-		tick_task = xx;
-	}
-
-	{
-		struct linted_controller_task_receive *xx;
-		err = linted_controller_task_receive_create(&xx, 0);
-		if (err != 0)
-			goto destroy_pool;
-		controller_task = xx;
-	}
-
-	{
-		struct linted_updater_task_send *xx;
-		err = linted_updater_task_send_create(&xx, 0);
-		if (err != 0)
-			goto destroy_pool;
-		updater_task = xx;
-	}
-
-	struct simulator simulator = {0};
-
-	simulator.pool = pool;
-	simulator.updater = updater;
-	simulator.updater_task = updater_task;
-	simulator.controller_task = controller_task;
-	simulator.state = (struct state){
-	    .update_pending = true, /* Initialize the gui at start */
-	    .write_in_progress = false,
-	    .position = {{.value = 0, .old = 0},
-	                 {.value = 10 * 1024, .old = 10 * 1024},
-	                 {.value = 0, .old = 0}},
-	    .z_rotation = SIM_ANGLE(0U, 1U),
-	    .x_rotation = SIM_ANGLE(3U, 16U)};
-
-	simulator.intent = (struct intent){
-	    .strafe = 0, .retreat_or_go_forth = 0, .jump_up = false};
-
-	{
-		struct timespec now;
-		err = linted_sched_time(&now);
-		if (err != 0)
-			goto stop_pool;
-
-		linted_sched_task_sleep_until_prepare(
-		    tick_task,
-		    (union linted_async_ck){.u64 = ON_READ_TIMER},
-		    &now);
-	}
-	linted_async_pool_submit(
-	    pool, linted_sched_task_sleep_until_to_async(tick_task));
-
-	linted_controller_task_receive_prepare(
-	    controller_task,
-	    (union linted_async_ck){.u64 = ON_RECEIVE_CONTROLLER_EVENT},
-	    controller);
-	linted_async_pool_submit(
-	    pool,
-	    linted_controller_task_receive_to_async(controller_task));
+	static struct simulator simulator = {0};
+	err = sim_init(&simulator, pool, controller_path, updater_path);
+	if (err != 0)
+		goto destroy_pool;
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -241,16 +163,10 @@ static unsigned char sim_start(char const *const process_name,
 
 		err = dispatch(&simulator, completed_task);
 		if (err != 0)
-			goto stop_pool;
+			goto stop_simulator;
 	}
-
-stop_pool:
-	linted_async_task_cancel(
-	    linted_sched_task_sleep_until_to_async(tick_task));
-	linted_async_task_cancel(
-	    linted_controller_task_receive_to_async(controller_task));
-	linted_async_task_cancel(
-	    linted_updater_task_send_to_async(updater_task));
+stop_simulator:
+	sim_stop(&simulator);
 
 	for (;;) {
 		struct linted_async_task *task;
@@ -268,19 +184,14 @@ stop_pool:
 			err = dispatch_err;
 	}
 
-destroy_pool : {
+	sim_destroy(&simulator);
+
+destroy_pool:
+	;
 	linted_error destroy_err = linted_async_pool_destroy(pool);
 	if (0 == err)
 		err = destroy_err;
-}
 
-	/* Insure that the tasks are in proper scope until they are
-	 * terminated */
-	(void)tick_task;
-	(void)controller_task;
-	(void)updater_task;
-
-exit:
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "%s",
 		           linted_error_string(err));
@@ -290,26 +201,184 @@ exit:
 	return EXIT_SUCCESS;
 }
 
+static linted_error sim_init(struct simulator *simulator,
+                             struct linted_async_pool *pool,
+                             char const *controller_path,
+                             char const *updater_path)
+{
+	linted_error err = 0;
+
+	linted_controller controller;
+	{
+		linted_ko xx;
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     controller_path, LINTED_KO_RDWR);
+		if (err != 0)
+			return err;
+		controller = xx;
+	}
+
+	linted_ko updater;
+	{
+		linted_ko xx;
+		err = linted_ko_open(&xx, LINTED_KO_CWD, updater_path,
+		                     LINTED_KO_RDWR);
+		if (err != 0)
+			goto close_controller;
+		updater = xx;
+	}
+
+	struct linted_sched_task_sleep_until *tick_task;
+	{
+		struct linted_sched_task_sleep_until *xx;
+		err = linted_sched_task_sleep_until_create(&xx, 0);
+		if (err != 0)
+			goto close_updater;
+		tick_task = xx;
+	}
+
+	struct linted_controller_task_receive *controller_task;
+	{
+		struct linted_controller_task_receive *xx;
+		err = linted_controller_task_receive_create(&xx, 0);
+		if (err != 0)
+			goto destroy_tick_task;
+		controller_task = xx;
+	}
+
+	struct linted_updater_task_send *updater_task;
+	{
+		struct linted_updater_task_send *xx;
+		err = linted_updater_task_send_create(&xx, 0);
+		if (err != 0)
+			goto destroy_controller_task;
+		updater_task = xx;
+	}
+
+	simulator->pool = pool;
+	simulator->updater = updater;
+	simulator->updater_task = updater_task;
+	simulator->controller_task = controller_task;
+	simulator->tick_task = tick_task;
+	simulator->controller = controller;
+	simulator->state = (struct state){
+	    .update_pending = true, /* Initialize the gui at start */
+	    .write_in_progress = false,
+	    .position = {{.value = 0, .old = 0},
+	                 {.value = 10 * 1024, .old = 10 * 1024},
+	                 {.value = 0, .old = 0}},
+	    .z_rotation = SIM_ANGLE(0U, 1U),
+	    .x_rotation = SIM_ANGLE(3U, 16U)};
+
+	simulator->intent = (struct intent){
+	    .strafe = 0, .retreat_or_go_forth = 0, .jump_up = false};
+
+	{
+		struct timespec now;
+		err = linted_sched_time(&now);
+		if (err != 0)
+			goto destroy_updater_task;
+
+		linted_sched_task_sleep_until_prepare(
+		    tick_task,
+		    (union linted_async_ck){.u64 = ON_READ_TIMER},
+		    &now);
+	}
+	linted_async_pool_submit(
+	    pool, linted_sched_task_sleep_until_to_async(tick_task));
+
+	linted_controller_task_receive_prepare(
+	    controller_task,
+	    (union linted_async_ck){.u64 = ON_RECEIVE_CONTROLLER_EVENT},
+	    controller);
+	linted_async_pool_submit(
+	    pool,
+	    linted_controller_task_receive_to_async(controller_task));
+
+	return 0;
+
+destroy_updater_task:
+	linted_updater_task_send_destroy(updater_task);
+
+destroy_controller_task:
+	linted_controller_task_receive_destroy(controller_task);
+
+destroy_tick_task:
+	linted_sched_task_sleep_until_destroy(tick_task);
+
+close_updater:
+	linted_ko_close(updater);
+
+close_controller:
+	linted_ko_close(controller);
+
+	return err;
+}
+
+static linted_error sim_stop(struct simulator *simulator)
+{
+	struct linted_updater_task_send *updater_task =
+	    simulator->updater_task;
+	struct linted_controller_task_receive *controller_task =
+	    simulator->controller_task;
+	struct linted_sched_task_sleep_until *tick_task =
+	    simulator->tick_task;
+
+	linted_async_task_cancel(
+	    linted_sched_task_sleep_until_to_async(tick_task));
+	linted_async_task_cancel(
+	    linted_controller_task_receive_to_async(controller_task));
+	linted_async_task_cancel(
+	    linted_updater_task_send_to_async(updater_task));
+
+	return 0;
+}
+
+static linted_error sim_destroy(struct simulator *simulator)
+{
+	struct linted_updater_task_send *updater_task =
+	    simulator->updater_task;
+	struct linted_controller_task_receive *controller_task =
+	    simulator->controller_task;
+	struct linted_sched_task_sleep_until *tick_task =
+	    simulator->tick_task;
+
+	linted_ko updater = simulator->updater;
+	linted_ko controller = simulator->controller;
+
+	linted_updater_task_send_destroy(updater_task);
+
+	linted_controller_task_receive_destroy(controller_task);
+
+	linted_sched_task_sleep_until_destroy(tick_task);
+
+	linted_ko_close(updater);
+
+	linted_ko_close(controller);
+
+	return 0;
+}
+
 static linted_error dispatch(struct simulator *simulator,
                              struct linted_async_task *task)
 {
 	switch (linted_async_task_ck(task).u64) {
 	case ON_READ_TIMER:
-		return on_read_timer(simulator, task);
+		return sim_on_tick(simulator, task);
 
 	case ON_RECEIVE_CONTROLLER_EVENT:
-		return on_controller_receive(simulator, task);
+		return sim_on_controller_event(simulator, task);
 
 	case ON_SENT_UPDATER_EVENT:
-		return on_sent_update(simulator, task);
+		return sim_on_update(simulator, task);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error on_read_timer(struct simulator *simulator,
-                                  struct linted_async_task *task)
+static linted_error sim_on_tick(struct simulator *simulator,
+                                struct linted_async_task *task)
 {
 	struct linted_async_pool *pool = simulator->pool;
 	linted_ko updater = simulator->updater;
@@ -364,8 +433,8 @@ static linted_error on_read_timer(struct simulator *simulator,
 }
 
 static linted_error
-on_controller_receive(struct simulator *simulator,
-                      struct linted_async_task *task)
+sim_on_controller_event(struct simulator *simulator,
+                        struct linted_async_task *task)
 {
 	struct linted_async_pool *pool = simulator->pool;
 	struct intent *intent = &simulator->intent;
@@ -404,12 +473,14 @@ on_controller_receive(struct simulator *simulator,
 	return 0;
 }
 
-static linted_error on_sent_update(struct simulator *simulator,
-                                   struct linted_async_task *task)
+static linted_error sim_on_update(struct simulator *simulator,
+                                  struct linted_async_task *task)
 {
 	struct linted_async_pool *pool = simulator->pool;
 	linted_ko updater = simulator->updater;
 	struct state *state = &simulator->state;
+	struct linted_updater_task_send *updater_task =
+	    simulator->updater_task;
 
 	linted_error err;
 
@@ -420,9 +491,6 @@ static linted_error on_sent_update(struct simulator *simulator,
 		err = 0;
 	if (err != 0)
 		return err;
-
-	struct linted_updater_task_send *updater_task =
-	    linted_updater_task_send_from_async(task);
 
 	state->write_in_progress = false;
 
