@@ -190,21 +190,11 @@
  * flags.
  * </li>
  *
- * <li> [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git)
- * Works moderately well but isn't particularly better than other
- * static analyzers without custom annotations.
- *
- * Doesn't allow specifying system base dirs other than GCC's and
- * doesn't properly recognize the `-isystem` flag.
- *
- * Segfaults on some code.
- * </li>
- *
- * <li> [Frama-C](http://frama-c.com/)
+* <li> [Frama-C](http://frama-c.com/)
  * As of version Neon-20140301:
  * - It's a bit fiddly to get working.
- * - It doesn't work the standard library and supplies its own but it
- *   only has a very limited standard library.
+ * - It doesn't work with the system's standard library headers and supplies
+ *   its own but it only has a very limited standard library.
  * - It can't handle concurrency or function pointers in some cases.
  * </li>
  *
@@ -213,6 +203,15 @@
  * @section rejected Rejected Tools
  *
  * <ul>
+ *
+ * <li> [Sparse](http://git.kernel.org/cgit/devel/sparse/sparse.git)
+ * - Works moderately well but isn't particularly better than other
+ *   static analyzers without custom annotations.
+ * - Doesn't allow specifying system base dirs other than GCC's and
+ *   doesn't properly recognize the `-isystem` flag.
+ * - Segfaults on some code.
+ * - I'm unsure about the license of it.
+ * </li>
  *
  * <li> [Divine](http://divine.fi.muni.cz/manual.html#installation)
  * - It does not compile properly.

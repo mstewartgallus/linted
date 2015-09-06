@@ -17,11 +17,10 @@
  *
  * @section supported Supported Platforms
  *
- * @subsection x86_64-linux-gnu x86_64 GNU/Linux
+ * These are the only supported platforms.  Other platforms may work but are
+ * only worked on for the purpose of making the code more modular and better.
  *
- * This is the only supported platform.  Other platforms may work but
- * are only worked on for the purpose of making the code more modular
- * and better.
+ * @subsection x86_64-linux-gnu x86_64 GNU/Linux
  *
  * @subsubsection runtime Runtime Dependencies
  *
@@ -176,6 +175,10 @@
  *     - /lib/x86_64-linux-gnu/libpthread-2.19.so
  *     - /lib/x86_64-linux-gnu/librt-2.19.so
  * - Unknown user machine that implements the amd64 hardware architecture
+ *
+ * @subsection i686-linux-gnu i686 GNU/Linux
+ *
+ * Mostly the same as above but 32 bit.
  *
  * @section unsupported-platforms Unsupported Platforms
  *

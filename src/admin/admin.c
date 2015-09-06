@@ -37,7 +37,7 @@
  *       for linted_admin instead of just copying.
  */
 
-#define CHUNK_SIZE 512U
+#define CHUNK_SIZE 256U
 
 LINTED_STATIC_ASSERT(
     LINTED_FIELD_SIZEOF(struct linted_admin_status_request, type) +

@@ -42,6 +42,16 @@ void linted_log_open(char const *ident)
 		tty_init = true;
 }
 
+static void do_syslog(int prio, char const *format, va_list args)
+{
+	va_list cp;
+	va_copy(cp, args);
+
+	vsyslog(prio, format, cp);
+
+	va_end(cp);
+}
+
 void linted_log(linted_log_level log_level, char const *format, ...)
 {
 	int priority;
@@ -66,14 +76,7 @@ void linted_log(linted_log_level log_level, char const *format, ...)
 	va_list ap;
 	va_start(ap, format);
 
-	{
-		va_list cp;
-		va_copy(cp, ap);
-
-		vsyslog(priority, format, cp);
-
-		va_end(cp);
-	}
+	do_syslog(priority, format, ap);
 
 	if (tty_init) {
 		linted_io_write_va_list(tty, 0, format, ap);

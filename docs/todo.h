@@ -41,10 +41,6 @@
  *
  * @todo Eventually reduce `-Wstack-usage` to 500.
  *
- * @todo Port to --host=i685-linux-gnu
- * - This works well except that I can't test the drawer because EGL
- *   and GLES don't work well with multilib.
- *
  * @todo Port to --host=x86_64-w64-mingw32
  *
  * @todo Use length annotated strings instead of C strings.

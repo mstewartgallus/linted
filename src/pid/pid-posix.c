@@ -171,18 +171,18 @@ linted_error linted_pid_stat(linted_pid pid,
 {
 	linted_error err = 0;
 
-	char path[sizeof "/proc/" - 1U +
-	          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
-	          sizeof "/stat" - 1U + 1U];
-	if (-1 ==
-	    sprintf(path, "/proc/%" PRIuMAX "/stat", (uintmax_t)pid)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
 	linted_ko stat_ko;
 	{
+		char path[sizeof "/proc/" - 1U +
+		          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		          sizeof "/stat" - 1U + 1U];
+		if (-1 == sprintf(path, "/proc/%" PRIuMAX "/stat",
+		                  (uintmax_t)pid)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
+		}
+
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
 		                     LINTED_KO_RDONLY);
@@ -338,21 +338,21 @@ linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
 {
 	linted_error err;
 
-	char path[sizeof "/proc/" - 1U +
-	          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
-	          sizeof "/task/" - 1U +
-	          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
-	          sizeof "/children" - 1U + 1U];
-	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task/%" PRIuMAX
-	                        "/children",
-	                  (uintmax_t)pid, (uintmax_t)pid)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
 	linted_ko children_ko;
 	{
+		char path[sizeof "/proc/" - 1U +
+		          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		          sizeof "/task/" - 1U +
+		          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		          sizeof "/children" - 1U + 1U];
+		if (-1 == sprintf(path, "/proc/%" PRIuMAX
+		                        "/task/%" PRIuMAX "/children",
+		                  (uintmax_t)pid, (uintmax_t)pid)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
+		}
+
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
 		                     LINTED_KO_RDONLY);

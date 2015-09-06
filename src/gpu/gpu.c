@@ -939,26 +939,8 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		GLfloat cos_x = cosf(x_rotation);
 		GLfloat sin_x = sinf(x_rotation);
 
-		struct matrix const x_rotation_matrix = {
-		    {{1, 0, 0, 0},
-		     {0, cos_x, -sin_x, 0},
-		     {0, sin_x, cos_x, 0},
-		     {0, 0, 0, 1}}};
-
 		GLfloat cos_z = cosf(z_rotation);
 		GLfloat sin_z = sinf(z_rotation);
-		struct matrix const z_rotation_matrix = {
-		    {{cos_z, sin_z, 0, 0},
-		     {-sin_z, cos_z, 0, 0},
-		     {0, 0, 1, 0},
-		     {0, 0, 0, 1}}};
-
-		/* Translate the camera */
-		struct matrix const camera = {
-		    {{1, 0, 0, 0},
-		     {0, 1, 0, 0},
-		     {0, 0, 1, 0},
-		     {x_position, y_position, z_position, 1}}};
 
 		double aspect = width / (double)height;
 		double fov = acos(-1.0) / 4;
@@ -967,19 +949,53 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		double far = 1000;
 		double near = 1;
 
-		struct matrix const projection = {
-		    {{d / aspect, 0, 0, 0},
-		     {0, d, 0, 0},
-		     {0, 0, (far + near) / (near - far),
-		      2 * far * near / (near - far)},
-		     {0, 0, -1, 0}}};
+		struct matrix model_view_projection;
+		{
+			struct matrix model_view;
+			{
+				struct matrix rotations;
+				{
+					struct matrix const
+					    x_rotation_matrix = {
+					        {{1, 0, 0, 0},
+					         {0, cos_x, -sin_x, 0},
+					         {0, sin_x, cos_x, 0},
+					         {0, 0, 0, 1}}};
 
-		struct matrix rotations = matrix_multiply(
-		    z_rotation_matrix, x_rotation_matrix);
-		struct matrix model_view =
-		    matrix_multiply(camera, rotations);
-		struct matrix model_view_projection =
-		    matrix_multiply(model_view, projection);
+					struct matrix const
+					    z_rotation_matrix = {
+					        {{cos_z, sin_z, 0, 0},
+					         {-sin_z, cos_z, 0, 0},
+					         {0, 0, 1, 0},
+					         {0, 0, 0, 1}}};
+
+					rotations = matrix_multiply(
+					    z_rotation_matrix,
+					    x_rotation_matrix);
+				}
+
+				/* Translate the camera */
+				struct matrix const camera = {
+				    {{1, 0, 0, 0},
+				     {0, 1, 0, 0},
+				     {0, 0, 1, 0},
+				     {x_position, y_position,
+				      z_position, 1}}};
+
+				model_view =
+				    matrix_multiply(camera, rotations);
+			}
+
+			struct matrix const projection = {
+			    {{d / aspect, 0, 0, 0},
+			     {0, d, 0, 0},
+			     {0, 0, (far + near) / (near - far),
+			      2 * far * near / (near - far)},
+			     {0, 0, -1, 0}}};
+
+			model_view_projection =
+			    matrix_multiply(model_view, projection);
+		}
 
 		glUniformMatrix4fv(
 		    gpu_context->model_view_projection_matrix, 1U,

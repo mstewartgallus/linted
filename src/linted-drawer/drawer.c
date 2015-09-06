@@ -121,7 +121,7 @@ static unsigned char start(char const *process_name, size_t argc,
 		pool = xx;
 	}
 
-	struct drawer drawer = {0};
+	static struct drawer drawer = {0};
 
 	err = drawer_init(&drawer, pool, process_name, window_path,
 	                  notifier_path, updater_path);
