@@ -18,6 +18,10 @@ pkgconfdir=$(sysconfdir)/$(PACKAGE)
 pkgdefaultconfdir=$(datadir)/factory/$(PACKAGE)/etc
 pkgdefaultunitsdir=$(pkgdefaultconfdir)/units
 
+AM_TESTS_ENVIRONMENT=\
+  export MALLOC_CHECK_=2;\
+  export MALLOC_PERTURB_=128;
+
 if HAVE_VALGRIND
 LOG_COMPILER=$(VALGRIND) --
 endif

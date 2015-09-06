@@ -42,7 +42,5 @@ source_files() {
     -pp-annot\
     -machdep x86_64\
     -warn-signed-downcast\
-    -warn-unsigned-downcast\
-    -warn-unsigned-overflow\
     -warn-decimal-float none\
     -cpp-extra-args='-C'

@@ -97,6 +97,13 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context);
 static void real_draw(struct linted_gpu_context *gpu_context);
 
 static void flush_gl_errors(void);
+
+static struct matrix
+model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
+                      GLfloat x_position, GLfloat y_position,
+                      GLfloat z_position, unsigned width,
+                      unsigned height);
+
 static struct matrix matrix_multiply(struct matrix a, struct matrix b);
 
 /**
@@ -918,6 +925,8 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 	bool update_pending = gpu_context->update_pending;
 	bool resize_pending = gpu_context->resize_pending;
 
+	GLuint mvp_matrix = gpu_context->model_view_projection_matrix;
+
 	if (resize_pending) {
 		glViewport(0, 0, width, height);
 		gpu_context->resize_pending = false;
@@ -935,71 +944,13 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		GLfloat y_position = update->y_position;
 		GLfloat z_position = update->z_position;
 
-		/* Rotate the camera */
-		GLfloat cos_x = cosf(x_rotation);
-		GLfloat sin_x = sinf(x_rotation);
-
-		GLfloat cos_z = cosf(z_rotation);
-		GLfloat sin_z = sinf(z_rotation);
-
-		double aspect = width / (double)height;
-		double fov = acos(-1.0) / 4;
-
-		double d = 1 / tan(fov / 2);
-		double far = 1000;
-		double near = 1;
-
-		struct matrix model_view_projection;
 		{
-			struct matrix model_view;
-			{
-				struct matrix rotations;
-				{
-					struct matrix const
-					    x_rotation_matrix = {
-					        {{1, 0, 0, 0},
-					         {0, cos_x, -sin_x, 0},
-					         {0, sin_x, cos_x, 0},
-					         {0, 0, 0, 1}}};
-
-					struct matrix const
-					    z_rotation_matrix = {
-					        {{cos_z, sin_z, 0, 0},
-					         {-sin_z, cos_z, 0, 0},
-					         {0, 0, 1, 0},
-					         {0, 0, 0, 1}}};
-
-					rotations = matrix_multiply(
-					    z_rotation_matrix,
-					    x_rotation_matrix);
-				}
-
-				/* Translate the camera */
-				struct matrix const camera = {
-				    {{1, 0, 0, 0},
-				     {0, 1, 0, 0},
-				     {0, 0, 1, 0},
-				     {x_position, y_position,
-				      z_position, 1}}};
-
-				model_view =
-				    matrix_multiply(camera, rotations);
-			}
-
-			struct matrix const projection = {
-			    {{d / aspect, 0, 0, 0},
-			     {0, d, 0, 0},
-			     {0, 0, (far + near) / (near - far),
-			      2 * far * near / (near - far)},
-			     {0, 0, -1, 0}}};
-
-			model_view_projection =
-			    matrix_multiply(model_view, projection);
+			struct matrix mvp = model_view_projection(
+			    x_rotation, z_rotation, x_position,
+			    y_position, z_position, width, height);
+			glUniformMatrix4fv(mvp_matrix, 1U, false,
+			                   (void const *)&mvp);
 		}
-
-		glUniformMatrix4fv(
-		    gpu_context->model_view_projection_matrix, 1U,
-		    false, (void const *)&model_view_projection);
 
 		gpu_context->update_pending = false;
 	}
@@ -1069,6 +1020,69 @@ static linted_error get_gl_error(void)
 		return ENOMEM;
 
 	return 0;
+}
+
+static struct matrix
+model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
+                      GLfloat x_position, GLfloat y_position,
+                      GLfloat z_position, unsigned width,
+                      unsigned height)
+{
+	/* Rotate the camera */
+	GLfloat cos_x = cosf(x_rotation);
+	GLfloat sin_x = sinf(x_rotation);
+
+	GLfloat cos_z = cosf(z_rotation);
+	GLfloat sin_z = sinf(z_rotation);
+
+	double aspect = width / (double)height;
+	double fov = acos(-1.0) / 4;
+
+	double d = 1 / tan(fov / 2);
+	double far = 1000;
+	double near = 1;
+
+	{
+		struct matrix model_view;
+		{
+			struct matrix rotations;
+			{
+				struct matrix const x_rotation_matrix =
+				    {{{1, 0, 0, 0},
+				      {0, cos_x, -sin_x, 0},
+				      {0, sin_x, cos_x, 0},
+				      {0, 0, 0, 1}}};
+
+				struct matrix const z_rotation_matrix =
+				    {{{cos_z, sin_z, 0, 0},
+				      {-sin_z, cos_z, 0, 0},
+				      {0, 0, 1, 0},
+				      {0, 0, 0, 1}}};
+
+				rotations =
+				    matrix_multiply(z_rotation_matrix,
+				                    x_rotation_matrix);
+			}
+
+			/* Translate the camera */
+			struct matrix const camera = {
+			    {{1, 0, 0, 0},
+			     {0, 1, 0, 0},
+			     {0, 0, 1, 0},
+			     {x_position, y_position, z_position, 1}}};
+
+			model_view = matrix_multiply(camera, rotations);
+		}
+
+		struct matrix const projection = {
+		    {{d / aspect, 0, 0, 0},
+		     {0, d, 0, 0},
+		     {0, 0, (far + near) / (near - far),
+		      2 * far * near / (near - far)},
+		     {0, 0, -1, 0}}};
+
+		return matrix_multiply(model_view, projection);
+	}
 }
 
 static struct matrix matrix_multiply(struct matrix a, struct matrix b)

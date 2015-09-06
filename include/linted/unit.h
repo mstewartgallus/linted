@@ -18,6 +18,7 @@
 
 #include "linted/error.h"
 #include "linted/pid.h"
+#include "linted/sched.h"
 
 #include <stddef.h>
 #include <sys/types.h>
@@ -85,6 +86,10 @@ struct linted_unit_service {
 
 	char const *sandbox;
 	char const *waiter;
+
+	int priority;
+
+	_Bool has_priority : 1U;
 
 	_Bool clone_newuser : 1U;
 	_Bool clone_newpid : 1U;

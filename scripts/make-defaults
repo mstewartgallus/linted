@@ -9,4 +9,4 @@ set -e
 set -C
 set -u
 
-exec make -s "$@"
+exec make -s -j "$@"

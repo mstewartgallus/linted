@@ -914,6 +914,15 @@ static linted_error service_create(struct linted_unit_service *unit,
 		no_new_privs_value = xx;
 	}
 
+	linted_sched_priority current_priority;
+	{
+		linted_sched_priority xx;
+		err = linted_sched_getpriority(&xx);
+		if (err != 0)
+			return err;
+		current_priority = xx;
+	}
+
 	unit->sandbox = sandbox;
 	unit->waiter = waiter;
 
@@ -922,6 +931,9 @@ static linted_error service_create(struct linted_unit_service *unit,
 	unit->fstab = fstab;
 	unit->chdir_path = chdir_path;
 	unit->env_whitelist = env_whitelist;
+
+	unit->priority = current_priority + 1;
+	unit->has_priority = true;
 
 	unit->clone_newuser = clone_newuser;
 	unit->clone_newpid = clone_newpid;
@@ -1177,12 +1189,18 @@ spawn_service:
 	char const *sandbox = unit_service->sandbox;
 	char const *waiter = unit_service->waiter;
 
+	bool has_priority = unit_service->has_priority;
+
 	bool clone_newuser = unit_service->clone_newuser;
 	bool clone_newpid = unit_service->clone_newpid;
 	bool clone_newipc = unit_service->clone_newipc;
 	bool clone_newnet = unit_service->clone_newnet;
 	bool clone_newns = unit_service->clone_newns;
 	bool clone_newuts = unit_service->clone_newuts;
+
+	linted_sched_priority priority;
+	if (has_priority)
+		priority = unit_service->priority;
 
 	if (fstab != 0) {
 		linted_ko name_dir;
@@ -1209,24 +1227,22 @@ spawn_service:
 
 	bool drop_caps = true;
 
-	linted_sched_priority current_priority;
-	{
-		linted_sched_priority xx;
-		err = linted_sched_getpriority(&xx);
-		if (err != 0)
-			return err;
-		current_priority = xx;
-	}
-
 	/* Favor other processes over this process hierarchy.  Only
 	 * superuser may lower priorities so this is not
 	 * stoppable. This also makes the process hierarchy nicer for
 	 * the OOM killer.
 	 */
-	char prio_str[LINTED_NUMBER_TYPE_STRING_SIZE(
-	                  linted_sched_priority) +
-	              1U];
-	sprintf(prio_str, "%" PRIiMAX, (intmax_t)current_priority + 1);
+	char *prio_str = 0;
+	if (has_priority) {
+		char *xx;
+		if (-1 ==
+		    asprintf(&xx, "%" PRIiMAX, (intmax_t)priority)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
+		}
+		prio_str = xx;
+	}
 
 	char *chrootdir;
 	{
@@ -1234,7 +1250,7 @@ spawn_service:
 		if (-1 == asprintf(&xx, "%s/chroot", unit_name)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
-			return err;
+			goto free_prio_str;
 		}
 		chrootdir = xx;
 	}
@@ -1296,63 +1312,69 @@ envvar_allocate_succeeded:
 	size_t exec_start_size =
 	    null_list_size((char const *const *)exec_start);
 
-	struct my_option options[] = {
-	    {"--traceme", 0, true},
-	    {"--waiter", waiter, waiter != 0},
-	    {"--chrootdir", chrootdir, fstab != 0},
-	    {"--fstab", fstab, fstab != 0},
-	    {"--nonewprivs", 0, no_new_privs},
-	    {"--dropcaps", 0, drop_caps},
-	    {"--chdir", chdir_path, chdir_path != 0},
-	    {"--priority", prio_str, true},
-	    {"--clone-newuser", 0, clone_newuser},
-	    {"--clone-newpid", 0, clone_newpid},
-	    {"--clone-newipc", 0, clone_newipc},
-	    {"--clone-newnet", 0, clone_newnet},
-	    {"--clone-newns", 0, clone_newns},
-	    {"--clone-newuts", 0, clone_newuts}};
-
-	size_t num_options = 0U;
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
-		struct my_option option = options[ii];
-
-		char const *value = option.value;
-		bool flag = option.flag;
-
-		if (!flag)
-			continue;
-
-		++num_options;
-		if (value != 0)
-			++num_options;
-	}
-
 	char const **args;
-	size_t args_size = 1U + num_options + 1U + exec_start_size;
+	size_t num_options;
+	size_t args_size;
 	{
-		void *xx;
-		err = linted_mem_alloc_array(&xx, args_size + 1U,
-		                             sizeof exec_start[0U]);
-		if (err != 0)
-			goto free_sandbox_dup;
-		args = xx;
-	}
-	args[0U] = sandbox_base;
+		struct my_option const options[] = {
+		    {"--traceme", 0, true},
+		    {"--waiter", waiter, waiter != 0},
+		    {"--chrootdir", chrootdir, fstab != 0},
+		    {"--fstab", fstab, fstab != 0},
+		    {"--nonewprivs", 0, no_new_privs},
+		    {"--dropcaps", 0, drop_caps},
+		    {"--chdir", chdir_path, chdir_path != 0},
+		    {"--priority", prio_str, true},
+		    {"--clone-newuser", 0, clone_newuser},
+		    {"--clone-newpid", 0, clone_newpid},
+		    {"--clone-newipc", 0, clone_newipc},
+		    {"--clone-newnet", 0, clone_newnet},
+		    {"--clone-newns", 0, clone_newns},
+		    {"--clone-newuts", 0, clone_newuts}};
 
-	size_t ix = 1U;
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options); ++ii) {
-		struct my_option option = options[ii];
+		num_options = 0U;
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options);
+		     ++ii) {
+			struct my_option const *option = &options[ii];
 
-		char const *name = option.name;
-		char const *value = option.value;
-		bool flag = option.flag;
+			char const *value = option->value;
+			bool flag = option->flag;
 
-		if (!flag)
-			continue;
+			if (!flag)
+				continue;
 
-		args[ix++] = name;
-		if (value != 0)
-			args[ix++] = value;
+			++num_options;
+			if (value != 0)
+				++num_options;
+		}
+
+		args_size = 1U + num_options + 1U + exec_start_size;
+		{
+			void *xx;
+			err = linted_mem_alloc_array(
+			    &xx, args_size + 1U, sizeof exec_start[0U]);
+			if (err != 0)
+				goto free_sandbox_dup;
+			args = xx;
+		}
+		args[0U] = sandbox_base;
+
+		size_t ix = 1U;
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options);
+		     ++ii) {
+			struct my_option option = options[ii];
+
+			char const *name = option.name;
+			char const *value = option.value;
+			bool flag = option.flag;
+
+			if (!flag)
+				continue;
+
+			args[ix++] = name;
+			if (value != 0)
+				args[ix++] = value;
+		}
 	}
 
 	args[1U + num_options] = "--";
@@ -1398,6 +1420,9 @@ free_envvars:
 
 free_chrootdir:
 	linted_mem_free(chrootdir);
+
+free_prio_str:
+	linted_mem_free(prio_str);
 
 	return err;
 }

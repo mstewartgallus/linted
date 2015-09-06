@@ -161,80 +161,83 @@ linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
 	size_t bytes_left = size;
 	char const *buf_offset = buf;
 
-	sigset_t oldset;
-	/* Get EPIPEs */
-	/* SIGPIPE may not be blocked already */
-	/* Reuse oldset to save on stack space */
-	sigemptyset(&oldset);
-	sigaddset(&oldset, SIGPIPE);
-
-	err = pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
-	if (err != 0)
-		goto write_bytes_wrote;
-
-restart_writing:
-	;
-	ssize_t result = write(ko, buf_offset, bytes_left);
-	if (-1 == result) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		if (EINTR == err)
-			goto restart_writing;
-		if (EAGAIN == err)
-			goto poll_for_writeability;
-		goto get_sigpipe;
-	}
-
-	size_t bytes_wrote_delta = result;
-
-	buf_offset += bytes_wrote_delta;
-	bytes_wrote += bytes_wrote_delta;
-	bytes_left -= bytes_wrote_delta;
-	if (bytes_left != 0)
-		goto restart_writing;
-
-/* Consume SIGPIPEs */
-get_sigpipe : {
-	linted_error eat_err = eat_sigpipes();
-	if (0 == err)
-		err = eat_err;
-}
-
 	{
+		sigset_t oldset;
+		/* Get EPIPEs */
+		/* SIGPIPE may not be blocked already */
+		/* Reuse oldset to save on stack space */
+		sigemptyset(&oldset);
+		sigaddset(&oldset, SIGPIPE);
+
+		err = pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
+		if (err != 0)
+			goto write_bytes_wrote;
+
+		for (;;) {
+			ssize_t result =
+			    write(ko, buf_offset, bytes_left);
+			if (-1 == result) {
+				err = errno;
+				LINTED_ASSUME(err != 0);
+				if (EINTR == err)
+					continue;
+				if (EAGAIN == err)
+					goto poll_for_writeability;
+				break;
+			}
+
+			size_t bytes_wrote_delta = result;
+
+			buf_offset += bytes_wrote_delta;
+			bytes_wrote += bytes_wrote_delta;
+			bytes_left -= bytes_wrote_delta;
+			if (bytes_left != 0)
+				continue;
+
+			break;
+
+		poll_for_writeability:
+			;
+			short revents;
+			{
+				short xx;
+				err = poll_one(ko, POLLOUT, &xx);
+				if (EINTR == err)
+					goto poll_for_writeability;
+				if (EAGAIN == err)
+					goto poll_for_writeability;
+				if (err != 0)
+					break;
+				revents = xx;
+			}
+
+			err = check_for_poll_error(revents);
+			if (err != 0)
+				break;
+
+			if ((revents & POLLOUT) != 0)
+				continue;
+
+			LINTED_ASSUME_UNREACHABLE();
+		}
+
+		/* Consume SIGPIPEs */
+		linted_error eat_err = eat_sigpipes();
+		if (0 == err)
+			err = eat_err;
+
 		linted_error mask_err =
 		    pthread_sigmask(SIG_SETMASK, &oldset, 0);
 		if (0 == err)
 			err = mask_err;
+
+		goto write_bytes_wrote;
 	}
 
 write_bytes_wrote:
 	if (bytes_wrote_out != 0)
 		*bytes_wrote_out = bytes_wrote;
 	return err;
-
-poll_for_writeability:
-	;
-	short revents;
-	{
-		short xx;
-		err = poll_one(ko, POLLOUT, &xx);
-		if (EINTR == err)
-			goto poll_for_writeability;
-		if (EAGAIN == err)
-			goto poll_for_writeability;
-		if (err != 0)
-			goto get_sigpipe;
-		revents = xx;
-	}
-
-	err = check_for_poll_error(revents);
-	if (err != 0)
-		goto get_sigpipe;
-
-	if ((revents & POLLOUT) != 0)
-		goto restart_writing;
-
-	LINTED_ASSUME_UNREACHABLE();
 }
 
 linted_error linted_io_write_string(linted_ko ko,

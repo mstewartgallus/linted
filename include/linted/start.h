@@ -35,12 +35,12 @@ struct linted_start_config {
 };
 
 #ifndef LINTED_START__NO_MAIN
+static struct linted_start_config const linted_start_config;
+
 static unsigned char linted_start_main(char const *process_name,
                                        size_t argc,
                                        char const *const argv[]);
 #endif
-
-static struct linted_start_config const linted_start_config;
 
 #if defined HAVE_WINDOWS_API
 int linted_start_show_command(void);
