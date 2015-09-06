@@ -147,8 +147,8 @@ struct linted_async_task {
 	struct linted_queue_node parent;
 	struct canceller canceller;
 	void *data;
-	linted_error err;
 	union linted_async_ck task_ck;
+	linted_error err;
 	linted_async_type type;
 	bool thread_canceller : 1U;
 };
@@ -843,23 +843,18 @@ static void run_task(struct linted_async_pool *pool,
 	}
 }
 
-struct wait_manager;
-
 struct wait_manager {
 	struct linted_async_pool *async_pool;
 	struct waiter_queue *waiter_queue;
-
-	size_t poller_stacks_size;
-	void *poller_stacks;
 
 	size_t poller_count;
 
 	pthread_t master_thread;
 
-	linted_ko epoll_ko;
-
 	struct epoll_event *epoll_events;
 	struct linted_async_waiter **waiters;
+
+	linted_ko epoll_ko;
 
 	bool stopped : 1U;
 };
@@ -972,8 +967,6 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 		pthread_join(master_thread, 0);
 	}
-
-	munmap(manager->poller_stacks, manager->poller_stacks_size);
 
 	linted_ko_close(epoll_ko);
 

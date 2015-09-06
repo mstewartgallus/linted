@@ -89,8 +89,8 @@ struct monitor {
 	struct linted_unit_db *unit_db;
 	linted_admin_in admin_in;
 	linted_admin_out admin_out;
-	linted_ko cwd;
 	linted_pid manager_pid;
+	linted_ko cwd;
 	bool time_to_exit : 1U;
 };
 
