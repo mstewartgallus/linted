@@ -29,6 +29,9 @@
 static linted_ko tty;
 static bool tty_init;
 
+static void do_syslog(int prio, char const *format, va_list args)
+    LINTED_FORMAT(__printf__, 2, 0);
+
 void linted_log_open(char const *ident)
 {
 	/* For now, don't use LOG_PID because syslog is confused by
@@ -40,16 +43,6 @@ void linted_log_open(char const *ident)
 	if (0 == linted_ko_open(&tty, LINTED_KO_CWD, "/dev/tty",
 	                        LINTED_KO_WRONLY))
 		tty_init = true;
-}
-
-static void do_syslog(int prio, char const *format, va_list args)
-{
-	va_list cp;
-	va_copy(cp, args);
-
-	vsyslog(prio, format, cp);
-
-	va_end(cp);
 }
 
 void linted_log(linted_log_level log_level, char const *format, ...)
@@ -84,4 +77,14 @@ void linted_log(linted_log_level log_level, char const *format, ...)
 	}
 
 	va_end(ap);
+}
+
+static void do_syslog(int prio, char const *format, va_list args)
+{
+	va_list cp;
+	va_copy(cp, args);
+
+	vsyslog(prio, format, cp);
+
+	va_end(cp);
 }
