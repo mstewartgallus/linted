@@ -30,21 +30,29 @@
 
 struct linted_start_config {
 	char const *canonical_process_name;
-	unsigned char (*start)(char const *process_name, size_t argc,
-	                       char const *const argv[]);
 	_Bool dont_init_signals : 1U;
 	_Bool dont_init_logging : 1U;
 };
+
+#ifndef LINTED_START__NO_MAIN
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[]);
+#endif
 
 static struct linted_start_config const linted_start_config;
 
 #if defined HAVE_WINDOWS_API
 int linted_start_show_command(void);
 
-int linted_start__main(struct linted_start_config const *config);
+int linted_start__main(struct linted_start_config const *config,
+                       char const **_process_namep, size_t *_argcp,
+                       char const *const **_argvp);
 #else
 int linted_start__main(struct linted_start_config const *config,
-                       int argc, char *argv[]);
+                       char const **_process_namep, size_t *_argcp,
+                       char const *const **_argvp, int argc,
+                       char *argv[]);
 #endif
 
 /* This is an awful hack to get linking to work right */
@@ -55,19 +63,70 @@ int WINAPI WinMain(HINSTANCE program_instance,
                    HINSTANCE prev_instance_unused,
                    char *command_line_unused, int show_command_arg)
 {
-	return linted_start__main(&linted_start_config);
+	char const *_process_name;
+	size_t _argc;
+	char const *const *_argv;
+
+	{
+		char const *_xx;
+		size_t _yy;
+		char const *const *_zz;
+		int _ww = linted_start__main(&linted_start_config, &_xx,
+		                             &_yy, &_zz, &_ww);
+		if (_ww != 0)
+			return _ww;
+		_process_name = _xx;
+		_argc = _yy;
+		_argv = _zz;
+	}
+
+	return linted_start_main(_process_name, _argc, _argv);
 }
 
 int WINAPI wWinMain(HINSTANCE program_instance,
                     HINSTANCE prev_instance_unused,
                     wchar_t *command_line_unused, int show_command_arg)
 {
-	return linted_start__main(&linted_start_config);
+	char const *_process_name;
+	size_t _argc;
+	char const *const *_argv;
+
+	{
+		char const *_xx;
+		size_t _yy;
+		char const *const *_zz;
+		int _ww = linted_start__main(&linted_start_config, &_xx,
+		                             &_yy, &_zz);
+		if (_ww != 0)
+			return _ww;
+		_process_name = _xx;
+		_argc = _yy;
+		_argv = _zz;
+	}
+
+	return linted_start_main(_process_name, _argc, _argv);
 }
 #else
 int main(int argc, char *argv[])
 {
-	return linted_start__main(&linted_start_config, argc, argv);
+	char const *_process_name;
+	size_t _argc;
+	char const *const *_argv;
+
+	{
+		char const *_xx;
+		size_t _yy;
+		char const *const *_zz;
+		int _ww = linted_start__main(&linted_start_config, &_xx,
+		                             &_yy, &_zz, argc, argv);
+		if (_ww != 0)
+			return _ww;
+		_process_name = _xx;
+		_argc = _yy;
+		_argv = _zz;
+	}
+
+	return linted_start_main(_process_name, _argc, _argv);
 }
 #endif
 #endif

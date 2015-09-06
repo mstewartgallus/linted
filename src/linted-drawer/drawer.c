@@ -45,9 +45,6 @@
  */
 struct drawer;
 
-static unsigned char start(char const *process_name, size_t argc,
-                           char const *const argv[]);
-
 static linted_error
 drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
             char const *process_name, char const *window_path,
@@ -95,13 +92,14 @@ enum { ON_IDLE,
        MAX_TASKS };
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-drawer", .start = start};
+    .canonical_process_name = PACKAGE_NAME "-drawer", 0};
 
 static uint32_t const window_opts[] = {XCB_EVENT_MASK_STRUCTURE_NOTIFY,
                                        0};
 
-static unsigned char start(char const *process_name, size_t argc,
-                           char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err = 0;
 

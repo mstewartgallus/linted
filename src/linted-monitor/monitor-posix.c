@@ -94,10 +94,6 @@ struct monitor {
 	bool time_to_exit : 1U;
 };
 
-static unsigned char monitor_start(char const *process_name,
-                                   size_t argc,
-                                   char const *const argv[]);
-
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       linted_ko cwd, char const *path);
 static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
@@ -191,8 +187,7 @@ static linted_error ptrace_geteventmsg(linted_pid pid,
                                        unsigned long *msg);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-monitor",
-    .start = monitor_start};
+    .canonical_process_name = PACKAGE_NAME "-monitor", 0};
 
 static char const *const default_envvars[] = {
     "MALLOC_CHECK_", "MALLOC_PERTURB_", "MANAGERPID", "USER", "LOGNAME",
@@ -200,9 +195,9 @@ static char const *const default_envvars[] = {
                      "XDG_SESSION_ID",
     "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
 
-static unsigned char monitor_start(char const *process_name,
-                                   size_t argc,
-                                   char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err;
 

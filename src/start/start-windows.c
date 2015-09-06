@@ -53,7 +53,9 @@ int linted_start_show_command(void)
 	return show_command;
 }
 
-int linted_start__main(struct linted_start_config const *config)
+int linted_start__main(struct linted_start_config const *config,
+                       char const **_process_namep, size_t *_argcp,
+                       char const *const **_argvp)
 {
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);
@@ -169,6 +171,9 @@ int linted_start__main(struct linted_start_config const *config)
 		return EXIT_FAILURE;
 	}
 
-	return config->start(process_basename, argc,
-	                     (char const *const *)argv);
+	*_process_namep = process_basename;
+	*_argcp = argc;
+	*_argvp = (char const *const *)argv;
+
+	return EXIT_SUCCESS;
 }

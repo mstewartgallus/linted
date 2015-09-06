@@ -36,18 +36,15 @@ struct idle_data {
 	unsigned long idle_count;
 };
 
-static unsigned char test_start(char const *process_name, size_t argc,
-                                char const *const argv[]);
-
 static void dispatch(struct linted_async_task *task);
 static void on_idle(struct linted_async_task *task);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-async-test",
-    .start = test_start};
+    .canonical_process_name = PACKAGE_NAME "-async-test"};
 
-static unsigned char test_start(char const *process_name, size_t argc,
-                                char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err = 0;
 

@@ -80,9 +80,6 @@ struct gui {
 	bool update_in_progress : 1U;
 };
 
-static unsigned char start(char const *process_name, size_t argc,
-                           char const *const argv[]);
-
 static linted_error gui_init(struct gui *gui,
                              struct linted_async_pool *pool,
                              char const *window_path,
@@ -111,10 +108,11 @@ static void on_tilt(struct gui *gui, int_fast32_t mouse_x,
                     int_fast32_t mouse_y);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-gui", .start = start};
+    .canonical_process_name = PACKAGE_NAME "-gui", 0};
 
-static unsigned char start(char const *process_name, size_t argc,
-                           char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err = 0;
 

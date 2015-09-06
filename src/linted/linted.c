@@ -78,9 +78,6 @@ enum { HELP, VERSION_OPTION };
 
 extern char **environ;
 
-static unsigned char main_start(char const *const process_name,
-                                size_t argc, char const *const *argv);
-
 static linted_error do_help(linted_ko ko, char const *process_name,
                             char const *package_name,
                             char const *package_url,
@@ -89,8 +86,7 @@ static linted_error do_help(linted_ko ko, char const *process_name,
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-linted",
     .dont_init_signals = true,
-    .dont_init_logging = true,
-    .start = main_start};
+    .dont_init_logging = true};
 
 static struct envvar const default_envvars[] = {
     {"LINTED_PROCESS_NAME", "linted"},
@@ -113,9 +109,9 @@ static struct envvar const default_envvars[] = {
 static char const *const argstrs[] = {[HELP] = "--help",
                                       [VERSION_OPTION] = "--version"};
 
-static unsigned char main_start(char const *const process_name,
-                                size_t argc,
-                                char const *const *const argv)
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const *const argv)
 {
 	linted_error err = linted_linted_privilege_check();
 	if (err != 0) {

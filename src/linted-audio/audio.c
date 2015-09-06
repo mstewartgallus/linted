@@ -73,11 +73,11 @@ static unsigned char audio_start(char const *const process_name,
                                  size_t argc, char const *const argv[]);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-audio",
-    .start = audio_start};
+    .canonical_process_name = PACKAGE_NAME "-audio", 0};
 
-static unsigned char audio_start(char const *const process_name,
-                                 size_t argc, char const *const argv[])
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	size_t greatest_period = 1 / ((A_TONE / 1000.0) / SAMPLE_RATE);
 

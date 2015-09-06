@@ -169,10 +169,6 @@ static struct rlimit_arg const default_rlimit_args[] = {
     {.resource = RLIMIT_MSGQUEUE,
      .limit = {.rlim_cur = 0, .rlim_max = 0}}};
 
-static unsigned char sandbox_start(char const *const process_name,
-                                   size_t argc,
-                                   char const *const argv[]);
-
 static int first_fork_routine(void *arg);
 static int second_fork_routine(void *arg);
 
@@ -198,12 +194,12 @@ static int my_pivot_root(char const *new_root, char const *put_old);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
-    .start = sandbox_start,
-    .dont_init_signals = true};
+    .dont_init_signals = true,
+    0};
 
-static unsigned char sandbox_start(char const *const process_name,
-                                   size_t argc,
-                                   char const *const argv[])
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err;
 

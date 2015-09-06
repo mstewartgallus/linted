@@ -45,21 +45,19 @@
 #endif
 #endif
 
-static uint_fast8_t enter_start(char const *const process_name,
-                                size_t argc, char const *const argv[]);
-
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-enter",
     .dont_init_signals = true,
-    .start = enter_start};
+    0};
 
 /* Order of entering matters */
 
 static char const *const namespaces[] = {"user", "mnt", "pid", "ipc",
                                          "net"};
 
-static uint_fast8_t enter_start(char const *const process_name,
-                                size_t argc, char const *const argv[])
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err = 0;
 

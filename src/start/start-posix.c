@@ -41,7 +41,9 @@
 static void do_nothing(int signo);
 
 int linted_start__main(struct linted_start_config const *config,
-                       int argc, char *argv[])
+                       char const **_process_namep, size_t *_argcp,
+                       char const *const **_argvp, int argc,
+                       char *argv[])
 {
 	linted_error err = 0;
 
@@ -132,8 +134,10 @@ int linted_start__main(struct linted_start_config const *config,
 
 	tzset();
 
-	return config->start(process_basename, argc,
-	                     (char const *const *)argv);
+	*_process_namep = process_basename;
+	*_argcp = argc;
+	*_argvp = (char const *const *)argv;
+	return EXIT_SUCCESS;
 }
 
 static void do_nothing(int signo)

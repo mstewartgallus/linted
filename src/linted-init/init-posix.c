@@ -37,21 +37,19 @@
 #include <sys/prctl.h>
 #include <sys/wait.h>
 
-static unsigned char init_start(char const *process_name, size_t argc,
-                                char const *const argv[]);
-
 static void delegate_signal(int signo);
 static linted_error set_child_subreaper(bool value);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
     .dont_init_signals = true,
-    .start = init_start};
+    0};
 
 static volatile sig_atomic_t monitor_pid = 0;
 
-static unsigned char init_start(char const *process_name, size_t argc,
-                                char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err;
 

@@ -80,9 +80,6 @@ struct simulator {
 	linted_ko controller;
 };
 
-static unsigned char start(char const *const process_name, size_t argc,
-                           char const *const argv[]);
-
 static linted_error sim_init(struct simulator *simulator,
                              struct linted_async_pool *pool,
                              char const *controller_path,
@@ -117,11 +114,11 @@ static sim_int min_int(sim_int x, sim_int y);
 static sim_int sign(sim_int x);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-simulator",
-    .start = start};
+    .canonical_process_name = PACKAGE_NAME "-simulator", 0};
 
-static unsigned char start(char const *const process_name, size_t argc,
-                           char const *const argv[])
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err;
 

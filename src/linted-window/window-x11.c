@@ -50,9 +50,6 @@ struct window {
 	struct linted_io_task_poll *poll_conn_task;
 };
 
-static unsigned char window_start(char const *process_name, size_t argc,
-                                  char const *const argv[]);
-
 static linted_error dispatch(struct window *window,
                              struct linted_async_task *task);
 static linted_error on_poll_conn(struct window *window,
@@ -61,13 +58,13 @@ static linted_error on_sent_notice(struct window *window,
                                    struct linted_async_task *task);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-window",
-    .start = window_start};
+    .canonical_process_name = PACKAGE_NAME "-window", 0};
 
 static uint32_t const window_opts[] = {0};
 
-static unsigned char window_start(char const *process_name, size_t argc,
-                                  char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err = 0;
 

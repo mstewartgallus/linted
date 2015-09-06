@@ -37,9 +37,6 @@
 #include <time.h>
 #include <unistd.h>
 
-static unsigned char waiter_start(char const *process_name, size_t argc,
-                                  char const *const argv[]);
-
 static void on_term(int signo);
 static void on_sigchld(int signo);
 
@@ -48,12 +45,13 @@ static linted_error set_name(char const *name);
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-waiter",
     .dont_init_signals = true,
-    .start = waiter_start};
+    0};
 
 static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 
-static unsigned char waiter_start(char const *process_name, size_t argc,
-                                  char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err = 0;
 
