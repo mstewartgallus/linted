@@ -49,7 +49,7 @@ endif
 
 EXTRA_DIST+=%D%/settings.h.in
 MOSTLYCLEANFILES+=%D%/settings.h
-%D%/settings.h: Makefile %D%/settings.h.in
+%D%/settings.h: %D%/settings.h.in Makefile 
 	$(linted_V_SED) sed \
 	  -e 's|[@]LINTED_UNIT_PATH[@]|$(pkgunitsdir):$(pkgdefaultunitsdir)|g'\
 	  -e 's|[@]LINTED_INIT[@]|$(pkglibexecdir)/linted-init$(EXEEXT)|g'\
@@ -64,4 +64,4 @@ MOSTLYCLEANFILES+=%D%/settings.h
 	  -e 's|[@]LINTED_DRAWER_FSTAB[@]|$(pkgdefaultconfdir)/drawer.fstab|g'\
 	  -e 's|[@]LINTED_WINDOW[@]|$(pkglibexecdir)/linted-window$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_WINDOW_FSTAB[@]|$(pkgdefaultconfdir)/window.fstab|g'\
-	  $(srcdir)/%D%/settings.h.in > $@
+	  < $< > $@

@@ -42,5 +42,5 @@ MOSTLYCLEANFILES+=%D%/assets.c
   %D%/assets_generator/linted_assets_generator\
   %D%/assets_generator/linted_assets_generator.py
 	$(linted_V_BLENDER) BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
-	  $(srcdir)/%D%/assets/assets.py\
+	 $<\
 	  --output=$@

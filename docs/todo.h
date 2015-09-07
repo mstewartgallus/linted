@@ -64,4 +64,7 @@
  *
  * @todo Sandbox leaked file descriptors before spawning new processes
  *       in sandbox.c
+ *
+ * @todo Achieve deterministic builds. As far I know, DW_AT_comp_dir is the one
+ *       major source of nondeterminism left.
  */

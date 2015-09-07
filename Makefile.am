@@ -58,6 +58,7 @@ AM_LIBTOOLFLAGS+=--silent
 
 AM_CFLAGS+=\
   $(linted_CFLAGS_LANGUAGE)\
+  $(linted_CFLAGS_DETERMINISTIC)\
   $(linted_CFLAGS_OPTIMIZE)\
   $(linted_CFLAGS_HARDEN)\
   $(linted_CFLAGS_DEBUG)\
@@ -74,6 +75,7 @@ AM_LDFLAGS+=\
   $$(for II in \
   $(linted_LDFLAGS_TARGET_TYPE)\
   $(linted_LDFLAGS_LANGUAGE)\
+  $(linted_LDFLAGS_DETERMINISTIC)\
   $(linted_LDFLAGS_OPTIMIZE)\
   $(linted_LDFLAGS_HARDEN)\
   $(linted_LDFLAGS_DEBUG)\

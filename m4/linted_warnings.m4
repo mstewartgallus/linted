@@ -14,7 +14,7 @@ AC_ARG_ENABLE(
         [warnings],
         AS_HELP_STRING(
                 [--disable-warnings],
-                [disable adjustments for speeding up the build]),
+                [disable warnings]),
         [
          [enable_warnings=badval]
          AS_IF([test "x${enableval}" = "xyes"], [[enable_warnings=yes]])
