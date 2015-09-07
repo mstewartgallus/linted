@@ -22,17 +22,12 @@
 #include <stdlib.h>
 #include <windows.h>
 
-static unsigned char monitor_start(char const *process_name,
-                                   size_t argc,
-                                   char const *const argv[]);
-
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-monitor",
-    .start = monitor_start};
+    .canonical_process_name = PACKAGE_NAME "-monitor", 0};
 
-static unsigned char monitor_start(char const *process_name,
-                                   size_t argc,
-                                   char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err = 0;
 

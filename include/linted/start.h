@@ -72,7 +72,7 @@ int WINAPI WinMain(HINSTANCE program_instance,
 		size_t _yy;
 		char const *const *_zz;
 		int _ww = linted_start__main(&linted_start_config, &_xx,
-		                             &_yy, &_zz, &_ww);
+		                             &_yy, &_zz);
 		if (_ww != 0)
 			return _ww;
 		_process_name = _xx;

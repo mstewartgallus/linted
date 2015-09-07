@@ -66,15 +66,12 @@ static HINSTANCE get_current_module(void)
 
 LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
 
-static unsigned char window_start(char const *process_name, size_t argc,
-                                  char const *const argv[]);
-
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-window",
-    .start = window_start};
+    .canonical_process_name = PACKAGE_NAME "-window", 0};
 
-static unsigned char window_start(char const *process_name, size_t argc,
-                                  char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err = 0;
 

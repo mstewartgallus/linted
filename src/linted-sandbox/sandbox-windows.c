@@ -97,22 +97,18 @@ static char const *const argstrs[] = {
         /**/ [NEWNS_ARG] = "--clone-newns",
         /**/ [NEWUTS_ARG] = "--clone-newuts"};
 
-static unsigned char sandbox_start(char const *const process_name,
-                                   size_t argc,
-                                   char const *const argv[]);
-
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
-    .start = sandbox_start,
-    .dont_init_signals = true};
+    .dont_init_signals = true,
+    0};
 
 /**
  * @todo Write stderr streams of the child to the system log.
  * @todo Pass full command line arguments to process.
  */
-static unsigned char sandbox_start(char const *const process_name,
-                                   size_t argc,
-                                   char const *const argv[])
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err;
 

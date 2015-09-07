@@ -105,12 +105,15 @@ linted_mem_alloc_array_zeroed(void **memp, size_t nmemb, size_t size)
 {
 	extern void *calloc(size_t nmemb, size_t size);
 
-	void *memory = calloc(nmemb, size);
-	if (nmemb > 0U && size > 0U && 0 == memory)
-		return LINTED_ERROR_OUT_OF_MEMORY;
-
+	void *memory;
+	if (0U == nmemb || 0U == size) {
+		memory = 0;
+	} else {
+		memory = calloc(nmemb, size);
+		if (0 == memory)
+			return LINTED_ERROR_OUT_OF_MEMORY;
+	}
 	*memp = memory;
-
 	return 0;
 }
 

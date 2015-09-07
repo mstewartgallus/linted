@@ -27,7 +27,6 @@
  * <li> [Overture Tool](http://overturetool.org/) </li>
  * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
  * <li> [Saturn](http://saturn.stanford.edu/) </li>
- * <li> [sixgill](http://sixgill.org/) </li>
  * <li> [S-Spider](https://code.google.com/p/s-spider/) </li>
  * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
  * <li> [TLA+](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html) </li>
@@ -304,6 +303,11 @@
  * - Did give a nice tip about how `InitializeCriticalSection` can
  *   throw an exception however. Note that this only applies to
  *   Windows XP and lower.
+ * </li>
+ *
+ * <li> [sixgill](http://sixgill.org/)
+ * - This fails compiling due to the use of `-Werror` in the build scripts and
+ *   sixgill deleting an abstract object with a non-virtual destructor. 
  * </li>
  *
  * @section also See Also

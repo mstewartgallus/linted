@@ -172,9 +172,16 @@
  *
  * </ul>
  *
- * @section style Code style
- *
  * <ul>
+ *
+ * <li> User interaction should log errors and notify the user on failure.
+ *
+ * Example: Commands like `./my-binary --help > /dev/full` or similar user
+ * interactions that fail should log errors and notify the user as otherwise
+ * the user might find silently truncate output files when they are trying to
+ * record or view program output.
+ *
+ * </li>
  *
  * <li> Accept and produce strings annotated with lengths.
  *

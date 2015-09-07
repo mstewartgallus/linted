@@ -48,15 +48,12 @@
  * @todo Get a proper process handle out of linted_spawn.
  */
 
-static unsigned char init_start(char const *process_name, size_t argc,
-                                char const *const argv[]);
-
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-init",
-    .start = init_start};
+    .canonical_process_name = PACKAGE_NAME "-init", 0};
 
-static unsigned char init_start(char const *process_name, size_t argc,
-                                char const *const argv[])
+static unsigned char linted_start_main(char const *process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err;
 
