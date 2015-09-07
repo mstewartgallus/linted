@@ -84,13 +84,9 @@
  * - The Xen hypervisor's shared memory I/O.
  *
  * @subsection rejected Rejected Approaches
- * - We cannot use shared memory because file sealing only works on
- *   `shmfs` (files created using `memfd_create`) and those files
- *   cannot be mounted.
  * - UNIX domain sockets are really messy.
  *
  * @subsection overview Overview
- *
  * @subsubsection files Files
  * File types:
  * - Eventfds
@@ -126,7 +122,30 @@
  * - Regular signals
  * - Realtime signals
  * @subsubsection sharedmemory Shared Memory
- * Futex locks + `mmap`.
+ * System calls that allocate memory:
+ * - `mmap`
+ * - `brk`
+ * - Use the `DRM_IOCTL_I915_GEM_MMAP` `ioctl`
+ * - Use the `DRM_IOCTL_RADEON_GEM_MMAP` `ioctl`
+ * - `shmat`
+ * - `prctl` (using `PR_SET_MM_BRK`)
+ *
+ * Shared memory is unsuitable because:
+ *
+ * - `mmap`able files can be `ftruncate`d by attackers
+ * - We can only share memory mappings without files using a weird trick using
+ *   `fork`.
+ * - File sealing only works on `shmfs` (files created using `memfd_create`)
+ *   and those files cannot be mounted.
+ * - System V IPC sort of works but is awkward.  Sandboxed processes would
+ *   have to share the same IPC namespace (and so would have access every
+ *   shared memory segment), `shmget` does sets the initial size of the memory
+ *   segment which cannot be changed later and so attackers can't create
+ *   `SIGSEGV`s in users.
+ * - Hilariously, it is possible to use `mmap` with netlink sockets (which
+ *   should only be used for kernel space to user-space communication) and so
+ *   achieve safe `mmap` between processes.
+ *
  * @subsubsection sysvipc System V IPC
  * System V IPC types:
  * - message queues
