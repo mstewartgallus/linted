@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <syscall.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 
 #ifndef __NR_execveat
@@ -62,7 +63,7 @@ struct linted_spawn_file_actions {
 };
 
 struct linted_spawn_attr {
-	long clone_flags;
+	char dummy;
 };
 
 struct fork_args {
@@ -76,7 +77,7 @@ struct fork_args {
 };
 
 static int fork_routine(void *args);
-
+static pid_t safe_vfork(int (*f)(void *), void *args);
 static linted_error duplicate_to(linted_ko new, linted_ko old);
 
 linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
@@ -91,15 +92,9 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 			return err;
 		attr = xx;
 	}
-	attr->clone_flags = 0;
 
 	*attrp = attr;
 	return 0;
-}
-
-void linted_spawn_attr_set_untraced(struct linted_spawn_attr *attr)
-{
-	attr->clone_flags |= CLONE_UNTRACED;
 }
 
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
@@ -172,43 +167,6 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 
 	sigset_t const *child_mask = 0;
 
-	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
-	assert(maybe_page_size >= 0);
-
-	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
-	assert(maybe_stack_min_size >= 0);
-
-	size_t page_size = maybe_page_size;
-	size_t stack_min_size = maybe_stack_min_size;
-
-	size_t stack_size = 8U * page_size + stack_min_size;
-
-	size_t stack_plus_guard_size = stack_size + 2U * page_size;
-
-	char *child_stack = mmap(
-	    0, stack_plus_guard_size, PROT_READ | PROT_WRITE,
-	    MAP_ANONYMOUS | MAP_PRIVATE | MAP_GROWSDOWN | MAP_STACK, -1,
-	    0);
-	if (MAP_FAILED == child_stack) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	pid_t child = -1;
-	if (-1 == mprotect(child_stack, page_size, PROT_NONE)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto unmap_stack;
-	}
-
-	if (-1 == mprotect(child_stack + page_size + stack_size,
-	                   page_size, PROT_NONE)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto unmap_stack;
-	}
-
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
@@ -216,7 +174,7 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 		linted_ko yy;
 		err = linted_fifo_pair(&xx, &yy, 0);
 		if (err != 0)
-			goto unmap_stack;
+			return err;
 		err_reader = xx;
 		err_writer = yy;
 	}
@@ -224,11 +182,6 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 	/* Greater than standard input, standard output and standard
 	 * error */
 	unsigned greatest = 4U;
-
-	long clone_flags = 0;
-	if (attr != 0) {
-		clone_flags = attr->clone_flags;
-	}
 
 	/* Copy file descriptors in case they get overridden */
 	if (file_actions != 0 && err_writer < greatest) {
@@ -262,6 +215,7 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 		dirko_copy = dirko;
 	}
 
+	pid_t child = -1;
 	{
 		sigset_t sigset;
 		sigfillset(&sigset);
@@ -281,10 +235,7 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 		                              .envp = envp,
 		                              .dirko = dirko_copy,
 		                              .binary = binary};
-
-		child = clone(fork_routine,
-		              child_stack + page_size + stack_size,
-		              SIGCHLD | clone_flags, &fork_args);
+		child = safe_vfork(fork_routine, &fork_args);
 		assert(child != 0);
 
 		linted_error mask_err =
@@ -327,9 +278,6 @@ close_err_reader : {
 	if (0 == err)
 		err = close_err;
 }
-
-unmap_stack:
-	munmap(child_stack, stack_plus_guard_size);
 
 	if (err != 0)
 		return err;
@@ -502,3 +450,17 @@ static linted_error duplicate_to(linted_ko new, linted_ko old)
 
 	return err;
 }
+
+/* Most compilers can't handle the weirdness of vfork so contain it in
+ * a safe abstraction.
+ */
+LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
+safe_vfork(int (*volatile f)(void *), void *volatile arg)
+{
+	pid_t child = vfork();
+	if (0 == child)
+		_Exit(f(arg));
+	return child;
+}
+
+
