@@ -33,7 +33,8 @@ EXTRA_DIST+=\
   %D%/check-frama-c.in\
   %D%/check-iwyu.in\
   %D%/check-splint.in\
-  %D%/cpa-config.in
+  %D%/cpa-config.in\
+  %D%/check-clang-analysis.py
 MOSTLYCLEANFILES+=\
   %D%/test.out\
   %D%/check-cbmc.out\
