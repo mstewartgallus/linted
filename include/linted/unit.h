@@ -64,6 +64,9 @@ linted_unit_name(linted_pid pid,
 linted_error linted_unit_pid(linted_pid *pidp, linted_pid manager_pid,
                              char const *name);
 
+linted_error
+linted_unit_socket_activate(struct linted_unit_socket *unit);
+
 struct linted_unit {
 	char *name;
 	linted_unit_type type;

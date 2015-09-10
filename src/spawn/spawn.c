@@ -36,8 +36,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <syscall.h>
-#include <sys/mman.h>
-#include <sys/prctl.h>
 #include <unistd.h>
 
 #ifndef __NR_execveat

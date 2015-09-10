@@ -35,6 +35,11 @@
 #include "linted/unit.h"
 #include "linted/util.h"
 
+#if defined HAVE_POSIX_API
+#include "linted/prctl.h"
+#include "linted/ptrace.h"
+#endif
+
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -49,27 +54,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#if defined HAVE_POSIX_API
-#include <sys/prctl.h>
-#include <sys/ptrace.h>
-#include <sys/wait.h>
-
-#ifndef PTRACE_EVENT_STOP
-#define PTRACE_EVENT_STOP 128
-#endif
-
-#endif
-
 #include <sys/stat.h>
 #include <unistd.h>
 
-/* 2^(bits - 1) - 1 */
-/* Sadly, this assumes a twos complement implementation */
-#define PID_MAX                                                        \
-	((pid_t)((UINTMAX_C(1)                                         \
-	          << (uintmax_t)(sizeof(pid_t) * CHAR_BIT - 1U)) -     \
-	         1U))
+#if defined HAVE_POSIX_API
+#include <sys/wait.h>
+#endif
+
+#if defined HAVE_POSIX_API
+#ifndef PTRACE_EVENT_STOP
+#define PTRACE_EVENT_STOP 128
+#endif
+#endif
 
 enum { WAITID,
        SIGNAL_WAIT,
@@ -155,9 +151,8 @@ on_child_about_to_exit(char const *process_name, bool time_to_exit,
                        linted_pid pid, linted_pid manager_pid,
                        linted_ko cwd, struct linted_unit_db *unit_db);
 static linted_error
-on_child_ptrace_event_stopped(char const *process_name, linted_pid pid,
-                              int exit_status);
-static linted_error socket_activate(struct linted_unit_socket *unit);
+on_child_linted_ptrace_event_stopped(char const *process_name,
+                                     linted_pid pid, int exit_status);
 static linted_error service_activate(char const *process_name,
                                      struct linted_unit *unit,
                                      linted_pid manager_pid,
@@ -176,15 +171,6 @@ static linted_error service_children_terminate(linted_pid pid);
 static linted_error pid_is_child_of(linted_pid parent, linted_pid child,
                                     bool *isp);
 
-static linted_error set_death_sig(int signum);
-
-static linted_error ptrace_seize(linted_pid pid, uint_fast32_t options);
-static linted_error ptrace_cont(linted_pid pid, int signo);
-static linted_error ptrace_detach(linted_pid pid, int signo);
-static linted_error ptrace_setoptions(linted_pid pid, unsigned options);
-static linted_error ptrace_geteventmsg(linted_pid pid,
-                                       unsigned long *msg);
-
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor", 0};
 
@@ -200,9 +186,10 @@ static unsigned char linted_start_main(char const *process_name,
 {
 	linted_error err;
 
-	err = set_death_sig(SIGKILL);
+	err = linted_prctl_set_death_sig(SIGKILL);
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "set_death_sig: %s",
+		linted_log(LINTED_LOG_ERROR,
+		           "linted_prctl_set_death_sig: %s",
 		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
@@ -288,51 +275,16 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 
 	linted_pid manager_pid;
-
-	char start = manager_pid_str[0U];
-	if ('\0' == start || '+' == start || '-' == start ||
-	    isspace(start)) {
-		err = EINVAL;
-	} else {
-		char *endptr;
-
-		long yy;
-		errno = 0;
-		{
-			char *xx;
-			yy = strtol(manager_pid_str, &xx, 10);
-			err = errno;
-			if (err != 0)
-				goto on_error;
-			endptr = xx;
-		}
-		if (endptr[0U] != '\0') {
-			err = EINVAL;
-			goto on_error;
-		}
-
-		if (yy < 0) {
-			err = ERANGE;
-			goto on_error;
-		}
-
-		if (yy > PID_MAX) {
+	{
+		linted_pid yy;
+		err = linted_pid_from_str(manager_pid_str, &yy);
+		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "strtol: %li %" PRIuMAX, yy,
-			           (uintmax_t)PID_MAX);
-
-			err = ERANGE;
-			goto on_error;
+			           "linted_pid_from_str: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
 		}
-
 		manager_pid = yy;
-	}
-
-on_error:
-	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "strtol: %s",
-		           linted_error_string(err));
-		return EXIT_FAILURE;
 	}
 
 	char *package_runtime_dir_path;
@@ -1061,7 +1013,7 @@ static linted_error activate_unit_db(char const *process_name,
 		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
 			continue;
 
-		err = socket_activate((void *)unit);
+		err = linted_unit_socket_activate((void *)unit);
 		if (err != 0)
 			return err;
 	}
@@ -1080,63 +1032,6 @@ static linted_error activate_unit_db(char const *process_name,
 	}
 
 	return 0;
-}
-
-static linted_error socket_activate(struct linted_unit_socket *unit)
-{
-	linted_error err = 0;
-
-	linted_unit_type type = unit->type;
-	char const *path = unit->path;
-
-	switch (type) {
-	case LINTED_UNIT_SOCKET_TYPE_DIR:
-		err = linted_dir_create(0, LINTED_KO_CWD, path, 0U,
-		                        S_IRWXU);
-		break;
-
-	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		err = linted_file_create(0, LINTED_KO_CWD, path, 0U,
-		                         S_IRWXU);
-		break;
-
-	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
-		int fifo_size = unit->fifo_size;
-
-#if defined F_SETPIPE_SZ
-		if (fifo_size >= 0) {
-			linted_ko fifo;
-			{
-				linted_ko xx;
-				err = linted_fifo_create(
-				    &xx, LINTED_KO_CWD, path,
-				    LINTED_FIFO_RDWR, S_IRWXU);
-				if (err != 0)
-					return err;
-				fifo = xx;
-			}
-
-			if (-1 ==
-			    fcntl(fifo, F_SETPIPE_SZ, fifo_size)) {
-				err = errno;
-				LINTED_ASSUME(err != 0);
-			}
-
-			linted_error close_err = linted_ko_close(fifo);
-			if (0 == err)
-				err = close_err;
-		} else
-#endif
-		{
-			err = linted_fifo_create(0, LINTED_KO_CWD, path,
-			                         0U, S_IRWXU);
-		}
-
-		break;
-	}
-	}
-
-	return err;
 }
 
 struct my_option {
@@ -1172,7 +1067,7 @@ static linted_error service_activate(char const *process_name,
 	    LINTED_KO_STDERR, 0, "%s: ptracing %" PRIiMAX " %s\n",
 	    process_name, (intmax_t)child, unit_name);
 
-	return ptrace_seize(child, PTRACE_O_TRACEEXIT);
+	return linted_ptrace_seize(child, PTRACE_O_TRACEEXIT);
 
 service_not_found:
 	if (err != ESRCH)
@@ -1716,8 +1611,8 @@ static linted_error on_child_trapped(char const *process_name,
 		    unit_db);
 
 	case PTRACE_EVENT_STOP:
-		return on_child_ptrace_event_stopped(process_name, pid,
-		                                     exit_status);
+		return on_child_linted_ptrace_event_stopped(
+		    process_name, pid, exit_status);
 
 	case PTRACE_EVENT_VFORK:
 	case PTRACE_EVENT_FORK:
@@ -1734,9 +1629,9 @@ static linted_error on_child_stopped(char const *process_name,
 {
 	linted_error err = 0;
 
-	linted_error seize_err =
-	    ptrace_seize(pid, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK |
-	                          PTRACE_O_TRACEVFORK);
+	linted_error seize_err = linted_ptrace_seize(
+	    pid, PTRACE_O_TRACECLONE | PTRACE_O_TRACEFORK |
+	             PTRACE_O_TRACEVFORK);
 	if (0 == err)
 		err = seize_err;
 
@@ -1750,12 +1645,12 @@ static linted_error on_child_stopped(char const *process_name,
 static linted_error on_child_signaled(char const *process_name,
                                       linted_pid pid, int signo)
 {
-	return ptrace_cont(pid, signo);
+	return linted_ptrace_cont(pid, signo);
 }
 
 static linted_error
-on_child_ptrace_event_stopped(char const *process_name, linted_pid pid,
-                              int exit_status)
+on_child_linted_ptrace_event_stopped(char const *process_name,
+                                     linted_pid pid, int exit_status)
 {
 	linted_error err = 0;
 
@@ -1785,11 +1680,11 @@ on_child_ptrace_event_stopped(char const *process_name, linted_pid pid,
 		                       name);
 	}
 
-	err = ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
+	err = linted_ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 
 continue_process:
 	;
-	linted_error cont_err = ptrace_cont(pid, 0);
+	linted_error cont_err = linted_ptrace_cont(pid, 0);
 	if (0 == err)
 		err = cont_err;
 
@@ -1812,7 +1707,7 @@ on_child_about_to_exit(char const *process_name, bool time_to_exit,
 	unsigned long status;
 	{
 		unsigned long xx;
-		err = ptrace_geteventmsg(pid, &xx);
+		err = linted_ptrace_geteventmsg(pid, &xx);
 		if (err != 0)
 			goto detach_from_process;
 		status = xx;
@@ -1850,7 +1745,7 @@ on_child_about_to_exit(char const *process_name, bool time_to_exit,
 	}
 
 detach_from_process:
-	err = ptrace_detach(pid, 0);
+	err = linted_ptrace_detach(pid, 0);
 	if (err != 0)
 		return err;
 
@@ -1869,7 +1764,7 @@ detach_from_process:
 /* A sandbox creator is creating a sandbox */
 static linted_error on_child_about_to_clone(linted_pid pid)
 {
-	return ptrace_detach(pid, 0);
+	return linted_ptrace_detach(pid, 0);
 }
 
 static linted_error
@@ -2370,89 +2265,4 @@ static linted_error pid_is_child_of(linted_pid parent, linted_pid child,
 	*isp = ppid == parent;
 
 	return err;
-}
-
-static linted_error set_death_sig(int signum)
-{
-	linted_error err;
-
-	if (-1 == prctl(PR_SET_PDEATHSIG, (unsigned long)signum, 0UL,
-	                0UL, 0UL)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_detach(linted_pid pid, int signo)
-{
-	linted_error err;
-
-	if (-1 == ptrace(PTRACE_DETACH, (pid_t)pid, (void *)0,
-	                 (void *)(intptr_t)signo)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_setoptions(linted_pid pid, unsigned options)
-{
-	linted_error err;
-
-	if (-1 == ptrace(PTRACE_SETOPTIONS, (pid_t)pid, (void *)0,
-	                 (void *)(uintptr_t)options)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_geteventmsg(linted_pid pid,
-                                       unsigned long *msg)
-{
-	linted_error err;
-
-	if (-1 == ptrace(PTRACE_GETEVENTMSG, (pid_t)pid, (void *)0,
-	                 (void *)(uintptr_t)msg)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_seize(linted_pid pid, uint_fast32_t options)
-{
-	linted_error err;
-
-	if (-1 == ptrace(PTRACE_SEIZE, (pid_t)pid, (void *)0,
-	                 (void *)(uintptr_t)options)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
-}
-
-static linted_error ptrace_cont(linted_pid pid, int signo)
-{
-	linted_error err;
-
-	if (-1 == ptrace(PTRACE_CONT, (pid_t)pid, (void *)0,
-	                 (void *)(intptr_t)signo)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
 }

@@ -22,6 +22,7 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/pid.h"
+#include "linted/prctl.h"
 #include "linted/start.h"
 #include "linted/util.h"
 
@@ -31,15 +32,12 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/prctl.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
 static void on_term(int signo);
 static void on_sigchld(int signo);
-
-static linted_error set_name(char const *name);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-waiter",
@@ -67,7 +65,7 @@ static unsigned char linted_start_main(char const *process_name,
 		service = xx;
 	}
 	if (service != 0) {
-		err = set_name(service);
+		err = linted_prctl_set_name(service);
 		LINTED_ASSERT(err != EINVAL);
 		linted_mem_free(service);
 	}
@@ -236,20 +234,4 @@ static void on_sigchld(int signo)
 	}
 
 	errno = old_err;
-}
-
-static linted_error set_name(char const *name)
-{
-	linted_error err;
-
-	if (-1 ==
-	    prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-
-		LINTED_ASSERT(err != EINVAL);
-
-		return err;
-	}
-	return 0;
 }

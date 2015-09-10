@@ -19,6 +19,7 @@
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/log.h"
+#include "linted/prctl.h"
 #include "linted/signal.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
@@ -33,11 +34,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/prctl.h>
 #include <sys/wait.h>
 
 static void delegate_signal(int signo);
-static linted_error set_child_subreaper(bool value);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
@@ -104,9 +103,10 @@ static unsigned char linted_start_main(char const *process_name,
 
 	char *monitor_base = basename(monitor_dup);
 
-	err = set_child_subreaper(true);
+	err = linted_prctl_set_child_subreaper(true);
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "set_child_subreaper: %s",
+		linted_log(LINTED_LOG_ERROR,
+		           "linted_prctl_set_child_subreaper: %s",
 		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
@@ -187,20 +187,6 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 exit_loop:
 	return EXIT_SUCCESS;
-}
-
-static linted_error set_child_subreaper(bool v)
-{
-	linted_error err;
-
-	if (-1 == prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL,
-	                0UL, 0UL)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
 }
 
 static void delegate_signal(int signo)

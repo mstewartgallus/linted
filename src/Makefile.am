@@ -17,6 +17,8 @@
 
 EXTRA_DIST+=\
   include/linted/rpc.h\
+  include/linted/prctl.h\
+  include/linted/ptrace.h\
   include/linted/test.h\
   include/linted/util.h
 

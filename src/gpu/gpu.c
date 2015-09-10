@@ -521,7 +521,8 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
 
 			/* Don't Apply */
-			LINTED_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
+			LINTED_ASSERT(err_egl !=
+			              EGL_BAD_CURRENT_SURFACE);
 			LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
 
 			switch (err_egl) {
@@ -567,7 +568,8 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
 			LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
 			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-			LINTED_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
+			LINTED_ASSERT(err_egl !=
+			              EGL_BAD_CURRENT_SURFACE);
 
 			/* Maybe the current surface or context can
 			 * become invalidated somehow? */

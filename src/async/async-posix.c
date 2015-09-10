@@ -21,11 +21,16 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/pid.h"
+#include "linted/prctl.h"
 #include "linted/channel.h"
 #include "linted/queue.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
 #include "linted/util.h"
+
+#if !defined HAVE_PTHREAD_SETNAME_NP && defined HAVE_SYS_PRCTL_H
+#include "linted/prctl.h"
+#endif
 
 #include <errno.h>
 #include <poll.h>
@@ -39,10 +44,6 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#if !defined HAVE_PTHREAD_SETNAME_NP && defined HAVE_SYS_PRCTL_H
-#include <sys/prctl.h>
-#endif
 
 #if defined _POSIX_SPIN_LOCKS
 typedef pthread_spinlock_t spinlock;
@@ -1790,7 +1791,7 @@ static void set_thread_name(char const *name)
 #elif defined HAVE_SYS_PRCTL_H
 static void set_thread_name(char const *name)
 {
-	prctl(PR_SET_NAME, (unsigned long)name, 0UL, 0UL, 0UL);
+	linted_prctl_set_name(name);
 }
 #else
 static void set_thread_name(char const *name)

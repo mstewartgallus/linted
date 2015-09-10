@@ -26,13 +26,14 @@
  */
 
 /**
- * We need are own `LINTED_ASSERT` because the real `assert` uses `__FILE__`
+ * We need are own `LINTED_ASSERT` because the real `assert` uses
+ * `__FILE__`
  * which is nondeterministic.
  */
 #define LINTED_ASSERT(...)                                             \
 	do {                                                           \
 		extern void abort(void);                               \
-		if (!(__VA_ARGS__))                                       \
+		if (!(__VA_ARGS__))                                    \
 			abort();                                       \
 	} while (0)
 
@@ -136,7 +137,8 @@
 #define LINTED_STATIC_ASSERT_CONCAT(A, B)                              \
 	LINTED_STATIC_ASSERT_CONCAT_(A, B)
 #define LINTED_STATIC_ASSERT(...)                                      \
-	enum { LINTED_STATIC_ASSERT_CONCAT(LINTED_ASSERT_line_, __LINE__) =   \
+	enum { LINTED_STATIC_ASSERT_CONCAT(LINTED_ASSERT_line_,        \
+		                           __LINE__) =                 \
 		   1U / (!!(__VA_ARGS__)) }
 
 #endif /* LINTED_UTIL_H */

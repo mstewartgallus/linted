@@ -32,6 +32,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+/* 2^(bits - 1) - 1 */
+/* Sadly, this assumes a twos complement implementation */
+#define PID_MAX                                                        \
+	((pid_t)((UINTMAX_C(1)                                         \
+	          << (uintmax_t)(sizeof(pid_t) * CHAR_BIT - 1U)) -     \
+	         1U))
+
 struct linted_pid_task_waitid {
 	struct linted_async_task *parent;
 	void *data;
@@ -467,4 +474,38 @@ finish:
 linted_pid linted_pid_get_pid(void)
 {
 	return getpid();
+}
+
+linted_error linted_pid_from_str(char const *str, linted_pid *pidp)
+{
+	size_t digits_count = strlen(str);
+
+	linted_pid pid;
+
+	if ('0' == str[0U]) {
+		pid = 0;
+		goto write_pid;
+	}
+
+	uintmax_t maybe_pid = 0U;
+	uintmax_t digit_place = 1U;
+	for (size_t ii = digits_count; ii != 0U;) {
+		--ii;
+		char digit = str[ii];
+
+		if (digit < '0' || digit > '9')
+			return LINTED_ERROR_INVALID_PARAMETER;
+
+		unsigned long digit_val = digit - '0';
+
+		maybe_pid += digit_val * digit_place;
+		if (maybe_pid > PID_MAX)
+			return ERANGE;
+		digit_place *= 10U;
+	}
+	pid = maybe_pid;
+
+write_pid:
+	*pidp = pid;
+	return 0;
 }
