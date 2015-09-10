@@ -21,7 +21,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -60,12 +59,12 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 
 		err = pthread_mutexattr_settype(
 		    &attr, PTHREAD_MUTEX_ERRORCHECK);
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 		if (err != 0)
 			goto destroy_attr;
 
 		err = pthread_mutex_init(&channel->lock, &attr);
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 
 	destroy_attr:
 		;
@@ -75,15 +74,15 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 			err = dest_err;
 	} else {
 		err = pthread_mutex_init(&channel->lock, 0);
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 	}
 	if (err != 0)
 		goto free_channel;
 
 	err = pthread_cond_init(&channel->filled, 0);
 	if (err != 0) {
-		assert(err != EINVAL);
-		assert(false);
+		LINTED_ASSERT(err != EINVAL);
+		LINTED_ASSERT(false);
 	}
 
 	*channelp = channel;
@@ -102,14 +101,14 @@ void linted_channel_destroy(struct linted_channel *channel)
 
 	err = pthread_cond_destroy(&channel->filled);
 	if (err != 0) {
-		assert(err != EBUSY);
-		assert(false);
+		LINTED_ASSERT(err != EBUSY);
+		LINTED_ASSERT(false);
 	}
 
 	err = pthread_mutex_destroy(&channel->lock);
 	if (err != 0) {
-		assert(err != EBUSY);
-		assert(false);
+		LINTED_ASSERT(err != EBUSY);
+		LINTED_ASSERT(false);
 	}
 
 	linted_mem_free(channel);
@@ -120,13 +119,13 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 {
 	linted_error err = 0;
 
-	assert(channel != 0);
-	assert(node != 0);
+	LINTED_ASSERT(channel != 0);
+	LINTED_ASSERT(node != 0);
 
 	err = pthread_mutex_lock(&channel->lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
 	void **waiter = channel->waiter;
@@ -144,8 +143,8 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 unlock_mutex : {
 	linted_error unlock_err = pthread_mutex_unlock(&channel->lock);
 	if (unlock_err != 0) {
-		assert(unlock_err != EPERM);
-		assert(false);
+		LINTED_ASSERT(unlock_err != EPERM);
+		LINTED_ASSERT(false);
 	}
 }
 
@@ -157,16 +156,16 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 {
 	linted_error err;
 
-	assert(channel != 0);
-	assert(nodep != 0);
+	LINTED_ASSERT(channel != 0);
+	LINTED_ASSERT(nodep != 0);
 
 	err = pthread_mutex_lock(&channel->lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
-	assert(0 == channel->waiter);
+	LINTED_ASSERT(0 == channel->waiter);
 
 	*nodep = 0;
 	channel->waiter = nodep;
@@ -175,14 +174,14 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 		err =
 		    pthread_cond_wait(&channel->filled, &channel->lock);
 		if (err != 0) {
-			assert(err != EINVAL);
-			assert(false);
+			LINTED_ASSERT(err != EINVAL);
+			LINTED_ASSERT(false);
 		}
 	} while (0 == *nodep);
 
 	err = pthread_mutex_unlock(&channel->lock);
 	if (err != 0) {
-		assert(err != EPERM);
-		assert(false);
+		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(false);
 	}
 }

@@ -35,7 +35,6 @@
 #include "linted/unit.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -1543,9 +1542,9 @@ static linted_error on_signal(struct monitor *monitor,
 		}
 		linted_error kill_err = linted_pid_kill(pid, signo);
 		if (kill_err != ESRCH) {
-			assert(kill_err != EINVAL);
-			assert(kill_err != EPERM);
-			assert(0 == err);
+			LINTED_ASSERT(kill_err != EINVAL);
+			LINTED_ASSERT(kill_err != EPERM);
+			LINTED_ASSERT(0 == err);
 		}
 	}
 
@@ -1684,9 +1683,9 @@ static linted_error on_kill_read(struct monitor *monitor,
 		}
 		linted_error kill_err = linted_pid_kill(pid, SIGTERM);
 		if (kill_err != ESRCH) {
-			assert(kill_err != EINVAL);
-			assert(kill_err != EPERM);
-			assert(0 == kill_err);
+			LINTED_ASSERT(kill_err != EINVAL);
+			LINTED_ASSERT(kill_err != EPERM);
+			LINTED_ASSERT(0 == kill_err);
 		}
 	}
 
@@ -1941,7 +1940,7 @@ pid_find_failure:
 
 found_pid:
 	err = linted_pid_terminate(pid);
-	assert(err != EINVAL);
+	LINTED_ASSERT(err != EINVAL);
 	if (err != 0) {
 		if (ESRCH == err)
 			err = 0;

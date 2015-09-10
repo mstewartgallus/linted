@@ -30,7 +30,6 @@
 #include "linted/fifo.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -297,9 +296,9 @@ static void write_one(linted_ko ko)
 		if (err != WSAEINTR)
 			break;
 	}
-	assert(err != ERROR_INVALID_USER_BUFFER);
-	assert(err != ERROR_NOT_ENOUGH_MEMORY);
-	assert(err != ERROR_NOT_ENOUGH_QUOTA);
-	assert(err != ERROR_BROKEN_PIPE);
-	assert(0 == err);
+	LINTED_ASSERT(err != ERROR_INVALID_USER_BUFFER);
+	LINTED_ASSERT(err != ERROR_NOT_ENOUGH_MEMORY);
+	LINTED_ASSERT(err != ERROR_NOT_ENOUGH_QUOTA);
+	LINTED_ASSERT(err != ERROR_BROKEN_PIPE);
+	LINTED_ASSERT(0 == err);
 }

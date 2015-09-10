@@ -49,7 +49,6 @@
 #include "linted/utf.h"
 #endif
 
-#include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <libgen.h>
@@ -113,6 +112,8 @@ static unsigned char linted_start_main(char const *const process_name,
                                        size_t argc,
                                        char const *const *const argv)
 {
+	linted_log(LINTED_LOG_INFO, "file: %s", LINTED_FILE);
+
 	linted_error err = linted_linted_privilege_check();
 	if (err != 0) {
 		linted_log(
@@ -263,7 +264,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		}
 		init = xx;
 	}
-	assert(init != 0);
+	LINTED_ASSERT(init != 0);
 
 	bool need_help = false;
 	bool need_version = false;
@@ -399,7 +400,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		return EXIT_FAILURE;
 
 	default:
-		assert(false);
+		LINTED_ASSERT(false);
 	}
 
 	DWORD xx;

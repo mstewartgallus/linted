@@ -22,7 +22,6 @@
 #include "linted/log.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -698,7 +697,7 @@ static sigset_t const *get_pipe_set(void)
 	linted_error err;
 
 	err = pthread_once(&pipe_set_once_control, pipe_set_init);
-	assert(0 == err);
+	LINTED_ASSERT(0 == err);
 
 	return &pipeset;
 }

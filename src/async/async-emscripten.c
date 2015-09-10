@@ -23,7 +23,6 @@
 #include "linted/signal.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -178,7 +177,7 @@ linted_error linted_async_pool_destroy(struct linted_async_pool *pool)
 void linted_async_pool_submit(struct linted_async_pool *pool,
                               struct linted_async_task *task)
 {
-	assert(pool != 0);
+	LINTED_ASSERT(pool != 0);
 
 	canceller_start(&task->canceller);
 
@@ -188,8 +187,8 @@ void linted_async_pool_submit(struct linted_async_pool *pool,
 void linted_async_pool_resubmit(struct linted_async_pool *pool,
                                 struct linted_async_task *task)
 {
-	assert(pool != 0);
-	assert(task != 0);
+	LINTED_ASSERT(pool != 0);
+	LINTED_ASSERT(task != 0);
 
 	if (canceller_check(&task->canceller)) {
 		task->err = LINTED_ERROR_CANCELLED;
@@ -204,8 +203,8 @@ void linted_async_pool_complete(struct linted_async_pool *pool,
                                 struct linted_async_task *task,
                                 linted_error task_err)
 {
-	assert(pool != 0);
-	assert(task != 0);
+	LINTED_ASSERT(pool != 0);
+	LINTED_ASSERT(task != 0);
 
 	canceller_stop(&task->canceller);
 
@@ -218,7 +217,7 @@ void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
                                     struct linted_async_task *task,
                                     linted_ko ko, short flags)
 {
-	assert(pool != 0);
+	LINTED_ASSERT(pool != 0);
 
 	if (canceller_check(&task->canceller)) {
 		task->err = LINTED_ERROR_CANCELLED;
@@ -274,7 +273,7 @@ linted_async_pool_wait(struct linted_async_pool *pool,
 		{
 			struct linted_async_waiter *xx;
 			err = waiter_try_recv(pool->waiter_queue, &xx);
-			assert(err != EAGAIN);
+			LINTED_ASSERT(err != EAGAIN);
 			waiter = xx;
 		}
 
@@ -616,7 +615,7 @@ completion_queue_create(struct completion_queue **queuep)
 static void complete_task(struct completion_queue *queue,
                           struct linted_async_task *task)
 {
-	assert(queue != 0);
+	LINTED_ASSERT(queue != 0);
 	linted_queue_send((struct linted_queue *)queue,
 	                  LINTED_UPCAST(task));
 }
@@ -657,8 +656,8 @@ static linted_error job_queue_create(struct job_queue **queuep)
 static void job_submit(struct job_queue *queue,
                        struct linted_async_task *task)
 {
-	assert(queue != 0);
-	assert(task != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(task != 0);
 	linted_queue_send((struct linted_queue *)queue,
 	                  LINTED_UPCAST(task));
 }
@@ -731,7 +730,7 @@ static void canceller_start(struct canceller *canceller)
 {
 	linted_error err;
 
-	assert(!canceller->in_flight);
+	LINTED_ASSERT(!canceller->in_flight);
 
 	canceller->in_flight = true;
 	canceller->cancelled = false;
@@ -741,7 +740,7 @@ static void canceller_stop(struct canceller *canceller)
 {
 	linted_error err;
 
-	assert(canceller->in_flight);
+	LINTED_ASSERT(canceller->in_flight);
 
 	canceller->in_flight = false;
 }

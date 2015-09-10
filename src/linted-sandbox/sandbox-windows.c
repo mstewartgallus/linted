@@ -36,7 +36,6 @@
 #include "linted/utf.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -408,7 +407,7 @@ exit_loop:
 		return EXIT_FAILURE;
 
 	default:
-		assert(false);
+		LINTED_ASSERT(false);
 	}
 
 	DWORD xx;

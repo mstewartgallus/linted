@@ -63,14 +63,15 @@ AM_CFLAGS+=\
   $(linted_CFLAGS_HARDEN)\
   $(linted_CFLAGS_DEBUG)\
   $(linted_CFLAGS_DEBUG_INFO)\
-  $(linted_CFLAGS_WARNINGS)
+  $(linted_CFLAGS_WARNINGS)\
+  -Wno-builtin-macro-redefined\
+  -DLINTED_FILE="\"$$(basename $<)\""
 
 if WINDOWS_API
 AM_CFLAGS+=$(linted_CFLAGS_UNICODE)
 endif
 
 AM_CPPFLAGS+=-I$(srcdir)/include
-
 AM_LDFLAGS+=\
   $$(for II in \
   $(linted_LDFLAGS_TARGET_TYPE)\

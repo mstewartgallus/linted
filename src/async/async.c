@@ -19,8 +19,6 @@
  * @file
  *
  * Asynchronous IO implementation.
-
- * @todo Use a portable abstraction over `pthread_setname_np`.
  *
  * @section prior Prior Work
  *

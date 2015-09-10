@@ -19,7 +19,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -64,11 +63,11 @@ void linted_queue_send(struct linted_queue *queue,
 {
 	linted_error err;
 
-	assert(queue != 0);
-	assert(node != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(node != 0);
 
 	/* Guard against double insertions */
-	assert(0 == node->next);
+	LINTED_ASSERT(0 == node->next);
 
 	*queue->tailp = node;
 

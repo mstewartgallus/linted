@@ -22,7 +22,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
@@ -140,7 +139,7 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 			break;
 
 		default:
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 		goto release_thread;
 	}
@@ -150,7 +149,7 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
 		/* Shouldn't happen */
-		assert(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
 
 		switch (err_egl) {
 		case EGL_NOT_INITIALIZED:
@@ -159,7 +158,7 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 			goto destroy_display;
 		}
 
-		assert(false);
+		LINTED_ASSERT(false);
 	}
 
 	EGLConfig config;
@@ -179,10 +178,10 @@ choose_config_failed : {
 	EGLint err_egl = eglGetError();
 	LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-	assert(err_egl != EGL_BAD_DISPLAY);
-	assert(err_egl != EGL_BAD_ATTRIBUTE);
-	assert(err_egl != EGL_NOT_INITIALIZED);
-	assert(err_egl != EGL_BAD_PARAMETER);
+	LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+	LINTED_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+	LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+	LINTED_ASSERT(err_egl != EGL_BAD_PARAMETER);
 
 	switch (err_egl) {
 	case EGL_BAD_ALLOC:
@@ -190,7 +189,7 @@ choose_config_failed : {
 		goto destroy_display;
 	}
 
-	assert(false);
+	LINTED_ASSERT(false);
 }
 
 choose_config_succeeded:
@@ -229,8 +228,8 @@ destroy_display:
 		EGLint err_egl = eglGetError();
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-		assert(err_egl != EGL_BAD_DISPLAY);
-		assert(false);
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(false);
 	}
 
 release_thread:
@@ -240,7 +239,7 @@ release_thread:
 		 * implementation gives special conditions for this to
 		 * happen.
 		 */
-		assert(false);
+		LINTED_ASSERT(false);
 	}
 
 	linted_mem_free(gpu_context);
@@ -266,10 +265,10 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 			EGLint err_egl = eglGetError();
 			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-			assert(err_egl != EGL_BAD_DISPLAY);
-			assert(err_egl != EGL_BAD_CONTEXT);
-			assert(err_egl != EGL_NOT_INITIALIZED);
-			assert(false);
+			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
+			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+			LINTED_ASSERT(false);
 		}
 	}
 
@@ -280,10 +279,10 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 			EGLint err_egl = eglGetError();
 			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-			assert(err_egl != EGL_BAD_DISPLAY);
-			assert(err_egl != EGL_BAD_SURFACE);
-			assert(err_egl != EGL_NOT_INITIALIZED);
-			assert(false);
+			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+			LINTED_ASSERT(false);
 		}
 	}
 
@@ -300,21 +299,21 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
 		/* Shouldn't Happen */
-		assert(err_egl != EGL_BAD_ACCESS);
-		assert(err_egl != EGL_BAD_CONTEXT);
-		assert(err_egl != EGL_BAD_DISPLAY);
-		assert(err_egl != EGL_BAD_MATCH);
-		assert(err_egl != EGL_BAD_PARAMETER);
-		assert(err_egl != EGL_BAD_SURFACE);
-		assert(err_egl != EGL_NOT_INITIALIZED);
+		LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
+		LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
+		LINTED_ASSERT(err_egl != EGL_BAD_PARAMETER);
+		LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
 
 		/* Don't Apply */
-		assert(err_egl != EGL_BAD_CURRENT_SURFACE);
-		assert(err_egl != EGL_BAD_CONFIG);
+		LINTED_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
+		LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
 
 		switch (err_egl) {
 		default:
-			assert(false);
+			LINTED_ASSERT(false);
 
 		/* Maybe the current surface or context can
 		 * become invalidated somehow? */
@@ -336,8 +335,8 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 		EGLint err_egl = eglGetError();
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-		assert(err_egl != EGL_BAD_DISPLAY);
-		assert(false);
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(false);
 	}
 
 	if (EGL_FALSE == eglReleaseThread()) {
@@ -346,7 +345,7 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 		 * implementation gives special conditions for this to
 		 * happen.
 		 */
-		assert(false);
+		LINTED_ASSERT(false);
 	}
 
 	linted_mem_free(gpu_context);
@@ -379,10 +378,10 @@ linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
 			EGLint err_egl = eglGetError();
 			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-			assert(err_egl != EGL_BAD_DISPLAY);
-			assert(err_egl != EGL_BAD_SURFACE);
-			assert(err_egl != EGL_NOT_INITIALIZED);
-			assert(false);
+			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+			LINTED_ASSERT(false);
 		}
 
 		gpu_context->gpu_state = BASE_STATE;
@@ -397,11 +396,11 @@ linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
 		EGLint err_egl = eglGetError();
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-		assert(err_egl != EGL_BAD_DISPLAY);
-		assert(err_egl != EGL_NOT_INITIALIZED);
-		assert(err_egl != EGL_BAD_ATTRIBUTE);
-		assert(err_egl != EGL_BAD_CONFIG);
-		assert(err_egl != EGL_BAD_MATCH);
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LINTED_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+		LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
+		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
 
 		switch (err_egl) {
 		case EGL_BAD_NATIVE_WINDOW:
@@ -411,7 +410,7 @@ linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
 			return ENOMEM;
 		}
 
-		assert(false);
+		LINTED_ASSERT(false);
 	}
 
 	gpu_context->surface = new_surface;
@@ -431,10 +430,10 @@ linted_gpu_remove_window(struct linted_gpu_context *gpu_context)
 		EGLint err_egl = eglGetError();
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-		assert(err_egl != EGL_BAD_DISPLAY);
-		assert(err_egl != EGL_BAD_SURFACE);
-		assert(err_egl != EGL_NOT_INITIALIZED);
-		assert(false);
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LINTED_ASSERT(false);
 	}
 
 	gpu_context->gpu_state = BASE_STATE;
@@ -481,22 +480,22 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
 			/* Shouldn't Happen */
-			assert(err_egl != EGL_BAD_ACCESS);
-			assert(err_egl != EGL_BAD_ATTRIBUTE);
-			assert(err_egl != EGL_BAD_CONFIG);
-			assert(err_egl != EGL_BAD_CONTEXT);
-			assert(err_egl != EGL_BAD_DISPLAY);
-			assert(err_egl != EGL_BAD_MATCH);
-			assert(err_egl != EGL_BAD_PARAMETER);
-			assert(err_egl != EGL_BAD_SURFACE);
-			assert(err_egl != EGL_NOT_INITIALIZED);
+			LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
+			LINTED_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+			LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
+			LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
+			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
+			LINTED_ASSERT(err_egl != EGL_BAD_PARAMETER);
+			LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
 
 			switch (err_egl) {
 			case EGL_BAD_ALLOC:
 				return ENOMEM;
 			}
 
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 		gpu_context->context = context;
 		gpu_context->gpu_state = HAS_EGL_CONTEXT;
@@ -513,17 +512,17 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
 			/* Shouldn't Happen */
-			assert(err_egl != EGL_BAD_ACCESS);
-			assert(err_egl != EGL_BAD_CONTEXT);
-			assert(err_egl != EGL_BAD_DISPLAY);
-			assert(err_egl != EGL_BAD_MATCH);
-			assert(err_egl != EGL_BAD_PARAMETER);
-			assert(err_egl != EGL_BAD_SURFACE);
-			assert(err_egl != EGL_NOT_INITIALIZED);
+			LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
+			LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
+			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
+			LINTED_ASSERT(err_egl != EGL_BAD_PARAMETER);
+			LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
 
 			/* Don't Apply */
-			assert(err_egl != EGL_BAD_CURRENT_SURFACE);
-			assert(err_egl != EGL_BAD_CONFIG);
+			LINTED_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
+			LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
 
 			switch (err_egl) {
 			/* Maybe the current surface or context can
@@ -537,7 +536,7 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 				return ENOMEM;
 			}
 
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 
 		err = setup_gl(gpu_context);
@@ -562,13 +561,13 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
 			/* Shouldn't Happen */
-			assert(err_egl != EGL_BAD_DISPLAY);
-			assert(err_egl != EGL_BAD_SURFACE);
-			assert(err_egl != EGL_BAD_CONTEXT);
-			assert(err_egl != EGL_BAD_MATCH);
-			assert(err_egl != EGL_BAD_ACCESS);
-			assert(err_egl != EGL_NOT_INITIALIZED);
-			assert(err_egl != EGL_BAD_CURRENT_SURFACE);
+			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+			LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
+			LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
+			LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
+			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+			LINTED_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
 
 			/* Maybe the current surface or context can
 			 * become invalidated somehow? */
@@ -582,7 +581,7 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 				return ENOMEM;
 			}
 
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 
 		gpu_context->buffer_commands = true;
@@ -600,10 +599,10 @@ destroy_egl_context:
 		EGLint err_egl = eglGetError();
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-		assert(err_egl != EGL_BAD_DISPLAY);
-		assert(err_egl != EGL_BAD_CONTEXT);
-		assert(err_egl != EGL_NOT_INITIALIZED);
-		assert(false);
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
+		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LINTED_ASSERT(false);
 	}
 
 	destroy_egl_surface(gpu_context);
@@ -651,10 +650,10 @@ destroy_egl_surface(struct linted_gpu_context *gpu_context)
 			EGLint err_egl = eglGetError();
 			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-			assert(err_egl != EGL_BAD_DISPLAY);
-			assert(err_egl != EGL_BAD_SURFACE);
-			assert(err_egl != EGL_NOT_INITIALIZED);
-			assert(false);
+			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+			LINTED_ASSERT(false);
 		}
 		break;
 	}

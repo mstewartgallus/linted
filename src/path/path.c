@@ -26,10 +26,6 @@
 #include <errno.h>
 #include <stdio.h>
 
-/**
- * @todo Fall back to a replacement directory and print a warning
- * message
- */
 linted_error linted_path_package_runtime_dir(char **packagep)
 {
 	linted_error err = 0;
@@ -107,9 +103,6 @@ free_runtime_dir_path:
 	return err;
 }
 
-/**
- * @todo Fall back to ~/.local/share
- */
 linted_error linted_path_package_data_home(char **packagep)
 {
 	linted_error err = 0;
@@ -123,17 +116,38 @@ linted_error linted_path_package_data_home(char **packagep)
 		data_home_path = xx;
 	}
 	if (0 == data_home_path)
-		return EACCES;
+		goto fallback;
 
 	if (-1 == asprintf(packagep, "%s/%s", data_home_path,
 	                   PACKAGE_TARNAME)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
-		goto free_data_home_path;
 	}
 
-free_data_home_path:
 	linted_mem_free(data_home_path);
+
+	return err;
+
+fallback:
+	;
+	char *home_path;
+	{
+		char *xx;
+		err = linted_environment_get("HOME", &xx);
+		if (err != 0)
+			return err;
+		home_path = xx;
+	}
+	if (0 == home_path)
+		return EACCES;
+
+	if (-1 ==
+	    asprintf(packagep, "%s/%s", home_path, "local/share")) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+	}
+
+	linted_mem_free(home_path);
 
 	return err;
 }

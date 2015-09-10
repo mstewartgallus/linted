@@ -23,7 +23,6 @@
 #include "linted/str.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -39,8 +38,8 @@ linted_error linted_environment_set(char const *key, char const *value,
 
 	err = pthread_mutex_lock(&mutex);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
 	if (-1 == setenv(key, value, overwrite)) {
@@ -51,8 +50,8 @@ linted_error linted_environment_set(char const *key, char const *value,
 	{
 		linted_error unlock_err = pthread_mutex_unlock(&mutex);
 		if (unlock_err != 0) {
-			assert(unlock_err != EPERM);
-			assert(false);
+			LINTED_ASSERT(unlock_err != EPERM);
+			LINTED_ASSERT(false);
 		}
 	}
 
@@ -65,8 +64,8 @@ linted_error linted_environment_get(char const *key, char **valuep)
 
 	err = pthread_mutex_lock(&mutex);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
 	char *value_dup = 0;
@@ -86,8 +85,8 @@ linted_error linted_environment_get(char const *key, char **valuep)
 unlock_mutex : {
 	linted_error unlock_err = pthread_mutex_unlock(&mutex);
 	if (unlock_err != 0) {
-		assert(unlock_err != EPERM);
-		assert(false);
+		LINTED_ASSERT(unlock_err != EPERM);
+		LINTED_ASSERT(false);
 	}
 }
 

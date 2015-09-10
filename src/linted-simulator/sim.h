@@ -16,7 +16,8 @@
 #ifndef LINTED_SIM_SIMULATOR_H
 #define LINTED_SIM_SIMULATOR_H
 
-#include <assert.h>
+#include "linted/util.h"
+
 #include <inttypes.h>
 #include <math.h>
 #include <stdint.h>
@@ -76,8 +77,8 @@ static inline sim_angle sim_angle_add_clamped(int sign, sim_angle min,
                                               sim_angle theta,
                                               sim_angle phi)
 {
-	assert(max._value <= SIM_UINT_MAX / 2U);
-	assert(min._value <= SIM_UINT_MAX / 2U);
+	LINTED_ASSERT(max._value <= SIM_UINT_MAX / 2U);
+	LINTED_ASSERT(min._value <= SIM_UINT_MAX / 2U);
 
 	sim_uint result =
 	    (theta._value + sign * (int_fast64_t)phi._value) %

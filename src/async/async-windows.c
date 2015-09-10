@@ -34,7 +34,6 @@
 #include "linted/signal.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -257,7 +256,7 @@ linted_error linted_async_pool_destroy(struct linted_async_pool *pool)
 void linted_async_pool_submit(struct linted_async_pool *pool,
                               struct linted_async_task *task)
 {
-	assert(pool != 0);
+	LINTED_ASSERT(pool != 0);
 
 	canceller_start(&task->canceller);
 
@@ -267,7 +266,7 @@ void linted_async_pool_submit(struct linted_async_pool *pool,
 void linted_async_pool_resubmit(struct linted_async_pool *pool,
                                 struct linted_async_task *task)
 {
-	assert(pool != 0);
+	LINTED_ASSERT(pool != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
 		task->err = LINTED_ERROR_CANCELLED;
@@ -293,7 +292,7 @@ void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
                                     struct linted_async_task *task,
                                     linted_ko ko, short flags)
 {
-	assert(pool != 0);
+	LINTED_ASSERT(pool != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
 		task->err = LINTED_ERROR_CANCELLED;
@@ -525,7 +524,7 @@ destroy_threads:
 
 				case WAIT_FAILED:
 				default:
-					assert(false);
+					LINTED_ASSERT(false);
 				}
 				break;
 			}
@@ -565,7 +564,7 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 		case WAIT_FAILED:
 		default:
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 	}
 
@@ -601,7 +600,7 @@ static DWORD WINAPI master_worker_routine(void *arg)
 			    worker_try_submit(workers[ii].queue, task);
 			if (LINTED_ERROR_AGAIN == err)
 				continue;
-			assert(0 == err);
+			LINTED_ASSERT(0 == err);
 			break;
 		}
 	}
@@ -625,7 +624,7 @@ static DWORD WINAPI master_worker_routine(void *arg)
 
 				case WAIT_FAILED:
 				default:
-					assert(false);
+					LINTED_ASSERT(false);
 				}
 				break;
 			}
@@ -843,7 +842,7 @@ destroy_threads:
 
 				case WAIT_FAILED:
 				default:
-					assert(false);
+					LINTED_ASSERT(false);
 				}
 				break;
 			}
@@ -883,7 +882,7 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 		case WAIT_FAILED:
 		default:
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 	}
 
@@ -919,7 +918,7 @@ static DWORD WINAPI master_poller_routine(void *arg)
 			    pollers[ii].queue, waiter);
 			if (LINTED_ERROR_AGAIN == err)
 				continue;
-			assert(0 == err);
+			LINTED_ASSERT(0 == err);
 			break;
 		}
 	}
@@ -943,7 +942,7 @@ static DWORD WINAPI master_poller_routine(void *arg)
 
 				case WAIT_FAILED:
 				default:
-					assert(false);
+					LINTED_ASSERT(false);
 				}
 
 				break;
@@ -1196,8 +1195,8 @@ static linted_error worker_queue_create(struct worker_queue **queuep)
 static linted_error worker_try_submit(struct worker_queue *queue,
                                       struct linted_async_task *task)
 {
-	assert(queue != 0);
-	assert(task != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(task != 0);
 	return linted_channel_try_send((struct linted_channel *)queue,
 	                               task);
 }
@@ -1205,8 +1204,8 @@ static linted_error worker_try_submit(struct worker_queue *queue,
 static linted_error worker_recv(struct worker_queue *queue,
                                 struct linted_async_task **taskp)
 {
-	assert(queue != 0);
-	assert(taskp != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(taskp != 0);
 
 	struct linted_async_task *task;
 	{
@@ -1216,7 +1215,7 @@ static linted_error worker_recv(struct worker_queue *queue,
 		task = xx;
 	}
 
-	assert(task != 0);
+	LINTED_ASSERT(task != 0);
 	*taskp = task;
 
 	return 0;
@@ -1252,8 +1251,8 @@ static void waiter_queue_destroy(struct waiter_queue *queue)
 static void waiter_submit(struct waiter_queue *queue,
                           struct linted_async_waiter *waiter)
 {
-	assert(queue != 0);
-	assert(waiter != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(waiter != 0);
 
 	linted_queue_send((struct linted_queue *)queue,
 	                  LINTED_UPCAST(waiter));
@@ -1262,8 +1261,8 @@ static void waiter_submit(struct waiter_queue *queue,
 static linted_error waiter_recv(struct waiter_queue *queue,
                                 struct linted_async_waiter **waiterp)
 {
-	assert(queue != 0);
-	assert(waiterp != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(waiterp != 0);
 
 	struct linted_queue_node *node;
 	{
@@ -1299,8 +1298,8 @@ static linted_error
 poller_try_submit(struct poller_queue *queue,
                   struct linted_async_waiter *waiter)
 {
-	assert(queue != 0);
-	assert(waiter != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(waiter != 0);
 	return linted_channel_try_send((struct linted_channel *)queue,
 	                               waiter);
 }
@@ -1316,7 +1315,7 @@ static linted_error poller_recv(struct poller_queue *queue,
 		waiter = xx;
 	}
 
-	assert(waiter != 0);
+	LINTED_ASSERT(waiter != 0);
 	*waiterp = waiter;
 
 	return 0;
@@ -1341,8 +1340,8 @@ static void canceller_start(struct canceller *canceller)
 {
 	EnterCriticalSection(&canceller->lock);
 
-	assert(!canceller->in_flight);
-	assert(!canceller->owned);
+	LINTED_ASSERT(!canceller->in_flight);
+	LINTED_ASSERT(!canceller->owned);
 
 	canceller->in_flight = true;
 	canceller->owned = false;
@@ -1354,8 +1353,8 @@ static void canceller_stop(struct canceller *canceller)
 {
 	EnterCriticalSection(&canceller->lock);
 
-	assert(canceller->owned);
-	assert(canceller->in_flight);
+	LINTED_ASSERT(canceller->owned);
+	LINTED_ASSERT(canceller->in_flight);
 
 	{
 		bool *cancel_replier = canceller->cancel_replier;
@@ -1379,7 +1378,7 @@ static void canceller_cancel(struct canceller *canceller)
 	{
 		EnterCriticalSection(&canceller->lock);
 
-		assert(0 == canceller->cancel_replier);
+		LINTED_ASSERT(0 == canceller->cancel_replier);
 
 		in_flight = canceller->in_flight;
 		if (in_flight) {
@@ -1443,8 +1442,8 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 
 	EnterCriticalSection(&canceller->lock);
 
-	assert(canceller->in_flight);
-	assert(canceller->owned);
+	LINTED_ASSERT(canceller->in_flight);
+	LINTED_ASSERT(canceller->owned);
 
 	canceller->owned = false;
 	{

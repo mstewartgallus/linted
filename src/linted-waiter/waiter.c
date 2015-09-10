@@ -25,7 +25,6 @@
 #include "linted/start.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -69,7 +68,7 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 	if (service != 0) {
 		err = set_name(service);
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 		linted_mem_free(service);
 	}
 
@@ -159,7 +158,7 @@ static unsigned char linted_start_main(char const *process_name,
 			if (EINTR == err)
 				continue;
 
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 	}
 
@@ -178,9 +177,9 @@ static void on_term(int signo)
 		if (ESRCH == err)
 			goto prevent_looping;
 
-		assert(err != EINVAL);
-		assert(err != EPERM);
-		assert(false);
+		LINTED_ASSERT(err != EINVAL);
+		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(false);
 	}
 
 prevent_looping:
@@ -198,7 +197,7 @@ prevent_looping:
 			linted_error err = errno;
 			if (EINTR == err)
 				continue;
-			assert(EAGAIN == err);
+			LINTED_ASSERT(EAGAIN == err);
 			break;
 		}
 	}
@@ -229,7 +228,7 @@ static void on_sigchld(int signo)
 			if (EINTR == err)
 				continue;
 
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 
 		if (0U == pid)
@@ -248,7 +247,7 @@ static linted_error set_name(char const *name)
 		err = errno;
 		LINTED_ASSUME(err != 0);
 
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 
 		return err;
 	}

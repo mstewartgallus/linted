@@ -31,7 +31,6 @@
 #include "linted/ko.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <conio.h>
 #include <fcntl.h>
 #include <limits.h>

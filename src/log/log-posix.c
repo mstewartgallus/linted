@@ -19,7 +19,6 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 
-#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -62,7 +61,7 @@ void linted_log(linted_log_level log_level, char const *format, ...)
 		break;
 
 	default:
-		assert(false);
+		LINTED_ASSERT(false);
 		return;
 	}
 

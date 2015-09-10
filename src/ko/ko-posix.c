@@ -18,7 +18,6 @@
 #include "linted/ko.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -221,8 +220,8 @@ linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
 {
 	linted_error err = 0;
 
-	assert(resultp != 0);
-	assert(pathname != 0);
+	LINTED_ASSERT(resultp != 0);
+	LINTED_ASSERT(pathname != 0);
 
 	/* TODO: work on more directories */
 	if (dirko != LINTED_KO_CWD)

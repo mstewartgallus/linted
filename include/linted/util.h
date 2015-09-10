@@ -16,10 +16,6 @@
 #ifndef LINTED_UTIL_H
 #define LINTED_UTIL_H
 
-#ifndef NDEBUG
-#include <assert.h>
-#endif
-
 #include <stddef.h>
 #include <limits.h>
 
@@ -28,6 +24,17 @@
  *
  * Various utility macroes and functions.
  */
+
+/**
+ * We need are own `LINTED_ASSERT` because the real `assert` uses `__FILE__`
+ * which is nondeterministic.
+ */
+#define LINTED_ASSERT(...)                                             \
+	do {                                                           \
+		extern void abort(void);                               \
+		if (!(__VA_ARGS__))                                       \
+			abort();                                       \
+	} while (0)
 
 #if defined __GNUC__ && !defined __clang__ && !defined __CHECKER__
 #define LINTED__IS_GCC 1
@@ -66,7 +73,7 @@
 		extern void abort(void);                               \
 		abort();                                               \
 	} while (0)
-#define LINTED_ASSUME(X) assert(X)
+#define LINTED_ASSUME(X) LINTED_ASSERT(X)
 
 #else
 
@@ -129,7 +136,7 @@
 #define LINTED_STATIC_ASSERT_CONCAT(A, B)                              \
 	LINTED_STATIC_ASSERT_CONCAT_(A, B)
 #define LINTED_STATIC_ASSERT(...)                                      \
-	enum { LINTED_STATIC_ASSERT_CONCAT(assert_line_, __LINE__) =   \
+	enum { LINTED_STATIC_ASSERT_CONCAT(LINTED_ASSERT_line_, __LINE__) =   \
 		   1U / (!!(__VA_ARGS__)) }
 
 #endif /* LINTED_UTIL_H */

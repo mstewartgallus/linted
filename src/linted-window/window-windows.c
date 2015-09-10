@@ -30,7 +30,6 @@
 #include "linted/error.h"
 #include "linted/log.h"
 
-#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -78,14 +77,14 @@ static unsigned char linted_start_main(char const *process_name,
 	HGDIOBJ arrow_cursor = LoadCursor(0, IDC_ARROW);
 	if (0 == arrow_cursor) {
 		err = GetLastError();
-		assert(err != 0);
+		LINTED_ASSERT(err != 0);
 		goto report_exit_status;
 	}
 
 	HGDIOBJ white_brush = GetStockObject(WHITE_BRUSH);
 	if (0 == white_brush) {
 		err = GetLastError();
-		assert(err != 0);
+		LINTED_ASSERT(err != 0);
 		goto report_exit_status;
 	}
 
@@ -105,7 +104,7 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 	if (0 == class_atom) {
 		err = GetLastError();
-		assert(err != 0);
+		LINTED_ASSERT(err != 0);
 		goto report_exit_status;
 	}
 
@@ -118,14 +117,14 @@ static unsigned char linted_start_main(char const *process_name,
 	    0, 0, get_current_module(), 0);
 	if (0 == main_window) {
 		err = GetLastError();
-		assert(err != 0);
+		LINTED_ASSERT(err != 0);
 		goto destroy_window;
 	}
 
 	switch (ShowWindow(main_window, linted_start_show_command())) {
 	case -1: {
 		err = GetLastError();
-		assert(err != 0);
+		LINTED_ASSERT(err != 0);
 		goto destroy_window;
 	}
 
@@ -187,7 +186,7 @@ static unsigned char linted_start_main(char const *process_name,
 
 	if (0 == UpdateWindow(main_window)) {
 		err = GetLastError();
-		assert(err != 0);
+		LINTED_ASSERT(err != 0);
 		goto destroy_device;
 	}
 
@@ -304,13 +303,13 @@ static LRESULT on_paint(HWND main_window, UINT message_type,
 	HDC hdc = BeginPaint(main_window, &ps);
 	if (0 == hdc) {
 		err = GetLastError();
-		assert(err != 0);
+		LINTED_ASSERT(err != 0);
 		goto post_quit_message;
 	}
 
 	if (0 == EndPaint(main_window, &ps)) {
 		err = GetLastError();
-		assert(err != 0);
+		LINTED_ASSERT(err != 0);
 	}
 
 post_quit_message:

@@ -27,7 +27,6 @@
 #include "linted/pid.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -236,7 +235,7 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 		                              .dirko = dirko_copy,
 		                              .binary = binary};
 		child = safe_vfork(fork_routine, &fork_args);
-		assert(child != 0);
+		LINTED_ASSERT(child != 0);
 
 		linted_error mask_err =
 		    pthread_sigmask(SIG_SETMASK, &sigset, 0);
@@ -462,5 +461,3 @@ safe_vfork(int (*volatile f)(void *), void *volatile arg)
 		_Exit(f(arg));
 	return child;
 }
-
-

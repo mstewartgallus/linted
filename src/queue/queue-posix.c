@@ -21,7 +21,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -67,12 +66,12 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 
 		err = pthread_mutexattr_settype(
 		    &attr, PTHREAD_MUTEX_ERRORCHECK);
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 		if (err != 0)
 			goto destroy_attr;
 
 		err = pthread_mutex_init(&queue->lock, &attr);
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 
 	destroy_attr:
 		;
@@ -82,15 +81,15 @@ linted_error linted_queue_create(struct linted_queue **queuep)
 			err = dest_err;
 	} else {
 		err = pthread_mutex_init(&queue->lock, 0);
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 	}
 	if (err != 0)
 		goto free_queue;
 
 	err = pthread_cond_init(&queue->gains_member, 0);
 	if (err != 0) {
-		assert(err != EINVAL);
-		assert(false);
+		LINTED_ASSERT(err != EINVAL);
+		LINTED_ASSERT(false);
 	}
 
 	*queuep = queue;
@@ -109,14 +108,14 @@ void linted_queue_destroy(struct linted_queue *queue)
 
 	err = pthread_cond_destroy(&queue->gains_member);
 	if (err != 0) {
-		assert(err != EBUSY);
-		assert(false);
+		LINTED_ASSERT(err != EBUSY);
+		LINTED_ASSERT(false);
 	}
 
 	err = pthread_mutex_destroy(&queue->lock);
 	if (err != 0) {
-		assert(err != EBUSY);
-		assert(false);
+		LINTED_ASSERT(err != EBUSY);
+		LINTED_ASSERT(false);
 	}
 
 	linted_mem_free(queue);
@@ -129,12 +128,12 @@ void linted_queue_send(struct linted_queue *queue,
 	linted_error err;
 
 	/* Guard against double insertions */
-	assert(0 == node->next);
+	LINTED_ASSERT(0 == node->next);
 
 	err = pthread_mutex_lock(&queue->lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
 	*queue->tailp = node;
@@ -145,8 +144,8 @@ void linted_queue_send(struct linted_queue *queue,
 
 	err = pthread_mutex_unlock(&queue->lock);
 	if (err != 0) {
-		assert(err != EPERM);
-		assert(false);
+		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(false);
 	}
 }
 
@@ -158,8 +157,8 @@ void linted_queue_recv(struct linted_queue *queue,
 
 	err = pthread_mutex_lock(&queue->lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
 	/* The nodes next to the tip are the head */
@@ -172,8 +171,8 @@ void linted_queue_recv(struct linted_queue *queue,
 		err = pthread_cond_wait(&queue->gains_member,
 		                        &queue->lock);
 		if (err != 0) {
-			assert(err != EINVAL);
-			assert(false);
+			LINTED_ASSERT(err != EINVAL);
+			LINTED_ASSERT(false);
 		}
 	}
 
@@ -188,8 +187,8 @@ void linted_queue_recv(struct linted_queue *queue,
 
 	err = pthread_mutex_unlock(&queue->lock);
 	if (err != 0) {
-		assert(err != EPERM);
-		assert(false);
+		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(false);
 	}
 
 	/* Refresh the node for reuse later */
@@ -205,8 +204,8 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 
 	err = pthread_mutex_lock(&queue->lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
 	/* No cancellation points in the critical section */
@@ -226,8 +225,8 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 unlock_mutex : {
 	linted_error unlock_err = pthread_mutex_unlock(&queue->lock);
 	if (unlock_err != 0) {
-		assert(unlock_err != EPERM);
-		assert(false);
+		LINTED_ASSERT(unlock_err != EPERM);
+		LINTED_ASSERT(false);
 	}
 }
 

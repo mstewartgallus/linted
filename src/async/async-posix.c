@@ -27,7 +27,6 @@
 #include "linted/signal.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <poll.h>
 #include <pthread.h>
@@ -167,7 +166,7 @@ static void set_thread_name(char const *name);
 linted_error linted_async_pool_create(struct linted_async_pool **poolp,
                                       unsigned max_tasks)
 {
-	assert(poolp != 0);
+	LINTED_ASSERT(poolp != 0);
 
 	linted_error err;
 
@@ -257,7 +256,7 @@ free_pool:
 
 linted_error linted_async_pool_destroy(struct linted_async_pool *pool)
 {
-	assert(pool != 0);
+	LINTED_ASSERT(pool != 0);
 
 	struct wait_manager *wait_manager = pool->wait_manager;
 	struct worker_pool *worker_pool = pool->worker_pool;
@@ -282,8 +281,8 @@ linted_error linted_async_pool_destroy(struct linted_async_pool *pool)
 void linted_async_pool_submit(struct linted_async_pool *pool,
                               struct linted_async_task *task)
 {
-	assert(pool != 0);
-	assert(task != 0);
+	LINTED_ASSERT(pool != 0);
+	LINTED_ASSERT(task != 0);
 
 	canceller_start(&task->canceller);
 
@@ -293,8 +292,8 @@ void linted_async_pool_submit(struct linted_async_pool *pool,
 void linted_async_pool_resubmit(struct linted_async_pool *pool,
                                 struct linted_async_task *task)
 {
-	assert(pool != 0);
-	assert(task != 0);
+	LINTED_ASSERT(pool != 0);
+	LINTED_ASSERT(task != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
 		task->err = LINTED_ERROR_CANCELLED;
@@ -309,8 +308,8 @@ void linted_async_pool_complete(struct linted_async_pool *pool,
                                 struct linted_async_task *task,
                                 linted_error task_err)
 {
-	assert(pool != 0);
-	assert(task != 0);
+	LINTED_ASSERT(pool != 0);
+	LINTED_ASSERT(task != 0);
 
 	canceller_stop(&task->canceller);
 
@@ -323,9 +322,9 @@ void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
                                     struct linted_async_task *task,
                                     linted_ko ko, short flags)
 {
-	assert(pool != 0);
-	assert(waiter != 0);
-	assert(task != 0);
+	LINTED_ASSERT(pool != 0);
+	LINTED_ASSERT(waiter != 0);
+	LINTED_ASSERT(task != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
 		task->err = LINTED_ERROR_CANCELLED;
@@ -351,14 +350,14 @@ linted_error
 linted_async_pool_poll(struct linted_async_pool *pool,
                        struct linted_async_task **completionp)
 {
-	assert(pool != 0);
+	LINTED_ASSERT(pool != 0);
 	return completion_try_recv(pool->completion_queue, completionp);
 }
 
 linted_error
 linted_async_waiter_create(struct linted_async_waiter **waiterp)
 {
-	assert(waiterp != 0);
+	LINTED_ASSERT(waiterp != 0);
 
 	linted_error err;
 	struct linted_async_waiter *waiter;
@@ -385,7 +384,7 @@ void linted_async_waiter_destroy(struct linted_async_waiter *waiter)
 
 short linted_async_waiter_revents(struct linted_async_waiter *waiter)
 {
-	assert(waiter != 0);
+	LINTED_ASSERT(waiter != 0);
 
 	short ev = waiter->revents;
 	waiter->revents = 0;
@@ -396,7 +395,7 @@ linted_error linted_async_task_create(struct linted_async_task **taskp,
                                       void *data,
                                       linted_async_type type)
 {
-	assert(taskp != 0);
+	LINTED_ASSERT(taskp != 0);
 
 	linted_error err;
 	struct linted_async_task *task;
@@ -428,33 +427,33 @@ void linted_async_task_destroy(struct linted_async_task *task)
 
 void linted_async_task_cancel(struct linted_async_task *task)
 {
-	assert(task != 0);
+	LINTED_ASSERT(task != 0);
 	canceller_cancel(&task->canceller);
 }
 
 void linted_async_task_prepare(struct linted_async_task *task,
                                union linted_async_ck task_ck)
 {
-	assert(task != 0);
+	LINTED_ASSERT(task != 0);
 	task->task_ck = task_ck;
 }
 
 union linted_async_ck
 linted_async_task_ck(struct linted_async_task *task)
 {
-	assert(task != 0);
+	LINTED_ASSERT(task != 0);
 	return task->task_ck;
 }
 
 linted_error linted_async_task_err(struct linted_async_task *task)
 {
-	assert(task != 0);
+	LINTED_ASSERT(task != 0);
 	return task->err;
 }
 
 void *linted_async_task_data(struct linted_async_task *task)
 {
-	assert(task != 0);
+	LINTED_ASSERT(task != 0);
 	return task->data;
 }
 
@@ -491,9 +490,9 @@ static linted_error worker_pool_create(
     struct worker_pool **poolp, struct job_queue *job_queue,
     struct linted_async_pool *async_pool, unsigned max_tasks)
 {
-	assert(poolp != 0);
-	assert(job_queue != 0);
-	assert(async_pool != 0);
+	LINTED_ASSERT(poolp != 0);
+	LINTED_ASSERT(job_queue != 0);
+	LINTED_ASSERT(async_pool != 0);
 
 	linted_error err = 0;
 
@@ -522,7 +521,7 @@ static linted_error worker_pool_create(
 	size_t stack_size = small_stack_size();
 
 	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
-	assert(maybe_page_size >= 0);
+	LINTED_ASSERT(maybe_page_size >= 0);
 	size_t page_size = maybe_page_size;
 
 	size_t stack_and_guard_size = stack_size + page_size;
@@ -577,8 +576,8 @@ static linted_error worker_pool_create(
 			err = pthread_attr_setstack(&attr, last_stack,
 			                            stack_size);
 			if (err != 0) {
-				assert(err != EINVAL);
-				assert(false);
+				LINTED_ASSERT(err != EINVAL);
+				LINTED_ASSERT(false);
 			}
 			last_stack += stack_size + page_size;
 
@@ -650,9 +649,9 @@ destroy_threads:
 			linted_error kill_err =
 			    pthread_kill(thread, LINTED_ASYNCH_SIGNO);
 			if (kill_err != 0 && kill_err != EAGAIN) {
-				assert(kill_err != ESRCH);
-				assert(kill_err != EINVAL);
-				assert(false);
+				LINTED_ASSERT(kill_err != ESRCH);
+				LINTED_ASSERT(kill_err != EINVAL);
+				LINTED_ASSERT(false);
 			}
 
 			sched_yield();
@@ -673,7 +672,7 @@ destroy_worker_queues:
 
 static void worker_pool_destroy(struct worker_pool *pool)
 {
-	assert(pool != 0);
+	LINTED_ASSERT(pool != 0);
 
 	struct job_queue *job_queue = pool->job_queue;
 	pthread_t master_thread = pool->master_thread;
@@ -700,7 +699,7 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 static void *master_worker_routine(void *arg)
 {
-	assert(arg != 0);
+	LINTED_ASSERT(arg != 0);
 
 	set_thread_name("async-worker-master");
 
@@ -726,7 +725,7 @@ static void *master_worker_routine(void *arg)
 			    worker_try_submit(workers[ii].queue, task);
 			if (LINTED_ERROR_AGAIN == err)
 				continue;
-			assert(0 == err);
+			LINTED_ASSERT(0 == err);
 			break;
 		}
 	}
@@ -749,9 +748,9 @@ static void *master_worker_routine(void *arg)
 
 			err = pthread_kill(thread, LINTED_ASYNCH_SIGNO);
 			if (err != 0 && err != EAGAIN) {
-				assert(err != ESRCH);
-				assert(err != EINVAL);
-				assert(false);
+				LINTED_ASSERT(err != ESRCH);
+				LINTED_ASSERT(err != EINVAL);
+				LINTED_ASSERT(false);
 			}
 
 			sched_yield();
@@ -763,7 +762,7 @@ static void *master_worker_routine(void *arg)
 
 static void *worker_routine(void *arg)
 {
-	assert(arg != 0);
+	LINTED_ASSERT(arg != 0);
 
 	set_thread_name("async-worker");
 
@@ -873,9 +872,9 @@ static linted_error wait_manager_create(
     struct wait_manager **managerp, struct waiter_queue *waiter_queue,
     struct linted_async_pool *async_pool, unsigned max_pollers)
 {
-	assert(managerp != 0);
-	assert(waiter_queue != 0);
-	assert(async_pool != 0);
+	LINTED_ASSERT(managerp != 0);
+	LINTED_ASSERT(waiter_queue != 0);
+	LINTED_ASSERT(async_pool != 0);
 
 	linted_error err;
 
@@ -950,7 +949,7 @@ free_manager:
 
 static void wait_manager_destroy(struct wait_manager *manager)
 {
-	assert(manager != 0);
+	LINTED_ASSERT(manager != 0);
 
 	struct waiter_queue *waiter_queue = manager->waiter_queue;
 	pthread_t master_thread = manager->master_thread;
@@ -978,7 +977,7 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 static void *master_poller_routine(void *arg)
 {
-	assert(arg != 0);
+	LINTED_ASSERT(arg != 0);
 
 	set_thread_name("async-poller-master");
 
@@ -1023,10 +1022,10 @@ static void *master_poller_routine(void *arg)
 				if (ENOMEM == err)
 					continue;
 
-				assert(err != EFAULT);
-				assert(err != EINVAL);
+				LINTED_ASSERT(err != EFAULT);
+				LINTED_ASSERT(err != EINVAL);
 
-				assert(0);
+				LINTED_ASSERT(0);
 			}
 			break;
 		}
@@ -1035,7 +1034,7 @@ static void *master_poller_routine(void *arg)
 			uint32_t revents = epoll_events[ii].events;
 
 			if (index != 0U) {
-				assert(waiters[index - 1U] != 0);
+				LINTED_ASSERT(waiters[index - 1U] != 0);
 				err = do_task_for_event(
 				    async_pool, waiters[index - 1U],
 				    revents);
@@ -1079,7 +1078,7 @@ static void *master_poller_routine(void *arg)
 
 			if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_DEL,
 			                    waiter->ko, 0)) {
-				assert(0);
+				LINTED_ASSERT(0);
 			}
 			waiters[ii] = 0;
 
@@ -1103,22 +1102,22 @@ static linted_error recv_waiters(struct linted_async_pool *async_pool,
 	bool has_pollhup = (revents & EPOLLHUP) != 0;
 	bool has_pollin = (revents & EPOLLIN) != 0;
 
-	assert(!has_pollerr);
-	assert(!has_pollhup);
+	LINTED_ASSERT(!has_pollerr);
+	LINTED_ASSERT(!has_pollhup);
 
-	assert(has_pollin);
+	LINTED_ASSERT(has_pollin);
 
 	for (;;) {
 		uint64_t xx;
 		if (-1 ==
 		    read(waiter_ko(waiter_queue), &xx, sizeof xx)) {
 			err = errno;
-			assert(err != 0);
+			LINTED_ASSERT(err != 0);
 			if (EINTR == err)
 				continue;
 			if (EAGAIN == err)
 				break;
-			assert(0);
+			LINTED_ASSERT(0);
 		}
 		break;
 	}
@@ -1152,7 +1151,7 @@ static linted_error recv_waiters(struct linted_async_pool *async_pool,
 			if (0 == waiters[jj])
 				goto finish;
 		}
-		assert(0);
+		LINTED_ASSERT(0);
 
 	finish:
 		waiters[jj] = waiter;
@@ -1224,7 +1223,7 @@ complete_task:
 static linted_error
 completion_queue_create(struct completion_queue **queuep)
 {
-	assert(queuep != 0);
+	LINTED_ASSERT(queuep != 0);
 
 	linted_error err;
 
@@ -1244,8 +1243,8 @@ completion_queue_create(struct completion_queue **queuep)
 static void complete_task(struct completion_queue *queue,
                           struct linted_async_task *task)
 {
-	assert(queue != 0);
-	assert(task != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(task != 0);
 
 	linted_queue_send((struct linted_queue *)queue,
 	                  LINTED_UPCAST(task));
@@ -1254,8 +1253,8 @@ static void complete_task(struct completion_queue *queue,
 static linted_error completion_recv(struct completion_queue *queue,
                                     struct linted_async_task **taskp)
 {
-	assert(queue != 0);
-	assert(taskp != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(taskp != 0);
 
 	struct linted_queue_node *node;
 
@@ -1270,8 +1269,8 @@ static linted_error
 completion_try_recv(struct completion_queue *queue,
                     struct linted_async_task **taskp)
 {
-	assert(queue != 0);
-	assert(taskp != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(taskp != 0);
 
 	linted_error err;
 
@@ -1298,7 +1297,7 @@ static void completion_queue_destroy(struct completion_queue *queue)
 /* struct job_queue is just a fake */
 static linted_error job_queue_create(struct job_queue **queuep)
 {
-	assert(queuep != 0);
+	LINTED_ASSERT(queuep != 0);
 
 	linted_error err;
 
@@ -1325,8 +1324,8 @@ static void job_submit(struct job_queue *queue,
 static linted_error job_recv(struct job_queue *queue,
                              struct linted_async_task **taskp)
 {
-	assert(queue != 0);
-	assert(taskp != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(taskp != 0);
 
 	struct linted_queue_node *node;
 
@@ -1349,7 +1348,7 @@ static void job_queue_destroy(struct job_queue *queue)
 /* struct worker_queue is just a fake */
 static linted_error worker_queue_create(struct worker_queue **queuep)
 {
-	assert(queuep != 0);
+	LINTED_ASSERT(queuep != 0);
 
 	linted_error err;
 
@@ -1368,8 +1367,8 @@ static linted_error worker_queue_create(struct worker_queue **queuep)
 static linted_error worker_try_submit(struct worker_queue *queue,
                                       struct linted_async_task *task)
 {
-	assert(queue != 0);
-	assert(task != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(task != 0);
 	return linted_channel_try_send((struct linted_channel *)queue,
 	                               task);
 }
@@ -1377,8 +1376,8 @@ static linted_error worker_try_submit(struct worker_queue *queue,
 static linted_error worker_recv(struct worker_queue *queue,
                                 struct linted_async_task **taskp)
 {
-	assert(queue != 0);
-	assert(taskp != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(taskp != 0);
 
 	struct linted_async_task *task;
 	{
@@ -1388,7 +1387,7 @@ static linted_error worker_recv(struct worker_queue *queue,
 		task = xx;
 	}
 
-	assert(task != 0);
+	LINTED_ASSERT(task != 0);
 	*taskp = task;
 
 	return 0;
@@ -1406,7 +1405,7 @@ struct waiter_queue {
 
 static linted_error waiter_queue_create(struct waiter_queue **queuep)
 {
-	assert(queuep != 0);
+	LINTED_ASSERT(queuep != 0);
 
 	linted_error err;
 
@@ -1464,8 +1463,8 @@ static linted_ko waiter_ko(struct waiter_queue *queue)
 static void waiter_submit(struct waiter_queue *queue,
                           struct linted_async_waiter *waiter)
 {
-	assert(queue != 0);
-	assert(waiter != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(waiter != 0);
 
 	linted_error err = 0;
 
@@ -1474,11 +1473,11 @@ static void waiter_submit(struct waiter_queue *queue,
 		uint64_t xx = 0xFF;
 		if (-1 == write(queue->waiter_fd, &xx, sizeof xx)) {
 			err = errno;
-			assert(err != 0);
+			LINTED_ASSERT(err != 0);
 			if (EINTR == err)
 				continue;
 
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 		break;
 	}
@@ -1488,8 +1487,8 @@ static linted_error
 waiter_try_recv(struct waiter_queue *queue,
                 struct linted_async_waiter **waiterp)
 {
-	assert(queue != 0);
-	assert(waiterp != 0);
+	LINTED_ASSERT(queue != 0);
+	LINTED_ASSERT(waiterp != 0);
 
 	linted_error err = 0;
 
@@ -1509,7 +1508,7 @@ waiter_try_recv(struct waiter_queue *queue,
 
 static void canceller_init(struct canceller *canceller)
 {
-	assert(canceller != 0);
+	LINTED_ASSERT(canceller != 0);
 
 	spinlock_init(&canceller->lock);
 
@@ -1522,7 +1521,7 @@ static void canceller_init(struct canceller *canceller)
 
 static void canceller_start(struct canceller *canceller)
 {
-	assert(canceller != 0);
+	LINTED_ASSERT(canceller != 0);
 
 	linted_error err;
 
@@ -1530,12 +1529,12 @@ static void canceller_start(struct canceller *canceller)
 
 	err = spinlock_lock(lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
-	assert(!canceller->in_flight);
-	assert(!canceller->owned);
+	LINTED_ASSERT(!canceller->in_flight);
+	LINTED_ASSERT(!canceller->owned);
 
 	canceller->cancelled = false;
 	canceller->cancel_reply = false;
@@ -1544,14 +1543,14 @@ static void canceller_start(struct canceller *canceller)
 
 	err = spinlock_unlock(lock);
 	if (err != 0) {
-		assert(err != EPERM);
-		assert(false);
+		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(false);
 	}
 }
 
 static void canceller_stop(struct canceller *canceller)
 {
-	assert(canceller != 0);
+	LINTED_ASSERT(canceller != 0);
 
 	linted_error err;
 
@@ -1559,12 +1558,12 @@ static void canceller_stop(struct canceller *canceller)
 
 	err = spinlock_lock(lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
-	assert(canceller->owned);
-	assert(canceller->in_flight);
+	LINTED_ASSERT(canceller->owned);
+	LINTED_ASSERT(canceller->in_flight);
 
 	{
 		bool cancelled = canceller->cancelled;
@@ -1578,14 +1577,14 @@ static void canceller_stop(struct canceller *canceller)
 
 	err = spinlock_unlock(lock);
 	if (err != 0) {
-		assert(err != EPERM);
-		assert(false);
+		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(false);
 	}
 }
 
 static void canceller_cancel(struct canceller *canceller)
 {
-	assert(canceller != 0);
+	LINTED_ASSERT(canceller != 0);
 
 	linted_error err;
 
@@ -1596,11 +1595,11 @@ static void canceller_cancel(struct canceller *canceller)
 	{
 		err = spinlock_lock(lock);
 		if (err != 0) {
-			assert(err != EDEADLK);
-			assert(false);
+			LINTED_ASSERT(err != EDEADLK);
+			LINTED_ASSERT(false);
 		}
 
-		assert(false == canceller->cancel_reply);
+		LINTED_ASSERT(false == canceller->cancel_reply);
 
 		in_flight = canceller->in_flight;
 		if (in_flight) {
@@ -1611,9 +1610,9 @@ static void canceller_cancel(struct canceller *canceller)
 				err = pthread_kill(canceller->owner,
 				                   LINTED_ASYNCH_SIGNO);
 				if (err != 0 && err != EAGAIN) {
-					assert(err != ESRCH);
-					assert(err != EINVAL);
-					assert(false);
+					LINTED_ASSERT(err != ESRCH);
+					LINTED_ASSERT(err != EINVAL);
+					LINTED_ASSERT(false);
 				}
 			}
 		}
@@ -1622,8 +1621,8 @@ static void canceller_cancel(struct canceller *canceller)
 
 		err = spinlock_unlock(lock);
 		if (err != 0) {
-			assert(err != EPERM);
-			assert(false);
+			LINTED_ASSERT(err != EPERM);
+			LINTED_ASSERT(false);
 		}
 	}
 
@@ -1638,8 +1637,8 @@ static void canceller_cancel(struct canceller *canceller)
 
 		err = spinlock_lock(lock);
 		if (err != 0) {
-			assert(err != EDEADLK);
-			assert(false);
+			LINTED_ASSERT(err != EDEADLK);
+			LINTED_ASSERT(false);
 		}
 
 		cancel_replied = canceller->cancel_reply;
@@ -1649,17 +1648,17 @@ static void canceller_cancel(struct canceller *canceller)
 				err = pthread_kill(canceller->owner,
 				                   LINTED_ASYNCH_SIGNO);
 				if (err != 0 && err != EAGAIN) {
-					assert(err != ESRCH);
-					assert(err != EINVAL);
-					assert(false);
+					LINTED_ASSERT(err != ESRCH);
+					LINTED_ASSERT(err != EINVAL);
+					LINTED_ASSERT(false);
 				}
 			}
 		}
 
 		err = spinlock_unlock(lock);
 		if (err != 0) {
-			assert(err != EPERM);
-			assert(false);
+			LINTED_ASSERT(err != EPERM);
+			LINTED_ASSERT(false);
 		}
 	} while (!cancel_replied);
 }
@@ -1667,7 +1666,7 @@ static void canceller_cancel(struct canceller *canceller)
 static bool canceller_check_or_register(struct canceller *canceller,
                                         pthread_t self)
 {
-	assert(canceller != 0);
+	LINTED_ASSERT(canceller != 0);
 
 	linted_error err;
 
@@ -1675,8 +1674,8 @@ static bool canceller_check_or_register(struct canceller *canceller,
 
 	err = spinlock_lock(lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
 	bool cancelled = canceller->cancelled;
@@ -1689,8 +1688,8 @@ static bool canceller_check_or_register(struct canceller *canceller,
 
 	err = spinlock_unlock(lock);
 	if (err != 0) {
-		assert(err != EPERM);
-		assert(false);
+		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(false);
 	}
 
 	return cancelled;
@@ -1702,12 +1701,12 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 
 	err = spinlock_lock(&canceller->lock);
 	if (err != 0) {
-		assert(err != EDEADLK);
-		assert(false);
+		LINTED_ASSERT(err != EDEADLK);
+		LINTED_ASSERT(false);
 	}
 
-	assert(canceller->in_flight);
-	assert(canceller->owned);
+	LINTED_ASSERT(canceller->in_flight);
+	LINTED_ASSERT(canceller->owned);
 
 	canceller->owned = false;
 
@@ -1717,8 +1716,8 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 
 	err = spinlock_unlock(&canceller->lock);
 	if (err != 0) {
-		assert(err != EPERM);
-		assert(false);
+		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(false);
 	}
 
 	return cancelled;
@@ -1772,10 +1771,10 @@ static size_t small_stack_size(void)
 	 * Our tasks are only I/O tasks and have extremely tiny stacks.
 	 */
 	long maybe_page_size = sysconf(_SC_PAGE_SIZE);
-	assert(maybe_page_size >= 0);
+	LINTED_ASSERT(maybe_page_size >= 0);
 
 	long maybe_stack_min_size = sysconf(_SC_THREAD_STACK_MIN);
-	assert(maybe_stack_min_size >= 0);
+	LINTED_ASSERT(maybe_stack_min_size >= 0);
 
 	size_t page_size = maybe_page_size;
 	size_t stack_min_size = maybe_stack_min_size;

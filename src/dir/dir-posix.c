@@ -21,7 +21,6 @@
 #include "linted/str.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -138,7 +137,7 @@ open_directory : {
 
 close_realdir : {
 	linted_error close_err = linted_ko_close(realdir);
-	assert(close_err != EBADF);
+	LINTED_ASSERT(close_err != EBADF);
 	if (0 == err)
 		err = close_err;
 }
@@ -152,7 +151,7 @@ free_pathnamedir_buffer:
 	if (err != 0) {
 		if (fd != -1) {
 			linted_error close_err = linted_ko_close(fd);
-			assert(close_err != EBADF);
+			LINTED_ASSERT(close_err != EBADF);
 		}
 		return err;
 	}

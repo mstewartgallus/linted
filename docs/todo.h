@@ -65,6 +65,11 @@
  * @todo Sandbox leaked file descriptors before spawning new processes
  *       in sandbox.c
  *
- * @todo Achieve deterministic builds. As far I know, DW_AT_comp_dir is the one
- *       major source of nondeterminism left.
+ * @todo Achieve deterministic builds.  As far I know, `DW_AT_comp_dir` and the
+ *       Dwarf Directory Table is the one major source of nondeterminism left.
+ *       Adding
+ *       `-Wno-builtin-macro-redefined -D__FILE__='"$(subst $(srcdir)/,,$(abspath $<))"'`
+ *       to `AM_CFLAGS` seems like a good solution for solving the `__FILE__`
+ *       nondeterminism problem but unfortunately that functionality is not
+ *       portable.
  */

@@ -31,7 +31,6 @@
 #include "linted/utf.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <libgen.h>
 #include <signal.h>
@@ -162,7 +161,7 @@ static unsigned char linted_start_main(char const *process_name,
 			return EXIT_FAILURE;
 
 		default:
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 
 		DWORD exit_status;

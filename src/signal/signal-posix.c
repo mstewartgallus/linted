@@ -22,7 +22,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -309,7 +308,7 @@ static void listen_to_signal(size_t ii)
 	if (-1 == sigaction(signo, &action, 0)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
-		assert(false);
+		LINTED_ASSERT(false);
 	}
 }
 
@@ -372,17 +371,17 @@ static void write_one(linted_ko ko)
 	if (EWOULDBLOCK == err)
 		err = 0;
 
-	assert(err != EBADF);
-	assert(err != EDESTADDRREQ);
-	assert(err != EDQUOT);
-	assert(err != EFAULT);
-	assert(err != EFBIG);
-	assert(err != EINVAL);
-	assert(err != EIO);
-	assert(err != ENOSPC);
+	LINTED_ASSERT(err != EBADF);
+	LINTED_ASSERT(err != EDESTADDRREQ);
+	LINTED_ASSERT(err != EDQUOT);
+	LINTED_ASSERT(err != EFAULT);
+	LINTED_ASSERT(err != EFBIG);
+	LINTED_ASSERT(err != EINVAL);
+	LINTED_ASSERT(err != EIO);
+	LINTED_ASSERT(err != ENOSPC);
 
 	/* EPIPE should never happen because SIGPIPE is blocked */
-	assert(err != EPIPE);
+	LINTED_ASSERT(err != EPIPE);
 
-	assert(0 == err);
+	LINTED_ASSERT(0 == err);
 }

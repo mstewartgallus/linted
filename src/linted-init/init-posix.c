@@ -25,7 +25,6 @@
 #include "linted/str.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <libgen.h>
 #include <signal.h>
@@ -153,9 +152,9 @@ static unsigned char linted_start_main(char const *process_name,
 			if (EINTR == err)
 				continue;
 
-			assert(err != EINVAL);
-			assert(err != ECHILD);
-			assert(0 == err);
+			LINTED_ASSERT(err != EINVAL);
+			LINTED_ASSERT(err != ECHILD);
+			LINTED_ASSERT(0 == err);
 			LINTED_ASSUME_UNREACHABLE();
 
 		waitid_succeeded:
@@ -231,9 +230,9 @@ static void delegate_signal(int signo)
 			if (ECHILD == err)
 				goto restore_errno;
 			if (err != 0) {
-				assert(err != EINTR);
-				assert(err != EINVAL);
-				assert(0 == err);
+				LINTED_ASSERT(err != EINTR);
+				LINTED_ASSERT(err != EINVAL);
+				LINTED_ASSERT(0 == err);
 			}
 
 			/* The process was killed and is waitable */

@@ -31,8 +31,8 @@
 		extern void abort(void);                                \
 		linted_io_write_format(LINTED_KO_STDERR, 0, "\
 impossible error in file %s, function %s, and line %i: " format_string, \
-		                       __FILE__, __func__, __LINE__,    \
-		                       __VA_ARGS__);                    \
+		                       LINTED_FILE, __func__,           \
+		                       __LINE__, __VA_ARGS__);          \
 		abort();                                                \
 	} while (0)
 

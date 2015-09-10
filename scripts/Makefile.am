@@ -69,8 +69,12 @@ all:\
 SUFFIXES+= .out .in
 .in.out:
 	$(AM_V_at) $(MKDIR_P) "$$(dirname $@)"
-	$(linted_V_SED) sed \
+	$(linted_V_SED)\
+	  linted_OUT=$@\
+	  linted_OUT="$$(cd "$$(dirname "$${linted_OUT}")" && pwd)/$$(basename "$${linted_OUT}")" &&\
+	  linted_IN=$< &&\
+	  cd "$$(dirname -- "$${linted_IN}")" && sed \
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
 	  -e 's|[@]EXEEXT[@]|$(EXEEXT)|g'\
-	  $< > $@
+	  "$$(basename -- "$${linted_IN}")" > "$${linted_OUT}"
 	$(AM_V_at) chmod u+x $@

@@ -26,7 +26,6 @@
 #include "linted/utf.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <limits.h>
 #include <string.h>
 #include <windows.h>

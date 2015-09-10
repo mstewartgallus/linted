@@ -26,7 +26,6 @@
 #include "linted/unit.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -169,7 +168,7 @@ void linted_admin_in_task_read_request(
 	}
 
 	default:
-		assert(0);
+		LINTED_ASSERT(0);
 	}
 }
 
@@ -336,7 +335,7 @@ void linted_admin_out_task_write_prepare(
 	}
 
 	default:
-		assert(0);
+		LINTED_ASSERT(0);
 	}
 
 	linted_io_task_write_prepare(task->parent, task_ck, ko,

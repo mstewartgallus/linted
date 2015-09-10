@@ -29,7 +29,6 @@
 #include "linted/str.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -1126,7 +1125,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 			err = errno;
 			LINTED_ASSUME(err != 0);
 
-			assert(err != EINVAL);
+			LINTED_ASSERT(err != EINVAL);
 			goto fail;
 		}
 	}
@@ -1139,7 +1138,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 			err = errno;
 			LINTED_ASSUME(err != 0);
 
-			assert(err != EINVAL);
+			LINTED_ASSERT(err != EINVAL);
 			goto fail;
 		}
 	}
@@ -1461,7 +1460,7 @@ static linted_error set_no_new_privs(bool b)
 	                0UL)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
-		assert(err != EINVAL);
+		LINTED_ASSERT(err != EINVAL);
 		return err;
 	}
 

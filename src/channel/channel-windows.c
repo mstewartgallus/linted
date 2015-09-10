@@ -29,7 +29,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <stdbool.h>
 
 #include <windows.h>
@@ -74,8 +73,8 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 {
 	linted_error err = 0;
 
-	assert(channel != 0);
-	assert(node != 0);
+	LINTED_ASSERT(channel != 0);
+	LINTED_ASSERT(node != 0);
 
 	EnterCriticalSection(&channel->lock);
 
@@ -100,12 +99,12 @@ unlock_mutex:
 /* Remove from the head */
 void linted_channel_recv(struct linted_channel *channel, void **nodep)
 {
-	assert(channel != 0);
-	assert(nodep != 0);
+	LINTED_ASSERT(channel != 0);
+	LINTED_ASSERT(nodep != 0);
 
 	EnterCriticalSection(&channel->lock);
 
-	assert(0 == channel->waiter);
+	LINTED_ASSERT(0 == channel->waiter);
 
 	*nodep = 0;
 	channel->waiter = nodep;
@@ -113,7 +112,7 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 	do {
 		if (!SleepConditionVariableCS(
 		        &channel->filled, &channel->lock, INFINITE)) {
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 	} while (0 == *nodep);
 

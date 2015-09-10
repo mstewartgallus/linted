@@ -29,7 +29,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -81,7 +80,7 @@ void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
 	/* Guard against double insertions */
-	assert(0 == node->next);
+	LINTED_ASSERT(0 == node->next);
 
 	EnterCriticalSection(&queue->lock);
 
@@ -112,7 +111,7 @@ void linted_queue_recv(struct linted_queue *queue,
 	do {
 		if (!SleepConditionVariableCS(gains_member, lock,
 		                              INFINITE)) {
-			assert(false);
+			LINTED_ASSERT(false);
 		}
 
 		removed = queue->head;
