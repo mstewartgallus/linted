@@ -112,8 +112,6 @@ static unsigned char linted_start_main(char const *const process_name,
                                        size_t argc,
                                        char const *const *const argv)
 {
-	linted_log(LINTED_LOG_INFO, "file: %s", LINTED_FILE);
-
 	linted_error err = linted_linted_privilege_check();
 	if (err != 0) {
 		linted_log(
