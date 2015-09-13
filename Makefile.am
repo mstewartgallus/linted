@@ -64,7 +64,6 @@ AM_CFLAGS+=\
   $(linted_CFLAGS_DEBUG)\
   $(linted_CFLAGS_DEBUG_INFO)\
   $(linted_CFLAGS_WARNINGS)\
-  -Wno-builtin-macro-redefined\
   -DLINTED_FILE="\"$$(basename $<)\""
 
 if WINDOWS_API

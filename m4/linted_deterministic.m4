@@ -32,6 +32,9 @@ dnl     A horrible, ugly, no-good hack
 	[-D__FILE__=0]dnl
 dnl
 	[-fno-working-directory]dnl
+dnl
+        [-gno-record-gcc-switches]dnl
+	[-fdebug-prefix-map=${srcdir}=.]dnl
 ])
 AC_SUBST([linted_CFLAGS_DETERMINISTIC])
 dnl
