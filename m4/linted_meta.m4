@@ -29,7 +29,7 @@ dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_META],[dnl
         [-fstack-usage]dnl
         [-save-temps]dnl
-        [-save-temps=cwd]dnl
+        [-save-temps=obj]dnl
 ])
 dnl
 AC_SUBST([linted_CFLAGS_META])
