@@ -63,6 +63,7 @@ AM_CFLAGS+=\
   $(linted_CFLAGS_HARDEN)\
   $(linted_CFLAGS_DEBUG)\
   $(linted_CFLAGS_DEBUG_INFO)\
+  $(linted_CFLAGS_META)\
   $(linted_CFLAGS_WARNINGS)\
   -DLINTED_FILE="\"$$(basename $<)\""
 
@@ -80,6 +81,7 @@ AM_LDFLAGS+=\
   $(linted_LDFLAGS_HARDEN)\
   $(linted_LDFLAGS_DEBUG)\
   $(linted_LDFLAGS_DEBUG_INFO)\
+  $(linted_LDFLAGS_META)\
   $(linted_LDFLAGS_WARNINGS); do echo -Xcompiler "$$II"; done)
 
 mostlyclean-local:

@@ -28,7 +28,6 @@ dnl
 AS_IF([test "x${enable_fast_build}" != "xno"], [
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_FAST_BUILD],[dnl
-        [-pipe]
         [-fuse-ld=gold]
         [-fintegrated-as]       dnl Clang's integrated ASM is faster
         [-Wa,--compress-debug-sections]

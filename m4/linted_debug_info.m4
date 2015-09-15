@@ -27,6 +27,7 @@ dnl
 AS_IF([test "x${enable_debug_info}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DEBUG_INFO],[dnl
+	[-gsplit-dwarf]dnl
         dnl Get as much debug info as possible
         [-fno-omit-frame-pointer]dnl
         [-g]dnl
