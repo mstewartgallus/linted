@@ -14,7 +14,7 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 
 ../../updater	run/updater	none	touch,bind
 ../../window	run/window	none	touch,bind
-../../window-notifier-drawer	run/window-notifier	none	touch,bind
+../../window-notifier-drawer	run/window-notifier-drawer	none	touch,bind
 
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,ro,bind
 

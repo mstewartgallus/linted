@@ -29,6 +29,19 @@
 #include <stdint.h>
 #include <unistd.h>
 
+struct linted_window_task_notify {
+	struct linted_io_task_write *parent;
+	void *data;
+};
+
+struct linted_window_task_watch {
+	struct linted_io_task_read *parent;
+	void *data;
+	char dummy[1U];
+};
+
+static const char dummy[1U];
+
 linted_error linted_window_write(linted_window window, uint_fast32_t in)
 {
 	linted_error err;
@@ -118,17 +131,6 @@ linted_error linted_window_read(linted_window window,
 	*outp = linted_rpc_unpack_uint32(buf);
 	return 0;
 }
-
-struct linted_window_task_notify {
-	struct linted_io_task_write *parent;
-	void *data;
-};
-
-struct linted_window_task_watch {
-	struct linted_io_task_read *parent;
-	void *data;
-	char dummy[1U];
-};
 
 linted_error
 linted_window_task_watch_create(struct linted_window_task_watch **taskp,
@@ -229,8 +231,6 @@ void linted_window_task_notify_destroy(
 	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
 }
-
-static const char dummy[1U];
 
 void linted_window_task_notify_prepare(
     struct linted_window_task_notify *task,

@@ -97,7 +97,8 @@ destroy_egl_surface(struct linted_gpu_context *gpu_context);
 
 static linted_error
 create_egl_context(struct linted_gpu_context *gpu_context);
-static linted_error create_egl_surface(struct linted_gpu_context *gpu_context);
+static linted_error
+create_egl_surface(struct linted_gpu_context *gpu_context);
 static linted_error
 make_current(struct linted_gpu_context *gpu_context);
 static linted_error setup_gl(struct linted_gpu_context *gpu_context);
@@ -602,7 +603,8 @@ create_egl_context(struct linted_gpu_context *gpu_context)
 	return 0;
 }
 
-static linted_error create_egl_surface(struct linted_gpu_context *gpu_context)
+static linted_error
+create_egl_surface(struct linted_gpu_context *gpu_context)
 {
 	if (gpu_context->has_egl_surface)
 		return 0;
@@ -614,7 +616,8 @@ static linted_error create_egl_surface(struct linted_gpu_context *gpu_context)
 	EGLConfig config = gpu_context->config;
 	linted_gpu_x11_window window = gpu_context->window;
 
-	EGLSurface surface = eglCreateWindowSurface(display, config, window, 0);
+	EGLSurface surface =
+	    eglCreateWindowSurface(display, config, window, 0);
 	if (EGL_NO_SURFACE == surface) {
 		EGLint err_egl = eglGetError();
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);

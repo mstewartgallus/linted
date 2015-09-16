@@ -363,7 +363,7 @@ on_window_read_err:
 	linted_async_pool_submit(
 	    pool, linted_updater_task_receive_to_async(updater_task));
 
-	return err;
+	return 0;
 
 destroy_gpu_context:
 	linted_gpu_context_destroy(gpu_context);
@@ -702,6 +702,7 @@ drawer_on_notice_recved(struct drawer *drawer,
 	drawer->window_viewable = true;
 	drawer->window = new_window;
 
+	linted_gpu_remove_window(gpu_context);
 	linted_gpu_set_x11_window(gpu_context, new_window);
 	linted_gpu_resize(gpu_context, width, height);
 
