@@ -34,7 +34,7 @@ static unsigned char linted_start_main(char const *process_name,
 	for (;;) {
 		MSG message = {0};
 		if (!GetMessage(&message, 0, 0, 0)) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
 			char const *error_str =

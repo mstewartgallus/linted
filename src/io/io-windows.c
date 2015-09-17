@@ -123,7 +123,7 @@ restart_reading:
 		DWORD xx;
 		if (!ReadFile(ko, (char *)buf + bytes_read, bytes_left,
 		              &xx, 0)) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
 			if (ERROR_HANDLE_EOF == err) {
@@ -193,7 +193,7 @@ restart_writing:
 		DWORD xx;
 		if (!WriteFile(ko, (char const *)buf + bytes_wrote,
 		               bytes_left, &xx, 0)) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
 			if (WSAEINTR == err)
@@ -585,7 +585,7 @@ void linted_ko_do_read(struct linted_async_pool *pool,
 		DWORD xx;
 		if (!ReadFile(ko, buf + bytes_read, bytes_left, &xx,
 		              0)) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
 			if (ERROR_HANDLE_EOF == err) {
@@ -645,7 +645,7 @@ void linted_ko_do_write(struct linted_async_pool *pool,
 		DWORD xx;
 		if (!WriteFile(ko, buf + bytes_wrote, bytes_left, &xx,
 		               0)) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
 			if (WSAEINTR == err)

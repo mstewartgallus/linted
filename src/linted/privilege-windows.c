@@ -94,7 +94,7 @@ linted_error linted_linted_privilege_check(void)
 		LUID xx;
 
 		if (!LookupPrivilegeValue(0, access_names[ii], &xx)) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 			return err;
 		}
@@ -109,7 +109,7 @@ linted_error linted_linted_privilege_check(void)
 		HANDLE xx;
 		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY,
 		                      &xx)) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 			return err;
 		}
@@ -119,7 +119,7 @@ linted_error linted_linted_privilege_check(void)
 	BOOL result;
 	if (!PrivilegeCheck(current_process_access_token,
 	                    (void *)&privileges, &result)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 	}
 

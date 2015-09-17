@@ -167,7 +167,7 @@ retry:
 		DWORD xx;
 		if (!ReadFile(sigpipe_reader, &dummy, sizeof dummy, &xx,
 		              0)) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
 			goto complete;
@@ -285,7 +285,8 @@ static void write_one(linted_ko ko)
 		{
 			DWORD xx = 0;
 			if (!WriteFile(ko, &dummy, 1U, &xx, 0)) {
-				err = GetLastError();
+				err =
+				    HRESULT_FROM_WIN32(GetLastError());
 				LINTED_ASSUME(err != 0);
 			}
 			result = xx;

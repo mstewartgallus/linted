@@ -142,7 +142,8 @@ static unsigned char linted_start_main(char const *process_name,
 				linted_log(LINTED_LOG_ERROR,
 				           "CreateProcessW: %s",
 				           linted_error_string(
-				               GetLastError()));
+				               HRESULT_FROM_WIN32(
+				                   GetLastError())));
 				return EXIT_FAILURE;
 			}
 			monitor_handle = process_information.hProcess;
@@ -155,9 +156,10 @@ static unsigned char linted_start_main(char const *process_name,
 			break;
 
 		case WAIT_FAILED:
-			linted_log(LINTED_LOG_ERROR,
-			           "WaitForSingleObject: %s",
-			           linted_error_string(GetLastError()));
+			linted_log(
+			    LINTED_LOG_ERROR, "WaitForSingleObject: %s",
+			    linted_error_string(
+			        HRESULT_FROM_WIN32(GetLastError())));
 			return EXIT_FAILURE;
 
 		default:
@@ -171,7 +173,8 @@ static unsigned char linted_start_main(char const *process_name,
 				linted_log(LINTED_LOG_ERROR,
 				           "GetExitCodeProcess: %s",
 				           linted_error_string(
-				               GetLastError()));
+				               HRESULT_FROM_WIN32(
+				                   GetLastError())));
 				return EXIT_FAILURE;
 			}
 			exit_status = xx;

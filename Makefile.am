@@ -105,6 +105,7 @@ SUFFIXES+= .rc
 .PHONY: all-windows
 if WINDOWS_API
 all-windows:\
+  scripts/test.out\
   src/linted/linted$(EXEEXT)\
   src/linted-init/linted-init$(EXEEXT)\
   src/linted-monitor/linted-monitor$(EXEEXT)\

@@ -111,7 +111,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	linted_ko ko = CreateFile(pathname_utf2, desired_access, 0, 0,
 	                          OPEN_EXISTING, 0, 0);
 	if (INVALID_HANDLE_VALUE == ko) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 	}
 
@@ -133,14 +133,14 @@ linted_error linted_ko_close(linted_ko ko)
 	linted_error err;
 
 	if (SOCKET_ERROR == closesocket((uintptr_t)ko)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 		if (err != WSAENOTSOCK)
 			return err;
 	}
 
 	if (!CloseHandle(ko)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 		return err;
 	}
@@ -177,7 +177,7 @@ linted_error linted_ko_change_directory(char const *pathname)
 	}
 
 	if (!SetCurrentDirectoryW(pathname_utf2)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 	}
 
@@ -210,7 +210,7 @@ linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
 
 	if (!CreateSymbolicLinkW(newpath_utf2, oldpath_utf2,
 	                         SYMBOLIC_LINK_FLAG_DIRECTORY)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 	}
 

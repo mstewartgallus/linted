@@ -63,7 +63,7 @@ static HINSTANCE get_current_module(void)
 	return xx;
 }
 
-LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
+static LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-window", 0};
@@ -76,14 +76,14 @@ static unsigned char linted_start_main(char const *process_name,
 
 	HGDIOBJ arrow_cursor = LoadCursor(0, IDC_ARROW);
 	if (0 == arrow_cursor) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSERT(err != 0);
 		goto report_exit_status;
 	}
 
 	HGDIOBJ white_brush = GetStockObject(WHITE_BRUSH);
 	if (0 == white_brush) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSERT(err != 0);
 		goto report_exit_status;
 	}
@@ -103,7 +103,7 @@ static unsigned char linted_start_main(char const *process_name,
 		class_atom = RegisterClass(&window_class);
 	}
 	if (0 == class_atom) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSERT(err != 0);
 		goto report_exit_status;
 	}
@@ -116,14 +116,14 @@ static unsigned char linted_start_main(char const *process_name,
 	    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
 	    0, 0, get_current_module(), 0);
 	if (0 == main_window) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSERT(err != 0);
 		goto destroy_window;
 	}
 
 	switch (ShowWindow(main_window, linted_start_show_command())) {
 	case -1: {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSERT(err != 0);
 		goto destroy_window;
 	}
@@ -143,7 +143,7 @@ static unsigned char linted_start_main(char const *process_name,
 	typeof_Direct3DCreate9 *my_Direct3dCreate9 =
 	    (typeof_Direct3DCreate9 *)GetProcAddress(d3d9_module,
 	                                             "Direct3DCreate9");
-	err = GetLastError();
+	err = HRESULT_FROM_WIN32(GetLastError());
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "GetProcAddress: %s",
 		           linted_error_string(err));
@@ -171,21 +171,17 @@ static unsigned char linted_start_main(char const *process_name,
 		xx.AutoDepthStencilFormat = D3DFMT_R8G8B8;
 		xx.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
 
-		HRESULT result = IDirect3D9_CreateDevice(
+		err = IDirect3D9_CreateDevice(
 		    direct3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL,
 		    main_window, D3DCREATE_SOFTWARE_VERTEXPROCESSING,
 		    &xx, &yy);
-		if (FAILED(result)) {
-			linted_log(LINTED_LOG_ERROR,
-			           "D3D9CreateDevice: 0x%lX", result);
-			err = LINTED_ERROR_UNIMPLEMENTED;
+		if (FAILED(err))
 			goto destroy_direct3d;
-		}
 		device = yy;
 	}
 
 	if (0 == UpdateWindow(main_window)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSERT(err != 0);
 		goto destroy_device;
 	}
@@ -208,7 +204,8 @@ static unsigned char linted_start_main(char const *process_name,
 				}
 
 				if (-1 == TranslateMessage(&message)) {
-					err = GetLastError();
+					err = HRESULT_FROM_WIN32(
+					    GetLastError());
 					goto destroy_device;
 				}
 
@@ -218,22 +215,16 @@ static unsigned char linted_start_main(char const *process_name,
 		}
 
 	exit_peek_loop:
-		;
-		HRESULT clear_result = IDirect3DDevice9_Clear(
+		err = IDirect3DDevice9_Clear(
 		    device, 0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
-
 		    D3DCOLOR_ARGB(255, 0, 255, 255), 0, 0);
-		if (FAILED(clear_result)) {
-			err = LINTED_ERROR_UNIMPLEMENTED;
+		if (FAILED(err))
 			goto destroy_device;
-		}
 
-		HRESULT result = IDirect3DDevice9_Present(
-		    device, 0, 0, main_window, 0);
-		if (FAILED(result)) {
-			err = LINTED_ERROR_UNIMPLEMENTED;
+		err = IDirect3DDevice9_Present(device, 0, 0,
+		                               main_window, 0);
+		if (FAILED(err))
 			goto destroy_device;
-		}
 	}
 
 destroy_device:
@@ -264,9 +255,9 @@ destroy_window:
 
 window_destroyed:
 report_exit_status:
-	linted_log(LINTED_LOG_ERROR, "Error 0x%X", err);
-	/* I'm too lazy to bother with getting and printing the text
-	 * for the error code right now. */
+	if (FAILED(err))
+		linted_log(LINTED_LOG_ERROR, "%s",
+		           linted_error_string(err));
 	return err;
 }
 
@@ -276,8 +267,9 @@ static LRESULT on_paint(HWND main_window, UINT message_type,
 static LRESULT on_destroy(HWND main_window, UINT message_type,
                           WPARAM w_param, LPARAM l_param);
 
-LRESULT CALLBACK window_procedure(HWND main_window, UINT message_type,
-                                  WPARAM w_param, LPARAM l_param)
+static LRESULT CALLBACK window_procedure(HWND main_window,
+                                         UINT message_type,
+                                         WPARAM w_param, LPARAM l_param)
 {
 	switch (message_type) {
 	case WM_PAINT:
@@ -302,13 +294,13 @@ static LRESULT on_paint(HWND main_window, UINT message_type,
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(main_window, &ps);
 	if (0 == hdc) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSERT(err != 0);
 		goto post_quit_message;
 	}
 
 	if (0 == EndPaint(main_window, &ps)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSERT(err != 0);
 	}
 

@@ -45,7 +45,7 @@ linted_error linted_window_write(linted_window window, uint_fast32_t in)
 	overlapped.OffsetHigh = 0;
 
 	if (!WriteFile(window, buf, sizeof buf, 0, &overlapped)) {
-		linted_error err = GetLastError();
+		linted_error err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 		return err;
 	}
@@ -67,7 +67,8 @@ linted_error linted_window_read(linted_window window,
 
 		if (!ReadFile(window, buf, sizeof buf, &xx,
 		              &overlapped)) {
-			linted_error err = GetLastError();
+			linted_error err =
+			    HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 			return err;
 		}

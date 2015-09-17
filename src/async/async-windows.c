@@ -479,7 +479,7 @@ static linted_error worker_pool_create(
 		linted_ko thread =
 		    CreateThread(0, 0, worker_routine, worker, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			break;
 		}
 		worker->thread = thread;
@@ -492,7 +492,7 @@ static linted_error worker_pool_create(
 		linted_ko thread = CreateThread(
 		    0, 0, master_worker_routine, pool, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			goto destroy_threads;
 		}
 		pool->master_thread = thread;
@@ -798,7 +798,7 @@ static linted_error wait_manager_create(
 		linted_ko thread =
 		    CreateThread(0, 0, poller_routine, poller, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			break;
 		}
 		poller->thread = thread;
@@ -811,7 +811,7 @@ static linted_error wait_manager_create(
 		linted_ko thread = CreateThread(
 		    0, 0, master_poller_routine, manager, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
-			err = GetLastError();
+			err = HRESULT_FROM_WIN32(GetLastError());
 			goto destroy_threads;
 		}
 		manager->master_thread = thread;
@@ -1012,7 +1012,8 @@ static DWORD WINAPI poller_routine(void *arg)
 			if (-1 == getsockopt((SOCKET)ko, SOL_SOCKET,
 			                     SO_ERROR, (void *)&xx,
 			                     &yy)) {
-				err = WSAGetLastError();
+				err = HRESULT_FROM_WIN32(
+				    WSAGetLastError());
 				goto complete_task;
 			}
 			err = xx;
@@ -1060,7 +1061,7 @@ static linted_error poll_one(linted_ko ko, short events,
 
 poll_failed:
 	;
-	linted_error err = WSAGetLastError();
+	linted_error err = HRESULT_FROM_WIN32(WSAGetLastError());
 	LINTED_ASSUME(err != 0);
 	return err;
 }

@@ -39,7 +39,7 @@ linted_error linted_utf_2_to_1(wchar_t const *input, char **outputp)
 	size_t buffer_size = WideCharToMultiByte(
 	    CP_UTF8, WC_ERR_INVALID_CHARS, input, -1, 0, 0, 0, 0);
 	if (0 == buffer_size) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 		return err;
 	}
@@ -57,7 +57,7 @@ linted_error linted_utf_2_to_1(wchar_t const *input, char **outputp)
 	if (0 == WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
 	                             input, -1, buffer, buffer_size, 0,
 	                             0)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 
 		linted_mem_free(buffer);
@@ -77,7 +77,7 @@ linted_error linted_utf_1_to_2(char const *input, wchar_t **outputp)
 	size_t buffer_size = MultiByteToWideChar(
 	    CP_UTF8, MB_ERR_INVALID_CHARS, input, -1, 0, 0);
 	if (0 == buffer_size) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 		return err;
 	}
@@ -94,7 +94,7 @@ linted_error linted_utf_1_to_2(char const *input, wchar_t **outputp)
 
 	if (0 == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
 	                             input, -1, buffer, buffer_size)) {
-		err = GetLastError();
+		err = HRESULT_FROM_WIN32(GetLastError());
 		LINTED_ASSUME(err != 0);
 
 		linted_mem_free(buffer);

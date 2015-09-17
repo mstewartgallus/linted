@@ -39,7 +39,8 @@ linted_error linted_fifo_pair(linted_fifo *readerp,
 		HANDLE xx;
 		HANDLE yy;
 		if (!CreatePipe(&xx, &yy, 0, 4096U)) {
-			linted_error err = GetLastError();
+			linted_error err =
+			    HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 			return err;
 		}
