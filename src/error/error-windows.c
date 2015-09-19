@@ -48,6 +48,7 @@ char const *linted_error_string(linted_error err_to_print)
 	                  0, err_to_print,
 	                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 	                  (void *)&message, 0, 0)) {
+		err = HRESULT_FROM_WIN32(GetLastError());
 		if (LINTED_ERROR_OUT_OF_MEMORY == err)
 			return out_of_memory_string;
 		return invalid_error_string;
