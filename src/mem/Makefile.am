@@ -21,4 +21,5 @@ check_PROGRAMS+=%D%/test_mem
 %C%_test_mem_SOURCES=%D%/test_mem.c
 %C%_test_mem_LDADD=\
  src/async/libasync.la\
- src/io/libio.la
+ src/io/libio.la\
+ src/start/libstart.la

@@ -33,4 +33,6 @@ TESTS+=%D%/test_unknown_error
 check_PROGRAMS+=%D%/test_unknown_error
 
 %C%_test_unknown_error_SOURCES=%D%/test_unknown_error.c
-%C%_test_unknown_error_LDADD=%D%/liberror.la
+%C%_test_unknown_error_LDADD=\
+  %D%/liberror.la\
+  src/start/libstart.la

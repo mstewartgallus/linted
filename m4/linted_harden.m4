@@ -34,7 +34,7 @@ dnl if it doesn't work.
         [-D_FORTIFY_SOURCE=2]dnl
 dnl
 dnl Stack protection seems to mess up Wine
-dnl        [-Wl,-Bstatic -fstack-protector-all -Wl,-Bdynamic -Wstack-protector]dnl
+        [-fstack-protector-all -Wstack-protector]dnl
 ])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_HARDEN],[dnl

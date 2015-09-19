@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,16 @@
 #include "config.h"
 
 #include "linted/error.h"
+#include "linted/start.h"
 
 #include <stdlib.h>
 
-int main(void)
+static struct linted_start_config const linted_start_config = {
+    .canonical_process_name = PACKAGE_NAME "-error-test", 0};
+
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error_string(-1);
 	return EXIT_SUCCESS;

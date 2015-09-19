@@ -102,19 +102,6 @@ SUFFIXES+= .rc
 .rc.$(OBJEXT):
 	$(linted_V_WINDRES) $(WINDRES) -i $< -o $@ --output-format=coff
 
-.PHONY: all-windows
-if WINDOWS_API
-all-windows:\
-  scripts/test.out\
-  src/linted/linted$(EXEEXT)\
-  src/linted-init/linted-init$(EXEEXT)\
-  src/linted-monitor/linted-monitor$(EXEEXT)\
-  src/linted-sandbox/linted-sandbox$(EXEEXT)\
-  src/linted-window/linted-window$(EXEEXT)\
-  src/linted-simulator/linted-simulator$(EXEEXT)\
-  src/linted-control/linted-control$(EXEEXT)
-endif
-
 linted_V_SED = $(linted_v_SED_@AM_V@)
 linted_v_SED_ = $(linted_v_SED_@AM_DEFAULT_V@)
 linted_v_SED_0 = @echo "  SED     " $@;

@@ -60,7 +60,8 @@ int linted_start__main(struct linted_start_config const *config,
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS);
 
-	/* Prevent DLLs from loading from the current directory */
+	/* Prevent dynamic DLL Loading from loading from the current
+	 * directory */
 	if (!SetDllDirectoryW(L""))
 		return EXIT_FAILURE;
 

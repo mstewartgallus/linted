@@ -38,12 +38,19 @@ char const *linted_error_string(linted_error err_to_print)
 {
 	linted_error err;
 
+	if (FACILITY_WINDOWS == HRESULT_FACILITY(err_to_print))
+		err_to_print = HRESULT_CODE(err_to_print);
+
 	wchar_t *message;
-	if (0 == FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-	                           FORMAT_MESSAGE_FROM_SYSTEM,
-	                       0, err_to_print, 0, (void *)&message, 0,
-	                       0)) {
-		return out_of_memory_string;
+	if (0 ==
+	    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+	                      FORMAT_MESSAGE_FROM_SYSTEM,
+	                  0, err_to_print,
+	                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+	                  (void *)&message, 0, 0)) {
+		if (LINTED_ERROR_OUT_OF_MEMORY == err)
+			return out_of_memory_string;
+		return invalid_error_string;
 	}
 
 	char *buffer;

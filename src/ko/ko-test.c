@@ -16,11 +16,18 @@
 #include "config.h"
 
 #include "linted/ko.h"
+#include "linted/error.h"
+#include "linted/start.h"
 #include "linted/test.h"
 
 #include <stdlib.h>
 
-int main(void)
+static struct linted_start_config const linted_start_config = {
+    .canonical_process_name = PACKAGE_NAME "-ko-test", 0};
+
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	linted_error err;
 
@@ -29,14 +36,19 @@ int main(void)
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD, "/",
 		                     LINTED_KO_DIRECTORY);
+		/* Can happen on Windows */
+		if (LINTED_ERROR_PERMISSION == err)
+			return EXIT_SUCCESS;
 		if (err != 0)
-			LINTED_TEST_FAILURE("err == %i\n", err);
+			LINTED_TEST_FAILURE("err == %s\n",
+			                    linted_error_string(err));
 		root = xx;
 	}
 
 	err = linted_ko_close(root);
 	if (err != 0)
-		LINTED_TEST_FAILURE("err == %i\n", err);
+		LINTED_TEST_FAILURE("err == %s\n",
+		                    linted_error_string(err));
 
 	return EXIT_SUCCESS;
 }

@@ -36,5 +36,7 @@ check_PROGRAMS+=%D%/test_ko
 
 %C%_test_ko_SOURCES=%D%/ko-test.c
 %C%_test_ko_LDADD=\
+ src/error/liberror.la\
  src/ko/libko.la\
- src/io/libio.la
+ src/io/libio.la\
+ src/start/libstart.la

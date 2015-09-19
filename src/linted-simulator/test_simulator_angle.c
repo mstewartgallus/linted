@@ -17,6 +17,7 @@
 
 #include "sim.h"
 
+#include "linted/start.h"
 #include "linted/test.h"
 
 #include <stdlib.h>
@@ -40,7 +41,12 @@
  * |    |    |   -|-   |
  */
 
-int main(void)
+static struct linted_start_config const linted_start_config = {
+    .canonical_process_name = PACKAGE_NAME "-simulator-test", 0};
+
+static unsigned char linted_start_main(char const *const process_name,
+                                       size_t argc,
+                                       char const *const argv[])
 {
 	{
 		sim_angle zero = SIM_ANGLE(0U, 4U);
