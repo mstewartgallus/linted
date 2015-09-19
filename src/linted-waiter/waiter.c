@@ -66,7 +66,6 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 	if (service != 0) {
 		err = linted_prctl_set_name(service);
-		LINTED_ASSERT(err != EINVAL);
 		linted_mem_free(service);
 	}
 

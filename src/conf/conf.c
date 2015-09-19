@@ -104,7 +104,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 		/* A section start */
 		case '[': {
 			if (line_buffer[line_size - 1U] != ']') {
-				err = EINVAL;
+				err = LINTED_ERROR_INVALID_PARAMETER;
 				break;
 			}
 
@@ -137,7 +137,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 
 		default: {
 			if (!has_current_section) {
-				err = EINVAL;
+				err = LINTED_ERROR_INVALID_PARAMETER;
 				break;
 			}
 
@@ -154,7 +154,8 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 				case ' ':
 				case '\t':
 					if (0U == ii) {
-						err = EINVAL;
+						err =
+						    LINTED_ERROR_INVALID_PARAMETER;
 						break;
 					}
 
@@ -163,7 +164,8 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 					goto found_whitespace;
 
 				case '\n':
-					err = EINVAL;
+					err =
+					    LINTED_ERROR_INVALID_PARAMETER;
 					break;
 
 				default:
@@ -187,7 +189,8 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 					break;
 
 				default:
-					err = EINVAL;
+					err =
+					    LINTED_ERROR_INVALID_PARAMETER;
 					break;
 				}
 				if (err != 0)
@@ -196,7 +199,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 			if (err != 0)
 				break;
 
-			err = EINVAL;
+			err = LINTED_ERROR_INVALID_PARAMETER;
 			break;
 
 		found_equal:
@@ -235,7 +238,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 			case WRDE_BADCHAR:
 			case WRDE_CMDSUB:
 			case WRDE_SYNTAX:
-				err = EINVAL;
+				err = LINTED_ERROR_INVALID_PARAMETER;
 				break;
 
 			case WRDE_NOSPACE:

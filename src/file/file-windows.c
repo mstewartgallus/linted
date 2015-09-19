@@ -21,14 +21,13 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#include "linted/error.h"
 #include "linted/file.h"
 #include "linted/util.h"
-
-#include <winerror.h>
 
 linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
                                 char const *pathname,
                                 unsigned long flags, mode_t mode)
 {
-	return ERROR_NOT_ENOUGH_MEMORY;
+	return LINTED_ERROR_UNIMPLEMENTED;
 }

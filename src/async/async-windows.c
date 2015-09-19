@@ -994,7 +994,7 @@ static DWORD WINAPI poller_routine(void *arg)
 		{
 			short xx;
 			err = poll_one(ko, flags, &xx);
-			if (WSAEINTR == err)
+			if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 				goto wait_on_poll;
 			if (err != 0)
 				goto complete_task;

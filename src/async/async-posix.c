@@ -577,7 +577,9 @@ static linted_error worker_pool_create(
 			err = pthread_attr_setstack(&attr, last_stack,
 			                            stack_size);
 			if (err != 0) {
-				LINTED_ASSERT(err != EINVAL);
+				LINTED_ASSERT(
+				    err !=
+				    LINTED_ERROR_INVALID_PARAMETER);
 				LINTED_ASSERT(false);
 			}
 			last_stack += stack_size + page_size;
@@ -651,7 +653,9 @@ destroy_threads:
 			    pthread_kill(thread, LINTED_ASYNCH_SIGNO);
 			if (kill_err != 0 && kill_err != EAGAIN) {
 				LINTED_ASSERT(kill_err != ESRCH);
-				LINTED_ASSERT(kill_err != EINVAL);
+				LINTED_ASSERT(
+				    kill_err !=
+				    LINTED_ERROR_INVALID_PARAMETER);
 				LINTED_ASSERT(false);
 			}
 
@@ -750,7 +754,9 @@ static void *master_worker_routine(void *arg)
 			err = pthread_kill(thread, LINTED_ASYNCH_SIGNO);
 			if (err != 0 && err != EAGAIN) {
 				LINTED_ASSERT(err != ESRCH);
-				LINTED_ASSERT(err != EINVAL);
+				LINTED_ASSERT(
+				    err !=
+				    LINTED_ERROR_INVALID_PARAMETER);
 				LINTED_ASSERT(false);
 			}
 
@@ -1024,7 +1030,9 @@ static void *master_poller_routine(void *arg)
 					continue;
 
 				LINTED_ASSERT(err != EFAULT);
-				LINTED_ASSERT(err != EINVAL);
+				LINTED_ASSERT(
+				    err !=
+				    LINTED_ERROR_INVALID_PARAMETER);
 
 				LINTED_ASSERT(0);
 			}
@@ -1612,7 +1620,9 @@ static void canceller_cancel(struct canceller *canceller)
 				                   LINTED_ASYNCH_SIGNO);
 				if (err != 0 && err != EAGAIN) {
 					LINTED_ASSERT(err != ESRCH);
-					LINTED_ASSERT(err != EINVAL);
+					LINTED_ASSERT(
+					    err !=
+					    LINTED_ERROR_INVALID_PARAMETER);
 					LINTED_ASSERT(false);
 				}
 			}
@@ -1650,7 +1660,9 @@ static void canceller_cancel(struct canceller *canceller)
 				                   LINTED_ASYNCH_SIGNO);
 				if (err != 0 && err != EAGAIN) {
 					LINTED_ASSERT(err != ESRCH);
-					LINTED_ASSERT(err != EINVAL);
+					LINTED_ASSERT(
+					    err !=
+					    LINTED_ERROR_INVALID_PARAMETER);
 					LINTED_ASSERT(false);
 				}
 			}

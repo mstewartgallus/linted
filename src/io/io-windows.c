@@ -126,15 +126,16 @@ restart_reading:
 			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
-			if (ERROR_HANDLE_EOF == err) {
+			if (HRESULT_FROM_WIN32(ERROR_HANDLE_EOF) ==
+			    err) {
 				err = 0;
 				goto finish_reading;
 			}
 
-			if (WSAEINTR == err)
+			if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 				goto restart_reading;
 
-			if (WSAEWOULDBLOCK == err)
+			if (HRESULT_FROM_WIN32(WSAEWOULDBLOCK) == err)
 				goto poll_for_readability;
 
 			goto finish_reading;
@@ -159,7 +160,7 @@ poll_for_readability:
 	{
 		short xx;
 		err = poll_one(ko, POLLIN, &xx);
-		if (WSAEINTR == err)
+		if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 			goto poll_for_readability;
 		if (err != 0)
 			goto finish_reading;
@@ -196,10 +197,10 @@ restart_writing:
 			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
-			if (WSAEINTR == err)
+			if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 				goto restart_writing;
 
-			if (WSAEWOULDBLOCK == err)
+			if (HRESULT_FROM_WIN32(WSAEWOULDBLOCK) == err)
 				goto poll_for_writeability;
 
 			if (err != 0)
@@ -226,7 +227,7 @@ poll_for_writeability:
 	{
 		short xx;
 		err = poll_one(ko, POLLOUT, &xx);
-		if (WSAEINTR == err)
+		if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 			goto poll_for_writeability;
 		if (err != 0)
 			goto write_bytes_wrote;
@@ -588,15 +589,16 @@ void linted_ko_do_read(struct linted_async_pool *pool,
 			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
-			if (ERROR_HANDLE_EOF == err) {
+			if (HRESULT_FROM_WIN32(ERROR_HANDLE_EOF) ==
+			    err) {
 				err = 0;
 				goto complete_task;
 			}
 
-			if (WSAEINTR == err)
+			if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 				goto submit_retry;
 
-			if (WSAEWOULDBLOCK == err)
+			if (HRESULT_FROM_WIN32(WSAEWOULDBLOCK) == err)
 				goto wait_on_poll;
 
 			goto complete_task;
@@ -648,10 +650,10 @@ void linted_ko_do_write(struct linted_async_pool *pool,
 			err = HRESULT_FROM_WIN32(GetLastError());
 			LINTED_ASSUME(err != 0);
 
-			if (WSAEINTR == err)
+			if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 				goto submit_retry;
 
-			if (WSAEWOULDBLOCK == err)
+			if (HRESULT_FROM_WIN32(WSAEWOULDBLOCK) == err)
 				goto wait_on_poll;
 
 			if (err != 0)

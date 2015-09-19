@@ -189,7 +189,7 @@ linted_admin_in_write(linted_admin_in admin,
 
 		size = status->size;
 		if (size > LINTED_UNIT_NAME_MAX)
-			return EINVAL;
+			return LINTED_ERROR_INVALID_PARAMETER;
 
 		char *tip = raw;
 
@@ -212,7 +212,7 @@ linted_admin_in_write(linted_admin_in admin,
 
 		size = stop->size;
 		if (size > LINTED_UNIT_NAME_MAX)
-			return EINVAL;
+			return LINTED_ERROR_INVALID_PARAMETER;
 
 		char *tip = raw;
 
@@ -227,7 +227,7 @@ linted_admin_in_write(linted_admin_in admin,
 	}
 
 	default:
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 	}
 
 	return linted_io_write_all(admin, 0, raw, sizeof raw);
