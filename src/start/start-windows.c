@@ -58,7 +58,7 @@ int linted_start__main(struct linted_start_config const *config,
                        char const *const **_argvp)
 {
 	/* Cannot fail, return value is only the previous state */
-	SetErrorMode(SEM_FAILCRITICALERRORS);
+	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX | SEM_NOGPFAULTERRORBOX);
 
 	/* Prevent dynamic DLL Loading from loading from the current
 	 * directory */
