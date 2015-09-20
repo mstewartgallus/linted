@@ -67,6 +67,10 @@ AM_CFLAGS+=\
   $(linted_CFLAGS_WARNINGS)\
   -DLINTED_FILE="\"$$(basename $<)\""
 
+if LINTED_DETERMINISTIC
+AM_CFLAGS+=-frandom-seed=$$(md5sum $< | sed -e 's/\(.*\) .*/\1/')
+endif
+
 if WINDOWS_API
 AM_CFLAGS+=$(linted_CFLAGS_UNICODE)
 endif

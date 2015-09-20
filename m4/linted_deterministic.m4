@@ -24,6 +24,8 @@ AC_ARG_ENABLE(
         ],
         [[enable_deterministic='yes']])
 dnl
+AM_CONDITIONAL([LINTED_DETERMINISTIC], [test "x${enable_deterministic}" != "xno"])
+dnl
 AS_IF([test "x${enable_deterministic}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DETERMINISTIC],[
@@ -50,5 +52,6 @@ dnl
 dnl
 [AR_FLAGS="crD"]
 AC_SUBST([AR_FLAGS])
+dnl
 ])
 ])
