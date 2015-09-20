@@ -43,5 +43,12 @@ dnl     We might want to change this to be a hash or set it manually later
 	[-Wl,--build-id=none]dnl
 ])
 AC_SUBST([linted_LDFLAGS_DETERMINISTIC])
+dnl
+[CC="env PWD=/proc/self/cwd ${CC}"]
+dnl
+[RANLIB="${RANLIB} -D"]
+dnl
+[AR_FLAGS="crD"]
+AC_SUBST([AR_FLAGS])
 ])
 ])

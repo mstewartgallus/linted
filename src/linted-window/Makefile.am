@@ -16,8 +16,8 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-window
 
-%C%_linted_window_SOURCES=%D%/window.c
-EXTRA_%C%_linted_window_SOURCES=%D%/window-x11.c %D%/window-windows.c
+%C%_linted_window_SOURCES=%D%/linted-window.c
+EXTRA_%C%_linted_window_SOURCES=%D%/linted-window-x11.c %D%/linted-window-windows.c
 %C%_linted_window_LDADD=\
   src/start/libstart.la\
   \
