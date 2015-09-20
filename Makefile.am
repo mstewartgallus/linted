@@ -85,7 +85,15 @@ AM_LDFLAGS+=\
   $(linted_LDFLAGS_WARNINGS); do echo -Xcompiler "$$II"; done)
 
 mostlyclean-local:
-	- find "$(builddir)" -type f -\( -name '*.dwo' -o -name '*.su' -o -name '*.s' -o -name '*.i' -o -name '*.res' -o -name '*.out' -\) -exec rm -f -- '{}' '+'
+	- find "$(builddir)" -type f \(\
+	  -name '*.dwo'\
+	  -o -name '*.su'\
+	  -o -name '*.bc'\
+	  -o -name '*.s'\
+	  -o -name '*.i'\
+	  -o -name '*.res'\
+	  -o -name '*.out'\
+	  \) -exec rm -f -- '{}' '+'
 
 .PHONY: indent
 indent:
