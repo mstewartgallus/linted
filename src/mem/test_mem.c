@@ -20,6 +20,7 @@
 #include "linted/start.h"
 #include "linted/test.h"
 
+#include <stddef.h>
 #include <stdlib.h>
 
 static struct linted_start_config const linted_start_config = {

@@ -18,6 +18,7 @@
 #include "linted/error.h"
 #include "linted/start.h"
 
+#include <stddef.h>
 #include <stdlib.h>
 
 static struct linted_start_config const linted_start_config = {

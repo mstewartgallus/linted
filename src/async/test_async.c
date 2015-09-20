@@ -25,6 +25,7 @@
 #include "linted/util.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdlib.h>
 
 #define MAX_TASKS 20U

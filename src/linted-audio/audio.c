@@ -21,12 +21,15 @@
 #include "linted/start.h"
 
 #include <math.h>
+#include <stddef.h>
 #include <stdlib.h>
 
 #include <pulse/context.h>
+#include <pulse/def.h>
 #include <pulse/error.h>
 #include <pulse/mainloop.h>
 #include <pulse/proplist.h>
+#include <pulse/sample.h>
 #include <pulse/stream.h>
 
 #define A_TONE 440

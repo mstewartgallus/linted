@@ -20,6 +20,7 @@
 #include "linted/start.h"
 #include "linted/test.h"
 
+#include <stddef.h>
 #include <stdlib.h>
 
 /*
