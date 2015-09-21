@@ -431,8 +431,8 @@ exit_loop:
 	if (fstab != 0) {
 		FILE *fstab_file = fopen(fstab, "re");
 		if (0 == fstab_file) {
-			linted_log(LINTED_LOG_ERROR, "fopen: %s",
-			           linted_error_string(errno));
+			linted_log(LINTED_LOG_ERROR, "fopen(%s): %s",
+			           fstab, linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 

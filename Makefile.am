@@ -16,6 +16,8 @@
 # permissions and limitations under the License.
 pkgconfdir=$(sysconfdir)/$(PACKAGE)
 pkgdefaultconfdir=$(datadir)/factory/$(PACKAGE)/etc
+
+pkgunitsdir=$(pkgconfdir)/units
 pkgdefaultunitsdir=$(pkgdefaultconfdir)/units
 
 AM_TESTS_ENVIRONMENT=\

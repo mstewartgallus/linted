@@ -540,8 +540,8 @@ static unsigned char linted_start_main(char const *process_name,
 		err = conf_db_from_path(&xx, cwd, unit_path);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "conf_db_from_path: %s",
-			           linted_error_string(err));
+			           "conf_db_from_path(%s): %s",
+			           unit_path, linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		conf_db = xx;
@@ -1918,6 +1918,9 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		linted_ko xx;
 		err = linted_ko_open(&xx, cwd, dir_name,
 		                     LINTED_KO_DIRECTORY);
+		/* Just treat as an empty directory */
+		if (ENOENT == err)
+			return 0;
 		if (err != 0)
 			return err;
 		units_ko = xx;

@@ -58,6 +58,8 @@ MOSTLYCLEANFILES+=%D%/settings.h
 	  -e 's|[@]LINTED_MONITOR[@]|$(pkglibexecdir)/linted-monitor$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_SANDBOX[@]|$(pkglibexecdir)/linted-sandbox$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_WAITER[@]|$(pkglibexecdir)/linted-waiter$(EXEEXT)|g'\
+	  -e 's|[@]LINTED_AUDIO[@]|$(pkglibexecdir)/linted-audio$(EXEEXT)|g'\
+	  -e 's|[@]LINTED_AUDIO_FSTAB[@]|$(pkgdefaultconfdir)/audio.fstab|g'\
 	  -e 's|[@]LINTED_GUI[@]|$(pkglibexecdir)/linted-gui$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_GUI_FSTAB[@]|$(pkgdefaultconfdir)/gui.fstab|g'\
 	  -e 's|[@]LINTED_SIMULATOR[@]|$(pkglibexecdir)/linted-simulator$(EXEEXT)|g'\
