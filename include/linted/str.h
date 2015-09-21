@@ -43,4 +43,7 @@ linted_error linted_str_append_format(char **bufp, size_t *capp,
                                       char const *formatstr, ...)
     LINTED_FORMAT(__printf__, 4, 5);
 
+linted_error linted_str_format(char **strp, char const *format, ...)
+    LINTED_FORMAT(__printf__, 2, 3);
+
 #endif /* LINTED_STR_H */

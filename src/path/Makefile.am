@@ -20,4 +20,5 @@ noinst_LTLIBRARIES+=%D%/libpath.la
 %C%_linted_LDLIBS=\
   src/environment/libenvironment.la\
   src/log/liblog.la\
-  src/mem/libmem.la
+  src/mem/libmem.la\
+  src/str/libstr.la

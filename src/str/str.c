@@ -13,7 +13,7 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
 #include "config.h"
 
@@ -143,6 +143,22 @@ linted_error linted_str_append_cstring(char **bufp, size_t *capp,
                                        size_t *sizep, char const *str)
 {
 	return linted_str_append(bufp, capp, sizep, str, strlen(str));
+}
+
+linted_error linted_str_format(char **strp, char const *format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+
+	if (-1 == vasprintf(strp, format, ap)) {
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return 0;
+	}
+
+	va_end(ap);
+
+	return 0;
 }
 
 linted_error linted_str_append_format(char **bufp, size_t *capp,

@@ -163,10 +163,12 @@ static unsigned char linted_start_main(char const *const process_name,
 	char *package_runtime_dir_path;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/%s", runtime_dir_path,
-		                   PACKAGE_TARNAME)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
+		err = linted_str_format(&xx, "%s/%s", runtime_dir_path,
+		                        PACKAGE_TARNAME);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_format: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		package_runtime_dir_path = xx;
@@ -175,10 +177,12 @@ static unsigned char linted_start_main(char const *const process_name,
 	char *process_runtime_dir_path;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/%s",
-		                   package_runtime_dir_path, pid)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
+		err = linted_str_format(&xx, "%s/%s",
+		                        package_runtime_dir_path, pid);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_format: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		process_runtime_dir_path = xx;

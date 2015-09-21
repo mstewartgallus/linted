@@ -13,14 +13,13 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _GNU_SOURCE
-
 #include "config.h"
 
 #include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -72,12 +71,10 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 	if (runtime_dir_path != 0)
 		goto got_runtime_dir_fallback;
 
-	if (-1 ==
-	    asprintf(packagep, "/%s/%s", "/tmp", PACKAGE_TARNAME)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
+	err = linted_str_format(packagep, "%s/%s", "/tmp",
+	                        PACKAGE_TARNAME);
+	if (err != 0)
 		return err;
-	}
 
 	linted_log(LINTED_LOG_WARNING,
 	           "%s not set, falling back to runtime directory %s",
@@ -90,14 +87,9 @@ got_runtime_dir_fallback:
 	           "XDG_RUNTIME_DIR", runtime_dir_path);
 
 got_runtime_dir_path:
-	if (-1 == asprintf(packagep, "%s/%s", runtime_dir_path,
-	                   PACKAGE_TARNAME)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto free_runtime_dir_path;
-	}
+	err = linted_str_format(packagep, "%s/%s", runtime_dir_path,
+	                        PACKAGE_TARNAME);
 
-free_runtime_dir_path:
 	linted_mem_free(runtime_dir_path);
 
 	return err;
@@ -118,11 +110,8 @@ linted_error linted_path_package_data_home(char **packagep)
 	if (0 == data_home_path)
 		goto fallback;
 
-	if (-1 == asprintf(packagep, "%s/%s", data_home_path,
-	                   PACKAGE_TARNAME)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-	}
+	err = linted_str_format(packagep, "%s/%s", data_home_path,
+	                        PACKAGE_TARNAME);
 
 	linted_mem_free(data_home_path);
 
@@ -141,11 +130,8 @@ fallback:
 	if (0 == home_path)
 		return EACCES;
 
-	if (-1 ==
-	    asprintf(packagep, "%s/%s", home_path, "local/share")) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-	}
+	err = linted_str_format(packagep, "%s/%s", home_path,
+	                        "local/share");
 
 	linted_mem_free(home_path);
 

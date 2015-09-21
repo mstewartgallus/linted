@@ -317,11 +317,13 @@ static unsigned char linted_start_main(char const *process_name,
 	char *process_runtime_dir_path;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/%" PRIuMAX,
-		                   package_runtime_dir_path,
-		                   (uintmax_t)manager_pid)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
+		err = linted_str_format(&xx, "%s/%" PRIuMAX,
+		                        package_runtime_dir_path,
+		                        (uintmax_t)manager_pid);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_format: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		process_runtime_dir_path = xx;
@@ -330,11 +332,13 @@ static unsigned char linted_start_main(char const *process_name,
 	char *process_data_home_path;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/%" PRIuMAX,
-		                   package_data_home_path,
-		                   (uintmax_t)manager_pid)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
+		err = linted_str_format(&xx, "%s/%" PRIuMAX,
+		                        package_data_home_path,
+		                        (uintmax_t)manager_pid);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_str_format: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		process_data_home_path = xx;
@@ -1129,23 +1133,19 @@ spawn_service:
 	char *prio_str = 0;
 	if (has_priority) {
 		char *xx;
-		if (-1 ==
-		    asprintf(&xx, "%" PRIiMAX, (intmax_t)priority)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)priority);
+		if (err != 0)
 			return err;
-		}
 		prio_str = xx;
 	}
 
 	char *chrootdir;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "%s/chroot", unit_name)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
+		err = linted_str_format(&xx, "%s/chroot", unit_name);
+		if (err != 0)
 			goto free_prio_str;
-		}
 		chrootdir = xx;
 	}
 
@@ -1161,18 +1161,12 @@ spawn_service:
 	char *service_name_setting;
 	{
 		char *xx;
-		if (-1 == asprintf(&xx, "LINTED_SERVICE=%s", unit_name))
-			goto service_asprintf_failed;
+		err = linted_str_format(&xx, "LINTED_SERVICE=%s",
+		                        unit_name);
+		if (err != 0)
+			goto free_envvars;
 		service_name_setting = xx;
-		goto service_asprintf_succeeded;
 	}
-service_asprintf_failed:
-	err = errno;
-	LINTED_ASSUME(err != 0);
-	goto free_envvars;
-
-service_asprintf_succeeded:
-	;
 	size_t envvars_size =
 	    null_list_size((char const *const *)envvars);
 	size_t new_size = envvars_size + 2U;
@@ -2166,12 +2160,9 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 		++result_envvars_size;
 
-		if (-1 ==
-		    asprintf(&result_envvars[result_envvars_size - 1U],
-		             "%s=%s", envvar_name, envvar_value)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-		}
+		err = linted_str_format(
+		    &result_envvars[result_envvars_size - 1U], "%s=%s",
+		    envvar_name, envvar_value);
 
 		linted_mem_free(envvar_value);
 
