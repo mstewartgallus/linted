@@ -143,6 +143,7 @@ dnl
         dnl and don't need to link in all the dialog stuff.
 dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
+                [-nodefaultlibs]dnl
                 [-mno-cygwin]dnl
 dnl
                 dnl Have stricter Windows NT builds
@@ -163,17 +164,35 @@ dnl
                 [-Wl,--minor-os-version=0.2]dnl
         ])
         AC_SUBST([linted_LDFLAGS_TARGET_TYPE])
-
+dnl
+	[LIBS="${LIBS} -lssp"]
+dnl
+	[LIBS="${LIBS} -lmingwex"]
+	[LIBS="${LIBS} -lmingw32"]
+dnl
+	[LIBS="${LIBS} -lmsvcr110"]
+dnl
+	[LIBS="${LIBS} -lkernel32"]
+dnl
+	[LIBS="${LIBS} -lgcc"]
+	[LIBS="${LIBS} -lgcc_eh"]
+dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_UNICODE], [
                 [-municode]dnl
         ])
         AC_SUBST([linted_CFLAGS_UNICODE])
 dnl
-        LINTED_CHECK_LIB([CRT_LIBS], [-lmsvcr110], [_wdupenv_s], [#include <stdlib.h>], [], [
-                AC_MSG_ERROR([Unable to find a CRT library])
+        LINTED_CHECK_LIB([ADVAPI32_LIBS], [-ladvapi32], [OpenProcessToken], [#include <windows.h>], [], [
+                AC_MSG_ERROR([Unable to find an advapi32 library])
+        ])
+        LINTED_CHECK_LIB([SHELL32_LIBS], [-lshell32], [CommandLineToArgvW], [#include <windows.h>], [], [
+                AC_MSG_ERROR([Unable to find a shell32 library])
+        ])
+        LINTED_CHECK_LIB([USER_LIBS], [-luser32], [PostQuitMessage], [#include <windows.h>], [], [
+                AC_MSG_ERROR([Unable to find a user32 library])
         ])
         LINTED_CHECK_LIB([GDI_LIBS], [-lgdi32], [GetStockObject], [#include <windows.h>], [], [
-                AC_MSG_WARN([Unable to find a GDI library])
+                AC_MSG_ERROR([Unable to find a GDI library])
         ])
         LINTED_CHECK_LIB([WS2_32_LIBS], [-lws2_32], [WSAStartup], [#include <winsock.h>], [], [
                 AC_MSG_ERROR([Unable to find a Winsock library])

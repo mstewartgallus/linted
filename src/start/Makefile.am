@@ -30,5 +30,6 @@ if WINDOWS_API
 %C%_libstart_la_LIBADD+=\
   src/utf/libutf.la\
   \
+  $(SHELL32_LIBS)\
   $(WS2_32_LIBS)
 endif

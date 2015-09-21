@@ -40,7 +40,9 @@ if WINDOWS_API
 %C%_linted_LDADD+=\
   src/utf/libutf.la\
   \
-  %D%/resources.$(OBJEXT)
+  %D%/resources.$(OBJEXT)\
+  \
+  $(ADVAPI32_LIBS)
 
 %D%/resources.$(OBJEXT): %D%/linted.manifest
 endif

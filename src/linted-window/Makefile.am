@@ -35,7 +35,9 @@ if X11_API
 endif
 
 if WINDOWS_API
-%C%_linted_window_LDADD+=$(GDI_LIBS)
+%C%_linted_window_LDADD+=\
+  $(USER_LIBS)\
+  $(GDI_LIBS)
 endif
 
 %C%_linted_window_CPPFLAGS=

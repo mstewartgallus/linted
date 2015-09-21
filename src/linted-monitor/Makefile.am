@@ -52,8 +52,9 @@ endif
 if WINDOWS_API
 %C%_linted_monitor_LDADD+=\
   src/utf/libutf.la\
+  %D%/resources.$(OBJEXT)\
   \
-  %D%/resources.$(OBJEXT)
+  $(USER_LIBS)
 
 %D%/resources.$(OBJEXT): %D%/monitor.manifest
 endif
