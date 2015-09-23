@@ -13,6 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include "linted/assets.h"
@@ -27,6 +29,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -52,6 +56,8 @@ struct linted_gpu_context {
 	GLuint index_buffer;
 
 	GLuint model_view_projection_matrix;
+
+	GLsync sync;
 
 	bool has_window : 1U;
 	bool has_egl_surface : 1U;
@@ -225,6 +231,7 @@ choose_config_succeeded:
 	gpu_context->display = display;
 	gpu_context->config = config;
 	gpu_context->surface = EGL_NO_SURFACE;
+	gpu_context->sync = 0;
 	gpu_context->buffer_commands = true;
 
 	gpu_context->has_window = false;
@@ -381,10 +388,45 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 
 	if (buffer_commands) {
 		real_draw(gpu_context);
+
+		GLsync sync = gpu_context->sync;
+		if (sync != 0)
+			glDeleteSync(sync);
+
+		sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		if (0 == sync)
+			return get_gl_error();
+
+		gpu_context->sync = sync;
 		gpu_context->buffer_commands = false;
 	} else {
+		GLsync sync = gpu_context->sync;
+
+		if (sync != 0) {
+			switch (glClientWaitSync(
+			    sync, GL_SYNC_FLUSH_COMMANDS_BIT, 0)) {
+			case GL_TIMEOUT_EXPIRED:
+				return 0;
+
+			case GL_ALREADY_SIGNALED:
+			case GL_CONDITION_SATISFIED:
+				break;
+
+			default:
+				return get_gl_error();
+			}
+		}
+
 		EGLDisplay display = gpu_context->display;
 		EGLSurface surface = gpu_context->surface;
+
+		{
+			GLenum attachments[] = {GL_DEPTH};
+			glInvalidateFramebuffer(
+			    GL_FRAMEBUFFER,
+			    LINTED_ARRAY_SIZE(attachments),
+			    attachments);
+		}
 
 		if (EGL_FALSE == eglSwapBuffers(display, surface)) {
 			EGLint err_egl = eglGetError();
@@ -413,6 +455,14 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			}
 
 			LINTED_ASSERT(false);
+		}
+
+		{
+			GLenum attachments[] = {GL_COLOR};
+			glInvalidateFramebuffer(
+			    GL_FRAMEBUFFER,
+			    LINTED_ARRAY_SIZE(attachments),
+			    attachments);
 		}
 
 		gpu_context->buffer_commands = true;
@@ -635,6 +685,20 @@ create_egl_surface(struct linted_gpu_context *gpu_context)
 		case EGL_BAD_ALLOC:
 			return ENOMEM;
 		}
+
+		LINTED_ASSERT(false);
+	}
+
+	if (EGL_FALSE == eglSurfaceAttrib(display, surface,
+	                                  EGL_SWAP_BEHAVIOR,
+	                                  EGL_BUFFER_DESTROYED)) {
+		EGLint err_egl = eglGetError();
+		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LINTED_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
 
 		LINTED_ASSERT(false);
 	}
@@ -947,6 +1011,7 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 	gpu_context->normal_buffer = normal_buffer;
 	gpu_context->index_buffer = index_buffer;
 	gpu_context->model_view_projection_matrix = mvp_matrix;
+	gpu_context->sync = 0;
 	gpu_context->buffer_commands = true;
 
 	gpu_context->update_pending = true;
@@ -1007,7 +1072,8 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		gpu_context->update_pending = false;
 	}
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
+	        GL_STENCIL_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
 	               GL_UNSIGNED_BYTE, 0);
 }
