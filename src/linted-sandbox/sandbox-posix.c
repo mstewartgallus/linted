@@ -852,8 +852,8 @@ exit_loop:
 
 	if (limit_locks_val >= 0) {
 		struct rlimit const lim = {
-			.rlim_cur = limit_locks_val,
-			.rlim_max = limit_locks_val,
+		    .rlim_cur = limit_locks_val,
+		    .rlim_max = limit_locks_val,
 		};
 
 		if (-1 == setrlimit(RLIMIT_LOCKS, &lim)) {
@@ -865,8 +865,8 @@ exit_loop:
 
 	if (limit_msgqueue_val >= 0) {
 		struct rlimit const lim = {
-			.rlim_cur = limit_msgqueue_val,
-			.rlim_max = limit_msgqueue_val,
+		    .rlim_cur = limit_msgqueue_val,
+		    .rlim_max = limit_msgqueue_val,
 		};
 
 		if (-1 == setrlimit(RLIMIT_MSGQUEUE, &lim)) {
@@ -1117,7 +1117,7 @@ first_fork_routine(void *void_args)
 
 	pid_t grand_child;
 	struct second_fork_args args = {.err_writer = vfork_err_writer,
-					.limit_no_file = limit_no_file,
+	                                .limit_no_file = limit_no_file,
 	                                .logger_writer = logger_writer,
 	                                .binary = binary,
 	                                .argv = command,
@@ -1191,8 +1191,8 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 
 	if (limit_no_file >= 0) {
 		struct rlimit const lim = {
-			.rlim_cur = limit_no_file,
-			.rlim_max = limit_no_file,
+		    .rlim_cur = limit_no_file,
+		    .rlim_max = limit_no_file,
 		};
 
 		if (-1 == setrlimit(RLIMIT_NOFILE, &lim)) {

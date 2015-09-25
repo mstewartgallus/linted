@@ -20,8 +20,6 @@
 #include "linted/error.h"
 #include "linted/util.h"
 
-#include <errno.h>
-
 #include <xcb/xcb.h>
 
 #define Success 0
@@ -56,7 +54,7 @@ linted_error linted_xcb_conn_error(xcb_connection_t *connection)
 		return LINTED_ERROR_UNIMPLEMENTED;
 
 	case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
-		return ENOMEM;
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
 		return LINTED_ERROR_INVALID_PARAMETER;
@@ -92,10 +90,10 @@ linted_error linted_xcb_error(xcb_generic_error_t *error)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
 	case BadAccess:
-		return EPERM;
+		return LINTED_ERROR_PERMISSION;
 
 	case BadAlloc:
-		return ENOMEM;
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	case BadImplementation:
 		return LINTED_ERROR_UNIMPLEMENTED;

@@ -74,8 +74,10 @@ linted_error linted_io_read_all(linted_ko ko, size_t *bytes_wrote,
  *
  * @error EFAULT buf is not accessible.
  *
- * @error EINVAL ko is not writable or the file was opened with
- *               O_DIRECT and alignment restrictions weren't
+ * @error LINTED_ERROR_INVALID_PARAMETER ko is not writable or the file
+ *was
+ *               opened with `O_DIRECT` and alignment restrictions
+ *weren't
  *               satisfied.
  *
  * @error EIO I/O error.

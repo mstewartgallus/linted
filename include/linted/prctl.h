@@ -45,7 +45,7 @@ static inline linted_error linted_prctl_set_name(char const *name)
 		err = errno;
 		LINTED_ASSUME(err != 0);
 
-		LINTED_ASSERT(err != EINVAL);
+		LINTED_ASSERT(err != LINTED_ERROR_INVALID_PARAMETER);
 
 		return err;
 	}

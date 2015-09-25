@@ -1169,7 +1169,7 @@ spawn_service:
 			goto free_no_file_str;
 		limit_msgqueue_str = xx;
 	}
-	
+
 	char *limit_locks_str = 0;
 	if (has_limit_locks) {
 		char *xx;
@@ -1265,8 +1265,10 @@ envvar_allocate_succeeded:
 		    {"--chrootdir", chrootdir, fstab != 0},
 		    {"--fstab", fstab, fstab != 0},
 		    {"--nonewprivs", 0, no_new_privs},
-		    {"--limit-no-file", limit_no_file_str, has_limit_no_file},
-		    {"--limit-msgqueue", limit_msgqueue_str, has_limit_msgqueue},
+		    {"--limit-no-file", limit_no_file_str,
+		     has_limit_no_file},
+		    {"--limit-msgqueue", limit_msgqueue_str,
+		     has_limit_msgqueue},
 		    {"--limit-locks", limit_locks_str, has_limit_locks},
 		    {"--dropcaps", 0, drop_caps},
 		    {"--chdir", chdir_path, chdir_path != 0},
@@ -1498,8 +1500,10 @@ static linted_error on_signal(struct monitor *monitor,
 		}
 		linted_error kill_err = linted_pid_kill(pid, signo);
 		if (kill_err != ESRCH) {
-			LINTED_ASSERT(kill_err != EINVAL);
-			LINTED_ASSERT(kill_err != EPERM);
+			LINTED_ASSERT(kill_err !=
+			              LINTED_ERROR_INVALID_PARAMETER);
+			LINTED_ASSERT(kill_err !=
+			              LINTED_ERROR_PERMISSION);
 			LINTED_ASSERT(0 == err);
 		}
 	}
@@ -1639,8 +1643,10 @@ static linted_error on_kill_read(struct monitor *monitor,
 		}
 		linted_error kill_err = linted_pid_kill(pid, SIGTERM);
 		if (kill_err != ESRCH) {
-			LINTED_ASSERT(kill_err != EINVAL);
-			LINTED_ASSERT(kill_err != EPERM);
+			LINTED_ASSERT(kill_err !=
+			              LINTED_ERROR_INVALID_PARAMETER);
+			LINTED_ASSERT(kill_err !=
+			              LINTED_ERROR_PERMISSION);
 			LINTED_ASSERT(0 == kill_err);
 		}
 	}
@@ -1896,7 +1902,7 @@ pid_find_failure:
 
 found_pid:
 	err = linted_pid_terminate(pid);
-	LINTED_ASSERT(err != EINVAL);
+	LINTED_ASSERT(err != LINTED_ERROR_INVALID_PARAMETER);
 	if (err != 0) {
 		if (ESRCH == err)
 			err = 0;

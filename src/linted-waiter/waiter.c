@@ -180,8 +180,8 @@ static void on_term(int signo)
 		if (ESRCH == err)
 			goto prevent_looping;
 
-		LINTED_ASSERT(err != EINVAL);
-		LINTED_ASSERT(err != EPERM);
+		LINTED_ASSERT(err != LINTED_ERROR_INVALID_PARAMETER);
+		LINTED_ASSERT(err != LINTED_ERROR_PERMISSION);
 		LINTED_ASSERT(false);
 	}
 

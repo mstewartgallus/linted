@@ -24,7 +24,6 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -117,10 +116,6 @@ model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
 
 static struct matrix matrix_multiply(struct matrix a, struct matrix b);
 
-/**
- * @todo get_gl_error's use of glGetError is incorrect. Multiple error
- *       flags may be set and returned by a single function.
- */
 static linted_error get_gl_error(void);
 
 linted_error
@@ -143,11 +138,11 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 		switch (err_egl) {
 		/* In this case no display was found. */
 		case EGL_SUCCESS:
-			err = EINVAL;
+			err = LINTED_ERROR_INVALID_PARAMETER;
 			break;
 
 		case EGL_BAD_ALLOC:
-			err = ENOMEM;
+			err = LINTED_ERROR_OUT_OF_MEMORY;
 			break;
 
 		default:
@@ -166,7 +161,7 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 		switch (err_egl) {
 		case EGL_NOT_INITIALIZED:
 		case EGL_BAD_ALLOC:
-			err = ENOMEM;
+			err = LINTED_ERROR_OUT_OF_MEMORY;
 			goto destroy_display;
 		}
 
@@ -197,7 +192,7 @@ choose_config_failed : {
 
 	switch (err_egl) {
 	case EGL_BAD_ALLOC:
-		err = ENOMEM;
+		err = LINTED_ERROR_OUT_OF_MEMORY;
 		goto destroy_display;
 	}
 
@@ -206,7 +201,7 @@ choose_config_failed : {
 
 choose_config_succeeded:
 	if (matching_config_count < 1) {
-		err = EINVAL;
+		err = LINTED_ERROR_INVALID_PARAMETER;
 		goto destroy_display;
 	}
 
@@ -311,7 +306,7 @@ linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
                           linted_gpu_x11_window new_window)
 {
 	if (new_window > UINT32_MAX)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	if (gpu_context->has_window) {
 		if (gpu_context->window == new_window)
@@ -420,7 +415,7 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 				goto destroy_context;
 
 			case EGL_BAD_ALLOC:
-				return ENOMEM;
+				return LINTED_ERROR_OUT_OF_MEMORY;
 			}
 
 			LINTED_ASSERT(false);
@@ -516,12 +511,12 @@ remove_current_context(struct linted_gpu_context *gpu_context)
 		case EGL_BAD_NATIVE_PIXMAP:
 		case EGL_BAD_NATIVE_WINDOW:
 			if (0 == err)
-				err = EINVAL;
+				err = LINTED_ERROR_INVALID_PARAMETER;
 			break;
 
 		case EGL_BAD_ALLOC:
 			if (0 == err)
-				err = ENOMEM;
+				err = LINTED_ERROR_OUT_OF_MEMORY;
 			break;
 		}
 	}
@@ -611,7 +606,7 @@ create_egl_context(struct linted_gpu_context *gpu_context)
 
 		switch (err_egl) {
 		case EGL_BAD_ALLOC:
-			return ENOMEM;
+			return LINTED_ERROR_OUT_OF_MEMORY;
 		}
 
 		LINTED_ASSERT(false);
@@ -629,7 +624,7 @@ create_egl_surface(struct linted_gpu_context *gpu_context)
 		return 0;
 
 	if (!gpu_context->has_window)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	EGLDisplay display = gpu_context->display;
 	EGLConfig config = gpu_context->config;
@@ -649,10 +644,10 @@ create_egl_surface(struct linted_gpu_context *gpu_context)
 
 		switch (err_egl) {
 		case EGL_BAD_NATIVE_WINDOW:
-			return EINVAL;
+			return LINTED_ERROR_INVALID_PARAMETER;
 
 		case EGL_BAD_ALLOC:
-			return ENOMEM;
+			return LINTED_ERROR_OUT_OF_MEMORY;
 		}
 
 		LINTED_ASSERT(false);
@@ -728,12 +723,12 @@ static linted_error make_current(struct linted_gpu_context *gpu_context)
 		case EGL_BAD_NATIVE_PIXMAP:
 		case EGL_BAD_NATIVE_WINDOW:
 			if (0 == err)
-				err = EINVAL;
+				err = LINTED_ERROR_INVALID_PARAMETER;
 			break;
 
 		case EGL_BAD_ALLOC:
 			if (0 == err)
-				err = ENOMEM;
+				err = LINTED_ERROR_OUT_OF_MEMORY;
 			break;
 		}
 	}
@@ -791,7 +786,7 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 		fragment_is_valid = xx;
 	}
 	if (!fragment_is_valid) {
-		err = EINVAL;
+		err = LINTED_ERROR_INVALID_PARAMETER;
 
 		size_t info_log_length;
 		{
@@ -838,7 +833,7 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 		vertex_is_valid = xx;
 	}
 	if (!vertex_is_valid) {
-		err = EINVAL;
+		err = LINTED_ERROR_INVALID_PARAMETER;
 
 		size_t info_log_length = 0;
 		{
@@ -876,7 +871,7 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 		program_is_valid = xx;
 	}
 	if (!program_is_valid) {
-		err = EINVAL;
+		err = LINTED_ERROR_INVALID_PARAMETER;
 
 		size_t info_log_length;
 		{
@@ -918,21 +913,21 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 	GLint maybe_mvp_matrix = glGetUniformLocation(
 	    program, "model_view_projection_matrix");
 	if (-1 == maybe_mvp_matrix) {
-		err = EINVAL;
+		err = LINTED_ERROR_INVALID_PARAMETER;
 		goto cleanup_buffers;
 	}
 	GLuint mvp_matrix = maybe_mvp_matrix;
 
 	GLint maybe_vertex = glGetAttribLocation(program, "vertex");
 	if (maybe_vertex < 0) {
-		err = EINVAL;
+		err = LINTED_ERROR_INVALID_PARAMETER;
 		goto cleanup_buffers;
 	}
 	GLuint vertex = maybe_vertex;
 
 	GLint maybe_normal = glGetAttribLocation(program, "normal");
 	if (maybe_normal < 0) {
-		err = EINVAL;
+		err = LINTED_ERROR_INVALID_PARAMETER;
 		goto cleanup_buffers;
 	}
 	GLuint normal = maybe_normal;
@@ -1103,7 +1098,7 @@ static linted_error get_gl_error(void)
 
 	/* Runtime error */
 	if (out_of_memory)
-		return ENOMEM;
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
 	return 0;
 }

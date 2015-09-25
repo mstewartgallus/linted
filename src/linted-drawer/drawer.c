@@ -104,7 +104,7 @@ static unsigned char linted_start_main(char const *process_name,
 	linted_error err = 0;
 
 	if (argc < 4U)
-		return EINVAL;
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	char const *window_path = argv[1U];
 	char const *notifier_path = argv[2U];

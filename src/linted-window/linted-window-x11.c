@@ -207,13 +207,11 @@ stop_pool:
 
 	window_destroy(&window_obj);
 
-destroy_pool:
-	{
-		linted_error destroy_err =
-		    linted_async_pool_destroy(pool);
-		if (0 == err)
-			err = destroy_err;
-	}
+destroy_pool : {
+	linted_error destroy_err = linted_async_pool_destroy(pool);
+	if (0 == err)
+		err = destroy_err;
+}
 	if (0 == err) {
 		/* Wait for the manager to exit everything */
 		for (;;)
