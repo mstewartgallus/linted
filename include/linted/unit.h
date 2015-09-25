@@ -92,7 +92,14 @@ struct linted_unit_service {
 
 	int priority;
 
+	int limit_no_file;
+	int limit_msgqueue;
+	int limit_locks;
+
 	_Bool has_priority : 1U;
+	_Bool has_limit_no_file : 1U;
+	_Bool has_limit_msgqueue : 1U;
+	_Bool has_limit_locks : 1U;
 
 	_Bool clone_newuser : 1U;
 	_Bool clone_newpid : 1U;

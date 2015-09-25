@@ -883,6 +883,16 @@ static linted_error service_create(struct linted_unit_service *unit,
 
 	unit->exec_start = exec_start;
 	unit->no_new_privs = no_new_privs_value;
+
+	unit->limit_no_file = 15;
+	unit->has_limit_no_file = no_new_privs_value;
+
+	unit->limit_msgqueue = 0;
+	unit->has_limit_msgqueue = no_new_privs_value;
+
+	unit->limit_locks = 0;
+	unit->has_limit_locks = no_new_privs_value;
+
 	unit->fstab = fstab;
 	unit->chdir_path = chdir_path;
 	unit->env_whitelist = env_whitelist;
@@ -1088,6 +1098,9 @@ spawn_service:
 	char const *waiter = unit_service->waiter;
 
 	bool has_priority = unit_service->has_priority;
+	bool has_limit_no_file = unit_service->has_limit_no_file;
+	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
+	bool has_limit_locks = unit_service->has_limit_locks;
 
 	bool clone_newuser = unit_service->clone_newuser;
 	bool clone_newpid = unit_service->clone_newpid;
@@ -1099,6 +1112,18 @@ spawn_service:
 	linted_sched_priority priority;
 	if (has_priority)
 		priority = unit_service->priority;
+
+	int limit_no_file;
+	if (has_limit_no_file)
+		limit_no_file = unit_service->limit_no_file;
+
+	int limit_msgqueue;
+	if (has_limit_msgqueue)
+		limit_msgqueue = unit_service->limit_msgqueue;
+
+	int limit_locks;
+	if (has_limit_locks)
+		limit_locks = unit_service->limit_locks;
 
 	if (fstab != 0) {
 		linted_ko name_dir;
@@ -1125,6 +1150,36 @@ spawn_service:
 
 	bool drop_caps = true;
 
+	char *limit_no_file_str = 0;
+	if (has_limit_no_file) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)limit_no_file);
+		if (err != 0)
+			return err;
+		limit_no_file_str = xx;
+	}
+
+	char *limit_msgqueue_str = 0;
+	if (has_limit_msgqueue) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)limit_msgqueue);
+		if (err != 0)
+			goto free_no_file_str;
+		limit_msgqueue_str = xx;
+	}
+	
+	char *limit_locks_str = 0;
+	if (has_limit_locks) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)limit_locks);
+		if (err != 0)
+			goto free_limit_msgqueue_str;
+		limit_locks_str = xx;
+	}
+
 	/* Favor other processes over this process hierarchy.  Only
 	 * superuser may lower priorities so this is not
 	 * stoppable. This also makes the process hierarchy nicer for
@@ -1136,7 +1191,7 @@ spawn_service:
 		err = linted_str_format(&xx, "%" PRIiMAX,
 		                        (intmax_t)priority);
 		if (err != 0)
-			return err;
+			goto free_limit_locks_str;
 		prio_str = xx;
 	}
 
@@ -1210,6 +1265,9 @@ envvar_allocate_succeeded:
 		    {"--chrootdir", chrootdir, fstab != 0},
 		    {"--fstab", fstab, fstab != 0},
 		    {"--nonewprivs", 0, no_new_privs},
+		    {"--limit-no-file", limit_no_file_str, has_limit_no_file},
+		    {"--limit-msgqueue", limit_msgqueue_str, has_limit_msgqueue},
+		    {"--limit-locks", limit_locks_str, has_limit_locks},
 		    {"--dropcaps", 0, drop_caps},
 		    {"--chdir", chdir_path, chdir_path != 0},
 		    {"--priority", prio_str, true},
@@ -1295,6 +1353,15 @@ free_chrootdir:
 
 free_prio_str:
 	linted_mem_free(prio_str);
+
+free_limit_locks_str:
+	linted_mem_free(limit_locks_str);
+
+free_limit_msgqueue_str:
+	linted_mem_free(limit_msgqueue_str);
+
+free_no_file_str:
+	linted_mem_free(limit_no_file_str);
 
 	return err;
 }

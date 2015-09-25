@@ -82,6 +82,10 @@ enum { STOP_OPTIONS,
        TRACEME,
        DROP_CAPS,
        NO_NEW_PRIVS,
+       RLIMIT,
+       LIMIT_NO_FILE,
+       LIMIT_LOCKS,
+       LIMIT_MSGQUEUE,
        CHDIR,
        PRIORITY,
        CHROOTDIR,
@@ -107,11 +111,6 @@ struct mount_args {
 	bool nomount_flag : 1U;
 };
 
-struct rlimit_arg {
-	struct rlimit limit;
-	int resource;
-};
-
 static struct sock_fprog const default_filter;
 
 static char const *const argstrs[] = {
@@ -122,6 +121,10 @@ static char const *const argstrs[] = {
         /**/ [TRACEME] = "--traceme",
         /**/ [DROP_CAPS] = "--dropcaps",
         /**/ [NO_NEW_PRIVS] = "--nonewprivs",
+        /**/ [RLIMIT] = "--rlimit",
+        /**/ [LIMIT_NO_FILE] = "--limit-no-file",
+        /**/ [LIMIT_LOCKS] = "--limit-locks",
+        /**/ [LIMIT_MSGQUEUE] = "--limit-msgqueue",
         /**/ [CHDIR] = "--chdir",
         /**/ [PRIORITY] = "--priority",
         /**/ [CHROOTDIR] = "--chrootdir",
@@ -136,8 +139,7 @@ static char const *const argstrs[] = {
 
 struct first_fork_args {
 	char const *chdir_path;
-	struct rlimit_arg const *rlimit_args;
-	size_t rlimit_args_size;
+	int limit_no_file;
 	cap_t caps;
 	struct mount_args *mount_args;
 	size_t mount_args_size;
@@ -154,19 +156,11 @@ struct first_fork_args {
 struct second_fork_args {
 	char const *const *argv;
 	char const *binary;
-	struct rlimit_arg const *rlimit_args;
-	size_t rlimit_args_size;
+	int limit_no_file;
 	linted_ko err_writer;
 	linted_ko logger_writer;
 	bool use_seccomp : 1U;
 };
-
-static struct rlimit_arg const default_rlimit_args[] = {
-    {.resource = RLIMIT_NOFILE,
-     .limit = {.rlim_cur = 15, .rlim_max = 15}},
-    {.resource = RLIMIT_LOCKS, .limit = {.rlim_cur = 0, .rlim_max = 0}},
-    {.resource = RLIMIT_MSGQUEUE,
-     .limit = {.rlim_cur = 0, .rlim_max = 0}}};
 
 static int first_fork_routine(void *arg);
 static int second_fork_routine(void *arg);
@@ -222,6 +216,9 @@ static unsigned char linted_start_main(char const *const process_name,
 
 	char const *chdir_path = 0;
 	char const *priority = 0;
+	char const *limit_no_file = 0;
+	char const *limit_locks = 0;
+	char const *limit_msgqueue = 0;
 	char const *chrootdir = 0;
 	char const *fstab = 0;
 	char const *waiter = 0;
@@ -268,6 +265,27 @@ static unsigned char linted_start_main(char const *const process_name,
 
 		case NO_NEW_PRIVS:
 			no_new_privs = true;
+			break;
+
+		case LIMIT_NO_FILE:
+			++ii;
+			if (ii >= arguments_length)
+				goto exit_loop;
+			limit_no_file = argv[ii];
+			break;
+
+		case LIMIT_LOCKS:
+			++ii;
+			if (ii >= arguments_length)
+				goto exit_loop;
+			limit_locks = argv[ii];
+			break;
+
+		case LIMIT_MSGQUEUE:
+			++ii;
+			if (ii >= arguments_length)
+				goto exit_loop;
+			limit_msgqueue = argv[ii];
 			break;
 
 		case DROP_CAPS:
@@ -424,6 +442,42 @@ exit_loop:
 			return EXIT_FAILURE;
 		}
 		prio_val = xx;
+	}
+
+	int limit_no_file_val = -1;
+	if (limit_no_file != 0) {
+		int xx;
+		err = parse_int(limit_no_file, &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		limit_no_file_val = xx;
+	}
+
+	int limit_locks_val = -1;
+	if (limit_locks != 0) {
+		int xx;
+		err = parse_int(limit_locks, &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		limit_locks_val = xx;
+	}
+
+	int limit_msgqueue_val = -1;
+	if (limit_msgqueue != 0) {
+		int xx;
+		err = parse_int(limit_msgqueue, &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		limit_msgqueue_val = xx;
 	}
 
 	size_t mount_args_size = 0U;
@@ -796,13 +850,37 @@ exit_loop:
 		}
 	}
 
+	if (limit_locks_val >= 0) {
+		struct rlimit const lim = {
+			.rlim_cur = limit_locks_val,
+			.rlim_max = limit_locks_val,
+		};
+
+		if (-1 == setrlimit(RLIMIT_LOCKS, &lim)) {
+			linted_log(RLIMIT_LOCKS, "setrlimit: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (limit_msgqueue_val >= 0) {
+		struct rlimit const lim = {
+			.rlim_cur = limit_msgqueue_val,
+			.rlim_max = limit_msgqueue_val,
+		};
+
+		if (-1 == setrlimit(RLIMIT_MSGQUEUE, &lim)) {
+			linted_log(RLIMIT_MSGQUEUE, "setrlimit: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
 	pid_t child;
 	{
 		struct first_fork_args args = {
 		    .err_writer = err_writer,
-		    .rlimit_args = default_rlimit_args,
-		    .rlimit_args_size =
-		        LINTED_ARRAY_SIZE(default_rlimit_args),
+		    .limit_no_file = limit_no_file_val,
 		    .logger_reader = logger_reader,
 		    .logger_writer = logger_writer,
 		    .chdir_path = chdir_path,
@@ -949,9 +1027,7 @@ first_fork_routine(void *void_args)
 
 	struct first_fork_args const *first_fork_args = void_args;
 
-	struct rlimit_arg const *rlimit_args =
-	    first_fork_args->rlimit_args;
-	size_t rlimit_args_size = first_fork_args->rlimit_args_size;
+	int limit_no_file = first_fork_args->limit_no_file;
 	linted_ko err_writer = first_fork_args->err_writer;
 	linted_ko logger_reader = first_fork_args->logger_reader;
 	linted_ko logger_writer = first_fork_args->logger_writer;
@@ -1041,9 +1117,7 @@ first_fork_routine(void *void_args)
 
 	pid_t grand_child;
 	struct second_fork_args args = {.err_writer = vfork_err_writer,
-	                                .rlimit_args = rlimit_args,
-	                                .rlimit_args_size =
-	                                    rlimit_args_size,
+					.limit_no_file = limit_no_file,
 	                                .logger_writer = logger_writer,
 	                                .binary = binary,
 	                                .argv = command,
@@ -1100,13 +1174,11 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 
 	struct second_fork_args const *args = arg;
 
-	struct rlimit_arg const *rlimit_args = args->rlimit_args;
-	size_t rlimit_args_size = args->rlimit_args_size;
+	int limit_no_file = args->limit_no_file;
 	linted_ko err_writer = args->err_writer;
 	linted_ko logger_writer = args->logger_writer;
 	char const *const *argv = args->argv;
 	bool use_seccomp = args->use_seccomp;
-
 	char const *binary = args->binary;
 
 	err = safe_dup2(logger_writer, LINTED_KO_STDOUT);
@@ -1117,11 +1189,13 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	if (err != 0)
 		goto fail;
 
-	for (size_t ii = 0U; ii < rlimit_args_size; ++ii) {
-		struct rlimit_arg const *rlimit_arg = &rlimit_args[ii];
+	if (limit_no_file >= 0) {
+		struct rlimit const lim = {
+			.rlim_cur = limit_no_file,
+			.rlim_max = limit_no_file,
+		};
 
-		if (-1 == setrlimit(rlimit_arg->resource,
-		                    &rlimit_arg->limit)) {
+		if (-1 == setrlimit(RLIMIT_NOFILE, &lim)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
 
