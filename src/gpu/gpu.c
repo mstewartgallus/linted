@@ -55,8 +55,6 @@ struct linted_gpu_context {
 
 	GLuint model_view_projection_matrix;
 
-	GLsync sync;
-
 	bool has_window : 1U;
 	bool has_egl_surface : 1U;
 	bool has_egl_context : 1U;
@@ -229,7 +227,6 @@ choose_config_succeeded:
 	gpu_context->display = display;
 	gpu_context->config = config;
 	gpu_context->surface = EGL_NO_SURFACE;
-	gpu_context->sync = 0;
 	gpu_context->buffer_commands = true;
 
 	gpu_context->has_window = false;
@@ -387,34 +384,8 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 	if (buffer_commands) {
 		real_draw(gpu_context);
 
-		GLsync sync = gpu_context->sync;
-		if (sync != 0)
-			glDeleteSync(sync);
-
-		sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-		if (0 == sync)
-			return get_gl_error();
-
-		gpu_context->sync = sync;
 		gpu_context->buffer_commands = false;
 	} else {
-		GLsync sync = gpu_context->sync;
-
-		if (sync != 0) {
-			switch (glClientWaitSync(
-			    sync, GL_SYNC_FLUSH_COMMANDS_BIT, 0)) {
-			case GL_TIMEOUT_EXPIRED:
-				return 0;
-
-			case GL_ALREADY_SIGNALED:
-			case GL_CONDITION_SATISFIED:
-				break;
-
-			default:
-				return get_gl_error();
-			}
-		}
-
 		EGLDisplay display = gpu_context->display;
 		EGLSurface surface = gpu_context->surface;
 
@@ -1009,7 +980,6 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 	gpu_context->normal_buffer = normal_buffer;
 	gpu_context->index_buffer = index_buffer;
 	gpu_context->model_view_projection_matrix = mvp_matrix;
-	gpu_context->sync = 0;
 	gpu_context->buffer_commands = true;
 
 	gpu_context->update_pending = true;
