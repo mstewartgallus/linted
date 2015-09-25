@@ -36,22 +36,7 @@ static linted_error valloc_sprintf(char **strbp, size_t *sizep,
 
 linted_error linted_str_dup(char **resultp, char const *input)
 {
-	char *result;
-
-#if defined HAVE_WINDOWS_API
-	result = _strdup(input);
-#else
-	result = strdup(input);
-#endif
-
-	if (0 == result) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	*resultp = result;
-	return 0;
+	return linted_str_dup_len(resultp, input, SIZE_MAX);
 }
 
 #if defined HAVE_WINDOWS_API
@@ -150,15 +135,11 @@ linted_error linted_str_format(char **strp, char const *format, ...)
 	va_list ap;
 	va_start(ap, format);
 
-	if (-1 == vasprintf(strp, format, ap)) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
-		return 0;
-	}
+	linted_error err = valloc_sprintf(strp, 0, format, ap);
 
 	va_end(ap);
 
-	return 0;
+	return err;
 }
 
 linted_error linted_str_append_format(char **bufp, size_t *capp,
@@ -205,7 +186,14 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep,
 	va_list ap_copy;
 	va_copy(ap_copy, ap);
 
-	int bytes_should_write = vsnprintf(0, 0, fmt, ap);
+	int bytes_should_write;
+
+#if defined HAVE_WINDOWS_API
+	bytes_should_write  = vsprintf_s(0, 0, fmt, ap);
+#else
+	bytes_should_write  = vsnprintf(0, 0, fmt, ap);
+#endif
+
 	if (bytes_should_write < 0) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
@@ -224,7 +212,14 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep,
 			string = xx;
 		}
 
-		if (vsnprintf(string, string_size, fmt, ap_copy) < 0) {
+		int res;
+
+#if defined HAVE_WINDOWS_API
+		res = vsprintf_s(string, string_size, fmt, ap_copy);
+#else
+		res = vsnprintf(string, string_size, fmt, ap_copy);
+#endif
+		if (res < 0) {
 			linted_mem_free(string);
 
 			err = errno;
@@ -232,7 +227,8 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep,
 			goto free_ap_copy;
 		}
 
-		*sizep = string_size;
+		if (sizep != 0)
+			*sizep = (unsigned)bytes_should_write;
 		*strp = string;
 	}
 
