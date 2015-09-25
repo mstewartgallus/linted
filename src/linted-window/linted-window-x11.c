@@ -683,7 +683,7 @@ static linted_error window_destroy(struct window *window)
 
 	linted_ko_close(kill_ko);
 
-	return 0;
+	return err;
 }
 
 static linted_error window_stop(struct window *window)

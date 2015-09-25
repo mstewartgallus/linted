@@ -17,6 +17,8 @@
 #error this header should never be included directly
 #endif
 
+/* IWYU pragma: private, include "linted/ko.h" */
+
 typedef unsigned linted_ko;
 
 #define LINTED_KO_CWD ((linted_ko)-1)

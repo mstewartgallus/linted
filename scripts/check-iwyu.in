@@ -15,7 +15,7 @@ go() {
 
     for BINARY in $(make -s list-programs)
     do
-        "${SCRIPTS}/check-iwyu.py" "${BINARY}" & :
+        "${SCRIPTS}/check-iwyu.py" -- "${BINARY}" & :
     done
     wait
 }

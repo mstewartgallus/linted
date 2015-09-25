@@ -62,4 +62,49 @@
  *
  * - Toolchain hardening:
  *   - stack smashing protection with -fstack-protector-all
+ *
+ * @section formal-methods Formal Methods
+ *
+ * The process of proving properties of a program using formal methods
+ * generally consists of three parts:
+ * - program specification
+ * - desired property or theorem specification
+ * - proof that the program specification satisfies the theorem.
+ *
+ * @subsection program-specification Program Specification
+ *
+ * Before one can prove properties of a program one must define it in a formal
+ * and unambiguous way.
+ *
+ * There are three common approaches to creating a formal specification of a
+ * program:
+ * - Automatic extraction of the program from the program specification.
+ * - Automatic extraction of the specification from the program.
+ * - Manual specification creation and manual verification that the
+ *   specification matches the program code.
+ *
+ * @subsection theorem-specification Theorem Specification
+ *
+ * Before one can prove properties of a program one must first define those
+ * properties and the theorems one wants to prove in a formal and unambiguous
+ * way.  Too many people gloss over and forget about this step.  One should
+ * make sure that one is actually verifying the properties that one thinks one
+ * is.
+ *
+ * @subsection theorem-proof Theorem Proof
+ *
+ * Finally, one must actually prove the theorems or theorem one wants to prove.
+ *
+ * There are four common approaches to proving program theorems:
+ *
+ * - Automatic proof by way of abstract interpretation.
+ * - Automatic proof by way of model checking.
+ * - Manual proof generation and automatic checking.
+ * - Manual proof generation and manual proof checking.
+ *
+ * @subsection analysis Analysis
+ *
+ * There are many, many, many tools for automatic theorem proving.  There do
+ * not seem to be any production ready tools for automatic program
+ * specification.  Manual program specification is far too fragile.
  */

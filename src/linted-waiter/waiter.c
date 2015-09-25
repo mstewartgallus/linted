@@ -66,6 +66,12 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 	if (service != 0) {
 		err = linted_prctl_set_name(service);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_prctl_set_name: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
 		linted_mem_free(service);
 	}
 

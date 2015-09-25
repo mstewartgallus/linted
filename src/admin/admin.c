@@ -19,6 +19,7 @@
 
 #include "linted/admin.h"
 
+#include "linted/async.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"

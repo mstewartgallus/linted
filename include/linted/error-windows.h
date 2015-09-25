@@ -17,6 +17,8 @@
 #error this header should never be included directly
 #endif
 
+/* IWYU pragma: private, include "linted/error.h" */
+
 #include <stdint.h>
 
 #include <ntdef.h>

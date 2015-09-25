@@ -17,6 +17,8 @@
 #error this header should never be included directly
 #endif
 
+/* IWYU pragma: private, include "linted/ko.h" */
+
 /* Use a fake type to give a little more type safety. */
 struct linted_ko_;
 

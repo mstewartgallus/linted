@@ -35,7 +35,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 static uint_fast8_t run_status(char const *process_name, size_t argc,

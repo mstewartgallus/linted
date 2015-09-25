@@ -20,10 +20,8 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/str.h"
-#include "linted/util.h"
 
 #include <errno.h>
-#include <stdio.h>
 
 linted_error linted_path_package_runtime_dir(char **packagep)
 {
