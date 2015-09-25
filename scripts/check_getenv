@@ -1,0 +1,36 @@
+#! /usr/bin/env sh
+# Copyright (C) 2015 Steven Stewart-Gallus
+#
+# Copying and distribution of this file, with or without modification,
+# are permitted in any medium without royalty provided the copyright
+# notice and this notice are preserved.
+
+set -e
+set -C
+set -u
+
+{
+	while test "$#" -ne 0
+	do
+		ldd "$1" | cut -f3 -d' ' | tail -n +2
+		printf -- '%s\n' "$1"
+		shift
+	done
+} | {
+	while read REPLY
+	do
+		if test -z "${REPLY}"
+		then
+			continue
+		fi
+
+ 		if VALUE="$(objdump -d "${REPLY}" | grep -B 3 -e '<getenv@plt>$')"
+		then
+			:
+		else
+			continue
+		fi
+
+		printf -- '%s: %s\n' "${REPLY}" "${VALUE}"
+	done
+}

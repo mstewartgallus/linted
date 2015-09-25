@@ -27,6 +27,7 @@ WorkingDirectory=/var
 X-LintedEnvironmentWhitelist=LINTED_GUI
 
 X-LintedEnvironmentWhitelist=DISPLAY
+X-LintedEnvironmentWhitelist=XAUTHORITY
 
 X-LintedEnvironmentWhitelist=XKB_LOG_LEVEL
 X-LintedEnvironmentWhitelist=XKB_LOG_VERBOSITY
@@ -35,4 +36,3 @@ X-LintedEnvironmentWhitelist=XKB_DEFAULT_MODEL
 X-LintedEnvironmentWhitelist=XKB_DEFAULT_LAYOUT
 X-LintedEnvironmentWhitelist=XKB_DEFAULT_VARIANT
 X-LintedEnvironmentWhitelist=XKB_DEFAULT_OPTIONS
-

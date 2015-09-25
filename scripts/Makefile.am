@@ -22,6 +22,8 @@ EXTRA_DIST+=\
   %D%/json-cc-files.py\
   %D%/json-cc-flags.py\
   %D%/json-cc.py\
+  %D%/check_getenv\
+  %D%/check_symbol_clashes\
   %D%/setsysroot
 
 EXTRA_DIST+=\

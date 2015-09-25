@@ -40,6 +40,10 @@ dnl
                              dnl and prevents symbol conflicts
         [-Bsymbolic]dnl Also gets around some more redirections
 dnl
+dnl     This is useful because combined with gc sections it can result in
+dnl     omitting dependencies
+        [-ffunction-sections]dnl
+dnl
         [-flto]dnl
 ])
 AC_SUBST([linted_CFLAGS_OPTIMIZE])

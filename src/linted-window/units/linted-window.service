@@ -27,3 +27,4 @@ WorkingDirectory=/var
 X-LintedEnvironmentWhitelist=LINTED_WINDOW
 
 X-LintedEnvironmentWhitelist=DISPLAY
+X-LintedEnvironmentWhitelist=XAUTHORITY
