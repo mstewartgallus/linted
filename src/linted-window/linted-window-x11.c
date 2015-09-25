@@ -150,7 +150,7 @@ static unsigned char linted_start_main(char const *process_name,
 	                  gui_notifier_path, drawer_notifier_path,
 	                  root_pid);
 	if (err != 0)
-		goto destroy_window;
+		goto destroy_pool;
 
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
@@ -205,9 +205,9 @@ stop_pool:
 		}
 	}
 
-destroy_window:
 	window_destroy(&window_obj);
 
+destroy_pool:
 	{
 		linted_error destroy_err =
 		    linted_async_pool_destroy(pool);
@@ -438,7 +438,6 @@ window_init(struct window *window, struct linted_async_pool *pool,
 	err = linted_xcb_conn_error(connection);
 	if (err != 0)
 		goto destroy_window;
-
 	if (change_err != 0) {
 		err = linted_xcb_error(change_err);
 		linted_mem_free(change_err);
