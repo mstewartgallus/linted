@@ -189,9 +189,9 @@ static linted_error valloc_sprintf(char **strp, size_t *sizep,
 	int bytes_should_write;
 
 #if defined HAVE_WINDOWS_API
-	bytes_should_write  = vsprintf_s(0, 0, fmt, ap);
+	bytes_should_write = vsprintf_s(0, 0, fmt, ap);
 #else
-	bytes_should_write  = vsnprintf(0, 0, fmt, ap);
+	bytes_should_write = vsnprintf(0, 0, fmt, ap);
 #endif
 
 	if (bytes_should_write < 0) {

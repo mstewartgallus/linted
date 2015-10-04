@@ -15,7 +15,7 @@
  */
 #version 300 es
 
-precision lowp float;
+precision highp float;
 
 const vec3 light_location = vec3(-0.5, 1.0, 0.0);
 const vec3 colour = vec3(1.0, 0.9, 1.0);

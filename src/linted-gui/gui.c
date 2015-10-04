@@ -29,7 +29,6 @@
 #include "linted/window.h"
 #include "linted/xcb.h"
 
-#include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -893,12 +892,6 @@ gui_on_sent_controller_state(struct gui *gui,
 	linted_error err;
 
 	err = linted_async_task_err(task);
-	if (ENOENT == err)
-		err = 0;
-	if (ECONNREFUSED == err)
-		err = 0;
-	if (err != 0)
-		return err;
 
 	gui->update_in_progress = false;
 

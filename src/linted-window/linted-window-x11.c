@@ -80,8 +80,6 @@ struct window {
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-window", 0};
 
-static uint32_t const window_opts[] = {0};
-
 static unsigned char linted_start_main(char const *process_name,
                                        size_t argc,
                                        char const *const argv[])
@@ -344,10 +342,20 @@ window_init(struct window *window, struct linted_async_pool *pool,
 	if (err != 0)
 		goto close_display;
 
-	xcb_void_cookie_t create_win_ck = xcb_create_window_checked(
-	    connection, XCB_COPY_FROM_PARENT, window_id, screen->root,
-	    0, 0, 640, 480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
-	    screen->root_visual, 0, window_opts);
+	xcb_void_cookie_t create_win_ck;
+	{
+		uint32_t value_mask =
+		    XCB_CW_BACK_PIXMAP | XCB_CW_BACKING_STORE;
+		uint32_t const window_opts[] = {
+		    XCB_BACK_PIXMAP_NONE,
+		    XCB_BACKING_STORE_WHEN_MAPPED};
+
+		create_win_ck = xcb_create_window_checked(
+		    connection, XCB_COPY_FROM_PARENT, window_id,
+		    screen->root, 0, 0, 640, 480, 0,
+		    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
+		    value_mask, window_opts);
+	}
 	err = linted_xcb_conn_error(connection);
 	if (err != 0)
 		goto close_display;

@@ -1992,7 +1992,7 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		err = linted_ko_open(&xx, cwd, dir_name,
 		                     LINTED_KO_DIRECTORY);
 		/* Just treat as an empty directory */
-		if (ENOENT == err)
+		if (LINTED_ERROR_FILE_NOT_FOUND == err)
 			return 0;
 		if (err != 0)
 			return err;
@@ -2007,7 +2007,7 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 		linted_ko_close(units_ko);
 	}
 
-	if (ENOENT == err)
+	if (LINTED_ERROR_FILE_NOT_FOUND == err)
 		return 0;
 
 	if (err != 0)

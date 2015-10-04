@@ -161,7 +161,7 @@ linted_unit_name(linted_pid pid,
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
 		                     LINTED_KO_RDONLY);
-		if (ENOENT == err)
+		if (LINTED_ERROR_FILE_NOT_FOUND == err)
 			return ESRCH;
 		if (err != 0)
 			return err;

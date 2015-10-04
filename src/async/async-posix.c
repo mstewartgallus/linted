@@ -870,7 +870,7 @@ static linted_error
 do_task_for_event(struct linted_async_pool *async_pool,
                   struct linted_async_waiter *waiter, uint32_t revents);
 static linted_error recv_waiters(struct linted_async_pool *async_pool,
-                                 linted_ko epoll_ko,
+                                 pthread_t self, linted_ko epoll_ko,
                                  struct linted_async_waiter **waiters,
                                  struct waiter_queue *waiter_queue,
                                  size_t max_tasks, uint32_t revents);
@@ -986,6 +986,8 @@ static void *master_poller_routine(void *arg)
 {
 	LINTED_ASSERT(arg != 0);
 
+	pthread_t self = pthread_self();
+
 	set_thread_name("async-poller-master");
 
 	struct wait_manager *pool = arg;
@@ -1062,7 +1064,7 @@ static void *master_poller_routine(void *arg)
 				continue;
 			}
 
-			err = recv_waiters(async_pool, epoll_ko,
+			err = recv_waiters(async_pool, self, epoll_ko,
 			                   waiters, waiter_queue,
 			                   max_tasks, revents);
 			if (ECANCELED == err) {
@@ -1078,8 +1080,6 @@ static void *master_poller_routine(void *arg)
 				continue;
 
 			struct linted_async_task *task = waiter->task;
-
-			pthread_t self = pthread_self();
 
 			if (!canceller_check_or_register(
 			        &task->canceller, self))
@@ -1100,7 +1100,7 @@ exit_mainloop:
 }
 
 static linted_error recv_waiters(struct linted_async_pool *async_pool,
-                                 linted_ko epoll_ko,
+                                 pthread_t self, linted_ko epoll_ko,
                                  struct linted_async_waiter **waiters,
                                  struct waiter_queue *waiter_queue,
                                  size_t max_tasks, uint32_t revents)
@@ -1148,7 +1148,6 @@ static linted_error recv_waiters(struct linted_async_pool *async_pool,
 		struct linted_async_task *task = waiter->task;
 		uint32_t flags = waiter->flags;
 
-		pthread_t self = pthread_self();
 		if (canceller_check_or_register(&task->canceller,
 		                                self)) {
 			err = LINTED_ERROR_CANCELLED;

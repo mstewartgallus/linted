@@ -482,10 +482,6 @@ static linted_error sim_on_update(struct simulator *simulator,
 	linted_error err;
 
 	err = linted_async_task_err(task);
-	if (ENOENT == err)
-		err = 0;
-	if (ECONNREFUSED == err)
-		err = 0;
 	if (err != 0)
 		return err;
 

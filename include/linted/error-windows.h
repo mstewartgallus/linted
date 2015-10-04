@@ -40,3 +40,5 @@ typedef int_fast32_t linted_error;
 	__HRESULT_FROM_WIN32(ERROR_NOT_ENOUGH_MEMORY)
 #define LINTED_ERROR_PERMISSION                                        \
 	__HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)
+#define LINTED_ERROR_FILE_NOT_FOUND                                    \
+	__HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)
