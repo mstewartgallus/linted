@@ -42,7 +42,7 @@ static void on_sigchld(int signo);
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-waiter",
     .dont_init_signals = true,
-    0};
+    .dont_fork_thread = true};
 
 static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 

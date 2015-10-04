@@ -25,6 +25,7 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
+#include "linted/mem.h"
 #include "linted/signal.h"
 #include "linted/str.h"
 #include "linted/util.h"
@@ -32,18 +33,30 @@
 #include <errno.h>
 #include <libgen.h>
 #include <locale.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
+struct start_args {
+	pthread_t parent;
+	unsigned char (*start)(char const *process_name, size_t argc,
+	                       char const *const argv[]);
+	char const *process_basename;
+	size_t argc;
+	char const *const *argv;
+};
+
+static void *start_routine(void *arg);
 static void do_nothing(int signo);
 
 int linted_start__main(struct linted_start_config const *config,
-                       char const **_process_namep, size_t *_argcp,
-                       char const *const **_argvp, int argc,
-                       char *argv[])
+                       unsigned char (*start)(char const *process_name,
+                                              size_t argc,
+                                              char const *const argv[]),
+                       int argc, char **argv)
 {
 	linted_error err = 0;
 
@@ -134,10 +147,72 @@ int linted_start__main(struct linted_start_config const *config,
 
 	tzset();
 
-	*_process_namep = process_basename;
-	*_argcp = argc;
-	*_argvp = (char const *const *)argv;
-	return EXIT_SUCCESS;
+	struct start_args *start_args;
+	{
+		void *xx;
+		err = linted_mem_alloc(&xx, sizeof *start_args);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_mem_alloc: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		start_args = xx;
+	}
+	start_args->parent = pthread_self();
+	start_args->start = start;
+	start_args->process_basename = process_basename;
+	start_args->argc = argc;
+	start_args->argv = (char const *const *)argv;
+
+	if (config->dont_fork_thread)
+		return start(process_basename, argc,
+		             (char const *const *)argv);
+
+	pthread_t child;
+	{
+		pthread_t xx;
+		err = pthread_create(&xx, 0, start_routine, start_args);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "pthread_create: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		child = xx;
+	}
+
+	err = pthread_detach(child);
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR, "pthread_detach: %s",
+		           linted_error_string(err));
+		return EXIT_FAILURE;
+	}
+
+	pthread_exit(0);
+}
+
+static void *start_routine(void *foo)
+{
+	struct start_args *args = foo;
+
+	pthread_t parent = args->parent;
+	unsigned char (*start)(char const *process_name, size_t argc,
+	                       char const *const argv[]) = args->start;
+	char const *process_basename = args->process_basename;
+	size_t argc = args->argc;
+	char const *const *argv = args->argv;
+
+	free(args);
+
+	int err = pthread_join(parent, 0);
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR, "pthread_join: %s",
+		           linted_error_string(err));
+		exit(EXIT_FAILURE);
+	}
+
+	exit(start(process_basename, argc, argv));
 }
 
 static void do_nothing(int signo)

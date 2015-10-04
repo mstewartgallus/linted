@@ -41,7 +41,7 @@ static void delegate_signal(int signo);
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
     .dont_init_signals = true,
-    0};
+    .dont_fork_thread = true};
 
 static volatile sig_atomic_t monitor_pid = 0;
 

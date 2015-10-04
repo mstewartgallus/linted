@@ -172,7 +172,8 @@ static linted_error pid_is_child_of(linted_pid parent, linted_pid child,
                                     bool *isp);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-monitor", 0};
+    .canonical_process_name = PACKAGE_NAME "-monitor",
+    .dont_fork_thread = true};
 
 static char const *const default_envvars[] = {
     "MALLOC_CHECK_", "MALLOC_PERTURB_", "MANAGERPID", "USER", "LOGNAME",
