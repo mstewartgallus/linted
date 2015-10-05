@@ -69,6 +69,21 @@ static inline linted_error linted_ptrace_geteventmsg(linted_pid pid,
 	return 0;
 }
 
+static inline linted_error linted_ptrace_getsiginfo(linted_pid pid,
+                                                    siginfo_t *infop)
+{
+	linted_error err;
+
+	if (-1 ==
+	    ptrace(PTRACE_GETSIGINFO, (pid_t)pid, (void *)0, infop)) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+
+	return 0;
+}
+
 static inline linted_error linted_ptrace_seize(linted_pid pid,
                                                uint_fast32_t options)
 {

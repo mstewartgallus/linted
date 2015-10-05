@@ -1713,6 +1713,44 @@ static linted_error on_child_stopped(char const *process_name,
 static linted_error on_child_signaled(char const *process_name,
                                       linted_pid pid, int signo)
 {
+	linted_error err = 0;
+
+	if (signo != SIGCHLD)
+		goto continue_process;
+
+	siginfo_t info = {0};
+	err = linted_ptrace_getsiginfo(pid, &info);
+	if (err != 0)
+		return err;
+
+	int child_code = info.si_code;
+	if (child_code != CLD_EXITED)
+		goto continue_process;
+
+	linted_pid child_pid = info.si_pid;
+	int child_signo = info.si_signo;
+	int child_status = info.si_status;
+	int child_errno = info.si_errno;
+	uid_t child_uid = info.si_uid;
+	clock_t child_utime = info.si_utime;
+	clock_t child_stime = info.si_stime;
+
+	linted_io_write_format(
+	    LINTED_KO_STDERR, 0, "signal!\n"
+	                         "\tsigno: %s\n"
+	                         "\terrno: %" PRIuMAX "\n"
+	                         "\tcode: %" PRIuMAX "\n"
+	                         "\tpid: %" PRIuMAX "\n"
+	                         "\tuid: %" PRIuMAX "\n"
+	                         "\tstatus: %" PRIuMAX "\n"
+	                         "\tutime: %" PRIuMAX "\n"
+	                         "\tstime: %" PRIuMAX "\n",
+	    linted_signal_string(child_signo), (uintmax_t)child_errno,
+	    (uintmax_t)child_code, (uintmax_t)child_pid,
+	    (uintmax_t)child_uid, (uintmax_t)child_status,
+	    (uintmax_t)child_utime, (uintmax_t)child_stime);
+
+continue_process:
 	return linted_ptrace_cont(pid, signo);
 }
 
