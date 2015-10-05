@@ -1724,8 +1724,26 @@ static linted_error on_child_signaled(char const *process_name,
 		return err;
 
 	int child_code = info.si_code;
-	if (child_code != CLD_EXITED)
-		goto continue_process;
+	char const *code_str;
+	bool is_signal = true;
+	switch (child_code) {
+	case CLD_EXITED:
+		code_str = "exited";
+		is_signal = false;
+		break;
+
+	case CLD_KILLED:
+		code_str = "killed";
+		break;
+
+	case CLD_DUMPED:
+		code_str = "dumped";
+		break;
+
+	default:
+		code_str = "unknown";
+		break;
+	}
 
 	linted_pid child_pid = info.si_pid;
 	int child_signo = info.si_signo;
@@ -1736,18 +1754,28 @@ static linted_error on_child_signaled(char const *process_name,
 	clock_t child_stime = info.si_stime;
 
 	linted_io_write_format(
-	    LINTED_KO_STDERR, 0, "signal!\n"
-	                         "\tsigno: %s\n"
+	    LINTED_KO_STDERR, 0, "child exited!\n"
+	                         "\tsignal: %s\n"
 	                         "\terrno: %" PRIuMAX "\n"
-	                         "\tcode: %" PRIuMAX "\n"
+	                         "\tcode: %s\n"
 	                         "\tpid: %" PRIuMAX "\n"
-	                         "\tuid: %" PRIuMAX "\n"
-	                         "\tstatus: %" PRIuMAX "\n"
-	                         "\tutime: %" PRIuMAX "\n"
+	                         "\tuid: %" PRIuMAX "\n",
+	    strsignal(child_signo), (uintmax_t)child_errno, code_str,
+	    (uintmax_t)child_pid, (uintmax_t)child_uid);
+
+	if (is_signal) {
+		linted_io_write_format(
+		    LINTED_KO_STDERR, 0, "\tstatus: %s\n",
+		    linted_signal_string(child_status));
+	} else {
+		linted_io_write_format(LINTED_KO_STDERR, 0,
+		                       "\tstatus: %" PRIuMAX "\n",
+		                       (uintmax_t)child_status);
+	}
+
+	linted_io_write_format(
+	    LINTED_KO_STDERR, 0, "\tutime: %" PRIuMAX "\n"
 	                         "\tstime: %" PRIuMAX "\n",
-	    linted_signal_string(child_signo), (uintmax_t)child_errno,
-	    (uintmax_t)child_code, (uintmax_t)child_pid,
-	    (uintmax_t)child_uid, (uintmax_t)child_status,
 	    (uintmax_t)child_utime, (uintmax_t)child_stime);
 
 continue_process:

@@ -37,12 +37,15 @@
 #include <unistd.h>
 
 static void on_term(int signo);
-static void on_sigchld(int signo);
+static void on_sigchld(int signo, siginfo_t *infop, void *foo);
+static void do_nothing(int signo);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-waiter",
     .dont_init_signals = true,
     .dont_fork_thread = true};
+
+static int const various_sigs[] = {SIGCONT};
 
 static int const exit_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 
@@ -75,6 +78,18 @@ static unsigned char linted_start_main(char const *process_name,
 		linted_mem_free(service);
 	}
 
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(various_sigs);
+	     ++ii) {
+		struct sigaction action = {0};
+		action.sa_handler = do_nothing;
+		sigemptyset(&action.sa_mask);
+		if (-1 == sigaction(various_sigs[ii], &action, NULL)) {
+			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
 	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(exit_signals);
 	     ++ii) {
 		struct sigaction action = {0};
@@ -89,8 +104,8 @@ static unsigned char linted_start_main(char const *process_name,
 
 	{
 		struct sigaction action = {0};
-		action.sa_handler = on_sigchld;
-		action.sa_flags = SA_NOCLDSTOP;
+		action.sa_sigaction = on_sigchld;
+		action.sa_flags = SA_SIGINFO;
 		sigemptyset(&action.sa_mask);
 		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
 			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
@@ -136,8 +151,8 @@ static unsigned char linted_start_main(char const *process_name,
 	 * of errors to be logged. */
 	{
 		struct sigaction action = {0};
-		action.sa_handler = SIG_DFL;
-		action.sa_flags = SA_NOCLDSTOP;
+		action.sa_handler = do_nothing;
+		action.sa_flags = 0;
 		sigemptyset(&action.sa_mask);
 		if (-1 == sigaction(SIGCHLD, &action, NULL)) {
 			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
@@ -149,8 +164,8 @@ static unsigned char linted_start_main(char const *process_name,
 	for (;;) {
 		int wait_status;
 		{
-			siginfo_t info;
-			wait_status = waitid(P_ALL, -1, &info, WEXITED);
+			int xx;
+			wait_status = waitpid(-1, &xx, __WALL);
 		}
 		if (-1 == wait_status) {
 			err = errno;
@@ -208,19 +223,16 @@ prevent_looping:
 	errno = old_err;
 }
 
-static void on_sigchld(int signo)
+static void on_sigchld(int signo, siginfo_t *infop, void *foo)
 {
 	linted_error old_err = errno;
 
 	for (;;) {
-		linted_pid pid;
 		int wait_status;
 		{
-			siginfo_t info;
-			info.si_pid = 0;
+			int xx;
 			wait_status =
-			    waitid(P_ALL, -1, &info, WEXITED | WNOHANG);
-			pid = info.si_pid;
+			    waitpid(-1, &xx, __WALL | WNOHANG);
 		}
 		if (-1 == wait_status) {
 			linted_error err = errno;
@@ -234,9 +246,13 @@ static void on_sigchld(int signo)
 			LINTED_ASSERT(false);
 		}
 
-		if (0U == pid)
+		if (0U == wait_status)
 			break;
 	}
 
 	errno = old_err;
+}
+
+static void do_nothing(int signo)
+{
 }
