@@ -20,6 +20,7 @@
 #include "linted/pid.h"
 #include "linted/util.h"
 
+#include <signal.h>
 #include <stdint.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>

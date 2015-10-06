@@ -808,7 +808,6 @@ static void *worker_routine(void *arg)
 #pragma weak linted_io_do_poll
 #pragma weak linted_io_do_read
 #pragma weak linted_io_do_write
-#pragma weak linted_pid_do_waitid
 #pragma weak linted_signal_do_wait
 #pragma weak linted_sched_do_sleep_until
 
@@ -830,10 +829,6 @@ static void run_task(struct linted_async_pool *pool,
 
 	case LINTED_ASYNCH_TASK_WRITE:
 		linted_io_do_write(pool, task);
-		break;
-
-	case LINTED_ASYNCH_TASK_WAITID:
-		linted_pid_do_waitid(pool, task);
 		break;
 
 	case LINTED_ASYNCH_TASK_SIGNAL_WAIT:
