@@ -34,6 +34,7 @@
 #include <stdio.h>
 
 enum { LINTED_SIGNAL_HUP,
+       LINTED_SIGNAL_CHLD,
        LINTED_SIGNAL_INT,
        LINTED_SIGNAL_TERM,
        LINTED_SIGNAL_QUIT,
@@ -51,23 +52,27 @@ struct linted_signal_task_wait {
 
 static void write_one(linted_ko ko);
 
+static void report_sigchld(int signo);
 static void report_sighup(int signo);
 static void report_sigint(int signo);
 static void report_sigquit(int signo);
 static void report_sigterm(int signo);
 
+static int volatile sigchld_signalled;
 static int volatile sighup_signalled;
 static int volatile sigint_signalled;
 static int volatile sigquit_signalled;
 static int volatile sigterm_signalled;
 
 static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
+                                      [LINTED_SIGNAL_CHLD] = SIGCHLD,
                                       [LINTED_SIGNAL_INT] = SIGINT,
                                       [LINTED_SIGNAL_QUIT] = SIGQUIT,
                                       [LINTED_SIGNAL_TERM] = SIGTERM};
 
 static void (*const sighandlers[NUM_SIGS])(
     int) = {[LINTED_SIGNAL_HUP] = report_sighup,
+            [LINTED_SIGNAL_CHLD] = report_sigchld,
             [LINTED_SIGNAL_INT] = report_sigint,
             [LINTED_SIGNAL_QUIT] = report_sigquit,
             [LINTED_SIGNAL_TERM] = report_sigterm};
@@ -205,6 +210,12 @@ void linted_signal_do_wait(struct linted_async_pool *pool,
 		goto complete;
 	}
 
+	if (__atomic_fetch_and(&sigchld_signalled, 0,
+	                       __ATOMIC_SEQ_CST)) {
+		signo = SIGCHLD;
+		goto complete;
+	}
+
 	if (__atomic_fetch_and(&sigint_signalled, 0,
 	                       __ATOMIC_SEQ_CST)) {
 		signo = SIGINT;
@@ -266,6 +277,11 @@ char const *linted_signal_string(int signo)
 #endif
 static void listen_to_signal(size_t ii);
 
+void linted_signal_listen_to_sigchld(void)
+{
+	listen_to_signal(LINTED_SIGNAL_CHLD);
+}
+
 void linted_signal_listen_to_sighup(void)
 {
 	listen_to_signal(LINTED_SIGNAL_HUP);
@@ -310,6 +326,14 @@ static void listen_to_signal(size_t ii)
 		LINTED_ASSUME(err != 0);
 		LINTED_ASSERT(false);
 	}
+}
+
+static void report_sigchld(int signo)
+{
+	linted_error err = errno;
+	__atomic_store_n(&sigchld_signalled, 1, __ATOMIC_SEQ_CST);
+	write_one(sigpipe_writer);
+	errno = err;
 }
 
 static void report_sighup(int signo)

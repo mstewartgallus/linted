@@ -67,8 +67,7 @@
 #endif
 #endif
 
-enum { WAITID,
-       SIGNAL_WAIT,
+enum { SIGNAL_WAIT,
        ADMIN_IN_READ,
        ADMIN_OUT_WRITE,
        KILL_READ,
@@ -116,8 +115,6 @@ static linted_error dispatch(struct monitor *monitor,
 
 static linted_error on_signal(struct monitor *monitor,
                               struct linted_async_task *task);
-static linted_error on_process_wait(struct monitor *monitor,
-                                    struct linted_async_task *task);
 static linted_error on_admin_in_read(struct monitor *monitor,
                                      struct linted_async_task *task);
 static linted_error on_admin_out_write(struct monitor *monitor,
@@ -125,6 +122,7 @@ static linted_error on_admin_out_write(struct monitor *monitor,
 static linted_error on_kill_read(struct monitor *monitor,
                                  struct linted_async_task *task);
 
+static linted_error on_sigchld(struct monitor *monitor);
 static linted_error
 on_status_request(linted_pid manager_pid,
                   struct linted_admin_status_request const *request,
@@ -468,7 +466,6 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 
 	struct linted_signal_task_wait *signal_wait_task;
-	struct linted_pid_task_waitid *sandbox_task;
 	struct linted_admin_in_task_read *admin_in_read_task;
 	struct linted_admin_out_task_write *write_task;
 	struct linted_io_task_read *kill_read_task;
@@ -483,18 +480,6 @@ static unsigned char linted_start_main(char const *process_name,
 			return EXIT_FAILURE;
 		}
 		signal_wait_task = xx;
-	}
-
-	{
-		struct linted_pid_task_waitid *xx;
-		err = linted_pid_task_waitid_create(&xx, 0);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_pid_task_waitid_create: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		sandbox_task = xx;
 	}
 
 	{
@@ -561,6 +546,8 @@ static unsigned char linted_start_main(char const *process_name,
 		unit_db = xx;
 	}
 
+	linted_signal_listen_to_sigchld();
+
 	/**
 	 * @todo Warn about unactivated unit_db.
 	 */
@@ -596,12 +583,6 @@ static unsigned char linted_start_main(char const *process_name,
 	    pool,
 	    linted_admin_in_task_read_to_async(admin_in_read_task));
 
-	linted_pid_task_waitid_prepare(
-	    sandbox_task, (union linted_async_ck){.u64 = WAITID}, P_ALL,
-	    -1, WEXITED | WSTOPPED);
-	linted_async_pool_submit(
-	    pool, linted_pid_task_waitid_to_async(sandbox_task));
-
 	static char dummy;
 
 	linted_io_task_read_prepare(
@@ -633,8 +614,6 @@ cancel_tasks:
 		err = 0;
 
 	linted_async_task_cancel(
-	    linted_pid_task_waitid_to_async(sandbox_task));
-	linted_async_task_cancel(
 	    linted_admin_in_task_read_to_async(admin_in_read_task));
 
 	for (;;) {
@@ -664,7 +643,6 @@ kill_procs:
 
 	/* Insure that the tasks are in proper scope until they are
 	 * terminated */
-	(void)sandbox_task;
 	(void)admin_in_read_task;
 
 	if (err != 0) {
@@ -1373,9 +1351,6 @@ static linted_error dispatch(struct monitor *monitor,
                              struct linted_async_task *task)
 {
 	switch (linted_async_task_ck(task).u64) {
-	case WAITID:
-		return on_process_wait(monitor, task);
-
 	case SIGNAL_WAIT:
 		return on_signal(monitor, task);
 
@@ -1391,67 +1366,6 @@ static linted_error dispatch(struct monitor *monitor,
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
-}
-
-static linted_error on_process_wait(struct monitor *monitor,
-                                    struct linted_async_task *task)
-{
-	struct linted_async_pool *pool = monitor->pool;
-
-	char const *process_name = monitor->process_name;
-	linted_pid manager_pid = monitor->manager_pid;
-	linted_ko cwd = monitor->cwd;
-	struct linted_unit_db *unit_db = monitor->unit_db;
-	bool time_to_exit = monitor->time_to_exit;
-
-	linted_error err = 0;
-
-	err = linted_async_task_err(task);
-	if (LINTED_ERROR_CANCELLED == err)
-		return 0;
-	if (ECHILD == err)
-		return LINTED_ERROR_CANCELLED;
-	if (err != 0)
-		return err;
-
-	struct linted_pid_task_waitid *sandbox_task =
-	    linted_pid_task_waitid_from_async(task);
-
-	linted_pid pid;
-	int exit_status;
-	int exit_code;
-	{
-		siginfo_t exit_info;
-		linted_pid_task_waitid_info(sandbox_task, &exit_info);
-		pid = exit_info.si_pid;
-		exit_status = exit_info.si_status;
-		exit_code = exit_info.si_code;
-	}
-
-	switch (exit_code) {
-	case CLD_DUMPED:
-	case CLD_KILLED:
-	case CLD_EXITED:
-		/* Do nothing */
-		break;
-
-	case CLD_STOPPED:
-		err = on_child_stopped(process_name, pid);
-		break;
-
-	case CLD_TRAPPED:
-		err = on_child_trapped(process_name, time_to_exit, pid,
-		                       exit_status, manager_pid, cwd,
-		                       unit_db);
-		break;
-
-	default:
-		LINTED_ASSUME_UNREACHABLE();
-	}
-
-	linted_async_pool_submit(pool, task);
-
-	return err;
 }
 
 static linted_error on_signal(struct monitor *monitor,
@@ -1473,6 +1387,13 @@ static linted_error on_signal(struct monitor *monitor,
 	    linted_signal_task_wait_from_async(task);
 
 	int signo = linted_signal_task_wait_signo(wait_task);
+
+	if (SIGCHLD == signo) {
+		err = on_sigchld(monitor);
+		if (err != 0)
+			return err;
+		goto resubmit;
+	}
 
 	size_t db_size = linted_unit_db_size(unit_db);
 	for (size_t ii = 0U; ii < db_size; ++ii) {
@@ -1511,6 +1432,7 @@ static linted_error on_signal(struct monitor *monitor,
 
 	monitor->time_to_exit = true;
 
+resubmit:
 	linted_async_pool_submit(pool, task);
 
 	return 0;
@@ -1655,6 +1577,63 @@ static linted_error on_kill_read(struct monitor *monitor,
 	monitor->time_to_exit = true;
 
 	linted_async_pool_submit(pool, task);
+
+	return 0;
+}
+
+static linted_error on_sigchld(struct monitor *monitor)
+{
+	char const *process_name = monitor->process_name;
+	linted_pid manager_pid = monitor->manager_pid;
+	linted_ko cwd = monitor->cwd;
+	struct linted_unit_db *unit_db = monitor->unit_db;
+	bool time_to_exit = monitor->time_to_exit;
+
+	linted_error err = 0;
+
+	siginfo_t info;
+	for (;;) {
+		info.si_pid = 0;
+		int wait_status = waitid(P_ALL, -1, &info,
+		                         WEXITED | WSTOPPED | WNOHANG);
+		if (-1 == wait_status) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			if (ECHILD == err)
+				return LINTED_ERROR_CANCELLED;
+			return err;
+		}
+
+		linted_pid pid = info.si_pid;
+		if (0 == pid)
+			break;
+
+		int exit_status = info.si_status;
+		int exit_code = info.si_code;
+
+		switch (exit_code) {
+		case CLD_DUMPED:
+		case CLD_KILLED:
+		case CLD_EXITED:
+			/* Do nothing */
+			break;
+
+		case CLD_STOPPED:
+			err = on_child_stopped(process_name, pid);
+			break;
+
+		case CLD_TRAPPED:
+			err = on_child_trapped(
+			    process_name, time_to_exit, pid,
+			    exit_status, manager_pid, cwd, unit_db);
+			break;
+
+		default:
+			LINTED_ASSUME_UNREACHABLE();
+		}
+		if (err != 0)
+			return err;
+	}
 
 	return 0;
 }

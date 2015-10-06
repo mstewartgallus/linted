@@ -55,6 +55,7 @@ linted_signal_task_wait_from_async(struct linted_async_task *task);
 void linted_signal_do_wait(struct linted_async_pool *pool,
                            struct linted_async_task *task);
 
+void linted_signal_listen_to_sigchld(void);
 void linted_signal_listen_to_sighup(void);
 void linted_signal_listen_to_sigint(void);
 void linted_signal_listen_to_sigquit(void);
