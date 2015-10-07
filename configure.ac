@@ -143,9 +143,6 @@ dnl
         dnl and don't need to link in all the dialog stuff.
 dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [
-                [-nodefaultlibs]dnl
-                [-mno-cygwin]dnl
-dnl
                 dnl Have stricter Windows NT builds
                 [-DSTRICT=1]dnl
 dnl
@@ -155,17 +152,13 @@ dnl
                 dnl it is too noisy.
                 [-D_CRT_SECURE_NO_WARNINGS=1]dnl
                 [-D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1]dnl
+ 
+                [-nodefaultlibs]dnl
+                [-mno-cygwin]dnl
         ])
         [CC="${CC} ${linted_CFLAGS_TARGET_TYPE}"]
-        LINTED_CHECK_LDFLAGS([linted_LDFLAGS_TARGET_TYPE], [
-                [-Wl,--tsaware]dnl
-                [-Wl,--subsystem=windows:6.02]dnl
-                [-Wl,--major-os-version=6]dnl
-                [-Wl,--minor-os-version=0.2]dnl
-        ])
-        AC_SUBST([linted_LDFLAGS_TARGET_TYPE])
-dnl
-	[LIBS="${LIBS} -lssp"]
+
+        [LIBS="${LIBS} -lssp"]
 dnl
 	[LIBS="${LIBS} -lmingwex"]
 	[LIBS="${LIBS} -lmingw32"]
@@ -177,6 +170,15 @@ dnl
 	[LIBS="${LIBS} -lgcc"]
 	[LIBS="${LIBS} -lgcc_eh"]
 dnl
+        LINTED_CHECK_LDFLAGS([linted_LDFLAGS_TARGET_TYPE], [
+                [-Wl,--tsaware]dnl
+                [-Wl,--subsystem=windows:6.02]dnl
+                [-Wl,--major-os-version=6]dnl
+                [-Wl,--minor-os-version=0.2]dnl
+        ])
+        AC_SUBST([linted_LDFLAGS_TARGET_TYPE])
+dnl
+	
         LINTED_CHECK_CFLAGS([linted_CFLAGS_UNICODE], [
                 [-municode]dnl
         ])
