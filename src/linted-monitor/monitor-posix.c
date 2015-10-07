@@ -123,6 +123,7 @@ static linted_error on_kill_read(struct monitor *monitor,
                                  struct linted_async_task *task);
 
 static linted_error on_sigchld(struct monitor *monitor);
+static linted_error on_death_sig(struct monitor *monitor, int signo);
 static linted_error
 on_status_request(linted_pid manager_pid,
                   struct linted_admin_status_request const *request,
@@ -1371,9 +1372,7 @@ static linted_error dispatch(struct monitor *monitor,
 static linted_error on_signal(struct monitor *monitor,
                               struct linted_async_task *task)
 {
-	struct linted_unit_db *unit_db = monitor->unit_db;
 	struct linted_async_pool *pool = monitor->pool;
-	linted_pid manager_pid = monitor->manager_pid;
 
 	linted_error err = 0;
 
@@ -1388,51 +1387,23 @@ static linted_error on_signal(struct monitor *monitor,
 
 	int signo = linted_signal_task_wait_signo(wait_task);
 
-	if (SIGCHLD == signo) {
+	switch (signo) {
+	case SIGCHLD:
 		err = on_sigchld(monitor);
 		if (err != 0)
 			return err;
-		goto resubmit;
+		break;
+
+	case SIGHUP:
+	case SIGQUIT:
+	case SIGINT:
+	case SIGTERM:
+		err = on_death_sig(monitor, signo);
+		if (err != 0)
+			return err;
+		break;
 	}
 
-	size_t db_size = linted_unit_db_size(unit_db);
-	for (size_t ii = 0U; ii < db_size; ++ii) {
-		struct linted_unit *unit =
-		    linted_unit_db_get_unit(unit_db, ii);
-
-		char const *name = unit->name;
-		linted_unit_type type = unit->type;
-
-		if (type != LINTED_UNIT_TYPE_SERVICE)
-			continue;
-
-		linted_pid pid;
-		{
-			linted_pid xx;
-			linted_error pid_err =
-			    linted_unit_pid(&xx, manager_pid, name);
-			if (ESRCH == pid_err)
-				continue;
-			if (pid_err != 0) {
-				if (0 == err)
-					err = pid_err;
-				continue;
-			}
-			pid = xx;
-		}
-		linted_error kill_err = linted_pid_kill(pid, signo);
-		if (kill_err != ESRCH) {
-			LINTED_ASSERT(kill_err !=
-			              LINTED_ERROR_INVALID_PARAMETER);
-			LINTED_ASSERT(kill_err !=
-			              LINTED_ERROR_PERMISSION);
-			LINTED_ASSERT(0 == err);
-		}
-	}
-
-	monitor->time_to_exit = true;
-
-resubmit:
 	linted_async_pool_submit(pool, task);
 
 	return 0;
@@ -1527,11 +1498,11 @@ static linted_error on_admin_out_write(struct monitor *monitor,
 static linted_error on_kill_read(struct monitor *monitor,
                                  struct linted_async_task *task)
 {
-	struct linted_unit_db *unit_db = monitor->unit_db;
-	struct linted_async_pool *pool = monitor->pool;
-	linted_pid manager_pid = monitor->manager_pid;
-
 	linted_error err = 0;
+
+	struct linted_async_pool *pool = monitor->pool;
+	struct linted_unit_db *unit_db = monitor->unit_db;
+	linted_pid manager_pid = monitor->manager_pid;
 
 	err = linted_async_task_err(task);
 	if (LINTED_ERROR_CANCELLED == err)
@@ -1634,6 +1605,53 @@ static linted_error on_sigchld(struct monitor *monitor)
 		if (err != 0)
 			return err;
 	}
+
+	return 0;
+}
+
+static linted_error on_death_sig(struct monitor *monitor, int signo)
+{
+	struct linted_unit_db *unit_db = monitor->unit_db;
+	linted_pid manager_pid = monitor->manager_pid;
+
+	linted_error err = 0;
+
+	size_t db_size = linted_unit_db_size(unit_db);
+	for (size_t ii = 0U; ii < db_size; ++ii) {
+		struct linted_unit *unit =
+		    linted_unit_db_get_unit(unit_db, ii);
+
+		char const *name = unit->name;
+		linted_unit_type type = unit->type;
+
+		if (type != LINTED_UNIT_TYPE_SERVICE)
+			continue;
+
+		linted_pid pid;
+		{
+			linted_pid xx;
+			linted_error pid_err =
+			    linted_unit_pid(&xx, manager_pid, name);
+			if (ESRCH == pid_err)
+				continue;
+			if (pid_err != 0) {
+				if (0 == err)
+					err = pid_err;
+				continue;
+			}
+			pid = xx;
+		}
+		linted_error kill_err = linted_pid_kill(pid, signo);
+		if (kill_err != ESRCH) {
+			LINTED_ASSERT(kill_err !=
+			              LINTED_ERROR_INVALID_PARAMETER);
+			LINTED_ASSERT(kill_err !=
+			              LINTED_ERROR_PERMISSION);
+			LINTED_ASSERT(0 == err);
+		}
+	}
+
+	monitor->time_to_exit = true;
 
 	return 0;
 }
