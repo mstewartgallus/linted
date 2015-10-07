@@ -127,13 +127,14 @@ static unsigned char linted_start_main(char const *const process_name,
 	linted_ko fds_dir_ko;
 	{
 		linted_ko xx;
-		err =
-		    linted_ko_open(&xx, LINTED_KO_CWD, "/proc/self/fd",
-		                   LINTED_KO_DIRECTORY);
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     "/proc/thread-self/fd",
+		                     LINTED_KO_DIRECTORY);
 		if (err != 0) {
 			linted_log(
-			    LINTED_LOG_ERROR,
-			    "%s: linted_ko_open(/proc/self/fd): %s",
+			    LINTED_LOG_ERROR, "%s: "
+			                      "linted_ko_open(/proc/"
+			                      "thread-self/fd): %s",
 			    PACKAGE_NAME, linted_error_string(err));
 			return EXIT_FAILURE;
 		}

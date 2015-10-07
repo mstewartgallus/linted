@@ -958,7 +958,7 @@ static linted_error set_id_maps(char const *uid_map,
 	{
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     "/proc/self/setgroups",
+		                     "/proc/thread-self/setgroups",
 		                     LINTED_KO_WRONLY);
 		if (err != 0)
 			return err;
@@ -983,7 +983,7 @@ static linted_error set_id_maps(char const *uid_map,
 	{
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     "/proc/self/uid_map",
+		                     "/proc/thread-self/uid_map",
 		                     LINTED_KO_WRONLY);
 		if (err != 0)
 			return err;
@@ -1002,7 +1002,7 @@ static linted_error set_id_maps(char const *uid_map,
 	{
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     "/proc/self/gid_map",
+		                     "/proc/thread-self/gid_map",
 		                     LINTED_KO_WRONLY);
 		if (err != 0)
 			return err;
