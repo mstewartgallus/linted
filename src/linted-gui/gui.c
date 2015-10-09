@@ -67,13 +67,13 @@ struct gui {
 	struct xkb_keymap *keymap;
 	struct xkb_state *keyboard_state;
 
+	xcb_connection_t *connection;
 	int32_t device_id;
 	linted_ko controller;
 	linted_ko notifier;
 	linted_window window_ko;
-	unsigned width;
-	xcb_connection_t *connection;
 	xcb_window_t window;
+	unsigned width;
 	unsigned height;
 	bool update_pending : 1U;
 	bool update_in_progress : 1U;

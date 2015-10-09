@@ -37,9 +37,9 @@ static inline linted_error spinlock_lock(spinlock *lock);
 static inline linted_error spinlock_unlock(spinlock *lock);
 
 struct linted_ko_queue {
-	spinlock lock;
 	struct linted_queue_node *head;
 	struct linted_queue_node **tailp;
+	spinlock lock;
 	int waiter_fd;
 };
 

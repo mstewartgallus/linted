@@ -139,7 +139,6 @@ static char const *const argstrs[] = {
 
 struct first_fork_args {
 	char const *chdir_path;
-	int limit_no_file;
 	cap_t caps;
 	struct mount_args *mount_args;
 	size_t mount_args_size;
@@ -147,6 +146,7 @@ struct first_fork_args {
 	char const *waiter_base;
 	char const *const *command;
 	char const *binary;
+	int limit_no_file;
 	linted_ko err_writer;
 	linted_ko logger_reader;
 	linted_ko logger_writer;
