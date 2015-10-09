@@ -39,6 +39,7 @@ include %C%/linted-gui/Makefile.am
 include %C%/linted-sandbox/Makefile.am
 include %C%/linted-waiter/Makefile.am
 
+include %C%/ko-queue/Makefile.am
 include %C%/conf/Makefile.am
 include %C%/gpu/Makefile.am
 include %C%/spawn/Makefile.am

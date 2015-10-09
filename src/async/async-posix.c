@@ -15,6 +15,8 @@
  */
 #define _GNU_SOURCE
 
+#include "linted/ko-queue.h"
+
 #include "linted/async.h"
 
 #include "linted/io.h"
@@ -1401,66 +1403,32 @@ static void worker_queue_destroy(struct worker_queue *queue)
 	linted_channel_destroy((struct linted_channel *)queue);
 }
 
-struct waiter_queue {
-	struct linted_queue *queue;
-	int waiter_fd;
-};
-
 static linted_error waiter_queue_create(struct waiter_queue **queuep)
 {
 	LINTED_ASSERT(queuep != 0);
 
-	linted_error err;
-
-	struct linted_queue *raw_queue;
-	{
-		struct linted_queue *xx;
-		err = linted_queue_create(&xx);
-		if (err != 0)
-			return err;
-		raw_queue = xx;
-	}
-
-	int waiter_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-	if (-1 == waiter_fd) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		goto free_queue;
-	}
+	linted_error err = 0;
 
 	struct waiter_queue *queue;
 	{
-		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *queue);
+		struct linted_ko_queue *xx;
+		err = linted_ko_queue_create(&xx);
 		if (err != 0)
-			goto close_waiter_fd;
-		queue = xx;
+			return err;
+		queue = (void *)xx;
 	}
-
-	queue->waiter_fd = waiter_fd;
-	queue->queue = raw_queue;
 	*queuep = queue;
 	return 0;
-
-close_waiter_fd:
-	linted_ko_close(waiter_fd);
-
-free_queue:
-	linted_queue_destroy(raw_queue);
-
-	return err;
 }
 
 static void waiter_queue_destroy(struct waiter_queue *queue)
 {
-	linted_queue_destroy(queue->queue);
-	linted_ko_close(queue->waiter_fd);
-	linted_mem_free(queue);
+	linted_ko_queue_destroy((void *)queue);
 }
 
 static linted_ko waiter_ko(struct waiter_queue *queue)
 {
-	return queue->waiter_fd;
+	return linted_ko_queue_ko((void *)queue);
 }
 
 static void waiter_submit(struct waiter_queue *queue,
@@ -1469,21 +1437,7 @@ static void waiter_submit(struct waiter_queue *queue,
 	LINTED_ASSERT(queue != 0);
 	LINTED_ASSERT(waiter != 0);
 
-	linted_error err = 0;
-
-	linted_queue_send(queue->queue, LINTED_UPCAST(waiter));
-	for (;;) {
-		uint64_t xx = 0xFF;
-		if (-1 == write(queue->waiter_fd, &xx, sizeof xx)) {
-			err = errno;
-			LINTED_ASSERT(err != 0);
-			if (EINTR == err)
-				continue;
-
-			LINTED_ASSERT(false);
-		}
-		break;
-	}
+	linted_ko_queue_send((void *)queue, LINTED_UPCAST(waiter));
 }
 
 static linted_error
@@ -1495,16 +1449,16 @@ waiter_try_recv(struct waiter_queue *queue,
 
 	linted_error err = 0;
 
-	struct linted_queue_node *node;
+	struct linted_async_waiter *waiter;
 	{
-		struct linted_queue_node *xx;
-		err = linted_queue_try_recv(queue->queue, &xx);
+		struct linted_queue_node *node;
+		err = linted_ko_queue_try_recv((void *)queue, &node);
 		if (err != 0)
 			return err;
-		node = xx;
+		waiter = (void *)node;
 	}
 
-	*waiterp = LINTED_DOWNCAST(struct linted_async_waiter, node);
+	*waiterp = waiter;
 
 	return 0;
 }
