@@ -892,6 +892,8 @@ gui_on_sent_controller_state(struct gui *gui,
 	linted_error err;
 
 	err = linted_async_task_err(task);
+	if (err != 0)
+		return err;
 
 	gui->update_in_progress = false;
 

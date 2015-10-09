@@ -25,7 +25,9 @@ EXTRA_DIST+=\
   %D%/check_for_mingwex\
   %D%/check_getenv\
   %D%/check_symbol_clashes\
-  %D%/setsysroot
+  %D%/setsysroot\
+  %D%/check-clang-analysis.py\
+  %D%/check-cppcheck-analysis.py
 
 EXTRA_DIST+=\
   %D%/test.in\
@@ -36,8 +38,7 @@ EXTRA_DIST+=\
   %D%/check-frama-c.in\
   %D%/check-iwyu.in\
   %D%/check-splint.in\
-  %D%/cpa-config.in\
-  %D%/check-clang-analysis.py
+  %D%/cpa-config.in
 MOSTLYCLEANFILES+=\
   %D%/test.out\
   %D%/check-cbmc.out\

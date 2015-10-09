@@ -11,51 +11,13 @@ set -u
 
 go() {
     SCRIPTS="@srcdir@/scripts"
-    : ${CPPCHECK:=cppcheck}
-    : ${CPPCHECK_FLAGS:=\
-	    --library="${SCRIPTS}/cppcheck.cfg"\
-            --enable=warning\
-            --enable=style\
-            --enable=performance\
-            --enable=portability\
-            --enable=information\
-            --enable=missingInclude\
-            --suppress='nonreentrantFunctionscrypt'\
-            --suppress='nonreentrantFunctionsctermid'\
-            --suppress='nonreentrantFunctionsecvt'\
-            --suppress='nonreentrantFunctionsfcvt'\
-            --suppress='nonreentrantFunctionsgcvt'\
-            --suppress='nonreentrantFunctionsgetlogin'\
-            --suppress='nonreentrantFunctionsgmtime'\
-            --suppress='nonreentrantFunctionslocaltime'\
-            --suppress='nonreentrantFunctionsreaddir'\
-            --suppress='nonreentrantFunctionsstrtok'\
-            --suppress='nonreentrantFunctionstempnam'\
-            --suppress='nonreentrantFunctionsttyname'\
-            --suppress='duplicateExpression'\
-            --suppress='unmatchedSuppression'\
-            --suppress='obseleteFunctionsvfork'\
-	}
+    : ${LINTED_PYTHON:=python3.4}
 
     for BINARY in $(make -s list-programs)
     do
-        ("${SCRIPTS}/json-cc-flags.py" "${BINARY}" && "${SCRIPTS}/json-cc-files.py" "${BINARY}") | \
-             xargs --delimiter='\n' -- \
-            "${CPPCHECK}"\
-            -j4\
-            -D__linux__\
-            -D__unix__\
-            -D__amd64__\
-            -I'/usr/include'\
-            -I'/usr/include/x86_64-linux-gnu'\
-            -I'/usr/lib/clang/3.6/include'\
-            --platform=unix64\
-            --std=c99\
-            --std=posix\
-	    --template='{file}:{line}: ({id}) {message}'\
-            --quiet\
-            ${CPPCHECK_FLAGS}
+        "${LINTED_PYTHON}" "${SCRIPTS}/check-clang-analysis.py" "${BINARY}" & :
     done
-}
+    wait
+ }
 
 go "$@"
