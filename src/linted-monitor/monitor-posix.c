@@ -88,6 +88,16 @@ struct monitor {
 	bool time_to_exit : 1U;
 };
 
+static linted_error monitor_init(
+    struct monitor *monitor, linted_ko admin_in, linted_ko admin_out,
+    linted_ko kill_fifo, linted_ko cwd, linted_pid manager_pid,
+    struct linted_async_pool *pool, char const *process_name,
+    struct linted_admin_in_task_read *read_task,
+    struct linted_io_task_read *kill_task,
+    struct linted_signal_task_wait *signal_wait_task,
+    char const *sandbox, struct linted_unit_db *unit_db,
+    char const *waiter, struct linted_admin_out_task_write *write_task);
+
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       linted_ko cwd, char const *path);
 static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
@@ -113,14 +123,18 @@ static linted_error activate_unit_db(char const *process_name,
 static linted_error dispatch(struct monitor *monitor,
                              struct linted_async_task *completed_task);
 
-static linted_error on_signal(struct monitor *monitor,
-                              struct linted_async_task *task);
-static linted_error on_admin_in_read(struct monitor *monitor,
-                                     struct linted_async_task *task);
-static linted_error on_admin_out_write(struct monitor *monitor,
-                                       struct linted_async_task *task);
-static linted_error on_kill_read(struct monitor *monitor,
-                                 struct linted_async_task *task);
+static linted_error
+monitor_monitor_monitor_on_signal(struct monitor *monitor,
+                                  struct linted_async_task *task);
+static linted_error
+monitor_on_admin_in_read(struct monitor *monitor,
+                         struct linted_async_task *task);
+static linted_error
+monitor_on_admin_out_write(struct monitor *monitor,
+                           struct linted_async_task *task);
+static linted_error
+monitor_on_kill_read(struct monitor *monitor,
+                     struct linted_async_task *task);
 
 static linted_error on_sigchld(struct monitor *monitor);
 static linted_error on_death_sig(struct monitor *monitor, int signo);
@@ -467,9 +481,6 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 
 	struct linted_signal_task_wait *signal_wait_task;
-	struct linted_admin_in_task_read *admin_in_read_task;
-	struct linted_admin_out_task_write *write_task;
-	struct linted_io_task_read *kill_read_task;
 
 	{
 		struct linted_signal_task_wait *xx;
@@ -483,6 +494,7 @@ static unsigned char linted_start_main(char const *process_name,
 		signal_wait_task = xx;
 	}
 
+	struct linted_admin_in_task_read *admin_in_read_task;
 	{
 		struct linted_admin_in_task_read *xx;
 		err = linted_admin_in_task_read_create(&xx, 0);
@@ -496,6 +508,7 @@ static unsigned char linted_start_main(char const *process_name,
 		admin_in_read_task = xx;
 	}
 
+	struct linted_admin_out_task_write *write_task;
 	{
 		struct linted_admin_out_task_write *xx;
 		err = linted_admin_out_task_write_create(&xx, 0);
@@ -509,6 +522,7 @@ static unsigned char linted_start_main(char const *process_name,
 		write_task = xx;
 	}
 
+	struct linted_io_task_read *kill_read_task;
 	{
 		struct linted_io_task_read *xx;
 		err = linted_io_task_read_create(&xx, 0);
@@ -547,55 +561,14 @@ static unsigned char linted_start_main(char const *process_name,
 		unit_db = xx;
 	}
 
-	linted_signal_listen_to_sigchld();
-
-	/**
-	 * @todo Warn about unactivated unit_db.
-	 */
-	err = activate_unit_db(process_name, unit_db, manager_pid, cwd);
-	if (err != 0)
-		goto kill_procs;
-
 	static struct monitor monitor = {0};
 
-	monitor.admin_in = admin_in;
-	monitor.admin_out = admin_out;
-	monitor.cwd = cwd;
-	monitor.manager_pid = manager_pid;
-	monitor.pool = pool;
-	monitor.process_name = process_name;
-	monitor.read_task = admin_in_read_task;
-	monitor.sandbox = sandbox;
-	monitor.time_to_exit = false;
-	monitor.unit_db = unit_db;
-	monitor.waiter = waiter;
-	monitor.write_task = write_task;
-
-	linted_signal_task_wait_prepare(
-	    signal_wait_task,
-	    (union linted_async_ck){.u64 = SIGNAL_WAIT});
-	linted_async_pool_submit(
-	    pool, linted_signal_task_wait_to_async(signal_wait_task));
-
-	linted_admin_in_task_read_prepare(
-	    admin_in_read_task,
-	    (union linted_async_ck){.u64 = ADMIN_IN_READ}, admin_in);
-	linted_async_pool_submit(
-	    pool,
-	    linted_admin_in_task_read_to_async(admin_in_read_task));
-
-	static char dummy;
-
-	linted_io_task_read_prepare(
-	    kill_read_task, (union linted_async_ck){.u64 = KILL_READ},
-	    kill_fifo, &dummy, sizeof dummy);
-	linted_async_pool_submit(
-	    pool, linted_io_task_read_to_async(kill_read_task));
-
-	linted_signal_listen_to_sighup();
-	linted_signal_listen_to_sigint();
-	linted_signal_listen_to_sigquit();
-	linted_signal_listen_to_sigterm();
+	err = monitor_init(
+	    &monitor, admin_in, admin_out, kill_fifo, cwd, manager_pid,
+	    pool, process_name, admin_in_read_task, kill_read_task,
+	    signal_wait_task, sandbox, unit_db, waiter, write_task);
+	if (err != 0)
+		goto kill_procs;
 
 	for (;;) {
 		struct linted_async_task *completed_task;
@@ -642,10 +615,6 @@ kill_procs:
 	if (0 == err)
 		err = destroy_err;
 
-	/* Insure that the tasks are in proper scope until they are
-	 * terminated */
-	(void)admin_in_read_task;
-
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "%s",
 		           linted_error_string(err));
@@ -653,6 +622,68 @@ kill_procs:
 	}
 
 	return EXIT_SUCCESS;
+}
+
+static linted_error monitor_init(
+    struct monitor *monitor, linted_ko admin_in, linted_ko admin_out,
+    linted_ko kill_fifo, linted_ko cwd, linted_pid manager_pid,
+    struct linted_async_pool *pool, char const *process_name,
+    struct linted_admin_in_task_read *read_task,
+    struct linted_io_task_read *kill_read_task,
+    struct linted_signal_task_wait *signal_wait_task,
+    char const *sandbox, struct linted_unit_db *unit_db,
+    char const *waiter, struct linted_admin_out_task_write *write_task)
+{
+	linted_error err = 0;
+
+	linted_signal_listen_to_sigchld();
+
+	/**
+	 * @todo Warn about unactivated unit_db.
+	 */
+	err = activate_unit_db(process_name, unit_db, manager_pid, cwd);
+	if (err != 0)
+		return err;
+
+	linted_signal_task_wait_prepare(
+	    signal_wait_task,
+	    (union linted_async_ck){.u64 = SIGNAL_WAIT});
+	linted_async_pool_submit(
+	    pool, linted_signal_task_wait_to_async(signal_wait_task));
+
+	linted_admin_in_task_read_prepare(
+	    read_task, (union linted_async_ck){.u64 = ADMIN_IN_READ},
+	    admin_in);
+	linted_async_pool_submit(
+	    pool, linted_admin_in_task_read_to_async(read_task));
+
+	static char dummy;
+
+	linted_io_task_read_prepare(
+	    kill_read_task, (union linted_async_ck){.u64 = KILL_READ},
+	    kill_fifo, &dummy, sizeof dummy);
+	linted_async_pool_submit(
+	    pool, linted_io_task_read_to_async(kill_read_task));
+
+	linted_signal_listen_to_sighup();
+	linted_signal_listen_to_sigint();
+	linted_signal_listen_to_sigquit();
+	linted_signal_listen_to_sigterm();
+
+	monitor->admin_in = admin_in;
+	monitor->admin_out = admin_out;
+	monitor->cwd = cwd;
+	monitor->manager_pid = manager_pid;
+	monitor->pool = pool;
+	monitor->process_name = process_name;
+	monitor->read_task = read_task;
+	monitor->sandbox = sandbox;
+	monitor->time_to_exit = false;
+	monitor->unit_db = unit_db;
+	monitor->waiter = waiter;
+	monitor->write_task = write_task;
+
+	return 0;
 }
 
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
@@ -1353,24 +1384,25 @@ static linted_error dispatch(struct monitor *monitor,
 {
 	switch (linted_async_task_ck(task).u64) {
 	case SIGNAL_WAIT:
-		return on_signal(monitor, task);
+		return monitor_monitor_monitor_on_signal(monitor, task);
 
 	case ADMIN_IN_READ:
-		return on_admin_in_read(monitor, task);
+		return monitor_on_admin_in_read(monitor, task);
 
 	case ADMIN_OUT_WRITE:
-		return on_admin_out_write(monitor, task);
+		return monitor_on_admin_out_write(monitor, task);
 
 	case KILL_READ:
-		return on_kill_read(monitor, task);
+		return monitor_on_kill_read(monitor, task);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error on_signal(struct monitor *monitor,
-                              struct linted_async_task *task)
+static linted_error
+monitor_monitor_monitor_on_signal(struct monitor *monitor,
+                                  struct linted_async_task *task)
 {
 	struct linted_async_pool *pool = monitor->pool;
 
@@ -1409,8 +1441,9 @@ static linted_error on_signal(struct monitor *monitor,
 	return 0;
 }
 
-static linted_error on_admin_in_read(struct monitor *monitor,
-                                     struct linted_async_task *task)
+static linted_error
+monitor_on_admin_in_read(struct monitor *monitor,
+                         struct linted_async_task *task)
 {
 	struct linted_async_pool *pool = monitor->pool;
 	struct linted_admin_out_task_write *write_task =
@@ -1474,8 +1507,9 @@ static linted_error on_admin_in_read(struct monitor *monitor,
 	return err;
 }
 
-static linted_error on_admin_out_write(struct monitor *monitor,
-                                       struct linted_async_task *task)
+static linted_error
+monitor_on_admin_out_write(struct monitor *monitor,
+                           struct linted_async_task *task)
 {
 	struct linted_async_pool *pool = monitor->pool;
 	struct linted_admin_in_task_read *read_task =
@@ -1495,8 +1529,8 @@ static linted_error on_admin_out_write(struct monitor *monitor,
 	return 0;
 }
 
-static linted_error on_kill_read(struct monitor *monitor,
-                                 struct linted_async_task *task)
+static linted_error monitor_on_kill_read(struct monitor *monitor,
+                                         struct linted_async_task *task)
 {
 	linted_error err = 0;
 

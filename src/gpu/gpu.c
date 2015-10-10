@@ -750,10 +750,9 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 	if (err != 0)
 		return err;
 
-	glHint(GL_GENERATE_MIPMAP_HINT, GL_FASTEST);
-	glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_FASTEST);
+	glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
+	glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
 
-	glDisable(GL_DITHER);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 

@@ -17,15 +17,15 @@
 
 precision highp float;
 
-const vec3 light_location = vec3(-0.5, 1.0, 0.0);
-const vec3 colour = vec3(1.0, 0.9, 1.0);
+const vec3 light_location = vec3(0.0, 0.0, 2.0);
 
-const vec3 dark_stone = vec3(0.1, 0.3, 0.5);
+const vec3 colour = vec3(0.9, 0.7, 1.0);
+const vec3 dark_stone = vec3(0.9, 0.5, 0.4);
 
 /* So that fogginess does not have an affect at a distance of zero,
  * the first value of foggy_air must be 1.
  */
-const vec3 foggy_air = vec3(1.0, 0.1, 0.01);
+const vec3 foggy_air = vec3(1.0, 0.1, 0.001);
 
 in vec3 linted_varying_vertex;
 in vec3 linted_varying_normal;
@@ -44,5 +44,9 @@ void main()
     float decay = dot(foggy_air,
                       vec3(1.0, delta, delta * delta));
 
-    linted_fragment_color = vec4((intensity / decay) * colour, 1.0);
+    vec3 value = (intensity / decay) * colour;
+
+    vec3 gamma_correct_value = pow(value, vec3(2.2));
+
+    linted_fragment_color = vec4(gamma_correct_value, 1.0);
 }
