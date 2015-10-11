@@ -13,12 +13,10 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 import argparse
-import bpy
-import collections
-import functools
 import imp
 import os
 import sys
+from io import StringIO
 
 def _main():
     parser = argparse.ArgumentParser(
@@ -51,124 +49,22 @@ def _main():
         with open(arguments.output, 'w') as output_file:
             output_file.write(output)
 
-_spacing = "    "
+def load_shader(shadername):
+   with StringIO() as lines:
+        with open(shadername, 'r') as shaderfile:
+            for line in shaderfile:
+                if line.startswith("#pragma linted include(\"") and line.endswith("\")\n"):
+                    lines.write(load_shader(line[len("#pragma linted include(\""):-len("\")\n")]))
+                else:
+                    lines.write(line)
+            return lines.getvalue()
 
-class C:
-    def __str__(self):
-        return self.flatten()
-
-def structure(typename: str, fields: list):
-
-    fieldnames = [name for (name, tp) in fields]
-    members = [_spacing + tp.name + " " + prop + ";" for (prop, tp) in fields]
-
-    class Structure(collections.namedtuple(typename, fieldnames), C):
-        __name__ = typename
-
-        name = typename
-
-        definition = (
-            "struct "
-            + typename
-            + " {\n"
-            + "\n".join(members)
-            + "\n};"
-        )
-
-        def flatten(self, indent: int = 0):
-            cls = type(self)
-            typename = cls.name
-
-            if 0 == len(fields):
-                return typename
-
-            property_list = ["." + name + " = " + getattr(self, name).flatten(indent + 1)
-                             for name in fieldnames]
-
-            separator = "\n" + _spacing * indent
-            property_list_string = separator + ("," + separator).join(property_list)
-
-            return "{" +  property_list_string + "}"
-
-    return Structure
-
-
-@functools.lru_cache(maxsize = None)
-def StaticArray(T: type):
-    class StaticArrayType(C):
-        __name__ = "StaticArray(" + str(T) + ")"
-
-        name = T.name + " * const"
-
-        def __init__(self, children: list):
-            for child in children:
-                assert type(child) == T
-            self.children = children
-
-        def flatten(self, indent: int = 0):
-            member_list = [value.flatten(indent + 1) for value in self.children]
-
-            # Heuristic: Static arrays are big, and so should be
-            # spread out over multiple lines.
-            separator = "\n" + _spacing * indent
-            return (
-                "{" + separator + ("," + separator).join(member_list)
-                + "}")
-
-    return StaticArrayType
-
-@functools.lru_cache(maxsize = None)
-def Array(size: int, T: type):
-    assert size >= 0
-
-    class ArrayType(C):
-        __name__ = "Array(" + str(size) + ", " + str(T) + ")"
-
-        name =  T.name + "[" + str(size) + "]"
-
-        def __init__(self, children: list):
-            assert len(children) == size
-            for child in children:
-                assert type(child) == T
-
-            self.children = children
-
-        def flatten(self, indent: int = 0):
-            member_list = [value.flatten(indent + 1) for value in self.children]
-
-            # Heuristic: Fixed sized arrays are small, and so should
-            # not be spread out over multiple lines.
-            return "{" + ", ".join(member_list) + "}"
-
-    return ArrayType
-
-
-class GLfloat(C):
-    name = "GLfloat"
-
-    def __init__(self, contents: float):
-        self.contents = contents
-
-    def flatten(self, indent: int = 0):
-        return str(self.contents) + "F"
-
-
-class Unsigned(C):
-    def __init__(self, contents: int):
-        assert contents >= 0
-        self.contents = contents
-
-    def flatten(self, indent: int = 0):
-        return str(self.contents) + "U"
-
-class GLubyte(Unsigned):
-    name = "GLubyte"
-
-class GLushort(Unsigned):
-    name = "GLushort"
-
-class GLuint(Unsigned):
-    name = "GLuint"
+def encode_shader(shader):
+    return ("\""
+            + shader.encode("unicode_escape")
+            .decode("ascii")
+            .replace("\"", "\\\"")
+            + "\"")
 
 if __name__ == "__main__":
     try:

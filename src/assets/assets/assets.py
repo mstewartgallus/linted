@@ -13,10 +13,9 @@
 # permissions and limitations under the License.
 import bpy
 import collections
+import functools
 import os
 from string import Template
-from linted_assets_generator import *
-from io import StringIO
 
 def output():
     def process_mesh(objct, indices, normals, vertices):
@@ -42,23 +41,6 @@ def output():
         else:
             return mesh.faces
 
-    def load_shader(shadername):
-        with StringIO() as lines:
-            with open(shadername, 'r') as shaderfile:
-                for line in shaderfile:
-                    if line.startswith("#pragma linted include(\"") and line.endswith("\")\n"):
-                        lines.write(load_shader(line[len("#pragma linted include(\""):-len("\")\n")]))
-                    else:
-                        lines.write(line)
-                return lines.getvalue()
-
-    def encode_shader(shader):
-        return ("\""
-                + shader.encode("unicode_escape")
-                .decode("ascii")
-                .replace("\"", "\\\"")
-                + "\"")
-
     old_directory = os.getcwd()
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     try:
@@ -70,9 +52,6 @@ def output():
         vertices = []
         for objct in mesh_objects:
             process_mesh(objct, indices, normals, vertices)
-
-        fragment_shader = encode_shader(load_shader("shaders/fragment.glsl"))
-        vertex_shader = encode_shader(load_shader("shaders/vertex.glsl"))
     finally:
         os.chdir(old_directory)
 
@@ -96,11 +75,125 @@ static uint16_t const indices_data[][3U] = $indices;
 
 uint16_t const * const linted_assets_indices = &indices_data[0U][0U];
 size_t const linted_assets_indices_size = LINTED_ARRAY_SIZE(indices_data);
-
-char const * const linted_assets_fragment_shader = $fragment_shader;
-char const * const linted_assets_vertex_shader = $vertex_shader;
 """).substitute(
     normals=StaticArray(Array(3, GLfloat))(normals),
     vertices=StaticArray(Array(3, GLfloat))(vertices),
-    indices=StaticArray(Array(3, GLubyte))(indices),
-    fragment_shader=fragment_shader, vertex_shader=vertex_shader)
+    indices=StaticArray(Array(3, GLubyte))(indices))
+
+class C:
+    def __str__(self):
+        return self.flatten()
+
+def structure(typename: str, fields: list):
+
+    fieldnames = [name for (name, tp) in fields]
+    members = [_spacing + tp.name + " " + prop + ";" for (prop, tp) in fields]
+
+    class Structure(collections.namedtuple(typename, fieldnames), C):
+        __name__ = typename
+
+        name = typename
+
+        definition = (
+            "struct "
+            + typename
+            + " {\n"
+            + "\n".join(members)
+            + "\n};"
+        )
+
+        def flatten(self, indent: int = 0):
+            cls = type(self)
+            typename = cls.name
+
+            if 0 == len(fields):
+                return typename
+
+            property_list = ["." + name + " = " + getattr(self, name).flatten(indent + 1)
+                             for name in fieldnames]
+
+            separator = "\n" + _spacing * indent
+            property_list_string = separator + ("," + separator).join(property_list)
+
+            return "{" +  property_list_string + "}"
+
+    return Structure
+
+
+@functools.lru_cache(maxsize = None)
+def StaticArray(T: type):
+    class StaticArrayType(C):
+        __name__ = "StaticArray(" + str(T) + ")"
+
+        name = T.name + " * const"
+
+        def __init__(self, children: list):
+            for child in children:
+                assert type(child) == T
+            self.children = children
+
+        def flatten(self, indent: int = 0):
+            member_list = [value.flatten(indent + 1) for value in self.children]
+
+            # Heuristic: Static arrays are big, and so should be
+            # spread out over multiple lines.
+            separator = "\n" + _spacing * indent
+            return (
+                "{" + separator + ("," + separator).join(member_list)
+                + "}")
+
+    return StaticArrayType
+
+@functools.lru_cache(maxsize = None)
+def Array(size: int, T: type):
+    assert size >= 0
+
+    class ArrayType(C):
+        __name__ = "Array(" + str(size) + ", " + str(T) + ")"
+
+        name =  T.name + "[" + str(size) + "]"
+
+        def __init__(self, children: list):
+            assert len(children) == size
+            for child in children:
+                assert type(child) == T
+
+            self.children = children
+
+        def flatten(self, indent: int = 0):
+            member_list = [value.flatten(indent + 1) for value in self.children]
+
+            # Heuristic: Fixed sized arrays are small, and so should
+            # not be spread out over multiple lines.
+            return "{" + ", ".join(member_list) + "}"
+
+    return ArrayType
+
+class GLfloat(C):
+    name = "GLfloat"
+
+    def __init__(self, contents: float):
+        self.contents = contents
+
+    def flatten(self, indent: int = 0):
+        return str(self.contents) + "F"
+
+
+class Unsigned(C):
+    def __init__(self, contents: int):
+        assert contents >= 0
+        self.contents = contents
+
+    def flatten(self, indent: int = 0):
+        return str(self.contents) + "U"
+
+class GLubyte(Unsigned):
+    name = "GLubyte"
+
+class GLushort(Unsigned):
+    name = "GLushort"
+
+class GLuint(Unsigned):
+    name = "GLuint"
+
+_spacing = "    "

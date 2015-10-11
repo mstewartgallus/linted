@@ -16,7 +16,11 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libassets.la
 
-%C%_libassets_la_SOURCES=%D%/assets.c include/linted/assets.h
+%C%_libassets_la_SOURCES=\
+  include/linted/assets.h\
+  %D%/fragment_shader.c\
+  %D%/vertex_shader.c\
+  %D%/assets.c
 
 EXTRA_DIST+=\
   %D%/assets/assets.py\
@@ -30,13 +34,33 @@ EXTRA_DIST+=\
 linted_V_BLENDER= $(linted_v_BLENDER_@AM_V@)
 linted_v_BLENDER_= $(linted_v_BLENDER_@AM_DEFAULT_V@)
 linted_v_BLENDER_0= @echo "  BLENDER " $@;
-linted_v_BLENDER_1 = 
+linted_v_BLENDER_1 =
 
 MOSTLYCLEANFILES+=%D%/assets.c
 %D%/assets.c:\
   %D%/assets/assets.py\
   %D%/assets/scene.blend\
+  \
+  %D%/assets_generator/linted_assets_generator\
+  %D%/assets_generator/linted_assets_generator.py
+	$(linted_V_BLENDER) BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
+	 $<\
+	  --output=$@
+
+MOSTLYCLEANFILES+=%D%/fragment_shader.c
+%D%/fragment_shader.c:\
+  %D%/assets/fragment_shader.py\
   %D%/assets/shaders/fragment.glsl\
+  \
+  %D%/assets_generator/linted_assets_generator\
+  %D%/assets_generator/linted_assets_generator.py
+	$(linted_V_BLENDER) BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
+	 $<\
+	  --output=$@
+
+MOSTLYCLEANFILES+=%D%/vertex_shader.c
+%D%/vertex_shader.c:\
+  %D%/assets/vertex_shader.py\
   %D%/assets/shaders/vertex.glsl\
   \
   %D%/assets_generator/linted_assets_generator\
