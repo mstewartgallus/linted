@@ -49,6 +49,8 @@ static linted_error
 drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
             char const *process_name, char const *window_path,
             char const *notifier_path, char const *updater_path);
+
+static linted_error drawer_start(struct drawer *drawer);
 static linted_error drawer_stop(struct drawer *drawer);
 static linted_error drawer_destroy(struct drawer *drawer);
 
@@ -65,7 +67,7 @@ drawer_on_update_recved(struct drawer *drawer,
 static linted_error
 drawer_on_notice_recved(struct drawer *drawer,
                         struct linted_async_task *task);
-
+static linted_error drawer_update_window(struct drawer *drawer);
 static void drawer_maybe_idle(struct drawer *drawer);
 
 struct drawer {
@@ -126,6 +128,10 @@ static unsigned char linted_start_main(char const *process_name,
 	if (err != 0)
 		goto destroy_pool;
 
+	err = drawer_start(&drawer);
+	if (err != 0)
+		goto destroy_drawer;
+
 	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
 		struct linted_async_task *completed_task;
@@ -161,6 +167,7 @@ stop_drawer:
 			err = dispatch_err;
 	}
 
+destroy_drawer:
 	drawer_destroy(&drawer);
 
 destroy_pool:
@@ -216,10 +223,6 @@ drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
 	}
 
 	struct linted_sched_task_idle *idle_task;
-	struct linted_window_task_watch *notice_task;
-	struct linted_updater_task_receive *updater_task;
-	struct linted_io_task_poll *poll_conn_task;
-
 	{
 		struct linted_sched_task_idle *xx;
 		err = linted_sched_task_idle_create(&xx, 0);
@@ -228,6 +231,7 @@ drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
 		idle_task = xx;
 	}
 
+	struct linted_window_task_watch *notice_task;
 	{
 		struct linted_window_task_watch *xx;
 		err = linted_window_task_watch_create(&xx, 0);
@@ -236,6 +240,7 @@ drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
 		notice_task = xx;
 	}
 
+	struct linted_updater_task_receive *updater_task;
 	{
 		struct linted_updater_task_receive *xx;
 		err = linted_updater_task_receive_create(&xx, 0);
@@ -244,6 +249,7 @@ drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
 		updater_task = xx;
 	}
 
+	struct linted_io_task_poll *poll_conn_task;
 	{
 		struct linted_io_task_poll *xx;
 		err = linted_io_task_poll_create(&xx, 0);
@@ -278,95 +284,13 @@ drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
 	drawer->updater_task = updater_task;
 	drawer->pool = pool;
 	drawer->window = 0;
+	drawer->notifier = notifier;
 	drawer->window_ko = window_ko;
+	drawer->updater = updater;
 	drawer->window_viewable = false;
 	drawer->idle_in_progress = false;
 
-	{
-		uint_fast32_t xx;
-		err = linted_window_read(window_ko, &xx);
-		if (err != 0)
-			goto on_window_read_err;
-		drawer->window = xx;
-	}
-on_window_read_err:
-	if (EPROTO == err) {
-		/* Do nothing */
-	} else if (err != 0) {
-		return err;
-	} else {
-		xcb_change_window_attributes(connection, drawer->window,
-		                             XCB_CW_EVENT_MASK,
-		                             window_opts);
-		err = linted_xcb_conn_error(connection);
-		if (err != 0)
-			goto destroy_gpu_context;
-
-		xcb_get_geometry_cookie_t geom_ck =
-		    xcb_get_geometry(connection, drawer->window);
-		err = linted_xcb_conn_error(connection);
-		if (err != 0)
-			goto destroy_gpu_context;
-
-		unsigned width, height;
-		{
-			xcb_generic_error_t *error;
-			xcb_get_geometry_reply_t *reply;
-			{
-				xcb_generic_error_t *xx = 0;
-				reply = xcb_get_geometry_reply(
-				    connection, geom_ck, &xx);
-				error = xx;
-			}
-
-			err = linted_xcb_conn_error(connection);
-			if (err != 0)
-				goto destroy_gpu_context;
-
-			if (error != 0) {
-				err = linted_xcb_error(error);
-				linted_mem_free(error);
-				goto destroy_gpu_context;
-			}
-
-			width = reply->width;
-			height = reply->height;
-
-			linted_mem_free(reply);
-		}
-
-		drawer->window_viewable = true;
-
-		linted_gpu_set_x11_window(gpu_context, drawer->window);
-		linted_gpu_resize(gpu_context, width, height);
-
-		drawer_maybe_idle(drawer);
-	}
-
-	linted_window_task_watch_prepare(
-	    notice_task,
-	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
-	    notifier);
-	linted_async_pool_submit(
-	    pool, linted_window_task_watch_to_async(notice_task));
-
-	linted_io_task_poll_prepare(
-	    poll_conn_task,
-	    (union linted_async_ck){.u64 = ON_POLL_CONN},
-	    xcb_get_file_descriptor(connection), POLLIN);
-	linted_async_pool_submit(
-	    pool, linted_io_task_poll_to_async(poll_conn_task));
-
-	linted_updater_task_receive_prepare(
-	    updater_task,
-	    (union linted_async_ck){.u64 = ON_RECEIVE_UPDATE}, updater);
-	linted_async_pool_submit(
-	    pool, linted_updater_task_receive_to_async(updater_task));
-
 	return 0;
-
-destroy_gpu_context:
-	linted_gpu_context_destroy(gpu_context);
 
 close_conn:
 	xcb_disconnect(connection);
@@ -395,28 +319,6 @@ close_window_ko:
 	return err;
 }
 
-static linted_error drawer_stop(struct drawer *drawer)
-{
-	struct linted_sched_task_idle *idle_task = drawer->idle_task;
-	struct linted_updater_task_receive *updater_task =
-	    drawer->updater_task;
-	struct linted_window_task_watch *notice_task =
-	    drawer->notice_task;
-	struct linted_io_task_poll *poll_conn_task =
-	    drawer->poll_conn_task;
-
-	linted_async_task_cancel(
-	    linted_sched_task_idle_to_async(idle_task));
-	linted_async_task_cancel(
-	    linted_updater_task_receive_to_async(updater_task));
-	linted_async_task_cancel(
-	    linted_window_task_watch_to_async(notice_task));
-	linted_async_task_cancel(
-	    linted_io_task_poll_to_async(poll_conn_task));
-
-	return 0;
-}
-
 static linted_error drawer_destroy(struct drawer *drawer)
 {
 	linted_ko window_ko = drawer->window_ko;
@@ -427,12 +329,9 @@ static linted_error drawer_destroy(struct drawer *drawer)
 	xcb_connection_t *connection = drawer->connection;
 
 	struct linted_sched_task_idle *idle_task = drawer->idle_task;
-	struct linted_updater_task_receive *updater_task =
-	    drawer->updater_task;
-	struct linted_window_task_watch *notice_task =
-	    drawer->notice_task;
-	struct linted_io_task_poll *poll_conn_task =
-	    drawer->poll_conn_task;
+	struct linted_updater_task_receive *updater_task = drawer->updater_task;
+	struct linted_window_task_watch *notice_task = drawer->notice_task;
+	struct linted_io_task_poll *poll_conn_task = drawer->poll_conn_task;
 
 	linted_gpu_context_destroy(gpu_context);
 
@@ -451,6 +350,65 @@ static linted_error drawer_destroy(struct drawer *drawer)
 	linted_ko_close(notifier);
 
 	linted_ko_close(window_ko);
+
+	return 0;
+}
+
+static linted_error drawer_start(struct drawer *drawer)
+{
+	struct linted_async_pool *pool = drawer->pool;
+	linted_ko updater = drawer->updater;
+	linted_ko notifier = drawer->notifier;
+	xcb_connection_t *connection = drawer->connection;
+
+	struct linted_io_task_poll *poll_conn_task =
+	    drawer->poll_conn_task;
+	struct linted_updater_task_receive *updater_task =
+	    drawer->updater_task;
+	struct linted_window_task_watch *notice_task =
+	    drawer->notice_task;
+
+	linted_window_task_watch_prepare(
+	    notice_task,
+	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
+	    notifier);
+	linted_async_pool_submit(
+	    pool, linted_window_task_watch_to_async(notice_task));
+
+	linted_io_task_poll_prepare(
+	    poll_conn_task,
+	    (union linted_async_ck){.u64 = ON_POLL_CONN},
+	    xcb_get_file_descriptor(connection), POLLIN);
+	linted_async_pool_submit(
+	    pool, linted_io_task_poll_to_async(poll_conn_task));
+
+	linted_updater_task_receive_prepare(
+	    updater_task,
+	    (union linted_async_ck){.u64 = ON_RECEIVE_UPDATE}, updater);
+	linted_async_pool_submit(
+	    pool, linted_updater_task_receive_to_async(updater_task));
+
+	return drawer_update_window(drawer);
+}
+
+static linted_error drawer_stop(struct drawer *drawer)
+{
+	struct linted_sched_task_idle *idle_task = drawer->idle_task;
+	struct linted_updater_task_receive *updater_task =
+	    drawer->updater_task;
+	struct linted_window_task_watch *notice_task =
+	    drawer->notice_task;
+	struct linted_io_task_poll *poll_conn_task =
+	    drawer->poll_conn_task;
+
+	linted_async_task_cancel(
+	    linted_sched_task_idle_to_async(idle_task));
+	linted_async_task_cancel(
+	    linted_updater_task_receive_to_async(updater_task));
+	linted_async_task_cancel(
+	    linted_window_task_watch_to_async(notice_task));
+	linted_async_task_cancel(
+	    linted_io_task_poll_to_async(poll_conn_task));
 
 	return 0;
 }
@@ -490,9 +448,7 @@ static linted_error drawer_on_idle(struct drawer *drawer,
 		return err;
 
 	/* Draw or resize if we have time to waste */
-	err = linted_gpu_draw(gpu_context);
-	if (err != 0)
-		return err;
+	linted_gpu_draw(gpu_context);
 
 	drawer_maybe_idle(drawer);
 
@@ -635,80 +591,16 @@ static linted_error
 drawer_on_notice_recved(struct drawer *drawer,
                         struct linted_async_task *task)
 {
-	xcb_connection_t *connection = drawer->connection;
-
 	struct linted_async_pool *pool = drawer->pool;
-	linted_window window_ko = drawer->window_ko;
-	struct linted_gpu_context *gpu_context = drawer->gpu_context;
 
-	linted_error err;
+	linted_error err = 0;
 
 	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 
-	uint_fast32_t new_window;
-	{
-		uint_fast32_t xx;
-		err = linted_window_read(window_ko, &xx);
-		if (EPROTO == err) {
-			err = 0;
-			goto reset_notice;
-		}
-		if (err != 0)
-			goto reset_notice;
-		new_window = xx;
-	}
+	err = drawer_update_window(drawer);
 
-	xcb_change_window_attributes_checked(
-	    connection, new_window, XCB_CW_EVENT_MASK, window_opts);
-	err = linted_xcb_conn_error(connection);
-	if (err != 0)
-		goto reset_notice;
-
-	xcb_get_geometry_cookie_t geom_ck =
-	    xcb_get_geometry(connection, new_window);
-	err = linted_xcb_conn_error(connection);
-	if (err != 0)
-		goto reset_notice;
-
-	unsigned width, height;
-	{
-		xcb_generic_error_t *error;
-		xcb_get_geometry_reply_t *reply;
-		{
-			xcb_generic_error_t *xx = 0;
-			reply = xcb_get_geometry_reply(connection,
-			                               geom_ck, &xx);
-			error = xx;
-		}
-
-		err = linted_xcb_conn_error(connection);
-		if (err != 0)
-			goto reset_notice;
-
-		if (error != 0) {
-			err = linted_xcb_error(error);
-			linted_mem_free(error);
-			goto reset_notice;
-		}
-
-		width = reply->width;
-		height = reply->height;
-
-		linted_mem_free(reply);
-	}
-
-	drawer->window_viewable = true;
-	drawer->window = new_window;
-
-	linted_gpu_remove_window(gpu_context);
-	linted_gpu_set_x11_window(gpu_context, new_window);
-	linted_gpu_resize(gpu_context, width, height);
-
-	drawer_maybe_idle(drawer);
-
-reset_notice:
 	linted_async_pool_submit(pool, task);
 
 	return err;
@@ -733,4 +625,75 @@ static void drawer_maybe_idle(struct drawer *drawer)
 	    idle_task, (union linted_async_ck){.u64 = ON_IDLE});
 	linted_async_pool_submit(
 	    pool, linted_sched_task_idle_to_async(idle_task));
+}
+
+static linted_error drawer_update_window(struct drawer *drawer)
+{
+	linted_error err = 0;
+
+	xcb_connection_t *connection = drawer->connection;
+	linted_window window_ko = drawer->window_ko;
+	struct linted_gpu_context *gpu_context = drawer->gpu_context;
+
+	uint_fast32_t new_window;
+	{
+		uint_fast32_t xx;
+		err = linted_window_read(window_ko, &xx);
+		if (EPROTO == err) {
+			return 0;
+		}
+		if (err != 0)
+			return err;
+		new_window = xx;
+	}
+
+	xcb_change_window_attributes_checked(
+	    connection, new_window, XCB_CW_EVENT_MASK, window_opts);
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
+		return err;
+
+	xcb_get_geometry_cookie_t geom_ck =
+	    xcb_get_geometry(connection, new_window);
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
+		return err;
+
+	unsigned width, height;
+	{
+		xcb_generic_error_t *error;
+		xcb_get_geometry_reply_t *reply;
+		{
+			xcb_generic_error_t *xx = 0;
+			reply = xcb_get_geometry_reply(connection,
+			                               geom_ck, &xx);
+			error = xx;
+		}
+
+		err = linted_xcb_conn_error(connection);
+		if (err != 0)
+			return err;
+
+		if (error != 0) {
+			err = linted_xcb_error(error);
+			linted_mem_free(error);
+			return err;
+		}
+
+		width = reply->width;
+		height = reply->height;
+
+		linted_mem_free(reply);
+	}
+
+	linted_gpu_remove_window(gpu_context);
+	linted_gpu_set_x11_window(gpu_context, new_window);
+	linted_gpu_resize(gpu_context, width, height);
+
+	drawer->window_viewable = true;
+	drawer->window = new_window;
+
+	drawer_maybe_idle(drawer);
+
+	return 0;
 }

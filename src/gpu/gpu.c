@@ -491,8 +491,6 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			gpu_context->last_time = now;
 		}
 
-	
-
 		gpu_context->buffer_commands = true;
 	}
 
