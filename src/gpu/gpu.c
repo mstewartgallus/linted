@@ -52,7 +52,8 @@ struct linted_gpu_context {
 	GLuint normal_buffer;
 	GLuint index_buffer;
 
-	GLuint model_view_projection_matrix;
+	GLint model_view_projection_matrix;
+	GLint eye_vertex;
 
 	bool has_window : 1U;
 	bool has_egl_surface : 1U;
@@ -909,13 +910,10 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 		index_buffer = xx[2U];
 	}
 
-	GLint maybe_mvp_matrix = glGetUniformLocation(
+	GLint eye_vertex = glGetUniformLocation(program, "eye_vertex");
+
+	GLint mvp_matrix = glGetUniformLocation(
 	    program, "model_view_projection_matrix");
-	if (-1 == maybe_mvp_matrix) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
-		goto cleanup_buffers;
-	}
-	GLuint mvp_matrix = maybe_mvp_matrix;
 
 	GLint maybe_vertex = glGetAttribLocation(program, "vertex");
 	if (maybe_vertex < 0) {
@@ -969,11 +967,14 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 	             linted_assets_indices, GL_STATIC_DRAW);
 	/* Leave bound for DrawElements */
 
+	glClearColor(0.94, 0.9, 1.0, 0.0);
+
 	gpu_context->program = program;
 	gpu_context->vertex_buffer = vertex_buffer;
 	gpu_context->normal_buffer = normal_buffer;
 	gpu_context->index_buffer = index_buffer;
 	gpu_context->model_view_projection_matrix = mvp_matrix;
+	gpu_context->eye_vertex = eye_vertex;
 	gpu_context->buffer_commands = true;
 
 	gpu_context->update_pending = true;
@@ -1004,12 +1005,8 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 	bool update_pending = gpu_context->update_pending;
 	bool resize_pending = gpu_context->resize_pending;
 
-	GLuint mvp_matrix = gpu_context->model_view_projection_matrix;
-
-	if (resize_pending) {
-		glViewport(0, 0, width, height);
-		gpu_context->resize_pending = false;
-	}
+	GLint mvp_matrix = gpu_context->model_view_projection_matrix;
+	GLint eye_vertex = gpu_context->eye_vertex;
 
 	if (update_pending || resize_pending) {
 		/* X, Y, Z, W coords of the resultant vector are the
@@ -1023,21 +1020,35 @@ static void real_draw(struct linted_gpu_context *gpu_context)
 		GLfloat y_position = update->y_position;
 		GLfloat z_position = update->z_position;
 
-		{
+		if (mvp_matrix >= 0) {
 			struct matrix mvp = model_view_projection(
 			    x_rotation, z_rotation, x_position,
 			    y_position, z_position, width, height);
 			glUniformMatrix4fv(mvp_matrix, 1U, false,
 			                   (void const *)&mvp);
 		}
+	}
 
+	if (resize_pending) {
+		glViewport(0, 0, width, height);
+		gpu_context->resize_pending = false;
+	}
+
+	if (update_pending) {
+		GLfloat x_position = update->x_position;
+		GLfloat y_position = update->y_position;
+		GLfloat z_position = update->z_position;
+
+		if (eye_vertex >= 0)
+			glUniform3f(eye_vertex, x_position, y_position,
+			            z_position);
 		gpu_context->update_pending = false;
 	}
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 	        GL_STENCIL_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
-	               GL_UNSIGNED_BYTE, 0);
+	               GL_UNSIGNED_SHORT, 0);
 }
 
 static void flush_gl_errors(void)

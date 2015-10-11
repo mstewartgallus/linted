@@ -92,9 +92,9 @@ size_t const linted_assets_size = LINTED_ARRAY_SIZE(vertices);
 static linted_assets_point const normals[] = $normals;
 linted_assets_point const * const linted_assets_normals = normals;
 
-static unsigned char const indices_data[][3U] = $indices;
+static uint16_t const indices_data[][3U] = $indices;
 
-unsigned char const * const linted_assets_indices = &indices_data[0U][0U];
+uint16_t const * const linted_assets_indices = &indices_data[0U][0U];
 size_t const linted_assets_indices_size = LINTED_ARRAY_SIZE(indices_data);
 
 char const * const linted_assets_fragment_shader = $fragment_shader;

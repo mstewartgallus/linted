@@ -17,6 +17,7 @@
 #define LINTED_ASSETS_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @file
@@ -30,7 +31,7 @@ extern size_t const linted_assets_size;
 extern linted_assets_point const *const linted_assets_vertices;
 extern linted_assets_point const *const linted_assets_normals;
 
-extern unsigned char const *const linted_assets_indices;
+extern uint16_t const *const linted_assets_indices;
 extern size_t const linted_assets_indices_size;
 
 extern char const *const linted_assets_fragment_shader;
