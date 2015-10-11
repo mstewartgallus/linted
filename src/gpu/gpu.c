@@ -413,11 +413,7 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 
 	if (buffer_commands) {
 		real_draw(gpu_context);
-
-		gpu_context->buffer_commands = false;
-	} else {
-		EGLDisplay display = gpu_context->display;
-		EGLSurface surface = gpu_context->surface;
+		glFlush();
 
 		{
 			GLenum attachments[] = {GL_DEPTH};
@@ -426,6 +422,11 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			    LINTED_ARRAY_SIZE(attachments),
 			    attachments);
 		}
+
+		gpu_context->buffer_commands = false;
+	} else {
+		EGLDisplay display = gpu_context->display;
+		EGLSurface surface = gpu_context->surface;
 
 		if (EGL_FALSE == eglSwapBuffers(display, surface)) {
 			EGLint err_egl = eglGetError();
@@ -456,6 +457,14 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			LINTED_ASSERT(false);
 		}
 
+		{
+			GLenum attachments[] = {GL_COLOR};
+			glInvalidateFramebuffer(
+			    GL_FRAMEBUFFER,
+			    LINTED_ARRAY_SIZE(attachments),
+			    attachments);
+		}
+
 		if (0) {
 			struct timespec last_time =
 			    gpu_context->last_time;
@@ -482,13 +491,7 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			gpu_context->last_time = now;
 		}
 
-		{
-			GLenum attachments[] = {GL_COLOR};
-			glInvalidateFramebuffer(
-			    GL_FRAMEBUFFER,
-			    LINTED_ARRAY_SIZE(attachments),
-			    attachments);
-		}
+	
 
 		gpu_context->buffer_commands = true;
 	}
