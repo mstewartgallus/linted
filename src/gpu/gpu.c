@@ -22,12 +22,14 @@
 #include "linted/gpu.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/sched.h"
 #include "linted/util.h"
 
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -42,6 +44,8 @@ struct linted_gpu_context {
 	linted_gpu_x11_window window;
 
 	struct linted_gpu_update update;
+
+	struct timespec last_time;
 
 	unsigned width;
 	unsigned height;
@@ -227,6 +231,9 @@ choose_config_succeeded:
 	gpu_context->surface = EGL_NO_SURFACE;
 	gpu_context->buffer_commands = true;
 
+	memset(&gpu_context->last_time, 0,
+	       sizeof gpu_context->last_time);
+
 	gpu_context->has_window = false;
 	gpu_context->has_egl_surface = false;
 	gpu_context->has_egl_context = false;
@@ -369,6 +376,31 @@ void linted_gpu_resize(struct linted_gpu_context *gpu_context,
 	gpu_context->resize_pending = true;
 }
 
+static struct timespec timespec_subtract(struct timespec x,
+                                         struct timespec y)
+{
+	struct timespec result = {0};
+
+	long const second = 1000000000;
+
+	if (x.tv_nsec < y.tv_nsec) {
+		long nsec = (y.tv_nsec - x.tv_nsec) / second + 1;
+		y.tv_nsec -= second * nsec;
+		y.tv_sec += nsec;
+	}
+
+	if (x.tv_nsec - y.tv_nsec > second) {
+		int nsec = (x.tv_nsec - y.tv_nsec) / second;
+		y.tv_nsec += second * nsec;
+		y.tv_sec -= nsec;
+	}
+
+	result.tv_sec = x.tv_sec - y.tv_sec;
+	result.tv_nsec = x.tv_nsec - y.tv_nsec;
+
+	return result;
+}
+
 linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 {
 	linted_error err;
@@ -422,6 +454,32 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			}
 
 			LINTED_ASSERT(false);
+		}
+
+		if (0) {
+			struct timespec last_time =
+			    gpu_context->last_time;
+
+			struct timespec now;
+			linted_sched_time(&now);
+
+			struct timespec diff =
+			    timespec_subtract(now, last_time);
+
+			long const second = 1000000000;
+
+			double nanoseconds =
+			    diff.tv_sec * second + diff.tv_nsec;
+
+			if (nanoseconds <= 0.0)
+				nanoseconds = 1.0;
+
+			linted_log(LINTED_LOG_INFO,
+			           "FPS: %lf, SPF: %lf",
+			           second / (double)nanoseconds,
+			           nanoseconds / (double)second);
+
+			gpu_context->last_time = now;
 		}
 
 		{

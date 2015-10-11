@@ -23,6 +23,7 @@ noinst_LTLIBRARIES+=%D%/libgpu.la
   src/assets/libassets.la\
   src/error/liberror.la\
   src/log/liblog.la\
+  src/sched/libsched.la\
   \
   $(MATH_LIBS)\
   $(EGL_LIBS) $(GLES_LIBS)

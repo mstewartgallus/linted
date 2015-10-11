@@ -69,8 +69,6 @@ drawer_on_notice_recved(struct drawer *drawer,
 static void drawer_maybe_idle(struct drawer *drawer);
 
 struct drawer {
-	struct timespec initial_time;
-	long frames_elapsed;
 	struct linted_async_pool *pool;
 	struct linted_gpu_context *gpu_context;
 	struct linted_io_task_poll *poll_conn_task;
@@ -271,8 +269,6 @@ drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
 			goto close_conn;
 		gpu_context = xx;
 	}
-
-	linted_sched_time(&drawer->initial_time);
 
 	drawer->connection = connection;
 	drawer->gpu_context = gpu_context;
@@ -492,19 +488,6 @@ static linted_error drawer_on_idle(struct drawer *drawer,
 	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
-
-	struct timespec initial_time = drawer->initial_time;
-
-	++drawer->frames_elapsed;
-	if (0) {
-		struct timespec now;
-		linted_sched_time(&now);
-
-		long seconds = now.tv_sec - initial_time.tv_sec;
-
-		linted_log(LINTED_LOG_INFO, "FPS: %f",
-		           drawer->frames_elapsed / (float)seconds);
-	}
 
 	/* Draw or resize if we have time to waste */
 	err = linted_gpu_draw(gpu_context);
