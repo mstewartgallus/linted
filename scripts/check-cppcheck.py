@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import os
 import subprocess
 import json
 
@@ -47,7 +48,8 @@ def go():
             if isinstance(afile, str):
                 flags = jsondata['flags']
 
-                arguments = ['cppcheck'
+                arguments = ['cppcheck',
+			     '-j8',
                              '-D__linux__',
                              '-D__unix__',
                              '-D__amd64__',
@@ -84,10 +86,10 @@ def go():
                             '--suppress=unmatchedSuppression',
                             '--suppress=obseleteFunctionsvfork']
 
-                arguments.extend(checks)
-                arguments.extend(flags)
-                arguments.append('--')
+                arguments.extend(checkers)
+                arguments.extend([flag for flag in flags if flag != '-std=c99' and flag != '-c'])
                 arguments.append(afile)
+
                 subprocess.call(arguments)
             elif isinstance(afile, dict):
                 recurse(afile)

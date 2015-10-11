@@ -15,7 +15,7 @@ go() {
 
     for BINARY in $(make -s list-programs)
     do
-        "${LINTED_PYTHON}" "${SCRIPTS}/check-clang-analysis.py" "${BINARY}" & :
+        "${LINTED_PYTHON}" "${SCRIPTS}/check-cppcheck.py" "${BINARY}"
     done
     wait
  }
