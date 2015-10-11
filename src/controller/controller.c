@@ -34,7 +34,7 @@ struct linted_controller_task_send {
 	    message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
 };
 
-struct linted_controller_task_receive {
+struct linted_controller_task_recv {
 	struct linted_io_task_read *parent;
 	void *data;
 	char
@@ -121,11 +121,11 @@ void linted_controller_task_send_prepare(
 	memcpy(tip, &bitfield, sizeof bitfield);
 }
 
-linted_error linted_controller_task_receive_create(
-    struct linted_controller_task_receive **taskp, void *data)
+linted_error linted_controller_task_recv_create(
+    struct linted_controller_task_recv **taskp, void *data)
 {
 	linted_error err;
-	struct linted_controller_task_receive *task;
+	struct linted_controller_task_recv *task;
 	{
 		void *xx;
 		err = linted_mem_alloc(&xx, sizeof *task);
@@ -150,35 +150,34 @@ free_task:
 	return err;
 }
 
-void linted_controller_task_receive_destroy(
-    struct linted_controller_task_receive *task)
+void linted_controller_task_recv_destroy(
+    struct linted_controller_task_recv *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-struct linted_async_task *linted_controller_task_receive_to_async(
-    struct linted_controller_task_receive *task)
+struct linted_async_task *linted_controller_task_recv_to_async(
+    struct linted_controller_task_recv *task)
 {
 	return linted_io_task_read_to_async(task->parent);
 }
 
-struct linted_controller_task_receive *
-linted_controller_task_receive_from_async(
-    struct linted_async_task *task)
+struct linted_controller_task_recv *
+linted_controller_task_recv_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_read_data(
 	    linted_io_task_read_from_async(task));
 }
 
-void *linted_controller_task_receive_data(
-    struct linted_controller_task_receive *task)
+void *linted_controller_task_recv_data(
+    struct linted_controller_task_recv *task)
 {
 	return task->data;
 }
 
-void linted_controller_task_receive_prepare(
-    struct linted_controller_task_receive *task,
+void linted_controller_task_recv_prepare(
+    struct linted_controller_task_recv *task,
     union linted_async_ck task_ck, linted_controller controller)
 {
 	linted_io_task_read_prepare(task->parent, task_ck, controller,
@@ -186,9 +185,9 @@ void linted_controller_task_receive_prepare(
 	                            sizeof task->message);
 }
 
-linted_error linted_controller_decode(
-    struct linted_controller_task_receive const *task,
-    struct linted_controller_message *message)
+linted_error
+linted_controller_decode(struct linted_controller_task_recv const *task,
+                         struct linted_controller_message *message)
 {
 	char const *tip = task->message;
 

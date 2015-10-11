@@ -44,7 +44,7 @@ typedef struct linted_updater__angle linted_updater_angle;
 
 struct linted_updater_update;
 struct linted_updater_task_send;
-struct linted_updater_task_receive;
+struct linted_update_task_recv;
 
 /* Deliberately overflow in cases such as 1/1 */
 #define LINTED_UPDATER_ANGLE(X, Y)                                     \
@@ -59,20 +59,21 @@ struct linted_updater_task_receive;
 static double
 linted_updater_angle_to_double(linted_updater_angle theta);
 
-linted_error linted_updater_task_receive_create(
-    struct linted_updater_task_receive **taskp, void *data);
-void linted_updater_task_receive_destroy(
-    struct linted_updater_task_receive *task);
+linted_error
+linted_update_task_recv_create(struct linted_update_task_recv **taskp,
+                               void *data);
+void linted_update_task_recv_destroy(
+    struct linted_update_task_recv *task);
 
-void linted_updater_task_receive_prepare(
-    struct linted_updater_task_receive *task,
-    union linted_async_ck task_ck, linted_ko updater);
-struct linted_async_task *linted_updater_task_receive_to_async(
-    struct linted_updater_task_receive *task);
-struct linted_updater_task_receive *
-linted_updater_task_receive_from_async(struct linted_async_task *task);
-void *linted_updater_task_receive_data(
-    struct linted_updater_task_receive *task);
+void linted_update_task_recv_prepare(
+    struct linted_update_task_recv *task, union linted_async_ck task_ck,
+    linted_ko updater);
+struct linted_async_task *
+linted_update_task_recv_to_async(struct linted_update_task_recv *task);
+struct linted_update_task_recv *
+linted_update_task_recv_from_async(struct linted_async_task *task);
+void *
+linted_update_task_recv_data(struct linted_update_task_recv *task);
 
 linted_error
 linted_updater_task_send_create(struct linted_updater_task_send **taskp,
@@ -91,9 +92,8 @@ linted_updater_task_send_from_async(struct linted_async_task *task);
 void *
 linted_updater_task_send_data(struct linted_updater_task_send *task);
 
-void linted_updater_decode(
-    struct linted_updater_task_receive const *task,
-    struct linted_updater_update *update);
+void linted_updater_decode(struct linted_update_task_recv const *task,
+                           struct linted_updater_update *update);
 
 struct linted_updater__angle {
 	linted_updater_uint _value;

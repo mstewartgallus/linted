@@ -75,7 +75,7 @@ struct drawer {
 	struct linted_gpu_context *gpu_context;
 	struct linted_io_task_poll *poll_conn_task;
 	struct linted_sched_task_idle *idle_task;
-	struct linted_updater_task_receive *updater_task;
+	struct linted_update_task_recv *updater_task;
 	struct linted_window_task_watch *notice_task;
 	xcb_connection_t *connection;
 	xcb_window_t window;
@@ -240,10 +240,10 @@ drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
 		notice_task = xx;
 	}
 
-	struct linted_updater_task_receive *updater_task;
+	struct linted_update_task_recv *updater_task;
 	{
-		struct linted_updater_task_receive *xx;
-		err = linted_updater_task_receive_create(&xx, 0);
+		struct linted_update_task_recv *xx;
+		err = linted_update_task_recv_create(&xx, 0);
 		if (err != 0)
 			goto free_notice_task;
 		updater_task = xx;
@@ -299,7 +299,7 @@ free_poll_conn_task:
 	linted_io_task_poll_destroy(poll_conn_task);
 
 free_updater_task:
-	linted_updater_task_receive_destroy(updater_task);
+	linted_update_task_recv_destroy(updater_task);
 
 free_notice_task:
 	linted_window_task_watch_destroy(notice_task);
@@ -329,9 +329,12 @@ static linted_error drawer_destroy(struct drawer *drawer)
 	xcb_connection_t *connection = drawer->connection;
 
 	struct linted_sched_task_idle *idle_task = drawer->idle_task;
-	struct linted_updater_task_receive *updater_task = drawer->updater_task;
-	struct linted_window_task_watch *notice_task = drawer->notice_task;
-	struct linted_io_task_poll *poll_conn_task = drawer->poll_conn_task;
+	struct linted_update_task_recv *updater_task =
+	    drawer->updater_task;
+	struct linted_window_task_watch *notice_task =
+	    drawer->notice_task;
+	struct linted_io_task_poll *poll_conn_task =
+	    drawer->poll_conn_task;
 
 	linted_gpu_context_destroy(gpu_context);
 
@@ -339,7 +342,7 @@ static linted_error drawer_destroy(struct drawer *drawer)
 
 	linted_io_task_poll_destroy(poll_conn_task);
 
-	linted_updater_task_receive_destroy(updater_task);
+	linted_update_task_recv_destroy(updater_task);
 
 	linted_window_task_watch_destroy(notice_task);
 
@@ -363,7 +366,7 @@ static linted_error drawer_start(struct drawer *drawer)
 
 	struct linted_io_task_poll *poll_conn_task =
 	    drawer->poll_conn_task;
-	struct linted_updater_task_receive *updater_task =
+	struct linted_update_task_recv *updater_task =
 	    drawer->updater_task;
 	struct linted_window_task_watch *notice_task =
 	    drawer->notice_task;
@@ -382,11 +385,11 @@ static linted_error drawer_start(struct drawer *drawer)
 	linted_async_pool_submit(
 	    pool, linted_io_task_poll_to_async(poll_conn_task));
 
-	linted_updater_task_receive_prepare(
+	linted_update_task_recv_prepare(
 	    updater_task,
 	    (union linted_async_ck){.u64 = ON_RECEIVE_UPDATE}, updater);
 	linted_async_pool_submit(
-	    pool, linted_updater_task_receive_to_async(updater_task));
+	    pool, linted_update_task_recv_to_async(updater_task));
 
 	return drawer_update_window(drawer);
 }
@@ -394,7 +397,7 @@ static linted_error drawer_start(struct drawer *drawer)
 static linted_error drawer_stop(struct drawer *drawer)
 {
 	struct linted_sched_task_idle *idle_task = drawer->idle_task;
-	struct linted_updater_task_receive *updater_task =
+	struct linted_update_task_recv *updater_task =
 	    drawer->updater_task;
 	struct linted_window_task_watch *notice_task =
 	    drawer->notice_task;
@@ -404,7 +407,7 @@ static linted_error drawer_stop(struct drawer *drawer)
 	linted_async_task_cancel(
 	    linted_sched_task_idle_to_async(idle_task));
 	linted_async_task_cancel(
-	    linted_updater_task_receive_to_async(updater_task));
+	    linted_update_task_recv_to_async(updater_task));
 	linted_async_task_cancel(
 	    linted_window_task_watch_to_async(notice_task));
 	linted_async_task_cancel(
@@ -540,8 +543,8 @@ drawer_on_update_recved(struct drawer *drawer,
 	if (err != 0)
 		return err;
 
-	struct linted_updater_task_receive *updater_task =
-	    linted_updater_task_receive_from_async(task);
+	struct linted_update_task_recv *updater_task =
+	    linted_update_task_recv_from_async(task);
 
 	linted_updater_int x_position;
 	linted_updater_int y_position;

@@ -43,7 +43,7 @@ struct linted_controller_message {
 };
 
 struct linted_controller_task_send;
-struct linted_controller_task_receive;
+struct linted_controller_task_recv;
 
 linted_error linted_controller_task_send_create(
     struct linted_controller_task_send **taskp, void *data);
@@ -61,24 +61,23 @@ void linted_controller_task_send_prepare(
     union linted_async_ck task_ck, linted_controller controller,
     struct linted_controller_message const *message);
 
-linted_error linted_controller_task_receive_create(
-    struct linted_controller_task_receive **taskp, void *data);
-void linted_controller_task_receive_destroy(
-    struct linted_controller_task_receive *task);
+linted_error linted_controller_task_recv_create(
+    struct linted_controller_task_recv **taskp, void *data);
+void linted_controller_task_recv_destroy(
+    struct linted_controller_task_recv *task);
 
-struct linted_async_task *linted_controller_task_receive_to_async(
-    struct linted_controller_task_receive *task);
-struct linted_controller_task_receive *
-linted_controller_task_receive_from_async(
-    struct linted_async_task *task);
-void *linted_controller_task_receive_data(
-    struct linted_controller_task_receive *task);
-void linted_controller_task_receive_prepare(
-    struct linted_controller_task_receive *task,
+struct linted_async_task *linted_controller_task_recv_to_async(
+    struct linted_controller_task_recv *task);
+struct linted_controller_task_recv *
+linted_controller_task_recv_from_async(struct linted_async_task *task);
+void *linted_controller_task_recv_data(
+    struct linted_controller_task_recv *task);
+void linted_controller_task_recv_prepare(
+    struct linted_controller_task_recv *task,
     union linted_async_ck task_ck, linted_controller controller);
 
-linted_error linted_controller_decode(
-    struct linted_controller_task_receive const *task,
-    struct linted_controller_message *message);
+linted_error
+linted_controller_decode(struct linted_controller_task_recv const *task,
+                         struct linted_controller_message *message);
 
 #endif /* LINTED_CONTROLLER_H */
