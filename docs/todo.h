@@ -51,7 +51,8 @@
  *       generate notifications. User Mode Linux has the same problem
  *       and we should learn from how they solve it.
  *
- * @todo Stop graphical banding problems
+ * @todo Fall back to an error display in the window if the drawer fails to
+ *       initialize.
  *
  * @todo Harden bind mounts with extra flags
  *
