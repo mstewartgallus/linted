@@ -84,6 +84,7 @@ static EGLint const attr_list[] = {
     EGL_RED_SIZE, 8,                             /**/
     EGL_GREEN_SIZE, 8,                           /**/
     EGL_BLUE_SIZE, 8,                            /**/
+    EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_SWAP_BEHAVIOR_PRESERVED_BIT,
     EGL_NONE};
 
 static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION,
@@ -736,6 +737,19 @@ static linted_error make_current(struct linted_gpu_context *gpu_context)
 	}
 	if (err != 0)
 		return err;
+
+	if (EGL_FALSE == eglSwapInterval(display, 1)) {
+		EGLint err_egl = eglGetError();
+		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+
+		switch (err_egl) {
+		case EGL_BAD_CONTEXT:
+		case EGL_BAD_SURFACE:
+			return LINTED_ERROR_INVALID_PARAMETER;
+		}
+
+		LINTED_ASSERT(false);
+	}
 
 	gpu_context->has_current_context = true;
 	return 0;

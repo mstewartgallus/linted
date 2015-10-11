@@ -796,6 +796,8 @@ static linted_error service_create(struct linted_unit_service *unit,
 	    conf, "Service", "X-LintedEnvironmentWhitelist");
 	char const *const *clone_flags =
 	    linted_conf_find(conf, "Service", "X-LintedCloneFlags");
+	char const *const *priority_strs =
+	    linted_conf_find(conf, "Service", "Priority");
 
 	char const *type;
 	{
@@ -834,6 +836,15 @@ static linted_error service_create(struct linted_unit_service *unit,
 		if (err != 0)
 			return err;
 		chdir_path = xx;
+	}
+
+	char const *priority_str;
+	{
+		char const *xx;
+		err = str_from_strs(priority_strs, &xx);
+		if (err != 0)
+			return err;
+		priority_str = xx;
 	}
 
 	bool clone_newuser = false;
@@ -880,13 +891,9 @@ static linted_error service_create(struct linted_unit_service *unit,
 		no_new_privs_value = xx;
 	}
 
-	linted_sched_priority current_priority;
-	{
-		linted_sched_priority xx;
-		err = linted_sched_getpriority(&xx);
-		if (err != 0)
-			return err;
-		current_priority = xx;
+	int priority_value = -1;
+	if (priority_str != 0) {
+		priority_value = atoi(priority_str);
 	}
 
 	unit->sandbox = sandbox;
@@ -908,8 +915,8 @@ static linted_error service_create(struct linted_unit_service *unit,
 	unit->chdir_path = chdir_path;
 	unit->env_whitelist = env_whitelist;
 
-	unit->priority = current_priority + 1;
-	unit->has_priority = true;
+	unit->priority = priority_value;
+	unit->has_priority = priority_str != 0;
 
 	unit->clone_newuser = clone_newuser;
 	unit->clone_newpid = clone_newpid;
@@ -1283,7 +1290,7 @@ envvar_allocate_succeeded:
 		    {"--limit-locks", limit_locks_str, has_limit_locks},
 		    {"--dropcaps", 0, drop_caps},
 		    {"--chdir", chdir_path, chdir_path != 0},
-		    {"--priority", prio_str, true},
+		    {"--priority", prio_str, has_priority},
 		    {"--clone-newuser", 0, clone_newuser},
 		    {"--clone-newpid", 0, clone_newpid},
 		    {"--clone-newipc", 0, clone_newipc},
