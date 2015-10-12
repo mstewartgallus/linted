@@ -36,6 +36,9 @@
  * @todo Once EGL_KHR_get_all_proc_addresses is supported by my Mesa
  *       use it.
  *
+ * @todo Fork off a process at startup to do service file parsing and startup.
+ *       The monitor should simply expose an API that lets startup do its work.
+ *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *
