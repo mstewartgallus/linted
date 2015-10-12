@@ -145,36 +145,47 @@ linted_error linted_admin_in_task_read_request(
 			goto free_request;
 		tip += size;
 
-		char **exec = 0;
-		size_t exec_strs = 0U;
+		size_t total_command_size = 0U;
+
+		memcpy(&total_command_size, tip,
+		       sizeof total_command_size);
+		tip += sizeof total_command_size;
+
+		char **command = 0;
+		size_t command_count = 0U;
 
 		size_t ii = 0U;
-		for (; ii < 512U;) {
+		for (; ii < total_command_size;) {
 			size_t len = strlen(tip);
 
 			void *xx;
-			linted_mem_realloc_array(
-			    &xx, exec, exec_strs + 1U, sizeof exec[0U]);
-			exec = xx;
+			err = linted_mem_realloc_array(
+			    &xx, command, command_count + 1U,
+			    sizeof command[0U]);
+			command = xx;
 
-			exec[exec_strs] = strdup(tip);
-			++exec_strs;
+			command[command_count] = strdup(tip);
+			++command_count;
 
 			ii += len + 1U;
 			tip += len + 1U;
 		}
+
 		{
 			void *xx;
-			linted_mem_realloc_array(
-			    &xx, exec, exec_strs + 1U, sizeof exec[0U]);
-			exec = xx;
+			err = linted_mem_realloc_array(
+			    &xx, command, command_count + 1U,
+			    sizeof command[0U]);
+			command = xx;
 		}
-		exec[exec_strs] = 0;
+		command[command_count] = 0;
+
+		tip += total_command_size;
 
 		status->type = type;
 		status->no_new_privs = no_new_privs;
 		status->name = name;
-		status->command = (char const *const *)exec;
+		status->command = (char const *const *)command;
 		break;
 	}
 
@@ -294,27 +305,28 @@ linted_admin_in_write(linted_admin_in admin,
 		memcpy(tip, namep, size);
 		tip += size;
 
-		char const *const *execp = status->command;
-		size_t exec_size = 0U;
-		for (size_t ii = 0U; execp[ii] != 0U; ++ii) {
-			char const *str = execp[ii];
+		char const *const *command = status->command;
 
-			size_t size = strlen(str);
-
-			memcpy(tip, str, size);
-			tip[size] = 0;
-
-			tip += size + 1U;
-			exec_size += size + 1U;
+		size_t total_command_size = 0U;
+		for (size_t ii = 0U; command[ii] != 0U; ++ii) {
+			char const *command_arg = command[ii];
+			total_command_size += strlen(command_arg) + 1U;
 		}
 
-		if (exec_size > 512U)
-			return LINTED_ERROR_INVALID_PARAMETER;
+		memcpy(tip, &total_command_size,
+		       sizeof total_command_size);
+		tip += sizeof total_command_size;
 
-		memcpy(tip, &exec_size, sizeof exec_size);
-		tip += sizeof exec_size;
+		for (size_t ii = 0U; command[ii] != 0U; ++ii) {
+			char const *command_arg = command[ii];
 
-		memcpy(tip, execp, exec_size);
+			size_t arg_size = strlen(command_arg);
+
+			memcpy(tip, command_arg, arg_size);
+			tip[arg_size] = 0;
+
+			tip += arg_size + 1U;
+		}
 
 		break;
 	}
