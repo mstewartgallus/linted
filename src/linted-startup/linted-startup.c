@@ -927,10 +927,15 @@ static linted_error service_activate(char const *process_name,
 
 	size_t len = strlen(unit_name);
 
+	bool no_new_privs = unit_service->no_new_privs;
+
 	{
 		union linted_admin_request request = {0};
 
 		request.type = LINTED_ADMIN_ADD_UNIT;
+
+		request.add_unit.no_new_privs = no_new_privs;
+
 		request.add_unit.size = len;
 		memcpy(request.add_unit.name, unit_name, len);
 

@@ -39,8 +39,12 @@ typedef unsigned char linted_admin_type;
 
 struct linted_admin_add_unit_request {
 	linted_admin_type type;
+
+	_Bool no_new_privs : 1U;
+
 	size_t size;
 	char name[LINTED_UNIT_NAME_MAX];
+
 	size_t exec_size;
 	char exec[512U];
 };

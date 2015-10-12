@@ -138,6 +138,13 @@ void linted_admin_in_task_read_request(
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_request *status =
 		    (void *)outp;
+
+		unsigned char bitfield;
+		memcpy(&bitfield, tip, sizeof bitfield);
+		tip += sizeof bitfield;
+
+		bool no_new_privs = (bitfield & 1U) != 0U;
+
 		char *namep = status->name;
 
 		size_t size;
@@ -157,6 +164,7 @@ void linted_admin_in_task_read_request(
 		memcpy(execp, tip, exec_size);
 
 		status->type = type;
+		status->no_new_privs = no_new_privs;
 		status->size = size;
 		status->exec_size = exec_size;
 		break;
@@ -211,6 +219,19 @@ linted_admin_in_write(linted_admin_in admin,
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_request const *status =
 		    (void *)request;
+
+		char *tip = raw;
+
+		memcpy(tip, &type, sizeof type);
+		tip += sizeof type;
+
+		bool no_new_privs = status->no_new_privs;
+
+		unsigned char bitfield = no_new_privs;
+
+		memcpy(tip, &bitfield, sizeof bitfield);
+		tip += sizeof bitfield;
+
 		char const *namep = status->name;
 
 		size_t size;
@@ -218,11 +239,6 @@ linted_admin_in_write(linted_admin_in admin,
 		size = status->size;
 		if (size > LINTED_UNIT_NAME_MAX)
 			return LINTED_ERROR_INVALID_PARAMETER;
-
-		char *tip = raw;
-
-		memcpy(tip, &type, sizeof type);
-		tip += sizeof type;
 
 		memcpy(tip, &size, sizeof size);
 		tip += sizeof size;
