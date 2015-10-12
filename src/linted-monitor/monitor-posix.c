@@ -40,7 +40,6 @@
 #endif
 
 #include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -1331,12 +1330,13 @@ on_add_unit(struct monitor *monitor,
 		err = linted_mem_alloc_array(&xx, command_size,
 		                             sizeof command[0U]);
 		if (err != 0)
-			return err;
+			goto free_name;
 		command = xx;
 	}
 
 	for (size_t ii = 0U; ii < command_size; ++ii) {
-		if (0 == (command[ii] = strdup(unit_command[ii]))) {
+		err = linted_str_dup(&command[ii], unit_command[ii]);
+		if (err != 0) {
 			for (size_t jj = 0U; jj < ii; ++jj)
 				linted_mem_free(command[jj]);
 			linted_mem_free(command);
