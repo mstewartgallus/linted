@@ -37,7 +37,7 @@
  *       for linted_admin instead of just copying.
  */
 
-#define CHUNK_SIZE 256U
+#define CHUNK_SIZE 1024U
 
 LINTED_STATIC_ASSERT(
     LINTED_FIELD_SIZEOF(struct linted_admin_status_request, type) +
@@ -135,6 +135,33 @@ void linted_admin_in_task_read_request(
 	tip += sizeof type;
 
 	switch (type) {
+	case LINTED_ADMIN_ADD_UNIT: {
+		struct linted_admin_add_unit_request *status =
+		    (void *)outp;
+		char *namep = status->name;
+
+		size_t size;
+
+		memcpy(&size, tip, sizeof size);
+		tip += sizeof size;
+
+		memcpy(namep, tip, size);
+		tip += size;
+
+		char *execp = status->exec;
+		size_t exec_size;
+
+		memcpy(&exec_size, tip, sizeof exec_size);
+		tip += sizeof exec_size;
+
+		memcpy(execp, tip, exec_size);
+
+		status->type = type;
+		status->size = size;
+		status->exec_size = exec_size;
+		break;
+	}
+
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request *status =
 		    (void *)outp;
@@ -181,6 +208,44 @@ linted_admin_in_write(linted_admin_in admin,
 
 	char raw[CHUNK_SIZE] = {0};
 	switch (type) {
+	case LINTED_ADMIN_ADD_UNIT: {
+		struct linted_admin_add_unit_request const *status =
+		    (void *)request;
+		char const *namep = status->name;
+
+		size_t size;
+
+		size = status->size;
+		if (size > LINTED_UNIT_NAME_MAX)
+			return LINTED_ERROR_INVALID_PARAMETER;
+
+		char *tip = raw;
+
+		memcpy(tip, &type, sizeof type);
+		tip += sizeof type;
+
+		memcpy(tip, &size, sizeof size);
+		tip += sizeof size;
+
+		memcpy(tip, namep, size);
+		tip += size;
+
+		char const *execp = status->exec;
+
+		size_t exec_size;
+
+		exec_size = status->exec_size;
+		if (exec_size > 512U)
+			return LINTED_ERROR_INVALID_PARAMETER;
+
+		memcpy(tip, &exec_size, sizeof exec_size);
+		tip += sizeof exec_size;
+
+		memcpy(tip, execp, exec_size);
+
+		break;
+	}
+
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request const *status =
 		    (void *)request;
@@ -307,6 +372,18 @@ void linted_admin_out_task_write_prepare(
 
 	char raw[CHUNK_SIZE] = {0};
 	switch (type) {
+	case LINTED_ADMIN_ADD_UNIT: {
+		struct linted_admin_add_unit_reply const *status =
+		    (void *)reply;
+
+		char *tip = raw;
+
+		memcpy(tip, &type, sizeof type);
+		tip += sizeof type;
+
+		break;
+	}
+
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_reply const *status =
 		    (void *)reply;

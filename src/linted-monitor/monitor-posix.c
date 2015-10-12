@@ -15,7 +15,6 @@
  */
 #include "linted/admin.h"
 #include "linted/async.h"
-#include "linted/conf.h"
 #include "linted/dir.h"
 #include "linted/environment.h"
 #include "linted/error.h"
@@ -88,37 +87,16 @@ struct monitor {
 	bool time_to_exit : 1U;
 };
 
-static linted_error monitor_init(
-    struct monitor *monitor, linted_ko admin_in, linted_ko admin_out,
-    linted_ko kill_fifo, linted_ko cwd, linted_pid manager_pid,
-    struct linted_async_pool *pool, char const *process_name,
-    struct linted_admin_in_task_read *read_task,
-    struct linted_io_task_read *kill_task,
-    struct linted_signal_task_wait *signal_wait_task,
-    char const *sandbox, struct linted_unit_db *unit_db,
-    char const *waiter, struct linted_admin_out_task_write *write_task);
-
-static linted_error conf_db_from_path(struct linted_conf_db **dbp,
-                                      linted_ko cwd, char const *path);
-static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
-                                       linted_ko cwd,
-                                       char const *dir_name);
-static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
-                                   struct linted_conf_db *conf_db,
-                                   char const *sandbox,
-                                   char const *waiter);
-
-static linted_error service_create(struct linted_unit_service *unit,
-                                   struct linted_conf *conf,
-                                   char const *sandbox,
-                                   char const *waiter);
-static linted_error socket_create(struct linted_unit_socket *unit,
-                                  struct linted_conf *conf);
-
-static linted_error activate_unit_db(char const *process_name,
-                                     struct linted_unit_db *unit_db,
-                                     linted_pid manager_pid,
-                                     linted_ko cwd);
+static linted_error
+monitor_init(struct monitor *monitor, linted_ko admin_in,
+             linted_ko admin_out, linted_ko kill_fifo, linted_ko cwd,
+             linted_pid manager_pid, struct linted_async_pool *pool,
+             char const *process_name,
+             struct linted_admin_in_task_read *read_task,
+             struct linted_io_task_read *kill_task,
+             struct linted_signal_task_wait *signal_wait_task,
+             char const *sandbox, char const *waiter,
+             struct linted_admin_out_task_write *write_task);
 
 static linted_error dispatch(struct monitor *monitor,
                              struct linted_async_task *completed_task);
@@ -138,6 +116,10 @@ monitor_on_kill_read(struct monitor *monitor,
 
 static linted_error on_sigchld(struct monitor *monitor);
 static linted_error on_death_sig(struct monitor *monitor, int signo);
+static linted_error
+on_add_unit(struct monitor *monitor,
+            struct linted_admin_add_unit_request const *request,
+            struct linted_admin_add_unit_reply *reply);
 static linted_error
 on_status_request(linted_pid manager_pid,
                   struct linted_admin_status_request const *request,
@@ -166,6 +148,7 @@ on_child_about_to_exit(char const *process_name, bool time_to_exit,
 static linted_error
 on_child_linted_ptrace_event_stopped(char const *process_name,
                                      linted_pid pid, int exit_status);
+
 static linted_error service_activate(char const *process_name,
                                      struct linted_unit *unit,
                                      linted_pid manager_pid,
@@ -174,10 +157,6 @@ static linted_error service_activate(char const *process_name,
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
 static size_t null_list_size(char const *const *list);
-
-static linted_error str_from_strs(char const *const *strs,
-                                  char const **strp);
-static linted_error bool_from_cstring(char const *str, bool *boolp);
 
 static linted_error service_children_terminate(linted_pid pid);
 
@@ -234,6 +213,19 @@ static unsigned char linted_start_main(char const *process_name,
 		unit_path = xx;
 	}
 
+	char const *startup;
+	{
+		char *xx;
+		err = linted_environment_get("LINTED_STARTUP", &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		startup = xx;
+	}
+
 	char const *sandbox;
 	{
 		char *xx;
@@ -271,6 +263,13 @@ static unsigned char linted_start_main(char const *process_name,
 		linted_log(LINTED_LOG_ERROR,
 		           "%s is a required environment variable",
 		           "LINTED_UNIT_PATH");
+		return EXIT_FAILURE;
+	}
+
+	if (0 == startup) {
+		linted_log(LINTED_LOG_ERROR,
+		           "%s is a required environment variable",
+		           "LINTED_STARTUP");
 		return EXIT_FAILURE;
 	}
 
@@ -467,6 +466,22 @@ static unsigned char linted_start_main(char const *process_name,
 		kill_fifo = xx;
 	}
 
+	linted_pid startup_pid;
+	{
+		linted_pid xx;
+		char const *const arguments[] = {
+		    startup, "admin-in", "admin-out", unit_path,
+		    sandbox, waiter,     0};
+		err =
+		    linted_spawn(&xx, cwd, startup, 0, 0, arguments, 0);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "linted_spawn: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		startup_pid = xx;
+	}
+
 	struct linted_async_pool *pool;
 	{
 		struct linted_async_pool *xx;
@@ -535,38 +550,12 @@ static unsigned char linted_start_main(char const *process_name,
 		kill_read_task = xx;
 	}
 
-	struct linted_conf_db *conf_db;
-	{
-		struct linted_conf_db *xx;
-		err = conf_db_from_path(&xx, cwd, unit_path);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "conf_db_from_path(%s): %s",
-			           unit_path, linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		conf_db = xx;
-	}
-
-	struct linted_unit_db *unit_db;
-	{
-		struct linted_unit_db *xx;
-		err = create_unit_db(&xx, conf_db, sandbox, waiter);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "create_unit_db: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		unit_db = xx;
-	}
-
 	static struct monitor monitor = {0};
 
 	err = monitor_init(
 	    &monitor, admin_in, admin_out, kill_fifo, cwd, manager_pid,
 	    pool, process_name, admin_in_read_task, kill_read_task,
-	    signal_wait_task, sandbox, unit_db, waiter, write_task);
+	    signal_wait_task, sandbox, waiter, write_task);
 	if (err != 0)
 		goto kill_procs;
 
@@ -607,10 +596,7 @@ cancel_tasks:
 	}
 
 kill_procs:
-	linted_unit_db_destroy(unit_db);
-
-	linted_conf_db_destroy(conf_db);
-
+	;
 	linted_error destroy_err = linted_async_pool_destroy(pool);
 	if (0 == err)
 		err = destroy_err;
@@ -624,26 +610,29 @@ kill_procs:
 	return EXIT_SUCCESS;
 }
 
-static linted_error monitor_init(
-    struct monitor *monitor, linted_ko admin_in, linted_ko admin_out,
-    linted_ko kill_fifo, linted_ko cwd, linted_pid manager_pid,
-    struct linted_async_pool *pool, char const *process_name,
-    struct linted_admin_in_task_read *read_task,
-    struct linted_io_task_read *kill_read_task,
-    struct linted_signal_task_wait *signal_wait_task,
-    char const *sandbox, struct linted_unit_db *unit_db,
-    char const *waiter, struct linted_admin_out_task_write *write_task)
+static linted_error
+monitor_init(struct monitor *monitor, linted_ko admin_in,
+             linted_ko admin_out, linted_ko kill_fifo, linted_ko cwd,
+             linted_pid manager_pid, struct linted_async_pool *pool,
+             char const *process_name,
+             struct linted_admin_in_task_read *read_task,
+             struct linted_io_task_read *kill_read_task,
+             struct linted_signal_task_wait *signal_wait_task,
+             char const *sandbox, char const *waiter,
+             struct linted_admin_out_task_write *write_task)
 {
 	linted_error err = 0;
 
-	linted_signal_listen_to_sigchld();
+	struct linted_unit_db *unit_db;
+	{
+		struct linted_unit_db *xx;
+		err = linted_unit_db_create(&xx);
+		if (err != 0)
+			return err;
+		unit_db = xx;
+	}
 
-	/**
-	 * @todo Warn about unactivated unit_db.
-	 */
-	err = activate_unit_db(process_name, unit_db, manager_pid, cwd);
-	if (err != 0)
-		return err;
+	linted_signal_listen_to_sigchld();
 
 	linted_signal_task_wait_prepare(
 	    signal_wait_task,
@@ -673,717 +662,17 @@ static linted_error monitor_init(
 	monitor->admin_in = admin_in;
 	monitor->admin_out = admin_out;
 	monitor->cwd = cwd;
+	monitor->unit_db = unit_db;
 	monitor->manager_pid = manager_pid;
 	monitor->pool = pool;
 	monitor->process_name = process_name;
 	monitor->read_task = read_task;
 	monitor->sandbox = sandbox;
 	monitor->time_to_exit = false;
-	monitor->unit_db = unit_db;
 	monitor->waiter = waiter;
 	monitor->write_task = write_task;
 
 	return 0;
-}
-
-static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
-                                   struct linted_conf_db *conf_db,
-                                   char const *sandbox,
-                                   char const *waiter)
-{
-	linted_error err;
-
-	struct linted_unit_db *unit_db;
-	{
-		struct linted_unit_db *xx;
-		err = linted_unit_db_create(&xx);
-		if (err != 0)
-			return err;
-		unit_db = xx;
-	}
-
-	size_t size = linted_conf_db_size(conf_db);
-	for (size_t ii = 0U; ii < size; ++ii) {
-		struct linted_unit *unit;
-		{
-			struct linted_unit *xx;
-			err = linted_unit_db_add_unit(unit_db, &xx);
-			if (err != 0)
-				goto destroy_unit_db;
-			unit = xx;
-		}
-
-		struct linted_conf *conf =
-		    linted_conf_db_get_conf(conf_db, ii);
-
-		char const *file_name = linted_conf_peek_name(conf);
-
-		char const *dot = strchr(file_name, '.');
-
-		char const *suffix = dot + 1U;
-
-		linted_unit_type unit_type;
-		if (0 == strcmp(suffix, "socket")) {
-			unit_type = LINTED_UNIT_TYPE_SOCKET;
-		} else if (0 == strcmp(suffix, "service")) {
-			unit_type = LINTED_UNIT_TYPE_SERVICE;
-		} else {
-			err = LINTED_ERROR_INVALID_PARAMETER;
-			goto destroy_unit_db;
-		}
-
-		char *unit_name;
-		{
-			char *xx;
-			err = linted_str_dup_len(&xx, file_name,
-			                         dot - file_name);
-			if (err != 0)
-				goto destroy_unit_db;
-			unit_name = xx;
-		}
-
-		unit->type = unit_type;
-		unit->name = unit_name;
-
-		switch (unit_type) {
-		case LINTED_UNIT_TYPE_SERVICE: {
-			struct linted_unit_service *s = (void *)unit;
-
-			err = service_create(s, conf, sandbox, waiter);
-			if (err != 0)
-				goto destroy_unit_db;
-			break;
-		}
-
-		case LINTED_UNIT_TYPE_SOCKET: {
-			struct linted_unit_socket *s = (void *)unit;
-
-			err = socket_create(s, conf);
-			if (err != 0)
-				goto destroy_unit_db;
-			break;
-		}
-		}
-	}
-
-	*unit_dbp = unit_db;
-
-	return err;
-
-destroy_unit_db:
-	linted_unit_db_destroy(unit_db);
-	return err;
-}
-
-static linted_error service_create(struct linted_unit_service *unit,
-                                   struct linted_conf *conf,
-                                   char const *sandbox,
-                                   char const *waiter)
-{
-	linted_error err;
-
-	char const *const *types =
-	    linted_conf_find(conf, "Service", "Type");
-	char const *const *exec_start =
-	    linted_conf_find(conf, "Service", "ExecStart");
-	char const *const *no_new_privss =
-	    linted_conf_find(conf, "Service", "NoNewPrivileges");
-	char const *const *chdir_paths =
-	    linted_conf_find(conf, "Service", "WorkingDirectory");
-	char const *const *fstabs =
-	    linted_conf_find(conf, "Service", "X-LintedFstab");
-	char const *const *env_whitelist = linted_conf_find(
-	    conf, "Service", "X-LintedEnvironmentWhitelist");
-	char const *const *clone_flags =
-	    linted_conf_find(conf, "Service", "X-LintedCloneFlags");
-	char const *const *priority_strs =
-	    linted_conf_find(conf, "Service", "Priority");
-
-	char const *type;
-	{
-		char const *xx;
-		err = str_from_strs(types, &xx);
-		if (err != 0)
-			return err;
-		type = xx;
-	}
-
-	if (0 == exec_start)
-		return LINTED_ERROR_INVALID_PARAMETER;
-
-	char const *no_new_privs;
-	{
-		char const *xx;
-		err = str_from_strs(no_new_privss, &xx);
-		if (err != 0)
-			return err;
-		no_new_privs = xx;
-	}
-
-	char const *fstab;
-	{
-		char const *xx;
-		err = str_from_strs(fstabs, &xx);
-		if (err != 0)
-			return err;
-		fstab = xx;
-	}
-
-	char const *chdir_path;
-	{
-		char const *xx;
-		err = str_from_strs(chdir_paths, &xx);
-		if (err != 0)
-			return err;
-		chdir_path = xx;
-	}
-
-	char const *priority_str;
-	{
-		char const *xx;
-		err = str_from_strs(priority_strs, &xx);
-		if (err != 0)
-			return err;
-		priority_str = xx;
-	}
-
-	bool clone_newuser = false;
-	bool clone_newpid = false;
-	bool clone_newipc = false;
-	bool clone_newnet = false;
-	bool clone_newns = false;
-	bool clone_newuts = false;
-	if (clone_flags != 0) {
-		for (size_t ii = 0U; clone_flags[ii] != 0; ++ii) {
-			char const *flag = clone_flags[ii];
-			if (0 == strcmp("CLONE_NEWUSER", flag)) {
-				clone_newuser = true;
-			} else if (0 == strcmp("CLONE_NEWPID", flag)) {
-				clone_newpid = true;
-			} else if (0 == strcmp("CLONE_NEWIPC", flag)) {
-				clone_newipc = true;
-			} else if (0 == strcmp("CLONE_NEWNET", flag)) {
-				clone_newnet = true;
-			} else if (0 == strcmp("CLONE_NEWNS", flag)) {
-				clone_newns = true;
-			} else if (0 == strcmp("CLONE_NEWUTS", flag)) {
-				clone_newuts = true;
-			} else {
-				return LINTED_ERROR_INVALID_PARAMETER;
-			}
-		}
-	}
-
-	if (0 == type) {
-		/* simple type of service */
-	} else if (0 == strcmp("simple", type)) {
-		/* simple type of service */
-	} else {
-		return LINTED_ERROR_INVALID_PARAMETER;
-	}
-
-	bool no_new_privs_value = false;
-	if (no_new_privs != 0) {
-		bool xx;
-		err = bool_from_cstring(no_new_privs, &xx);
-		if (err != 0)
-			return err;
-		no_new_privs_value = xx;
-	}
-
-	int priority_value = -1;
-	if (priority_str != 0) {
-		priority_value = atoi(priority_str);
-	}
-
-	unit->sandbox = sandbox;
-	unit->waiter = waiter;
-
-	unit->exec_start = exec_start;
-	unit->no_new_privs = no_new_privs_value;
-
-	unit->limit_no_file = 15;
-	unit->has_limit_no_file = no_new_privs_value;
-
-	unit->limit_msgqueue = 0;
-	unit->has_limit_msgqueue = no_new_privs_value;
-
-	unit->limit_locks = 0;
-	unit->has_limit_locks = no_new_privs_value;
-
-	unit->fstab = fstab;
-	unit->chdir_path = chdir_path;
-	unit->env_whitelist = env_whitelist;
-
-	unit->priority = priority_value;
-	unit->has_priority = priority_str != 0;
-
-	unit->clone_newuser = clone_newuser;
-	unit->clone_newpid = clone_newpid;
-	unit->clone_newipc = clone_newipc;
-	unit->clone_newnet = clone_newnet;
-	unit->clone_newns = clone_newns;
-	unit->clone_newuts = clone_newuts;
-
-	return 0;
-}
-
-static linted_error socket_create(struct linted_unit_socket *unit,
-                                  struct linted_conf *conf)
-{
-	linted_error err;
-
-	char const *const *listen_dirs =
-	    linted_conf_find(conf, "Socket", "ListenDirectory");
-
-	char const *const *listen_files =
-	    linted_conf_find(conf, "Socket", "ListenFile");
-
-	char const *const *listen_fifos =
-	    linted_conf_find(conf, "Socket", "ListenFIFO");
-
-	char const *const *fifo_sizes =
-	    linted_conf_find(conf, "Socket", "PipeSize");
-
-	char const *listen_dir;
-	{
-		char const *xx;
-		err = str_from_strs(listen_dirs, &xx);
-		if (err != 0)
-			return err;
-		listen_dir = xx;
-	}
-
-	char const *listen_file;
-	{
-		char const *xx;
-		err = str_from_strs(listen_files, &xx);
-		if (err != 0)
-			return err;
-		listen_file = xx;
-	}
-
-	char const *listen_fifo;
-	{
-		char const *xx;
-		err = str_from_strs(listen_fifos, &xx);
-		if (err != 0)
-			return err;
-		listen_fifo = xx;
-	}
-
-	char const *fifo_size;
-	{
-		char const *xx;
-		err = str_from_strs(fifo_sizes, &xx);
-		if (err != 0)
-			return err;
-		fifo_size = xx;
-	}
-
-	linted_unit_socket_type socket_type;
-	char const *path = 0;
-
-	if (listen_dir != 0) {
-		socket_type = LINTED_UNIT_SOCKET_TYPE_DIR;
-		path = listen_dir;
-	}
-
-	if (listen_file != 0) {
-		if (path != 0)
-			return LINTED_ERROR_INVALID_PARAMETER;
-		socket_type = LINTED_UNIT_SOCKET_TYPE_FILE;
-		path = listen_file;
-	}
-
-	if (listen_fifo != 0) {
-		if (path != 0)
-			return LINTED_ERROR_INVALID_PARAMETER;
-		socket_type = LINTED_UNIT_SOCKET_TYPE_FIFO;
-		path = listen_fifo;
-	}
-
-	if (0 == path)
-		return LINTED_ERROR_INVALID_PARAMETER;
-
-	int fifo_size_value = -1;
-	if (fifo_size != 0) {
-		if (0 == listen_fifo)
-			return LINTED_ERROR_INVALID_PARAMETER;
-		fifo_size_value = atoi(fifo_size);
-	}
-
-	switch (socket_type) {
-	case LINTED_UNIT_SOCKET_TYPE_DIR:
-	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		break;
-
-	case LINTED_UNIT_SOCKET_TYPE_FIFO:
-		unit->fifo_size = fifo_size_value;
-		break;
-	}
-
-	unit->type = socket_type;
-	unit->path = path;
-
-	return 0;
-}
-
-static linted_error activate_unit_db(char const *process_name,
-                                     struct linted_unit_db *unit_db,
-                                     linted_pid manager_pid,
-                                     linted_ko cwd)
-{
-	linted_error err;
-
-	size_t db_size = linted_unit_db_size(unit_db);
-
-	for (size_t ii = 0U; ii < db_size; ++ii) {
-		struct linted_unit *unit =
-		    linted_unit_db_get_unit(unit_db, ii);
-
-		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
-			continue;
-
-		err = linted_unit_socket_activate((void *)unit);
-		if (err != 0)
-			return err;
-	}
-
-	for (size_t ii = 0U; ii < db_size; ++ii) {
-		struct linted_unit *unit =
-		    linted_unit_db_get_unit(unit_db, ii);
-
-		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
-			continue;
-
-		err = service_activate(process_name, unit, manager_pid,
-		                       cwd, true);
-		if (err != 0)
-			return err;
-	}
-
-	return 0;
-}
-
-struct my_option {
-	char const *name;
-	char const *value;
-	bool flag : 1U;
-};
-
-static linted_error service_activate(char const *process_name,
-                                     struct linted_unit *unit,
-                                     linted_pid manager_pid,
-                                     linted_ko cwd, bool check)
-{
-	linted_error err = 0;
-
-	char const *unit_name = unit->name;
-
-	struct linted_unit_service *unit_service = (void *)unit;
-
-	if (!check)
-		goto spawn_service;
-
-	linted_pid child;
-	{
-		linted_pid xx;
-		err = linted_unit_pid(&xx, manager_pid, unit_name);
-		if (err != 0)
-			goto service_not_found;
-		child = xx;
-	}
-
-	linted_io_write_format(
-	    LINTED_KO_STDERR, 0, "%s: ptracing %" PRIiMAX " %s\n",
-	    process_name, (intmax_t)child, unit_name);
-
-	return linted_ptrace_seize(child, PTRACE_O_TRACEEXIT);
-
-service_not_found:
-	if (err != ESRCH)
-		return err;
-spawn_service:
-	;
-	char const *const *exec_start = unit_service->exec_start;
-	bool no_new_privs = unit_service->no_new_privs;
-	char const *fstab = unit_service->fstab;
-	char const *chdir_path = unit_service->chdir_path;
-	char const *const *env_whitelist = unit_service->env_whitelist;
-
-	char const *sandbox = unit_service->sandbox;
-	char const *waiter = unit_service->waiter;
-
-	bool has_priority = unit_service->has_priority;
-	bool has_limit_no_file = unit_service->has_limit_no_file;
-	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
-	bool has_limit_locks = unit_service->has_limit_locks;
-
-	bool clone_newuser = unit_service->clone_newuser;
-	bool clone_newpid = unit_service->clone_newpid;
-	bool clone_newipc = unit_service->clone_newipc;
-	bool clone_newnet = unit_service->clone_newnet;
-	bool clone_newns = unit_service->clone_newns;
-	bool clone_newuts = unit_service->clone_newuts;
-
-	linted_sched_priority priority;
-	if (has_priority)
-		priority = unit_service->priority;
-
-	int limit_no_file;
-	if (has_limit_no_file)
-		limit_no_file = unit_service->limit_no_file;
-
-	int limit_msgqueue;
-	if (has_limit_msgqueue)
-		limit_msgqueue = unit_service->limit_msgqueue;
-
-	int limit_locks;
-	if (has_limit_locks)
-		limit_locks = unit_service->limit_locks;
-
-	if (fstab != 0) {
-		linted_ko name_dir;
-		{
-			linted_ko xx;
-			err = linted_dir_create(&xx, LINTED_KO_CWD,
-			                        unit_name, 0U, S_IRWXU);
-			if (err != 0)
-				return err;
-			name_dir = xx;
-		}
-
-		err = linted_dir_create(0, name_dir, "chroot", 0U,
-		                        S_IRWXU);
-
-		linted_ko_close(name_dir);
-
-		if (err != 0)
-			return err;
-	}
-
-	if (fstab != 0 && !clone_newns)
-		return LINTED_ERROR_INVALID_PARAMETER;
-
-	bool drop_caps = true;
-
-	char *limit_no_file_str = 0;
-	if (has_limit_no_file) {
-		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)limit_no_file);
-		if (err != 0)
-			return err;
-		limit_no_file_str = xx;
-	}
-
-	char *limit_msgqueue_str = 0;
-	if (has_limit_msgqueue) {
-		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)limit_msgqueue);
-		if (err != 0)
-			goto free_no_file_str;
-		limit_msgqueue_str = xx;
-	}
-
-	char *limit_locks_str = 0;
-	if (has_limit_locks) {
-		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)limit_locks);
-		if (err != 0)
-			goto free_limit_msgqueue_str;
-		limit_locks_str = xx;
-	}
-
-	/* Favor other processes over this process hierarchy.  Only
-	 * superuser may lower priorities so this is not
-	 * stoppable. This also makes the process hierarchy nicer for
-	 * the OOM killer.
-	 */
-	char *prio_str = 0;
-	if (has_priority) {
-		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)priority);
-		if (err != 0)
-			goto free_limit_locks_str;
-		prio_str = xx;
-	}
-
-	char *chrootdir;
-	{
-		char *xx;
-		err = linted_str_format(&xx, "%s/chroot", unit_name);
-		if (err != 0)
-			goto free_prio_str;
-		chrootdir = xx;
-	}
-
-	char **envvars;
-	{
-		char **xx;
-		err = filter_envvars(&xx, env_whitelist);
-		if (err != 0)
-			goto free_chrootdir;
-		envvars = xx;
-	}
-
-	char *service_name_setting;
-	{
-		char *xx;
-		err = linted_str_format(&xx, "LINTED_SERVICE=%s",
-		                        unit_name);
-		if (err != 0)
-			goto free_envvars;
-		service_name_setting = xx;
-	}
-	size_t envvars_size =
-	    null_list_size((char const *const *)envvars);
-	size_t new_size = envvars_size + 2U;
-	{
-		void *xx;
-		err = linted_mem_realloc_array(&xx, envvars, new_size,
-		                               sizeof envvars[0U]);
-		if (err != 0)
-			goto envvar_allocate_failed;
-		envvars = xx;
-		goto envvar_allocate_succeeded;
-	}
-envvar_allocate_failed:
-	linted_mem_free(service_name_setting);
-	goto free_envvars;
-
-envvar_allocate_succeeded:
-	envvars[envvars_size] = service_name_setting;
-	envvars[envvars_size + 1U] = 0;
-
-	char *sandbox_dup;
-	{
-		char *xx;
-		err = linted_str_dup(&xx, sandbox);
-		if (err != 0)
-			goto free_envvars;
-		sandbox_dup = xx;
-	}
-	char *sandbox_base = basename(sandbox_dup);
-
-	size_t exec_start_size =
-	    null_list_size((char const *const *)exec_start);
-
-	char const **args;
-	size_t num_options;
-	size_t args_size;
-	{
-		struct my_option const options[] = {
-		    {"--traceme", 0, true},
-		    {"--waiter", waiter, waiter != 0},
-		    {"--chrootdir", chrootdir, fstab != 0},
-		    {"--fstab", fstab, fstab != 0},
-		    {"--nonewprivs", 0, no_new_privs},
-		    {"--limit-no-file", limit_no_file_str,
-		     has_limit_no_file},
-		    {"--limit-msgqueue", limit_msgqueue_str,
-		     has_limit_msgqueue},
-		    {"--limit-locks", limit_locks_str, has_limit_locks},
-		    {"--dropcaps", 0, drop_caps},
-		    {"--chdir", chdir_path, chdir_path != 0},
-		    {"--priority", prio_str, has_priority},
-		    {"--clone-newuser", 0, clone_newuser},
-		    {"--clone-newpid", 0, clone_newpid},
-		    {"--clone-newipc", 0, clone_newipc},
-		    {"--clone-newnet", 0, clone_newnet},
-		    {"--clone-newns", 0, clone_newns},
-		    {"--clone-newuts", 0, clone_newuts}};
-
-		num_options = 0U;
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options);
-		     ++ii) {
-			struct my_option const *option = &options[ii];
-
-			char const *value = option->value;
-			bool flag = option->flag;
-
-			if (!flag)
-				continue;
-
-			++num_options;
-			if (value != 0)
-				++num_options;
-		}
-
-		args_size = 1U + num_options + 1U + exec_start_size;
-		{
-			void *xx;
-			err = linted_mem_alloc_array(
-			    &xx, args_size + 1U, sizeof exec_start[0U]);
-			if (err != 0)
-				goto free_sandbox_dup;
-			args = xx;
-		}
-		args[0U] = sandbox_base;
-
-		size_t ix = 1U;
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options);
-		     ++ii) {
-			struct my_option option = options[ii];
-
-			char const *name = option.name;
-			char const *value = option.value;
-			bool flag = option.flag;
-
-			if (!flag)
-				continue;
-
-			args[ix++] = name;
-			if (value != 0)
-				args[ix++] = value;
-		}
-	}
-
-	args[1U + num_options] = "--";
-	for (size_t ii = 0U; ii < exec_start_size; ++ii)
-		args[1U + num_options + 1U + ii] = exec_start[ii];
-	args[args_size] = 0;
-
-	err = linted_spawn(0, cwd, sandbox, 0, 0, args,
-	                   (char const *const *)envvars);
-
-	linted_mem_free(args);
-
-free_sandbox_dup:
-	linted_mem_free(sandbox_dup);
-
-free_envvars:
-	for (char **envp = envvars;;) {
-		char *env = *envp;
-		if (0 == env)
-			break;
-
-		linted_mem_free(env);
-
-		++envp;
-	}
-	linted_mem_free(envvars);
-
-free_chrootdir:
-	linted_mem_free(chrootdir);
-
-free_prio_str:
-	linted_mem_free(prio_str);
-
-free_limit_locks_str:
-	linted_mem_free(limit_locks_str);
-
-free_limit_msgqueue_str:
-	linted_mem_free(limit_msgqueue_str);
-
-free_no_file_str:
-	linted_mem_free(limit_no_file_str);
-
-	return err;
 }
 
 static linted_error dispatch(struct monitor *monitor,
@@ -1481,6 +770,15 @@ monitor_on_admin_in_read(struct monitor *monitor,
 
 	union linted_admin_reply reply;
 	switch (request.type) {
+	case LINTED_ADMIN_ADD_UNIT: {
+		struct linted_admin_add_unit_request xx =
+		    request.add_unit;
+		struct linted_admin_add_unit_reply yy = {0};
+		err = on_add_unit(monitor, &xx, &yy);
+		reply.add_unit = yy;
+		break;
+	}
+
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request xx = request.status;
 		struct linted_admin_status_reply yy = {0};
@@ -1940,6 +1238,108 @@ static linted_error on_child_about_to_clone(linted_pid pid)
 }
 
 static linted_error
+on_add_unit(struct monitor *monitor,
+            struct linted_admin_add_unit_request const *request,
+            struct linted_admin_add_unit_reply *reply)
+{
+	linted_error err = 0;
+
+	struct linted_unit_db *unit_db = monitor->unit_db;
+	linted_pid manager_pid = monitor->manager_pid;
+	linted_ko cwd = monitor->cwd;
+	char const *process_name = monitor->process_name;
+
+	char const *unit_name = request->name;
+	size_t name_size = request->size;
+
+	char const *unit_exec = request->exec;
+	size_t exec_size = request->exec_size;
+
+	char *name;
+	{
+		char *xx;
+		err = linted_str_dup_len(&xx, unit_name, name_size);
+		if (err != 0)
+			return err;
+		name = xx;
+	}
+
+	char **exec = 0;
+	size_t exec_strs = 0U;
+
+	size_t ii = 0U;
+	for (; ii < exec_size;) {
+		size_t len = strlen(unit_exec);
+
+		void *xx;
+		linted_mem_realloc_array(&xx, exec, exec_strs + 1U,
+		                         sizeof exec[0U]);
+		exec = xx;
+
+		exec[exec_strs] = strdup(unit_exec);
+		++exec_strs;
+
+		ii += len + 1U;
+		unit_exec += len + 1U;
+	}
+	{
+		void *xx;
+		linted_mem_realloc_array(&xx, exec, exec_strs + 1U,
+		                         sizeof exec[0U]);
+		exec = xx;
+	}
+	exec[exec_strs] = 0;
+
+	struct linted_unit *unit;
+	{
+		struct linted_unit *xx;
+		err = linted_unit_db_add_unit(unit_db, &xx);
+		if (err != 0) {
+			linted_mem_free(name);
+			return err;
+		}
+		unit = xx;
+	}
+
+	unit->type = LINTED_UNIT_TYPE_SERVICE;
+	unit->name = name;
+
+	struct linted_unit_service *unit_service = (void *)unit;
+
+	unit_service->exec_start = (char const *const *)exec;
+	unit_service->fstab = 0;
+	unit_service->chdir_path = 0;
+	unit_service->env_whitelist = 0;
+
+	unit_service->sandbox = monitor->sandbox;
+	unit_service->waiter = monitor->waiter;
+
+	unit_service->priority = -1;
+	unit_service->limit_no_file = -1;
+	unit_service->limit_msgqueue = -1;
+	unit_service->limit_locks = -1;
+
+	unit_service->has_priority = false;
+	unit_service->has_limit_no_file = false;
+	unit_service->has_limit_locks = false;
+
+	unit_service->clone_newuser = false;
+	unit_service->clone_newpid = false;
+	unit_service->clone_newipc = false;
+	unit_service->clone_newnet = false;
+	unit_service->clone_newns = false;
+	unit_service->clone_newuts = false;
+
+	unit_service->no_new_privs = false;
+
+	err = service_activate(process_name, unit, manager_pid, cwd,
+	                       false);
+
+	reply->type = LINTED_ADMIN_ADD_UNIT;
+	return 0;
+}
+
+static linted_error
 on_status_request(linted_pid manager_pid,
                   struct linted_admin_status_request const *request,
                   struct linted_admin_status_reply *reply)
@@ -2026,258 +1426,6 @@ reply:
 	return 0;
 }
 
-static linted_error conf_db_from_path(struct linted_conf_db **dbp,
-                                      linted_ko cwd, char const *path)
-{
-	linted_error err = 0;
-
-	struct linted_conf_db *db;
-	{
-		struct linted_conf_db *xx;
-		err = linted_conf_db_create(&xx);
-		if (err != 0)
-			return err;
-		db = xx;
-	}
-
-	char const *dirstart = path;
-	for (;;) {
-		char const *dirend = strchr(dirstart, ':');
-
-		size_t len;
-		if (0 == dirend) {
-			len = strlen(dirstart);
-		} else {
-			len = dirend - dirstart;
-		}
-
-		char *dir_name;
-		{
-			char *xx;
-			err = linted_str_dup_len(&xx, dirstart, len);
-			if (err != 0)
-				goto free_units;
-			dir_name = xx;
-		}
-
-		err = add_unit_dir_to_db(db, cwd, dir_name);
-
-		linted_mem_free(dir_name);
-
-		if (err != 0)
-			goto free_units;
-
-		if (0 == dirend)
-			break;
-
-		dirstart = dirend + 1U;
-	}
-
-free_units:
-	if (err != 0) {
-		linted_conf_db_destroy(db);
-
-		return err;
-	}
-
-	*dbp = db;
-
-	return 0;
-}
-
-static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
-                                       linted_ko cwd,
-                                       char const *dir_name)
-{
-	linted_error err;
-
-	linted_ko units_ko;
-	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, cwd, dir_name,
-		                     LINTED_KO_DIRECTORY);
-		/* Just treat as an empty directory */
-		if (LINTED_ERROR_FILE_NOT_FOUND == err)
-			return 0;
-		if (err != 0)
-			return err;
-		units_ko = xx;
-	}
-
-	DIR *units_dir = fdopendir(units_ko);
-	if (0 == units_dir) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-
-		linted_ko_close(units_ko);
-	}
-
-	if (LINTED_ERROR_FILE_NOT_FOUND == err)
-		return 0;
-
-	if (err != 0)
-		return err;
-
-	size_t files_count = 0U;
-	char **files = 0;
-	for (;;) {
-		errno = 0;
-		struct dirent const *entry = readdir(units_dir);
-		if (0 == entry) {
-			err = errno;
-			if (0 == err)
-				break;
-
-			goto free_file_names;
-		}
-
-		char const *name = entry->d_name;
-
-		if (0 == strcmp(".", name))
-			continue;
-
-		if (0 == strcmp("..", name))
-			continue;
-
-		char *name_copy;
-		{
-			char *xx;
-			err = linted_str_dup(&xx, name);
-			if (err != 0)
-				goto free_file_names;
-			name_copy = xx;
-		}
-
-		size_t new_files_count = files_count + 1U;
-		char **new_files;
-		{
-			void *xx;
-			err = linted_mem_realloc_array(
-			    &xx, files, new_files_count,
-			    sizeof files[0U]);
-			if (err != 0)
-				goto free_file_name;
-			new_files = xx;
-		}
-		new_files[files_count] = name_copy;
-
-		files = new_files;
-		files_count = new_files_count;
-
-		if (err != 0) {
-		free_file_name:
-			linted_mem_free(name_copy);
-			goto free_file_names;
-		}
-	}
-
-	for (size_t ii = 0U; ii < files_count; ++ii) {
-		char *file_name = files[ii];
-
-		linted_unit_type unit_type;
-		{
-			char const *dot = strchr(file_name, '.');
-
-			char const *suffix = dot + 1U;
-
-			if (0 == strcmp(suffix, "socket")) {
-				unit_type = LINTED_UNIT_TYPE_SOCKET;
-			} else if (0 == strcmp(suffix, "service")) {
-				unit_type = LINTED_UNIT_TYPE_SERVICE;
-			} else {
-				err = LINTED_ERROR_INVALID_PARAMETER;
-				goto free_file_names;
-			}
-		}
-		struct linted_conf *conf = 0;
-		{
-			struct linted_conf *xx;
-			err = linted_conf_create(&xx, file_name);
-			if (err != 0)
-				goto close_unit_file;
-			conf = xx;
-		}
-
-		files[ii] = 0;
-
-		switch (unit_type) {
-		case LINTED_UNIT_TYPE_SOCKET:
-			/* Okay but we have no defaults for this */
-			break;
-
-		case LINTED_UNIT_TYPE_SERVICE: {
-			char *section_name;
-			{
-				char *xx;
-				err = linted_str_dup(&xx, "Service");
-				if (err != 0)
-					goto close_unit_file;
-				section_name = xx;
-			}
-
-			char *env_whitelist;
-			{
-				char *xx;
-				err = linted_str_dup(
-				    &xx,
-				    "X-LintedEnvironmentWhitelist");
-				if (err != 0) {
-					linted_mem_free(section_name);
-					goto close_unit_file;
-				}
-				env_whitelist = xx;
-			}
-
-			linted_conf_section service;
-			{
-				linted_conf_section xx;
-				err = linted_conf_add_section(
-				    conf, &xx, section_name);
-				if (err != 0) {
-					linted_mem_free(env_whitelist);
-					linted_mem_free(section_name);
-					goto close_unit_file;
-				}
-				service = xx;
-			}
-
-			err = linted_conf_add_setting(conf, service,
-			                              env_whitelist,
-			                              default_envvars);
-			if (err != 0)
-				goto close_unit_file;
-			break;
-		}
-		}
-
-		err = linted_conf_parse_file(conf, units_ko, file_name);
-
-	close_unit_file:
-		if (err != 0)
-			goto free_unit;
-
-		err = linted_conf_db_add_conf(db, conf);
-
-	free_unit:
-		if (err != 0)
-			linted_conf_put(conf);
-	}
-
-free_file_names:
-	for (size_t ii = 0U; ii < files_count; ++ii)
-		linted_mem_free(files[ii]);
-	linted_mem_free(files);
-
-	if (-1 == closedir(units_dir)) {
-		if (0 == err) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-		}
-	}
-
-	return err;
-}
-
 static linted_error service_children_terminate(linted_pid pid)
 {
 	linted_error err = 0;
@@ -2306,14 +1454,36 @@ free_children:
 	return err;
 }
 
+extern char **environ;
+
 static linted_error filter_envvars(char ***result_envvarsp,
                                    char const *const *allowed_envvars)
 {
 	char **result_envvars;
 	linted_error err;
 
-	size_t allowed_envvars_size = null_list_size(allowed_envvars);
+	if (0 == allowed_envvars) {
+		size_t size =
+		    null_list_size((char const *const *)environ);
 
+		{
+			void *xx;
+			err = linted_mem_alloc_array(
+			    &xx, size + 1U, sizeof result_envvars[0U]);
+			if (err != 0)
+				return err;
+			result_envvars = xx;
+		}
+
+		for (size_t ii = 0U; ii < size; ++ii) {
+			result_envvars[ii] = strdup(environ[ii]);
+		}
+		result_envvars[size] = 0;
+		*result_envvarsp = result_envvars;
+		return 0;
+	}
+
+	size_t allowed_envvars_size = null_list_size(allowed_envvars);
 	{
 		void *xx;
 		err = linted_mem_alloc_array(&xx,
@@ -2370,56 +1540,6 @@ static size_t null_list_size(char const *const *list)
 			return ii;
 }
 
-static linted_error str_from_strs(char const *const *strs,
-                                  char const **strp)
-{
-	char const *str;
-	if (0 == strs) {
-		str = 0;
-	} else {
-		str = strs[0U];
-
-		if (strs[1U] != 0)
-			return LINTED_ERROR_INVALID_PARAMETER;
-	}
-
-	*strp = str;
-	return 0;
-}
-
-static linted_error bool_from_cstring(char const *str, bool *boolp)
-{
-	static char const *const yes_strs[] = {"1", "yes", "true",
-	                                       "on"};
-	static char const *const no_strs[] = {"0", "no", "false",
-	                                      "off"};
-
-	bool result;
-
-	if (0 == str)
-		return LINTED_ERROR_INVALID_PARAMETER;
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
-		if (0 == strcmp(str, yes_strs[ii])) {
-			result = true;
-			goto return_result;
-		}
-	}
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(no_strs); ++ii) {
-		if (0 == strcmp(str, no_strs[ii])) {
-			result = false;
-			goto return_result;
-		}
-	}
-
-	return LINTED_ERROR_INVALID_PARAMETER;
-
-return_result:
-	*boolp = result;
-	return 0;
-}
-
 static linted_error pid_is_child_of(linted_pid parent, linted_pid child,
                                     bool *isp)
 {
@@ -2435,6 +1555,326 @@ static linted_error pid_is_child_of(linted_pid parent, linted_pid child,
 	}
 
 	*isp = ppid == parent;
+
+	return err;
+}
+
+struct my_option {
+	char const *name;
+	char const *value;
+	bool flag : 1U;
+};
+
+static linted_error service_activate(char const *process_name,
+                                     struct linted_unit *unit,
+                                     linted_pid manager_pid,
+                                     linted_ko cwd, bool check)
+{
+	linted_error err = 0;
+
+	char const *unit_name = unit->name;
+
+	struct linted_unit_service *unit_service = (void *)unit;
+
+	if (!check)
+		goto spawn_service;
+
+	linted_pid child;
+	{
+		linted_pid xx;
+		err = linted_unit_pid(&xx, manager_pid, unit_name);
+		if (err != 0)
+			goto service_not_found;
+		child = xx;
+	}
+
+	linted_io_write_format(
+	    LINTED_KO_STDERR, 0, "%s: ptracing %" PRIiMAX " %s\n",
+	    process_name, (intmax_t)child, unit_name);
+
+	return linted_ptrace_seize(child, PTRACE_O_TRACEEXIT);
+
+service_not_found:
+	if (err != ESRCH)
+		return err;
+spawn_service:
+	;
+	char const *const *exec_start = unit_service->exec_start;
+	bool no_new_privs = unit_service->no_new_privs;
+	char const *fstab = unit_service->fstab;
+	char const *chdir_path = unit_service->chdir_path;
+	char const *const *env_whitelist = unit_service->env_whitelist;
+
+	char const *sandbox = unit_service->sandbox;
+	char const *waiter = unit_service->waiter;
+
+	bool has_priority = unit_service->has_priority;
+	bool has_limit_no_file = unit_service->has_limit_no_file;
+	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
+	bool has_limit_locks = unit_service->has_limit_locks;
+
+	bool clone_newuser = unit_service->clone_newuser;
+	bool clone_newpid = unit_service->clone_newpid;
+	bool clone_newipc = unit_service->clone_newipc;
+	bool clone_newnet = unit_service->clone_newnet;
+	bool clone_newns = unit_service->clone_newns;
+	bool clone_newuts = unit_service->clone_newuts;
+
+	linted_sched_priority priority;
+	if (has_priority)
+		priority = unit_service->priority;
+
+	int limit_no_file;
+	if (has_limit_no_file)
+		limit_no_file = unit_service->limit_no_file;
+
+	int limit_msgqueue;
+	if (has_limit_msgqueue)
+		limit_msgqueue = unit_service->limit_msgqueue;
+
+	int limit_locks;
+	if (has_limit_locks)
+		limit_locks = unit_service->limit_locks;
+
+	if (fstab != 0) {
+		linted_ko name_dir;
+		{
+			linted_ko xx;
+			err = linted_dir_create(&xx, LINTED_KO_CWD,
+			                        unit_name, 0U, S_IRWXU);
+			if (err != 0)
+				return err;
+			name_dir = xx;
+		}
+
+		err = linted_dir_create(0, name_dir, "chroot", 0U,
+		                        S_IRWXU);
+
+		linted_ko_close(name_dir);
+
+		if (err != 0)
+			return err;
+	}
+
+	if (fstab != 0 && !clone_newns)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	bool drop_caps = true;
+
+	char *limit_no_file_str = 0;
+	if (has_limit_no_file) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)limit_no_file);
+		if (err != 0)
+			return err;
+		limit_no_file_str = xx;
+	}
+
+	char *limit_msgqueue_str = 0;
+	if (has_limit_msgqueue) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)limit_msgqueue);
+		if (err != 0)
+			goto free_no_file_str;
+		limit_msgqueue_str = xx;
+	}
+
+	char *limit_locks_str = 0;
+	if (has_limit_locks) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)limit_locks);
+		if (err != 0)
+			goto free_limit_msgqueue_str;
+		limit_locks_str = xx;
+	}
+
+	/* Favor other processes over this process hierarchy.  Only
+	 * superuser may lower priorities so this is not
+	 * stoppable. This also makes the process hierarchy nicer for
+	 * the OOM killer.
+	 */
+	char *prio_str = 0;
+	if (has_priority) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)priority);
+		if (err != 0)
+			goto free_limit_locks_str;
+		prio_str = xx;
+	}
+
+	char *chrootdir;
+	{
+		char *xx;
+		err = linted_str_format(&xx, "%s/chroot", unit_name);
+		if (err != 0)
+			goto free_prio_str;
+		chrootdir = xx;
+	}
+
+	char **envvars;
+	{
+		char **xx;
+		err = filter_envvars(&xx, env_whitelist);
+		if (err != 0)
+			goto free_chrootdir;
+		envvars = xx;
+	}
+
+	char *service_name_setting;
+	{
+		char *xx;
+		err = linted_str_format(&xx, "LINTED_SERVICE=%s",
+		                        unit_name);
+		if (err != 0)
+			goto free_envvars;
+		service_name_setting = xx;
+	}
+	size_t envvars_size =
+	    null_list_size((char const *const *)envvars);
+	size_t new_size = envvars_size + 2U;
+	{
+		void *xx;
+		err = linted_mem_realloc_array(&xx, envvars, new_size,
+		                               sizeof envvars[0U]);
+		if (err != 0)
+			goto envvar_allocate_failed;
+		envvars = xx;
+		goto envvar_allocate_succeeded;
+	}
+envvar_allocate_failed:
+	linted_mem_free(service_name_setting);
+	goto free_envvars;
+
+envvar_allocate_succeeded:
+	envvars[envvars_size] = service_name_setting;
+	envvars[envvars_size + 1U] = 0;
+
+	char *sandbox_dup;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, sandbox);
+		if (err != 0)
+			goto free_envvars;
+		sandbox_dup = xx;
+	}
+	char *sandbox_base = basename(sandbox_dup);
+
+	size_t exec_start_size =
+	    null_list_size((char const *const *)exec_start);
+
+	char const **args;
+	size_t num_options;
+	size_t args_size;
+	{
+		struct my_option const options[] = {
+		    {"--traceme", 0, true},
+		    {"--waiter", waiter, waiter != 0},
+		    {"--chrootdir", chrootdir, fstab != 0},
+		    {"--fstab", fstab, fstab != 0},
+		    {"--nonewprivs", 0, no_new_privs},
+		    {"--limit-no-file", limit_no_file_str,
+		     has_limit_no_file},
+		    {"--limit-msgqueue", limit_msgqueue_str,
+		     has_limit_msgqueue},
+		    {"--limit-locks", limit_locks_str, has_limit_locks},
+		    {"--dropcaps", 0, drop_caps},
+		    {"--chdir", chdir_path, chdir_path != 0},
+		    {"--priority", prio_str, has_priority},
+		    {"--clone-newuser", 0, clone_newuser},
+		    {"--clone-newpid", 0, clone_newpid},
+		    {"--clone-newipc", 0, clone_newipc},
+		    {"--clone-newnet", 0, clone_newnet},
+		    {"--clone-newns", 0, clone_newns},
+		    {"--clone-newuts", 0, clone_newuts}};
+
+		num_options = 0U;
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options);
+		     ++ii) {
+			struct my_option const *option = &options[ii];
+
+			char const *value = option->value;
+			bool flag = option->flag;
+
+			if (!flag)
+				continue;
+
+			++num_options;
+			if (value != 0)
+				++num_options;
+		}
+
+		args_size = 1U + num_options + 1U + exec_start_size;
+		{
+			void *xx;
+			err = linted_mem_alloc_array(
+			    &xx, args_size + 1U, sizeof exec_start[0U]);
+			if (err != 0)
+				goto free_sandbox_dup;
+			args = xx;
+		}
+		args[0U] = sandbox_base;
+
+		size_t ix = 1U;
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(options);
+		     ++ii) {
+			struct my_option option = options[ii];
+
+			char const *name = option.name;
+			char const *value = option.value;
+			bool flag = option.flag;
+
+			if (!flag)
+				continue;
+
+			args[ix++] = name;
+			if (value != 0)
+				args[ix++] = value;
+		}
+	}
+
+	args[1U + num_options] = "--";
+	for (size_t ii = 0U; ii < exec_start_size; ++ii)
+		args[1U + num_options + 1U + ii] = exec_start[ii];
+	args[args_size] = 0;
+
+	err = linted_spawn(0, cwd, sandbox, 0, 0, args,
+	                   (char const *const *)envvars);
+
+	linted_mem_free(args);
+
+free_sandbox_dup:
+	linted_mem_free(sandbox_dup);
+
+free_envvars:
+	for (char **envp = envvars;;) {
+		char *env = *envp;
+		if (0 == env)
+			break;
+
+		linted_mem_free(env);
+
+		++envp;
+	}
+	linted_mem_free(envvars);
+
+free_chrootdir:
+	linted_mem_free(chrootdir);
+
+free_prio_str:
+	linted_mem_free(prio_str);
+
+free_limit_locks_str:
+	linted_mem_free(limit_locks_str);
+
+free_limit_msgqueue_str:
+	linted_mem_free(limit_msgqueue_str);
+
+free_no_file_str:
+	linted_mem_free(limit_no_file_str);
 
 	return err;
 }

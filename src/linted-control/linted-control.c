@@ -460,7 +460,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		union linted_admin_request request = {0};
 
 		request.type = LINTED_ADMIN_STOP;
-		request.stop.size = sizeof "linteed-gui" - 1U;
+		request.stop.size = sizeof "linted-gui" - 1U;
 		memcpy(request.stop.name, "linted-gui",
 		       sizeof "linted-gui" - 1U);
 

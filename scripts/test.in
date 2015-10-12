@@ -32,6 +32,7 @@ ${SRCDIR}/src/controller/units\
 
 : ${LINTED_INIT:="${BUILDDIR}/src/linted-init/linted-init${EXEEXT}"}
 : ${LINTED_MONITOR:="${BUILDDIR}/src/linted-monitor/linted-monitor${EXEEXT}"}
+: ${LINTED_STARTUP:="${BUILDDIR}/src/linted-startup/linted-startup${EXEEXT}"}
 : ${LINTED_SANDBOX:="${BUILDDIR}/src/linted-sandbox/linted-sandbox${EXEEXT}"}
 : ${LINTED_WAITER:="${BUILDDIR}/src/linted-waiter/linted-waiter${EXEEXT}"}
 
@@ -53,6 +54,7 @@ ${SRCDIR}/src/controller/units\
 export LINTED_UNIT_PATH
 export LINTED_INIT
 export LINTED_MONITOR
+export LINTED_STARTUP
 export LINTED_SANDBOX
 export LINTED_WAITER
 export LINTED_AUDIO_FSTAB

@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
+# Copyright 2015 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,46 +14,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
-pkglibexec_PROGRAMS+=%D%/linted-monitor
+pkglibexec_PROGRAMS+=%D%/linted-startup
 
-%C%_linted_monitor_SOURCES=%D%/monitor.c
-EXTRA_%C%_linted_monitor_SOURCES=\
-  %D%/monitor-posix.c\
-  %D%/monitor-windows.c
-
-%C%_linted_monitor_LDADD=\
+%C%_linted_startup_SOURCES=%D%/linted-startup.c
+%C%_linted_startup_LDADD=\
   src/start/libstart.la\
   \
+  src/admin/libadmin.la\
+  src/conf/libconf.la\
+  src/environment/libenvironment.la\
   src/error/liberror.la\
-  src/log/liblog.la
-
-if POSIX_API
-%C%_linted_monitor_LDADD+=\
-  \
-  src/async/libasync.la\
-  src/dir/libdir.la\
-  src/file/libfile.la\
-  src/fifo/libfifo.la\
   src/io/libio.la\
   src/ko/libko.la\
-  src/path/libpath.la\
-  src/pid/libpid.la\
-  src/sched/libsched.la\
-  src/signal/libsignal.la\
-  src/spawn/libspawn.la\
+  src/log/liblog.la\
   src/str/libstr.la\
-  src/unit/libunit.la\
-  \
-  src/admin/libadmin.la
-
-endif
-
-if WINDOWS_API
-%C%_linted_monitor_LDADD+=\
-  src/utf/libutf.la\
-  %D%/resources.$(OBJEXT)\
-  \
-  $(USER_LIBS)
-
-%D%/resources.$(OBJEXT): %D%/monitor.manifest
-endif
+  src/unit/libunit.la

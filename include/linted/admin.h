@@ -34,8 +34,21 @@ struct linted_async_task;
 typedef linted_ko linted_admin_in;
 typedef linted_ko linted_admin_out;
 
-enum { LINTED_ADMIN_STATUS, LINTED_ADMIN_STOP };
+enum { LINTED_ADMIN_ADD_UNIT, LINTED_ADMIN_STATUS, LINTED_ADMIN_STOP };
 typedef unsigned char linted_admin_type;
+
+struct linted_admin_add_unit_request {
+	linted_admin_type type;
+	size_t size;
+	char name[LINTED_UNIT_NAME_MAX];
+	size_t exec_size;
+	char exec[512U];
+};
+
+struct linted_admin_add_unit_reply {
+	linted_admin_type type;
+};
+
 struct linted_admin_status_request {
 	linted_admin_type type;
 	size_t size;
@@ -60,12 +73,14 @@ struct linted_admin_stop_reply {
 
 union linted_admin_request {
 	linted_admin_type type;
+	struct linted_admin_add_unit_request add_unit;
 	struct linted_admin_status_request status;
 	struct linted_admin_stop_request stop;
 };
 
 union linted_admin_reply {
 	linted_admin_type type;
+	struct linted_admin_add_unit_reply add_unit;
 	struct linted_admin_status_reply status;
 	struct linted_admin_stop_reply stop;
 };
