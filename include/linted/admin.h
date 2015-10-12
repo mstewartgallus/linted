@@ -42,11 +42,8 @@ struct linted_admin_add_unit_request {
 
 	_Bool no_new_privs : 1U;
 
-	size_t size;
-	char name[LINTED_UNIT_NAME_MAX];
-
-	size_t exec_size;
-	char exec[512U];
+	char const *name;
+	char const *const *command;
 };
 
 struct linted_admin_add_unit_reply {
@@ -55,8 +52,7 @@ struct linted_admin_add_unit_reply {
 
 struct linted_admin_status_request {
 	linted_admin_type type;
-	size_t size;
-	char name[LINTED_UNIT_NAME_MAX];
+	char const *name;
 };
 
 struct linted_admin_status_reply {
@@ -66,8 +62,7 @@ struct linted_admin_status_reply {
 
 struct linted_admin_stop_request {
 	linted_admin_type type;
-	size_t size;
-	char name[LINTED_UNIT_NAME_MAX];
+	char const *name;
 };
 
 struct linted_admin_stop_reply {
@@ -100,9 +95,11 @@ void linted_admin_in_task_read_destroy(
 linted_admin_in
 linted_admin_in_task_read_ko(struct linted_admin_in_task_read *task);
 
-void linted_admin_in_task_read_request(
-    struct linted_admin_in_task_read *task,
-    union linted_admin_request *outp);
+linted_error linted_admin_in_task_read_request(
+    union linted_admin_request **outp,
+    struct linted_admin_in_task_read *task);
+
+void linted_admin_request_free(union linted_admin_request *outp);
 
 void *
 linted_admin_in_task_read_data(struct linted_admin_in_task_read *task);

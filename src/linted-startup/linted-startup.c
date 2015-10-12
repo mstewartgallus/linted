@@ -582,7 +582,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 
 	char const *const *types =
 	    linted_conf_find(conf, "Service", "Type");
-	char const *const *exec_start =
+	char const *const *command =
 	    linted_conf_find(conf, "Service", "ExecStart");
 	char const *const *no_new_privss =
 	    linted_conf_find(conf, "Service", "NoNewPrivileges");
@@ -606,7 +606,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 		type = xx;
 	}
 
-	if (0 == exec_start)
+	if (0 == command)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
 	char const *no_new_privs;
@@ -697,7 +697,7 @@ static linted_error service_create(struct linted_unit_service *unit,
 	unit->sandbox = sandbox;
 	unit->waiter = waiter;
 
-	unit->exec_start = exec_start;
+	unit->command = command;
 	unit->no_new_privs = no_new_privs_value;
 
 	unit->limit_no_file = 15;
@@ -921,12 +921,10 @@ static linted_error service_activate(char const *process_name,
 {
 	linted_error err = 0;
 
-	char const *unit_name = unit->name;
-
 	struct linted_unit_service *unit_service = (void *)unit;
 
-	size_t len = strlen(unit_name);
-
+	char const *name = unit->name;
+	char const *const *command = unit_service->command;
 	bool no_new_privs = unit_service->no_new_privs;
 
 	{
@@ -935,24 +933,8 @@ static linted_error service_activate(char const *process_name,
 		request.type = LINTED_ADMIN_ADD_UNIT;
 
 		request.add_unit.no_new_privs = no_new_privs;
-
-		request.add_unit.size = len;
-		memcpy(request.add_unit.name, unit_name, len);
-
-		char const *const *exec_start =
-		    unit_service->exec_start;
-		size_t exec_size = 0U;
-
-		for (; exec_start[0U] != 0; ++exec_start) {
-			char const *str = exec_start[0U];
-			size_t len = strlen(str);
-			memcpy(request.add_unit.exec + exec_size, str,
-			       len);
-			request.add_unit.exec[exec_size + len] = '\0';
-			exec_size += len + 1U;
-		}
-
-		request.add_unit.exec_size = exec_size;
+		request.add_unit.name = name;
+		request.add_unit.command = command;
 
 		err = linted_admin_in_write(admin_in, &request);
 	}

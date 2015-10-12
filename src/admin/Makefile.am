@@ -22,4 +22,5 @@ noinst_LTLIBRARIES+=%D%/libadmin.la
 %C%_libadmin_la_LIBADD=\
   src/async/libasync.la\
   src/io/libio.la\
+  src/str/libstr.la\
   src/ko/libko.la

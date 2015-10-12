@@ -82,7 +82,7 @@ struct linted_unit_socket {
 struct linted_unit_service {
 	struct linted_unit common;
 
-	char const *const *exec_start;
+	char const *const *command;
 	char const *fstab;
 	char const *chdir_path;
 	char const *const *env_whitelist;

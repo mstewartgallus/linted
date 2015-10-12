@@ -24,6 +24,7 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/str.h"
 #include "linted/unit.h"
 #include "linted/util.h"
 
@@ -33,33 +34,11 @@
 #include <string.h>
 
 /**
- * @todo Use proper marshalliing between structures and byte arrays
+ * @todo Use proper marshalling between structures and byte arrays
  *       for linted_admin instead of just copying.
  */
 
 #define CHUNK_SIZE 1024U
-
-LINTED_STATIC_ASSERT(
-    LINTED_FIELD_SIZEOF(struct linted_admin_status_request, type) +
-        LINTED_FIELD_SIZEOF(struct linted_admin_status_request, size) +
-        LINTED_FIELD_SIZEOF(struct linted_admin_status_request, name) <
-    CHUNK_SIZE);
-
-LINTED_STATIC_ASSERT(
-    LINTED_FIELD_SIZEOF(struct linted_admin_stop_request, type) +
-        LINTED_FIELD_SIZEOF(struct linted_admin_stop_request, size) +
-        LINTED_FIELD_SIZEOF(struct linted_admin_stop_request, name) <
-    CHUNK_SIZE);
-
-LINTED_STATIC_ASSERT(
-    LINTED_FIELD_SIZEOF(struct linted_admin_status_reply, type) +
-        LINTED_FIELD_SIZEOF(struct linted_admin_status_reply, is_up) <
-    CHUNK_SIZE);
-
-LINTED_STATIC_ASSERT(
-    LINTED_FIELD_SIZEOF(struct linted_admin_stop_reply, type) +
-        LINTED_FIELD_SIZEOF(struct linted_admin_stop_reply, was_up) <
-    CHUNK_SIZE);
 
 struct linted_admin_in_task_read {
 	struct linted_io_task_read *parent;
@@ -121,10 +100,21 @@ linted_admin_in_task_read_ko(struct linted_admin_in_task_read *task)
 	return linted_io_task_read_ko(task->parent);
 }
 
-void linted_admin_in_task_read_request(
-    struct linted_admin_in_task_read *task,
-    union linted_admin_request *outp)
+linted_error linted_admin_in_task_read_request(
+    union linted_admin_request **outp,
+    struct linted_admin_in_task_read *task)
 {
+	linted_error err = 0;
+
+	union linted_admin_request *request;
+	{
+		void *xx;
+		err = linted_mem_alloc(&xx, sizeof *request);
+		if (err != 0)
+			return err;
+		request = xx;
+	}
+
 	char raw[CHUNK_SIZE] = {0};
 	memcpy(raw, task->request, sizeof raw);
 
@@ -137,7 +127,7 @@ void linted_admin_in_task_read_request(
 	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_request *status =
-		    (void *)outp;
+		    (void *)request;
 
 		unsigned char bitfield;
 		memcpy(&bitfield, tip, sizeof bitfield);
@@ -145,67 +135,127 @@ void linted_admin_in_task_read_request(
 
 		bool no_new_privs = (bitfield & 1U) != 0U;
 
-		char *namep = status->name;
-
 		size_t size;
-
 		memcpy(&size, tip, sizeof size);
 		tip += sizeof size;
 
-		memcpy(namep, tip, size);
+		char *name;
+		err = linted_str_dup_len(&name, tip, size);
+		if (err != 0)
+			goto free_request;
 		tip += size;
 
-		char *execp = status->exec;
-		size_t exec_size;
+		char **exec = 0;
+		size_t exec_strs = 0U;
 
-		memcpy(&exec_size, tip, sizeof exec_size);
-		tip += sizeof exec_size;
+		size_t ii = 0U;
+		for (; ii < 512U;) {
+			size_t len = strlen(tip);
 
-		memcpy(execp, tip, exec_size);
+			void *xx;
+			linted_mem_realloc_array(
+			    &xx, exec, exec_strs + 1U, sizeof exec[0U]);
+			exec = xx;
+
+			exec[exec_strs] = strdup(tip);
+			++exec_strs;
+
+			ii += len + 1U;
+			tip += len + 1U;
+		}
+		{
+			void *xx;
+			linted_mem_realloc_array(
+			    &xx, exec, exec_strs + 1U, sizeof exec[0U]);
+			exec = xx;
+		}
+		exec[exec_strs] = 0;
 
 		status->type = type;
 		status->no_new_privs = no_new_privs;
-		status->size = size;
-		status->exec_size = exec_size;
+		status->name = name;
+		status->command = (char const *const *)exec;
 		break;
 	}
 
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request *status =
-		    (void *)outp;
-		char *namep = status->name;
+		    (void *)request;
 
 		size_t size;
-
 		memcpy(&size, tip, sizeof size);
 		tip += sizeof size;
 
-		memcpy(namep, tip, size);
+		char *name;
+		err = linted_str_dup_len(&name, tip, size);
+		if (err != 0)
+			goto free_request;
+		tip += size;
 
 		status->type = type;
-		status->size = size;
+		status->name = name;
 		break;
 	}
 
 	case LINTED_ADMIN_STOP: {
-		struct linted_admin_stop_request *stop = (void *)outp;
-		char *namep = stop->name;
+		struct linted_admin_stop_request *stop =
+		    (void *)request;
 
 		size_t size;
-
 		memcpy(&size, tip, sizeof size);
 		tip += sizeof size;
 
-		memcpy(namep, tip, size);
+		char *name;
+		err = linted_str_dup_len(&name, tip, size);
+		if (err != 0)
+			goto free_request;
+		tip += size;
 
 		stop->type = type;
-		stop->size = size;
+		stop->name = name;
 		break;
 	}
 
 	default:
 		LINTED_ASSERT(0);
 	}
+
+free_request:
+	if (err != 0) {
+		linted_mem_free(request);
+		return err;
+	}
+
+	*outp = request;
+	return 0;
+}
+
+void linted_admin_request_free(union linted_admin_request *request)
+{
+	switch (request->type) {
+	case LINTED_ADMIN_ADD_UNIT: {
+		struct linted_admin_add_unit_request *status =
+		    (void *)request;
+		linted_mem_free((void *)status->name);
+		break;
+	}
+
+	case LINTED_ADMIN_STATUS: {
+		struct linted_admin_status_request *status =
+		    (void *)request;
+		linted_mem_free((void *)status->name);
+		break;
+	}
+
+	case LINTED_ADMIN_STOP: {
+		struct linted_admin_stop_request *stop =
+		    (void *)request;
+		linted_mem_free((void *)stop->name);
+		break;
+	}
+	}
+
+	linted_mem_free(request);
 }
 
 linted_error
@@ -233,10 +283,8 @@ linted_admin_in_write(linted_admin_in admin,
 		tip += sizeof bitfield;
 
 		char const *namep = status->name;
+		size_t size = strlen(namep);
 
-		size_t size;
-
-		size = status->size;
 		if (size > LINTED_UNIT_NAME_MAX)
 			return LINTED_ERROR_INVALID_PARAMETER;
 
@@ -246,11 +294,20 @@ linted_admin_in_write(linted_admin_in admin,
 		memcpy(tip, namep, size);
 		tip += size;
 
-		char const *execp = status->exec;
+		char const *const *execp = status->command;
+		size_t exec_size = 0U;
+		for (size_t ii = 0U; execp[ii] != 0U; ++ii) {
+			char const *str = execp[ii];
 
-		size_t exec_size;
+			size_t size = strlen(str);
 
-		exec_size = status->exec_size;
+			memcpy(tip, str, size);
+			tip[size] = 0;
+
+			tip += size + 1U;
+			exec_size += size + 1U;
+		}
+
 		if (exec_size > 512U)
 			return LINTED_ERROR_INVALID_PARAMETER;
 
@@ -267,9 +324,7 @@ linted_admin_in_write(linted_admin_in admin,
 		    (void *)request;
 		char const *namep = status->name;
 
-		size_t size;
-
-		size = status->size;
+		size_t size = strlen(namep);
 		if (size > LINTED_UNIT_NAME_MAX)
 			return LINTED_ERROR_INVALID_PARAMETER;
 
@@ -290,9 +345,7 @@ linted_admin_in_write(linted_admin_in admin,
 		    (void *)request;
 		char const *namep = stop->name;
 
-		size_t size;
-
-		size = stop->size;
+		size_t size = strlen(namep);
 		if (size > LINTED_UNIT_NAME_MAX)
 			return LINTED_ERROR_INVALID_PARAMETER;
 

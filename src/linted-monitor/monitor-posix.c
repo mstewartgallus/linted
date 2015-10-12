@@ -801,14 +801,13 @@ static linted_error
 monitor_on_admin_in_read(struct monitor *monitor,
                          struct linted_async_task *task)
 {
+	linted_error err = 0;
+
 	struct linted_async_pool *pool = monitor->pool;
 	struct linted_admin_out_task_write *write_task =
 	    monitor->write_task;
 	linted_pid manager_pid = monitor->manager_pid;
-
 	linted_ko admin_out = monitor->admin_out;
-
-	linted_error err;
 
 	err = linted_async_task_err(task);
 
@@ -820,37 +819,37 @@ monitor_on_admin_in_read(struct monitor *monitor,
 	struct linted_admin_in_task_read *admin_in_read_task =
 	    linted_admin_in_task_read_from_async(task);
 
-	union linted_admin_request request;
+	union linted_admin_request *request;
 	{
-		union linted_admin_request xx;
-		linted_admin_in_task_read_request(admin_in_read_task,
-		                                  &xx);
+		union linted_admin_request *xx;
+		err = linted_admin_in_task_read_request(
+		    &xx, admin_in_read_task);
+		if (err != 0)
+			return err;
 		request = xx;
 	}
 
 	union linted_admin_reply reply;
-	switch (request.type) {
+	switch (request->type) {
 	case LINTED_ADMIN_ADD_UNIT: {
-		struct linted_admin_add_unit_request xx =
-		    request.add_unit;
 		struct linted_admin_add_unit_reply yy = {0};
-		err = on_add_unit(monitor, &xx, &yy);
+		err = on_add_unit(monitor, (void *)request, &yy);
 		reply.add_unit = yy;
 		break;
 	}
 
 	case LINTED_ADMIN_STATUS: {
-		struct linted_admin_status_request xx = request.status;
 		struct linted_admin_status_reply yy = {0};
-		err = on_status_request(manager_pid, &xx, &yy);
+		err = on_status_request(manager_pid, (void *)request,
+		                        &yy);
 		reply.status = yy;
 		break;
 	}
 
 	case LINTED_ADMIN_STOP: {
-		struct linted_admin_stop_request xx = request.stop;
 		struct linted_admin_stop_reply yy = {0};
-		err = on_stop_request(manager_pid, &xx, &yy);
+		err =
+		    on_stop_request(manager_pid, (void *)request, &yy);
 		reply.stop = yy;
 		break;
 	}
@@ -858,6 +857,7 @@ monitor_on_admin_in_read(struct monitor *monitor,
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
+	linted_admin_request_free(request);
 
 	{
 		union linted_admin_reply xx = reply;
@@ -1310,47 +1310,40 @@ on_add_unit(struct monitor *monitor,
 	char const *process_name = monitor->process_name;
 
 	char const *unit_name = request->name;
-	size_t name_size = request->size;
-
-	char const *unit_exec = request->exec;
-	size_t exec_size = request->exec_size;
+	char const *const *unit_command = request->command;
 
 	bool no_new_privs = request->no_new_privs;
 
 	char *name;
 	{
 		char *xx;
-		err = linted_str_dup_len(&xx, unit_name, name_size);
+		err = linted_str_dup(&xx, unit_name);
 		if (err != 0)
 			return err;
 		name = xx;
 	}
 
-	char **exec = 0;
-	size_t exec_strs = 0U;
+	size_t command_size = null_list_size(unit_command);
 
-	size_t ii = 0U;
-	for (; ii < exec_size;) {
-		size_t len = strlen(unit_exec);
-
-		void *xx;
-		linted_mem_realloc_array(&xx, exec, exec_strs + 1U,
-		                         sizeof exec[0U]);
-		exec = xx;
-
-		exec[exec_strs] = strdup(unit_exec);
-		++exec_strs;
-
-		ii += len + 1U;
-		unit_exec += len + 1U;
-	}
+	char **command;
 	{
 		void *xx;
-		linted_mem_realloc_array(&xx, exec, exec_strs + 1U,
-		                         sizeof exec[0U]);
-		exec = xx;
+		err = linted_mem_alloc_array(&xx, command_size,
+		                             sizeof command[0U]);
+		if (err != 0)
+			return err;
+		command = xx;
 	}
-	exec[exec_strs] = 0;
+
+	for (size_t ii = 0U; ii < command_size; ++ii) {
+		if (0 == (command[ii] = strdup(unit_command[ii]))) {
+			for (size_t jj = 0U; jj < ii; ++jj)
+				linted_mem_free(command[jj]);
+			linted_mem_free(command);
+			goto free_name;
+		}
+	}
+	command[command_size] = 0;
 
 	struct linted_unit *unit;
 	{
@@ -1368,7 +1361,7 @@ on_add_unit(struct monitor *monitor,
 
 	struct linted_unit_service *unit_service = (void *)unit;
 
-	unit_service->exec_start = (char const *const *)exec;
+	unit_service->command = (char const *const *)command;
 	unit_service->fstab = 0;
 	unit_service->chdir_path = 0;
 	unit_service->env_whitelist = 0;
@@ -1400,6 +1393,11 @@ on_add_unit(struct monitor *monitor,
 
 	reply->type = LINTED_ADMIN_ADD_UNIT;
 	return 0;
+
+free_name:
+	linted_mem_free(name);
+
+	return err;
 }
 
 static linted_error
@@ -1411,14 +1409,8 @@ on_status_request(linted_pid manager_pid,
 	bool is_up;
 
 	char const *unit_name = request->name;
-	size_t name_size = request->size;
 
-	{
-		char xx[LINTED_UNIT_NAME_MAX + 1U] = {0};
-		memcpy(xx, unit_name, name_size);
-
-		err = linted_unit_pid(0, manager_pid, xx);
-	}
+	err = linted_unit_pid(0, manager_pid, unit_name);
 	if (err != 0) {
 		err = 0;
 		is_up = false;
@@ -1449,15 +1441,11 @@ on_stop_request(linted_pid manager_pid,
 	bool was_up;
 
 	char const *unit_name = request->name;
-	size_t name_size = request->size;
 
 	linted_pid pid;
 	{
 		linted_pid xx;
-		char yy[LINTED_UNIT_NAME_MAX + 1U] = {0};
-		memcpy(yy, unit_name, name_size);
-
-		err = linted_unit_pid(&xx, manager_pid, yy);
+		err = linted_unit_pid(&xx, manager_pid, unit_name);
 		if (err != 0)
 			goto pid_find_failure;
 		pid = xx;
@@ -1662,7 +1650,7 @@ service_not_found:
 		return err;
 spawn_service:
 	;
-	char const *const *exec_start = unit_service->exec_start;
+	char const *const *command = unit_service->command;
 	bool no_new_privs = unit_service->no_new_privs;
 	char const *fstab = unit_service->fstab;
 	char const *chdir_path = unit_service->chdir_path;
@@ -1826,8 +1814,8 @@ envvar_allocate_succeeded:
 	}
 	char *sandbox_base = basename(sandbox_dup);
 
-	size_t exec_start_size =
-	    null_list_size((char const *const *)exec_start);
+	size_t command_size =
+	    null_list_size((char const *const *)command);
 
 	char const **args;
 	size_t num_options;
@@ -1870,11 +1858,11 @@ envvar_allocate_succeeded:
 				++num_options;
 		}
 
-		args_size = 1U + num_options + 1U + exec_start_size;
+		args_size = 1U + num_options + 1U + command_size;
 		{
 			void *xx;
 			err = linted_mem_alloc_array(
-			    &xx, args_size + 1U, sizeof exec_start[0U]);
+			    &xx, args_size + 1U, sizeof command[0U]);
 			if (err != 0)
 				goto free_sandbox_dup;
 			args = xx;
@@ -1900,8 +1888,8 @@ envvar_allocate_succeeded:
 	}
 
 	args[1U + num_options] = "--";
-	for (size_t ii = 0U; ii < exec_start_size; ++ii)
-		args[1U + num_options + 1U + ii] = exec_start[ii];
+	for (size_t ii = 0U; ii < command_size; ++ii)
+		args[1U + num_options + 1U + ii] = command[ii];
 	args[args_size] = 0;
 
 	err = linted_spawn(0, cwd, sandbox, 0, 0, args,
