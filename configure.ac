@@ -139,7 +139,7 @@ dnl
         LINTED_TOOL_WINDRES
 dnl
         dnl Note that we just use the subsystem option and not
-        dnl -mwindows because some of are executables aren't graphical
+        dnl -mwindows because some of our executables aren't graphical
         dnl and don't need to link in all the dialog stuff.
 dnl
         LINTED_CHECK_CFLAGS([linted_CFLAGS_TARGET_TYPE], [

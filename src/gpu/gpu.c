@@ -390,7 +390,7 @@ static struct timespec timespec_subtract(struct timespec x,
 	}
 
 	if (x.tv_nsec - y.tv_nsec > second) {
-		int nsec = (x.tv_nsec - y.tv_nsec) / second;
+		long nsec = (x.tv_nsec - y.tv_nsec) / second;
 		y.tv_nsec += second * nsec;
 		y.tv_sec -= nsec;
 	}
@@ -796,19 +796,6 @@ static linted_error make_current(struct linted_gpu_context *gpu_context)
 	}
 	if (err != 0)
 		return err;
-
-	if (EGL_FALSE == eglSwapInterval(display, 1)) {
-		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
-
-		switch (err_egl) {
-		case EGL_BAD_CONTEXT:
-		case EGL_BAD_SURFACE:
-			return LINTED_ERROR_INVALID_PARAMETER;
-		}
-
-		LINTED_ASSERT(false);
-	}
 
 	gpu_context->has_current_context = true;
 	return 0;

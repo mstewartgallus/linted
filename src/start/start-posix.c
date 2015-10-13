@@ -203,9 +203,9 @@ static void *start_routine(void *foo)
 	size_t argc = args->argc;
 	char const *const *argv = args->argv;
 
-	free(args);
+	linted_mem_free(args);
 
-	int err = pthread_join(parent, 0);
+	linted_error err = pthread_join(parent, 0);
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "pthread_join: %s",
 		           linted_error_string(err));

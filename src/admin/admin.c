@@ -24,6 +24,7 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/log.h"
 #include "linted/str.h"
 #include "linted/unit.h"
 #include "linted/util.h"
@@ -115,10 +116,7 @@ linted_error linted_admin_in_task_read_request(
 		request = xx;
 	}
 
-	char raw[CHUNK_SIZE] = {0};
-	memcpy(raw, task->request, sizeof raw);
-
-	char *tip = raw;
+	char *tip = task->request;
 
 	linted_admin_type type;
 	memcpy(&type, tip, sizeof type);
@@ -145,8 +143,7 @@ linted_error linted_admin_in_task_read_request(
 			goto free_request;
 		tip += size;
 
-		size_t total_command_size = 0U;
-
+		size_t total_command_size = 0;
 		memcpy(&total_command_size, tip,
 		       sizeof total_command_size);
 		tip += sizeof total_command_size;
@@ -156,7 +153,8 @@ linted_error linted_admin_in_task_read_request(
 
 		size_t ii = 0U;
 		for (; ii < total_command_size;) {
-			size_t len = strlen(tip);
+			size_t len =
+			    strnlen(tip + ii, total_command_size - ii);
 
 			void *xx;
 			err = linted_mem_realloc_array(
@@ -164,13 +162,14 @@ linted_error linted_admin_in_task_read_request(
 			    sizeof command[0U]);
 			command = xx;
 
-			command[command_count] = strdup(tip);
+			command[command_count] =
+			    strndup(tip + ii, total_command_size - ii);
 			++command_count;
 
 			ii += len + 1U;
-			tip += len + 1U;
 		}
 
+		tip += total_command_size;
 		{
 			void *xx;
 			err = linted_mem_realloc_array(
@@ -179,8 +178,6 @@ linted_error linted_admin_in_task_read_request(
 			command = xx;
 		}
 		command[command_count] = 0;
-
-		tip += total_command_size;
 
 		status->type = type;
 		status->no_new_privs = no_new_privs;
@@ -276,12 +273,11 @@ linted_admin_in_write(linted_admin_in admin,
 	linted_admin_type type = request->type;
 
 	char raw[CHUNK_SIZE] = {0};
+	char *tip = raw;
 	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_request const *status =
 		    (void *)request;
-
-		char *tip = raw;
 
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
@@ -340,8 +336,6 @@ linted_admin_in_write(linted_admin_in admin,
 		if (size > LINTED_UNIT_NAME_MAX)
 			return LINTED_ERROR_INVALID_PARAMETER;
 
-		char *tip = raw;
-
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
 
@@ -360,8 +354,6 @@ linted_admin_in_write(linted_admin_in admin,
 		size_t size = strlen(namep);
 		if (size > LINTED_UNIT_NAME_MAX)
 			return LINTED_ERROR_INVALID_PARAMETER;
-
-		char *tip = raw;
 
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
@@ -451,14 +443,9 @@ void linted_admin_out_task_write_prepare(
 {
 	linted_admin_type type = reply->type;
 
-	char raw[CHUNK_SIZE] = {0};
+	char *tip = task->reply;
 	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
-		struct linted_admin_add_unit_reply const *status =
-		    (void *)reply;
-
-		char *tip = raw;
-
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
 
@@ -469,8 +456,6 @@ void linted_admin_out_task_write_prepare(
 		struct linted_admin_status_reply const *status =
 		    (void *)reply;
 		bool is_up = status->is_up;
-
-		char *tip = raw;
 
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
@@ -483,8 +468,6 @@ void linted_admin_out_task_write_prepare(
 		struct linted_admin_stop_reply const *stop =
 		    (void *)reply;
 		bool was_up = stop->was_up;
-
-		char *tip = raw;
 
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
@@ -499,7 +482,6 @@ void linted_admin_out_task_write_prepare(
 
 	linted_io_task_write_prepare(task->parent, task_ck, ko,
 	                             task->reply, sizeof task->reply);
-	memcpy(task->reply, raw, sizeof raw);
 }
 
 struct linted_async_task *linted_admin_out_task_write_to_async(

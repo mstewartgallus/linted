@@ -43,29 +43,7 @@ linted_error linted_str_dup(char **resultp, char const *input)
 linted_error linted_str_dup_len(char **resultp, char const *input,
                                 size_t n)
 {
-	linted_error err = 0;
-
-	size_t input_len = strlen(input);
-
-	size_t new_len = input_len < n ? input_len : n;
-
-	char *result;
-	{
-		void *xx;
-		err = linted_mem_alloc(&xx, new_len + 1U);
-		if (err != 0)
-			goto return_err;
-		result = xx;
-	}
-
-	result[new_len] = 0U;
-
-	memcpy(result, input, new_len);
-
-	*resultp = result;
-
-return_err:
-	return err;
+	return LINTED_ERROR_UNIMPLEMENTED;
 }
 #else
 linted_error linted_str_dup_len(char **resultp, char const *input,
