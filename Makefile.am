@@ -21,8 +21,8 @@ pkgunitsdir=$(pkgconfdir)/units
 pkgdefaultunitsdir=$(pkgdefaultconfdir)/units
 
 AM_TESTS_ENVIRONMENT=\
-  export MALLOC_CHECK_=2;\
-  export MALLOC_PERTURB_=128;
+  export MALLOC_CHECK_=3;\
+  export MALLOC_PERTURB_=57005;
 
 if HAVE_VALGRIND
 LOG_COMPILER=$(VALGRIND) --quiet --
@@ -119,12 +119,12 @@ SUFFIXES+= .rc
 linted_V_SED = $(linted_v_SED_@AM_V@)
 linted_v_SED_ = $(linted_v_SED_@AM_DEFAULT_V@)
 linted_v_SED_0 = @echo "  SED     " $@;
-linted_v_SED_1 = 
+linted_v_SED_1 =
 
 linted_V_WINDRES = $(linted_v_WINDRES_@AM_V@)
 linted_v_WINDRES_ = $(linted_v_WINDRES_@AM_DEFAULT_V@)
 linted_v_WINDRES_0 = @echo "  WINDRES " $@;
-linted_v_WINDRES_1 = 
+linted_v_WINDRES_1 =
 
 include docs/Makefile.am
 include scripts/Makefile.am

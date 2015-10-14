@@ -160,6 +160,8 @@ linted_error linted_admin_in_task_read_request(
 			err = linted_mem_realloc_array(
 			    &xx, command, command_count + 1U,
 			    sizeof command[0U]);
+			if (err != 0)
+				return err;
 			command = xx;
 
 			command[command_count] =
@@ -169,12 +171,13 @@ linted_error linted_admin_in_task_read_request(
 			ii += len + 1U;
 		}
 
-		tip += total_command_size;
 		{
 			void *xx;
 			err = linted_mem_realloc_array(
 			    &xx, command, command_count + 1U,
 			    sizeof command[0U]);
+			if (err != 0)
+				return err;
 			command = xx;
 		}
 		command[command_count] = 0;
@@ -198,7 +201,6 @@ linted_error linted_admin_in_task_read_request(
 		err = linted_str_dup_len(&name, tip, size);
 		if (err != 0)
 			goto free_request;
-		tip += size;
 
 		status->type = type;
 		status->name = name;
@@ -217,7 +219,6 @@ linted_error linted_admin_in_task_read_request(
 		err = linted_str_dup_len(&name, tip, size);
 		if (err != 0)
 			goto free_request;
-		tip += size;
 
 		stop->type = type;
 		stop->name = name;
@@ -444,11 +445,12 @@ void linted_admin_out_task_write_prepare(
 	linted_admin_type type = reply->type;
 
 	char *tip = task->reply;
+
+	memcpy(tip, &type, sizeof type);
+	tip += sizeof type;
+
 	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
-		memcpy(tip, &type, sizeof type);
-		tip += sizeof type;
-
 		break;
 	}
 
@@ -456,9 +458,6 @@ void linted_admin_out_task_write_prepare(
 		struct linted_admin_status_reply const *status =
 		    (void *)reply;
 		bool is_up = status->is_up;
-
-		memcpy(tip, &type, sizeof type);
-		tip += sizeof type;
 
 		memcpy(tip, &is_up, sizeof is_up);
 		break;
@@ -468,9 +467,6 @@ void linted_admin_out_task_write_prepare(
 		struct linted_admin_stop_reply const *stop =
 		    (void *)reply;
 		bool was_up = stop->was_up;
-
-		memcpy(tip, &type, sizeof type);
-		tip += sizeof type;
 
 		memcpy(tip, &was_up, sizeof was_up);
 		break;

@@ -1392,7 +1392,7 @@ on_add_unit(struct monitor *monitor,
 	                       false);
 
 	reply->type = LINTED_ADMIN_ADD_UNIT;
-	return 0;
+	return err;
 
 free_name:
 	linted_mem_free(name);
