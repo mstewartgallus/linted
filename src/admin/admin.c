@@ -440,6 +440,7 @@ void linted_admin_out_task_write_prepare(
 	linted_admin_type type = reply->type;
 
 	char *tip = task->reply;
+	memset(tip, 0, sizeof CHUNK_SIZE);
 
 	memcpy(tip, &type, sizeof type);
 	tip += sizeof type;

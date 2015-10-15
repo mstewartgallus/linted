@@ -172,12 +172,6 @@ static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor",
     .dont_fork_thread = true};
 
-static char const *const default_envvars[] = {
-    "MALLOC_CHECK_", "MALLOC_PERTURB_", "MANAGERPID", "USER", "LOGNAME",
-    "HOME", "SHELL", "XDG_RUNTIME_DIR"
-                     "XDG_SESSION_ID",
-    "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
-
 static unsigned char linted_start_main(char const *process_name,
                                        size_t argc,
                                        char const *const argv[])
