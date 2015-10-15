@@ -33,8 +33,6 @@ typedef uint_fast32_t linted_pid;
  * @file
  *
  * System processes.
- *
- * @todo Get rid of conditional platform test
  */
 
 #define LINTED_PID_COMM_MAX 16U

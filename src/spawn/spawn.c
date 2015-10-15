@@ -25,6 +25,7 @@
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/pid.h"
+#include "linted/prctl.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -60,7 +61,7 @@ struct linted_spawn_file_actions {
 };
 
 struct linted_spawn_attr {
-	char dummy;
+	bool die_on_parent_death : 1U;
 };
 
 struct fork_args {
@@ -71,6 +72,7 @@ struct fork_args {
 	char const *binary;
 	linted_ko dirko;
 	linted_ko err_writer;
+	bool die_on_parent_death : 1U;
 };
 
 static int fork_routine(void *args);
@@ -90,6 +92,7 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 		attr = xx;
 	}
 
+	attr->die_on_parent_death = false;
 	*attrp = attr;
 	return 0;
 }
@@ -97,6 +100,12 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
 {
 	linted_mem_free(attr);
+}
+
+void linted_spawn_attr_set_die_on_parent_death(
+    struct linted_spawn_attr *attrp)
+{
+	attrp->die_on_parent_death = true;
 }
 
 linted_error linted_spawn_file_actions_init(
@@ -164,6 +173,11 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 
 	sigset_t const *child_mask = 0;
 
+	bool die_on_parent_death = false;
+	if (attr != 0) {
+		die_on_parent_death = attr->die_on_parent_death;
+	}
+
 	linted_ko err_reader;
 	linted_ko err_writer;
 	{
@@ -224,14 +238,15 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 		if (err != 0)
 			goto close_dirko_copy;
 
-		struct fork_args fork_args = {.sigset = child_mask,
-		                              .file_actions =
-		                                  file_actions,
-		                              .err_writer = err_writer,
-		                              .argv = argv,
-		                              .envp = envp,
-		                              .dirko = dirko_copy,
-		                              .binary = binary};
+		struct fork_args fork_args = {
+		    .sigset = child_mask,
+		    .file_actions = file_actions,
+		    .err_writer = err_writer,
+		    .die_on_parent_death = die_on_parent_death,
+		    .argv = argv,
+		    .envp = envp,
+		    .dirko = dirko_copy,
+		    .binary = binary};
 		child = safe_vfork(fork_routine, &fork_args);
 		LINTED_ASSERT(child != 0);
 
@@ -296,6 +311,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	char const *const *envp = args->envp;
 	linted_ko dirko = args->dirko;
 	char const *binary = args->binary;
+	bool die_on_parent_death = args->die_on_parent_death;
 
 	linted_error err = 0;
 
@@ -354,6 +370,12 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 
 		if (set_stderr)
 			new_stderr = file_actions->new_stderr;
+	}
+
+	if (die_on_parent_death) {
+		err = linted_prctl_set_death_sig(SIGKILL);
+		if (err != 0)
+			goto fail;
 	}
 
 	if (set_stdin) {

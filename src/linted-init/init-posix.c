@@ -111,6 +111,21 @@ static unsigned char linted_start_main(char const *process_name,
 		return EXIT_FAILURE;
 	}
 
+	struct linted_spawn_attr *attr;
+	{
+		struct linted_spawn_attr *xx;
+		err = linted_spawn_attr_init(&xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_spawn_attr_init: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		attr = xx;
+	}
+
+	linted_spawn_attr_set_die_on_parent_death(attr);
+
 	for (;;) {
 		linted_io_write_format(LINTED_KO_STDERR, 0,
 		                       "%s: spawning %s\n",
@@ -120,7 +135,7 @@ static unsigned char linted_start_main(char const *process_name,
 		{
 			linted_pid xx;
 			err = linted_spawn(
-			    &xx, LINTED_KO_CWD, monitor, 0, 0,
+			    &xx, LINTED_KO_CWD, monitor, 0, attr,
 			    (char const *const[]){monitor_base, 0}, 0);
 			if (err != 0) {
 				linted_log(LINTED_LOG_ERROR,

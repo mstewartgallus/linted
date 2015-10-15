@@ -35,7 +35,6 @@
 #include "linted/util.h"
 
 #if defined HAVE_POSIX_API
-#include "linted/prctl.h"
 #include "linted/ptrace.h"
 #endif
 
@@ -184,14 +183,6 @@ static unsigned char linted_start_main(char const *process_name,
                                        char const *const argv[])
 {
 	linted_error err;
-
-	err = linted_prctl_set_death_sig(SIGKILL);
-	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR,
-		           "linted_prctl_set_death_sig: %s",
-		           linted_error_string(err));
-		return EXIT_FAILURE;
-	}
 
 	char const *manager_pid_str;
 	{
@@ -695,18 +686,30 @@ static linted_error monitor_start(struct monitor *monitor)
 	linted_signal_listen_to_sigquit();
 	linted_signal_listen_to_sigterm();
 
+	struct linted_spawn_attr *attr;
+	{
+		struct linted_spawn_attr *xx;
+		err = linted_spawn_attr_init(&xx);
+		if (err != 0)
+			return err;
+		attr = xx;
+	}
+
+	linted_spawn_attr_set_die_on_parent_death(attr);
+
 	linted_pid startup_pid;
 	{
 		linted_pid xx;
 		char const *const arguments[] = {
 		    startup, "admin-in", "admin-out", unit_path,
 		    sandbox, waiter,     0};
-		err =
-		    linted_spawn(&xx, cwd, startup, 0, 0, arguments, 0);
+		err = linted_spawn(&xx, cwd, startup, 0, attr,
+		                   arguments, 0);
 		if (err != 0)
 			return err;
 		startup_pid = xx;
 	}
+	linted_spawn_attr_destroy(attr);
 
 	return 0;
 }
@@ -1892,9 +1895,23 @@ envvar_allocate_succeeded:
 		args[1U + num_options + 1U + ii] = command[ii];
 	args[args_size] = 0;
 
-	err = linted_spawn(0, cwd, sandbox, 0, 0, args,
+	struct linted_spawn_attr *attr;
+	{
+		struct linted_spawn_attr *xx;
+		err = linted_spawn_attr_init(&xx);
+		if (err != 0)
+			goto free_args;
+		attr = xx;
+	}
+
+	linted_spawn_attr_set_die_on_parent_death(attr);
+
+	err = linted_spawn(0, cwd, sandbox, 0, attr, args,
 	                   (char const *const *)envvars);
 
+	linted_spawn_attr_destroy(attr);
+
+free_args:
 	linted_mem_free(args);
 
 free_sandbox_dup:

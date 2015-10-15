@@ -150,35 +150,30 @@ linted_error linted_admin_in_task_read_request(
 
 		char **command = 0;
 		size_t command_count = 0U;
-
-		size_t ii = 0U;
-		for (; ii < total_command_size;) {
-			size_t len =
-			    strnlen(tip + ii, total_command_size - ii);
-
-			void *xx;
-			err = linted_mem_realloc_array(
-			    &xx, command, command_count + 1U,
-			    sizeof command[0U]);
-			if (err != 0)
-				return err;
-			command = xx;
-
-			command[command_count] =
-			    strndup(tip + ii, total_command_size - ii);
-			++command_count;
-
-			ii += len + 1U;
+		for (size_t ii = 0U; ii < total_command_size; ++ii) {
+			if ('\0' == tip[ii])
+				++command_count;
 		}
 
 		{
 			void *xx;
-			err = linted_mem_realloc_array(
-			    &xx, command, command_count + 1U,
+			err = linted_mem_alloc_array(
+			    &xx, command_count + 1U,
 			    sizeof command[0U]);
 			if (err != 0)
-				return err;
+				goto free_request;
 			command = xx;
+		}
+
+		for (size_t ii = 0U; ii < command_count; ++ii) {
+			size_t len = strlen(tip);
+
+			err =
+			    linted_str_dup_len(&command[ii], tip, len);
+			if (err != 0)
+				goto free_request;
+
+			tip += len + 1U;
 		}
 		command[command_count] = 0;
 

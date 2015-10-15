@@ -39,6 +39,9 @@ linted_error linted_spawn_file_actions_init(
 void linted_spawn_file_actions_destroy(
     struct linted_spawn_file_actions *file_actions);
 
+void linted_spawn_attr_set_die_on_parent_death(
+    struct linted_spawn_attr *attrp);
+
 void linted_spawn_file_actions_set_stdin(
     struct linted_spawn_file_actions *file_actions, linted_ko newko);
 void linted_spawn_file_actions_set_stdout(
