@@ -24,9 +24,17 @@ EXTRA_%C%_libasync_la_SOURCES=\
 %C%_libasync_la_LIBADD=\
   src/ko/libko.la\
   src/channel/libchannel.la\
-  src/ko-queue/libkoqueue.la\
-  src/queue/libqueue.la\
+  src/queue/libqueue.la
+
+if POSIX_API
+%C%_libasync_la_LIBADD+=\
+  src/ko-queue/libkoqueue.la
+endif
+
+if WINDOWS_API
+%C%_libasync_la_LIBADD+=\
   $(WS2_32_LIBS)
+endif
 
 TESTS+=%D%/test_async
 check_PROGRAMS+=%D%/test_async
