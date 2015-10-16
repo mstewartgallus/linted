@@ -43,7 +43,30 @@ linted_error linted_str_dup(char **resultp, char const *input)
 linted_error linted_str_dup_len(char **resultp, char const *input,
                                 size_t n)
 {
-	return LINTED_ERROR_UNIMPLEMENTED;
+	size_t ii = 0U;
+	for (; ii < n; ++ii)
+		if ('\0' == input[ii])
+			break;
+
+	size_t len = ii;
+
+	linted_error err = 0;
+
+	char *copy;
+	{
+		void *xx;
+		err = linted_mem_alloc(&xx, len + 1U);
+		if (err != 0)
+			return err;
+		copy = xx;
+	}
+
+	memcpy(copy, input, len);
+	copy[len] = '\0';
+
+	*resultp = copy;
+
+	return 0;
 }
 #else
 linted_error linted_str_dup_len(char **resultp, char const *input,
