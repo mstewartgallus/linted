@@ -143,18 +143,22 @@ linted_error linted_admin_in_task_read_request(
 			goto free_request;
 		tip += size;
 
-		size_t total_command_size = 0;
-		memcpy(&total_command_size, tip,
-		       sizeof total_command_size);
-		tip += sizeof total_command_size;
+		size_t command_count = 0;
+		memcpy(&command_count, tip, sizeof command_count);
+		tip += sizeof command_count;
 
-		char **command = 0;
-		size_t command_count = 0U;
-		for (size_t ii = 0U; ii < total_command_size; ++ii) {
-			if ('\0' == tip[ii])
-				++command_count;
+		size_t *command_sizes;
+		{
+			void *xx;
+			err = linted_mem_alloc_array(
+			    &xx, command_count,
+			    sizeof command_sizes[0U]);
+			if (err != 0)
+				goto free_request;
+			command_sizes = xx;
 		}
 
+		char **command;
 		{
 			void *xx;
 			err = linted_mem_alloc_array(
@@ -166,16 +170,34 @@ linted_error linted_admin_in_task_read_request(
 		}
 
 		for (size_t ii = 0U; ii < command_count; ++ii) {
-			size_t len = strlen(tip);
+			memcpy(&command_sizes[ii], tip,
+			       sizeof command_sizes[0U]);
+			tip += sizeof command_sizes[0U];
+		}
 
-			err =
-			    linted_str_dup_len(&command[ii], tip, len);
+		for (size_t ii = 0U; ii < command_count; ++ii) {
+			void *xx;
+			err = linted_mem_alloc(&xx,
+			                       command_sizes[ii] + 1U);
 			if (err != 0)
 				goto free_request;
-
-			tip += len + 1U;
+			command[ii] = xx;
 		}
+
+		for (size_t ii = 0U; ii < command_count; ++ii) {
+			size_t arg_size = command_sizes[ii];
+
+			char *arg = command[ii];
+
+			memcpy(arg, tip, arg_size);
+			tip += arg_size;
+
+			arg[arg_size] = '\0';
+		}
+
 		command[command_count] = 0;
+
+		linted_mem_free(command_sizes);
 
 		status->type = type;
 		status->no_new_privs = no_new_privs;
@@ -299,25 +321,26 @@ linted_admin_in_write(linted_admin_in admin,
 
 		char const *const *command = status->command;
 
-		size_t total_command_size = 0U;
-		for (size_t ii = 0U; command[ii] != 0U; ++ii) {
-			char const *command_arg = command[ii];
-			total_command_size += strlen(command_arg) + 1U;
+		size_t command_count = 0U;
+		for (; command[command_count] != 0U; ++command_count) {
 		}
 
-		memcpy(tip, &total_command_size,
-		       sizeof total_command_size);
-		tip += sizeof total_command_size;
+		memcpy(tip, &command_count, sizeof command_count);
+		tip += sizeof command_count;
 
-		for (size_t ii = 0U; command[ii] != 0U; ++ii) {
-			char const *command_arg = command[ii];
+		for (size_t ii = 0U; ii < command_count; ++ii) {
+			size_t arg_size = strlen(command[ii]);
 
-			size_t arg_size = strlen(command_arg);
+			memcpy(tip, &arg_size, sizeof arg_size);
+			tip += sizeof arg_size;
+		}
 
-			memcpy(tip, command_arg, arg_size);
-			tip[arg_size] = 0;
+		for (size_t ii = 0U; ii < command_count; ++ii) {
+			char const *arg = command[ii];
+			size_t arg_size = strlen(arg);
 
-			tip += arg_size + 1U;
+			memcpy(tip, arg, arg_size);
+			tip += arg_size;
 		}
 
 		break;
@@ -440,7 +463,7 @@ void linted_admin_out_task_write_prepare(
 	linted_admin_type type = reply->type;
 
 	char *tip = task->reply;
-	memset(tip, 0, sizeof CHUNK_SIZE);
+	memset(tip, 0, CHUNK_SIZE);
 
 	memcpy(tip, &type, sizeof type);
 	tip += sizeof type;

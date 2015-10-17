@@ -1152,8 +1152,8 @@ static linted_error on_child_signaled(char const *process_name,
 	                         "\tcode: %s\n"
 	                         "\tpid: %" PRIuMAX "\n"
 	                         "\tuid: %" PRIuMAX "\n",
-	    strsignal(child_signo), (uintmax_t)child_errno, code_str,
-	    (uintmax_t)child_pid, (uintmax_t)child_uid);
+	    linted_signal_string(child_signo), (uintmax_t)child_errno,
+	    code_str, (uintmax_t)child_pid, (uintmax_t)child_uid);
 
 	if (is_signal) {
 		linted_io_write_format(
@@ -1324,7 +1324,7 @@ on_add_unit(struct monitor *monitor,
 	char **command;
 	{
 		void *xx;
-		err = linted_mem_alloc_array(&xx, command_size,
+		err = linted_mem_alloc_array(&xx, command_size + 1U,
 		                             sizeof command[0U]);
 		if (err != 0)
 			goto free_name;
@@ -1524,7 +1524,16 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		}
 
 		for (size_t ii = 0U; ii < size; ++ii) {
-			result_envvars[ii] = strdup(environ[ii]);
+			err = linted_str_dup(&result_envvars[ii],
+			                     environ[ii]);
+			if (err != 0) {
+				for (size_t jj = 0; jj <= ii; ++jj) {
+					linted_mem_free(
+					    result_envvars[jj]);
+				}
+				linted_mem_free(result_envvars);
+				return err;
+			}
 		}
 		result_envvars[size] = 0;
 		*result_envvarsp = result_envvars;
