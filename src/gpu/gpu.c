@@ -797,6 +797,19 @@ static linted_error make_current(struct linted_gpu_context *gpu_context)
 	if (err != 0)
 		return err;
 
+	if (EGL_FALSE == eglSwapInterval(display, 1)) {
+		EGLint err_egl = eglGetError();
+		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		switch (err_egl) {
+		case EGL_NOT_INITIALIZED:
+		case EGL_BAD_ALLOC:
+			err = LINTED_ERROR_OUT_OF_MEMORY;
+			return err;
+		default:
+			LINTED_ASSERT(false);
+		}
+	}
+
 	gpu_context->has_current_context = true;
 	return 0;
 }
