@@ -41,23 +41,23 @@
 
 #define CHUNK_SIZE 1024U
 
-struct linted_admin_in_task_read {
+struct linted_admin_in_task_recv {
 	struct linted_io_task_read *parent;
 	void *data;
 	char request[CHUNK_SIZE];
 };
 
-struct linted_admin_out_task_write {
+struct linted_admin_out_task_send {
 	struct linted_io_task_write *data;
 	void *parent;
 	char reply[CHUNK_SIZE];
 };
 
-linted_error linted_admin_in_task_read_create(
-    struct linted_admin_in_task_read **taskp, void *data)
+linted_error linted_admin_in_task_recv_create(
+    struct linted_admin_in_task_recv **taskp, void *data)
 {
 	linted_error err;
-	struct linted_admin_in_task_read *task;
+	struct linted_admin_in_task_recv *task;
 	{
 		void *xx;
 		err = linted_mem_alloc(&xx, sizeof *task);
@@ -82,28 +82,22 @@ free_task:
 	return err;
 }
 
-void linted_admin_in_task_read_destroy(
-    struct linted_admin_in_task_read *task)
+void linted_admin_in_task_recv_destroy(
+    struct linted_admin_in_task_recv *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
 void *
-linted_admin_in_task_read_data(struct linted_admin_in_task_read *task)
+linted_admin_in_task_recv_data(struct linted_admin_in_task_recv *task)
 {
 	return task->data;
 }
 
-linted_admin_in
-linted_admin_in_task_read_ko(struct linted_admin_in_task_read *task)
-{
-	return linted_io_task_read_ko(task->parent);
-}
-
-linted_error linted_admin_in_task_read_request(
+linted_error linted_admin_in_task_recv_request(
     union linted_admin_request **outp,
-    struct linted_admin_in_task_read *task)
+    struct linted_admin_in_task_recv *task)
 {
 	linted_error err = 0;
 
@@ -313,8 +307,8 @@ void linted_admin_request_free(union linted_admin_request *request)
 }
 
 linted_error
-linted_admin_in_write(linted_admin_in admin,
-                      union linted_admin_request const *request)
+linted_admin_in_send(linted_admin_in admin,
+                     union linted_admin_request const *request)
 {
 	linted_admin_type type = request->type;
 
@@ -441,8 +435,8 @@ linted_admin_in_write(linted_admin_in admin,
 	return linted_io_write_all(admin, 0, raw, sizeof raw);
 }
 
-void linted_admin_in_task_read_prepare(
-    struct linted_admin_in_task_read *task,
+void linted_admin_in_task_recv_prepare(
+    struct linted_admin_in_task_recv *task,
     union linted_async_ck task_ck, linted_ko ko)
 {
 	linted_io_task_read_prepare(task->parent, task_ck, ko,
@@ -450,24 +444,24 @@ void linted_admin_in_task_read_prepare(
 	                            sizeof task->request);
 }
 
-struct linted_async_task *linted_admin_in_task_read_to_async(
-    struct linted_admin_in_task_read *task)
+struct linted_async_task *linted_admin_in_task_recv_to_async(
+    struct linted_admin_in_task_recv *task)
 {
 	return linted_io_task_read_to_async(task->parent);
 }
 
-struct linted_admin_in_task_read *
-linted_admin_in_task_read_from_async(struct linted_async_task *task)
+struct linted_admin_in_task_recv *
+linted_admin_in_task_recv_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_read_data(
 	    linted_io_task_read_from_async(task));
 }
 
-linted_error linted_admin_out_task_write_create(
-    struct linted_admin_out_task_write **taskp, void *data)
+linted_error linted_admin_out_task_send_create(
+    struct linted_admin_out_task_send **taskp, void *data)
 {
 	linted_error err;
-	struct linted_admin_out_task_write *task;
+	struct linted_admin_out_task_send *task;
 	{
 		void *xx;
 		err = linted_mem_alloc(&xx, sizeof *task);
@@ -492,21 +486,21 @@ free_task:
 	return err;
 }
 
-void linted_admin_out_task_write_destroy(
-    struct linted_admin_out_task_write *task)
+void linted_admin_out_task_send_destroy(
+    struct linted_admin_out_task_send *task)
 {
 	linted_io_task_write_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void *linted_admin_out_task_write_data(
-    struct linted_admin_out_task_write *task)
+void *
+linted_admin_out_task_send_data(struct linted_admin_out_task_send *task)
 {
 	return task->data;
 }
 
-void linted_admin_out_task_write_prepare(
-    struct linted_admin_out_task_write *task,
+void linted_admin_out_task_send_prepare(
+    struct linted_admin_out_task_send *task,
     union linted_async_ck task_ck, linted_ko ko,
     union linted_admin_reply const *reply)
 {
@@ -549,20 +543,20 @@ void linted_admin_out_task_write_prepare(
 	                             task->reply, sizeof task->reply);
 }
 
-struct linted_async_task *linted_admin_out_task_write_to_async(
-    struct linted_admin_out_task_write *task)
+struct linted_async_task *linted_admin_out_task_send_to_async(
+    struct linted_admin_out_task_send *task)
 {
 	return linted_io_task_write_to_async(task->parent);
 }
 
-struct linted_admin_out_task_write *
-linted_admin_out_task_write_from_async(struct linted_async_task *task)
+struct linted_admin_out_task_send *
+linted_admin_out_task_send_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_write_data(
 	    linted_io_task_write_from_async(task));
 }
 
-linted_error linted_admin_out_read(linted_admin_out admin,
+linted_error linted_admin_out_recv(linted_admin_out admin,
                                    union linted_admin_reply *reply)
 {
 	linted_error err;

@@ -41,9 +41,10 @@ struct startup {
 	linted_ko admin_out;
 };
 
-static linted_error
-startup_init(struct startup *startup, char const *controller_path,
-             char const *updater_path, char const *unit_path);
+static linted_error startup_init(struct startup *startup,
+                                 char const *controller_path,
+                                 char const *updater_path,
+                                 char const *unit_path);
 
 static linted_error startup_destroy(struct startup *startup);
 
@@ -130,9 +131,10 @@ log_error:
 	return EXIT_SUCCESS;
 }
 
-static linted_error
-startup_init(struct startup *startup, char const *admin_in_path,
-             char const *admin_out_path, char const *unit_path)
+static linted_error startup_init(struct startup *startup,
+                                 char const *admin_in_path,
+                                 char const *admin_out_path,
+                                 char const *unit_path)
 {
 	linted_error err = 0;
 
@@ -942,14 +944,14 @@ static linted_error service_activate(char const *process_name,
 		request.add_unit.name = name;
 		request.add_unit.command = command;
 
-		err = linted_admin_in_write(admin_in, &request);
+		err = linted_admin_in_send(admin_in, &request);
 	}
 	if (err != 0)
 		return err;
 
 	{
 		union linted_admin_reply xx;
-		err = linted_admin_out_read(admin_out, &xx);
+		err = linted_admin_out_recv(admin_out, &xx);
 		if (err != 0)
 			return err;
 	}

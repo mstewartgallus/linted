@@ -341,7 +341,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		request.type = LINTED_ADMIN_STATUS;
 		request.status.name = name;
 
-		err = linted_admin_in_write(admin_in, &request);
+		err = linted_admin_in_send(admin_in, &request);
 		if (err != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        "can not send request", err);
@@ -350,7 +350,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	}
 
 	union linted_admin_reply reply;
-	err = linted_admin_out_read(admin_out, &reply);
+	err = linted_admin_out_recv(admin_out, &reply);
 	if (err != 0) {
 		failure(LINTED_KO_STDERR, process_name,
 		        "can not read reply", err);
@@ -461,7 +461,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 		request.type = LINTED_ADMIN_STOP;
 		request.status.name = "linted-gui";
 
-		err = linted_admin_in_write(admin_in, &request);
+		err = linted_admin_in_send(admin_in, &request);
 	}
 	if (err != 0) {
 		failure(LINTED_KO_STDERR, process_name,
@@ -472,7 +472,7 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	bool was_up;
 	{
 		union linted_admin_reply xx;
-		err = linted_admin_out_read(admin_out, &xx);
+		err = linted_admin_out_recv(admin_out, &xx);
 		if (err != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        "can not read reply", err);
