@@ -87,9 +87,6 @@ struct linted_unit_service {
 	char const *chdir_path;
 	char const *const *env_whitelist;
 
-	char const *sandbox;
-	char const *waiter;
-
 	int priority;
 
 	int limit_no_file;

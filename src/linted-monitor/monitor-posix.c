@@ -137,7 +137,8 @@ on_stop_request(linted_pid manager_pid,
 static linted_error on_child_stopped(char const *process_name,
                                      linted_pid pid);
 
-static linted_error on_child_trapped(char const *process_name,
+static linted_error on_child_trapped(struct monitor *monitor,
+				     char const *process_name,
                                      bool time_to_exit, linted_pid pid,
                                      int exit_status,
                                      linted_pid manager_pid,
@@ -147,17 +148,16 @@ static linted_error on_child_signaled(char const *process_name,
                                       linted_pid pid, int exit_status);
 static linted_error on_child_about_to_clone(linted_pid pid);
 static linted_error
-on_child_about_to_exit(char const *process_name, bool time_to_exit,
+on_child_about_to_exit(struct monitor* monitor, char const *process_name, bool time_to_exit,
                        linted_pid pid, linted_pid manager_pid,
                        linted_ko cwd, struct linted_unit_db *unit_db);
 static linted_error
 on_child_linted_ptrace_event_stopped(char const *process_name,
                                      linted_pid pid, int exit_status);
 
-static linted_error service_activate(char const *process_name,
+static linted_error service_activate(struct monitor *monitor,
                                      struct linted_unit *unit,
-                                     linted_pid manager_pid,
-                                     linted_ko cwd, bool check);
+                                     bool check);
 
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
@@ -637,8 +637,6 @@ static linted_error monitor_start(struct monitor *monitor)
 	linted_ko cwd = monitor->cwd;
 	char const *unit_path = monitor->unit_path;
 	char const *startup = monitor->startup;
-	char const *sandbox = monitor->sandbox;
-	char const *waiter = monitor->waiter;
 
 	struct linted_async_pool *pool = monitor->pool;
 
@@ -695,8 +693,7 @@ static linted_error monitor_start(struct monitor *monitor)
 	{
 		linted_pid xx;
 		char const *const arguments[] = {
-		    startup, "admin-in", "admin-out", unit_path,
-		    sandbox, waiter,     0};
+		    startup, "admin-in", "admin-out", unit_path,     0};
 		err = linted_spawn(&xx, cwd, startup, 0, attr,
 		                   arguments, 0);
 		if (err != 0)
@@ -989,7 +986,7 @@ static linted_error on_sigchld(struct monitor *monitor)
 			break;
 
 		case CLD_TRAPPED:
-			err = on_child_trapped(
+			err = on_child_trapped(monitor,
 			    process_name, time_to_exit, pid,
 			    exit_status, manager_pid, cwd, unit_db);
 			break;
@@ -1051,7 +1048,8 @@ static linted_error on_death_sig(struct monitor *monitor, int signo)
 	return 0;
 }
 
-static linted_error on_child_trapped(char const *process_name,
+static linted_error on_child_trapped(struct monitor *monitor,
+				     char const *process_name,
                                      bool time_to_exit, linted_pid pid,
                                      int exit_status,
                                      linted_pid manager_pid,
@@ -1066,7 +1064,7 @@ static linted_error on_child_trapped(char const *process_name,
 		                         exit_status);
 
 	case PTRACE_EVENT_EXIT:
-		return on_child_about_to_exit(
+		return on_child_about_to_exit(monitor,
 		    process_name, time_to_exit, pid, manager_pid, cwd,
 		    unit_db);
 
@@ -1218,7 +1216,7 @@ continue_process:
 }
 
 static linted_error
-on_child_about_to_exit(char const *process_name, bool time_to_exit,
+on_child_about_to_exit(struct monitor *monitor,char const *process_name, bool time_to_exit,
                        linted_pid pid, linted_pid manager_pid,
                        linted_ko cwd, struct linted_unit_db *unit_db)
 {
@@ -1281,8 +1279,7 @@ detach_from_process:
 	if (0 == unit)
 		return err;
 
-	err = service_activate(process_name, unit, manager_pid, cwd,
-	                       false);
+	err = service_activate(monitor, unit, false);
 
 	return err;
 }
@@ -1301,9 +1298,6 @@ on_add_unit(struct monitor *monitor,
 	linted_error err = 0;
 
 	struct linted_unit_db *unit_db = monitor->unit_db;
-	linted_pid manager_pid = monitor->manager_pid;
-	linted_ko cwd = monitor->cwd;
-	char const *process_name = monitor->process_name;
 
 	char const *unit_name = request->name;
 	char const *const *unit_command = request->command;
@@ -1375,9 +1369,6 @@ on_add_unit(struct monitor *monitor,
 	unit_service->chdir_path = 0;
 	unit_service->env_whitelist = 0;
 
-	unit_service->sandbox = monitor->sandbox;
-	unit_service->waiter = monitor->waiter;
-
 	unit_service->priority = -1;
 	unit_service->limit_no_file = -1;
 	unit_service->limit_msgqueue = -1;
@@ -1398,8 +1389,7 @@ on_add_unit(struct monitor *monitor,
 
 	unit_service->no_new_privs = no_new_privs;
 
-	err = service_activate(process_name, unit, manager_pid, cwd,
-	                       false);
+	err = service_activate(monitor, unit, false);
 
 	reply->type = LINTED_ADMIN_ADD_UNIT;
 	return err;
@@ -1635,12 +1625,17 @@ struct my_option {
 	bool flag : 1U;
 };
 
-static linted_error service_activate(char const *process_name,
+static linted_error service_activate(struct monitor *monitor,
                                      struct linted_unit *unit,
-                                     linted_pid manager_pid,
-                                     linted_ko cwd, bool check)
+                                     bool check)
 {
 	linted_error err = 0;
+
+     char const *process_name = monitor->process_name;
+	char const *sandbox = monitor->sandbox;
+	char const *waiter = monitor->waiter;
+     linted_pid manager_pid = monitor->manager_pid;
+     linted_ko cwd = monitor->cwd;
 
 	char const *unit_name = unit->name;
 
@@ -1674,9 +1669,6 @@ spawn_service:
 	char const *fstab = unit_service->fstab;
 	char const *chdir_path = unit_service->chdir_path;
 	char const *const *env_whitelist = unit_service->env_whitelist;
-
-	char const *sandbox = unit_service->sandbox;
-	char const *waiter = unit_service->waiter;
 
 	bool has_priority = unit_service->has_priority;
 	bool has_limit_no_file = unit_service->has_limit_no_file;

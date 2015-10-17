@@ -147,15 +147,15 @@ linted_error linted_admin_in_task_read_request(
 
 		bool no_new_privs = (bitfield[1U] & (1U << 2U)) != 0U;
 
-		size_t size;
-		memcpy(&size, tip, sizeof size);
-		tip += sizeof size;
+		size_t name_size;
+		memcpy(&name_size, tip, sizeof name_size);
+		tip += sizeof name_size;
 
 		char *name;
-		err = linted_str_dup_len(&name, tip, size);
+		err = linted_str_dup_len(&name, tip, name_size);
 		if (err != 0)
 			goto free_request;
-		tip += size;
+		tip += name_size;
 
 		size_t command_count = 0;
 		memcpy(&command_count, tip, sizeof command_count);

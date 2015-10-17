@@ -41,6 +41,7 @@ struct linted_admin_add_unit_request {
 	linted_admin_type type;
 
 	char const *name;
+
 	char const *const *command;
 
 	_Bool has_priority : 1U;

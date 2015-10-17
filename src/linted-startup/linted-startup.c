@@ -37,16 +37,14 @@
 
 struct startup {
 	char const *unit_path;
-	char const *sandbox;
-	char const *waiter;
 	linted_ko admin_in;
 	linted_ko admin_out;
 };
 
 static linted_error
 startup_init(struct startup *startup, char const *controller_path,
-             char const *updater_path, char const *unit_path,
-             char const *sandbox, char const *waiter);
+             char const *updater_path, char const *unit_path);
+
 static linted_error startup_destroy(struct startup *startup);
 
 static linted_error startup_start(struct startup *startup);
@@ -64,14 +62,10 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
                                        linted_ko cwd,
                                        char const *dir_name);
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
-                                   struct linted_conf_db *conf_db,
-                                   char const *sandbox,
-                                   char const *waiter);
+                                   struct linted_conf_db *conf_db);
 
 static linted_error service_create(struct linted_unit_service *unit,
-                                   struct linted_conf *conf,
-                                   char const *sandbox,
-                                   char const *waiter);
+                                   struct linted_conf *conf);
 static linted_error socket_create(struct linted_unit_socket *unit,
                                   struct linted_conf *conf);
 
@@ -97,21 +91,18 @@ static unsigned char linted_start_main(char const *const process_name,
 {
 	linted_error err = 0;
 
-	if (argc < 6U) {
+	if (argc != 4U) {
 		linted_log(LINTED_LOG_ERROR,
-		           "missing some of 2 file operands");
+		           "missing some of 3 file operands");
 		return EXIT_FAILURE;
 	}
 
 	char const *admin_in = argv[1U];
 	char const *admin_out = argv[2U];
 	char const *unit_path = argv[3U];
-	char const *sandbox = argv[4U];
-	char const *waiter = argv[5U];
 
 	static struct startup startup = {0};
-	err = startup_init(&startup, admin_in, admin_out, unit_path,
-	                   sandbox, waiter);
+	err = startup_init(&startup, admin_in, admin_out, unit_path);
 	if (err != 0)
 		goto log_error;
 
@@ -141,8 +132,7 @@ log_error:
 
 static linted_error
 startup_init(struct startup *startup, char const *admin_in_path,
-             char const *admin_out_path, char const *unit_path,
-             char const *sandbox, char const *waiter)
+             char const *admin_out_path, char const *unit_path)
 {
 	linted_error err = 0;
 
@@ -169,8 +159,6 @@ startup_init(struct startup *startup, char const *admin_in_path,
 	startup->admin_in = admin_in;
 	startup->admin_out = admin_out;
 	startup->unit_path = unit_path;
-	startup->sandbox = sandbox;
-	startup->waiter = waiter;
 
 	return 0;
 
@@ -195,8 +183,6 @@ static linted_error startup_destroy(struct startup *startup)
 static linted_error startup_start(struct startup *startup)
 {
 	char const *unit_path = startup->unit_path;
-	char const *sandbox = startup->sandbox;
-	char const *waiter = startup->waiter;
 	linted_ko admin_in = startup->admin_in;
 	linted_ko admin_out = startup->admin_out;
 
@@ -214,7 +200,7 @@ static linted_error startup_start(struct startup *startup)
 	struct linted_unit_db *unit_db;
 	{
 		struct linted_unit_db *xx;
-		err = create_unit_db(&xx, conf_db, sandbox, waiter);
+		err = create_unit_db(&xx, conf_db);
 		if (err != 0)
 			return err;
 		unit_db = xx;
@@ -485,9 +471,7 @@ free_file_names:
 	return err;
 }
 static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
-                                   struct linted_conf_db *conf_db,
-                                   char const *sandbox,
-                                   char const *waiter)
+                                   struct linted_conf_db *conf_db)
 {
 	linted_error err;
 
@@ -547,7 +531,7 @@ static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
 		case LINTED_UNIT_TYPE_SERVICE: {
 			struct linted_unit_service *s = (void *)unit;
 
-			err = service_create(s, conf, sandbox, waiter);
+			err = service_create(s, conf);
 			if (err != 0)
 				goto destroy_unit_db;
 			break;
@@ -574,9 +558,7 @@ destroy_unit_db:
 }
 
 static linted_error service_create(struct linted_unit_service *unit,
-                                   struct linted_conf *conf,
-                                   char const *sandbox,
-                                   char const *waiter)
+                                   struct linted_conf *conf)
 {
 	linted_error err;
 
@@ -693,9 +675,6 @@ static linted_error service_create(struct linted_unit_service *unit,
 	if (priority_str != 0) {
 		priority_value = atoi(priority_str);
 	}
-
-	unit->sandbox = sandbox;
-	unit->waiter = waiter;
 
 	unit->command = command;
 	unit->no_new_privs = no_new_privs_value;
