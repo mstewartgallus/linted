@@ -17,10 +17,15 @@
 
 #include "config.h"
 
+#include "linted/ko.h"
 #include "linted/ko-queue.h"
 #include "linted/mem.h"
+#include "linted/queue.h"
+#include "linted/util.h"
 
+#include <errno.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <pthread.h>
 #include <sys/eventfd.h>
 #include <unistd.h>

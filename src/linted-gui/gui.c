@@ -29,6 +29,7 @@
 #include "linted/window.h"
 #include "linted/xcb.h"
 
+#include <errno.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stddef.h>

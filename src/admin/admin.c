@@ -127,11 +127,25 @@ linted_error linted_admin_in_task_read_request(
 		struct linted_admin_add_unit_request *status =
 		    (void *)request;
 
-		unsigned char bitfield;
-		memcpy(&bitfield, tip, sizeof bitfield);
+		unsigned char bitfield[2U];
+		memcpy(bitfield, tip, sizeof bitfield);
 		tip += sizeof bitfield;
 
-		bool no_new_privs = (bitfield & 1U) != 0U;
+		bool has_priority = (bitfield[0U] & 1U) != 0U;
+		bool has_limit_no_file =
+		    (bitfield[0U] & (1U << 2U)) != 0;
+		bool has_limit_msgqueue =
+		    (bitfield[0U] & (1U << 3U)) != 0;
+		bool has_limit_locks = (bitfield[0U] & (1U << 4U)) != 0;
+
+		bool clone_newuser = (bitfield[0U] & (1U << 5U)) != 0;
+		bool clone_newpid = (bitfield[0U] & (1U << 6U)) != 0;
+		bool clone_newipc = (bitfield[0U] & (1U << 7U)) != 0;
+		bool clone_newnet = (bitfield[0U] & (1U << 7U)) != 0;
+		bool clone_newns = (bitfield[1U] & 1U) != 0;
+		bool clone_newuts = (bitfield[1U] & (1U << 1U)) != 0;
+
+		bool no_new_privs = (bitfield[1U] & (1U << 2U)) != 0U;
 
 		size_t size;
 		memcpy(&size, tip, sizeof size);
@@ -200,7 +214,21 @@ linted_error linted_admin_in_task_read_request(
 		linted_mem_free(command_sizes);
 
 		status->type = type;
+
+		status->has_priority = has_priority;
+		status->has_limit_no_file = has_limit_no_file;
+		status->has_limit_msgqueue = has_limit_msgqueue;
+		status->has_limit_locks = has_limit_locks;
+
+		status->clone_newuser = clone_newuser;
+		status->clone_newpid = clone_newpid;
+		status->clone_newipc = clone_newipc;
+		status->clone_newnet = clone_newnet;
+		status->clone_newns = clone_newns;
+		status->clone_newuts = clone_newuts;
+
 		status->no_new_privs = no_new_privs;
+
 		status->name = name;
 		status->command = (char const *const *)command;
 		break;
@@ -300,11 +328,33 @@ linted_admin_in_write(linted_admin_in admin,
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
 
+		bool has_priority = status->has_priority;
+		bool has_limit_no_file = status->has_limit_no_file;
+		bool has_limit_msgqueue = status->has_limit_msgqueue;
+		bool has_limit_locks = status->has_limit_locks;
+
+		bool clone_newuser = status->clone_newuser;
+		bool clone_newpid = status->clone_newpid;
+		bool clone_newipc = status->clone_newipc;
+		bool clone_newnet = status->clone_newnet;
+		bool clone_newns = status->clone_newns;
+		bool clone_newuts = status->clone_newuts;
+
 		bool no_new_privs = status->no_new_privs;
 
-		unsigned char bitfield = no_new_privs;
+		unsigned char bitfield[2U] = {
+		    has_priority | has_limit_no_file << 1U |
+		        has_limit_msgqueue << 2U |
+		        has_limit_locks << 3U |
 
-		memcpy(tip, &bitfield, sizeof bitfield);
+		        clone_newuser << 4U | clone_newpid << 5U |
+		        clone_newipc << 6U | clone_newnet << 7U,
+
+		    clone_newns | clone_newuts << 1U |
+
+		        no_new_privs << 2U};
+
+		memcpy(tip, bitfield, sizeof bitfield);
 		tip += sizeof bitfield;
 
 		char const *namep = status->name;

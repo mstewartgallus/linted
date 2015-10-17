@@ -21,7 +21,6 @@
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/mem.h"
-#include "linted/pid.h"
 #include "linted/prctl.h"
 #include "linted/start.h"
 #include "linted/util.h"

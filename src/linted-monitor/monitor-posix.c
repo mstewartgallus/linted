@@ -1308,6 +1308,18 @@ on_add_unit(struct monitor *monitor,
 	char const *unit_name = request->name;
 	char const *const *unit_command = request->command;
 
+	bool has_priority = request->has_priority;
+	bool has_limit_no_file = request->has_limit_no_file;
+	bool has_limit_msgqueue = request->has_limit_msgqueue;
+	bool has_limit_locks = request->has_limit_locks;
+
+	bool clone_newuser = request->clone_newuser;
+	bool clone_newpid = request->clone_newpid;
+	bool clone_newipc = request->clone_newipc;
+	bool clone_newnet = request->clone_newnet;
+	bool clone_newns = request->clone_newns;
+	bool clone_newuts = request->clone_newuts;
+
 	bool no_new_privs = request->no_new_privs;
 
 	char *name;
@@ -1371,17 +1383,18 @@ on_add_unit(struct monitor *monitor,
 	unit_service->limit_msgqueue = -1;
 	unit_service->limit_locks = -1;
 
+	/* These aren't fully implemented yet */
 	unit_service->has_priority = false;
 	unit_service->has_limit_no_file = false;
 	unit_service->has_limit_locks = false;
 	unit_service->has_limit_msgqueue = false;
 
-	unit_service->clone_newuser = false;
-	unit_service->clone_newpid = false;
-	unit_service->clone_newipc = false;
-	unit_service->clone_newnet = false;
-	unit_service->clone_newns = false;
-	unit_service->clone_newuts = false;
+	unit_service->clone_newuser = clone_newuser;
+	unit_service->clone_newpid = clone_newpid;
+	unit_service->clone_newipc = clone_newipc;
+	unit_service->clone_newnet = clone_newnet;
+	unit_service->clone_newns = clone_newns;
+	unit_service->clone_newuts = clone_newuts;
 
 	unit_service->no_new_privs = no_new_privs;
 

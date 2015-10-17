@@ -925,6 +925,19 @@ static linted_error service_activate(char const *process_name,
 
 	char const *name = unit->name;
 	char const *const *command = unit_service->command;
+
+	bool has_priority = unit_service->has_priority;
+	bool has_limit_no_file = unit_service->has_limit_no_file;
+	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
+	bool has_limit_locks = unit_service->has_limit_locks;
+
+	bool clone_newuser = unit_service->clone_newuser;
+	bool clone_newpid = unit_service->clone_newpid;
+	bool clone_newipc = unit_service->clone_newipc;
+	bool clone_newnet = unit_service->clone_newnet;
+	bool clone_newns = unit_service->clone_newns;
+	bool clone_newuts = unit_service->clone_newuts;
+
 	bool no_new_privs = unit_service->no_new_privs;
 
 	{
@@ -932,7 +945,21 @@ static linted_error service_activate(char const *process_name,
 
 		request.type = LINTED_ADMIN_ADD_UNIT;
 
+		request.add_unit.has_priority = has_priority;
+		request.add_unit.has_limit_no_file = has_limit_no_file;
+		request.add_unit.has_limit_msgqueue =
+		    has_limit_msgqueue;
+		request.add_unit.has_limit_locks = has_limit_locks;
+
+		request.add_unit.clone_newuser = clone_newuser;
+		request.add_unit.clone_newpid = clone_newpid;
+		request.add_unit.clone_newipc = clone_newipc;
+		request.add_unit.clone_newnet = clone_newnet;
+		request.add_unit.clone_newns = clone_newns;
+		request.add_unit.clone_newuts = clone_newuts;
+
 		request.add_unit.no_new_privs = no_new_privs;
+
 		request.add_unit.name = name;
 		request.add_unit.command = command;
 

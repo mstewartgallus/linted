@@ -40,10 +40,22 @@ typedef unsigned char linted_admin_type;
 struct linted_admin_add_unit_request {
 	linted_admin_type type;
 
-	_Bool no_new_privs : 1U;
-
 	char const *name;
 	char const *const *command;
+
+	_Bool has_priority : 1U;
+	_Bool has_limit_no_file : 1U;
+	_Bool has_limit_msgqueue : 1U;
+	_Bool has_limit_locks : 1U;
+
+	_Bool clone_newuser : 1U;
+	_Bool clone_newpid : 1U;
+	_Bool clone_newipc : 1U;
+	_Bool clone_newnet : 1U;
+	_Bool clone_newns : 1U;
+	_Bool clone_newuts : 1U;
+
+	_Bool no_new_privs : 1U;
 };
 
 struct linted_admin_add_unit_reply {
