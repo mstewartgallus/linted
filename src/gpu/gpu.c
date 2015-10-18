@@ -413,7 +413,6 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 
 	if (buffer_commands) {
 		real_draw(gpu_context);
-		glFlush();
 
 		{
 			GLenum attachments[] = {GL_DEPTH};
@@ -423,6 +422,7 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			    attachments);
 		}
 
+		glFlush();
 		gpu_context->buffer_commands = false;
 	} else {
 		EGLDisplay display = gpu_context->display;
