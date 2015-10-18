@@ -157,18 +157,20 @@ static unsigned char linted_start_main(char const *process_name,
 
 		drawer_maybe_swap(&drawer);
 
-		struct linted_async_task *completed_task;
-		{
-			struct linted_async_task *xx;
-			err = linted_async_pool_wait(pool, &xx);
+		if (!drawer.window_viewable) {
+			struct linted_async_task *completed_task;
+			{
+				struct linted_async_task *xx;
+				err = linted_async_pool_wait(pool, &xx);
+				if (err != 0)
+					goto stop_drawer;
+				completed_task = xx;
+			}
+
+			err = dispatch(&drawer, completed_task);
 			if (err != 0)
 				goto stop_drawer;
-			completed_task = xx;
 		}
-
-		err = dispatch(&drawer, completed_task);
-		if (err != 0)
-			goto stop_drawer;
 	}
 stop_drawer:
 	drawer_stop(&drawer);

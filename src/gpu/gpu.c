@@ -889,7 +889,7 @@ static linted_error make_current(struct linted_gpu_context *gpu_context)
 	if (err != 0)
 		return err;
 
-	if (EGL_FALSE == eglSwapInterval(display, 1)) {
+	if (EGL_FALSE == eglSwapInterval(display, 2)) {
 		EGLint err_egl = eglGetError();
 		LINTED_ASSUME(err_egl != EGL_SUCCESS);
 		switch (err_egl) {
