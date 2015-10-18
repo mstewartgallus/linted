@@ -47,6 +47,8 @@ struct linted_gpu_context {
 
 	struct timespec last_time;
 
+	GLsync sync;
+
 	unsigned width;
 	unsigned height;
 
@@ -59,13 +61,17 @@ struct linted_gpu_context {
 	GLint model_view_projection_matrix;
 	GLint eye_vertex;
 
+	uint64_t skipped_updates_counter;
+	uint64_t draws_before_swap;
+
 	bool has_window : 1U;
 	bool has_egl_surface : 1U;
 	bool has_egl_context : 1U;
 	bool has_current_context : 1U;
 	bool has_setup_gl : 1U;
 
-	bool buffer_commands : 1U;
+	bool has_sync : 1U;
+	bool drawn : 1U;
 	bool resize_pending : 1U;
 	bool update_pending : 1U;
 };
@@ -219,6 +225,7 @@ choose_config_succeeded:
 	gpu_context->update.y_position = 0;
 	gpu_context->update.z_position = 0;
 
+	gpu_context->drawn = false;
 	gpu_context->update_pending = false;
 
 	gpu_context->width = 1U;
@@ -229,11 +236,13 @@ choose_config_succeeded:
 	gpu_context->display = display;
 	gpu_context->config = config;
 	gpu_context->surface = EGL_NO_SURFACE;
-	gpu_context->buffer_commands = true;
 
 	memset(&gpu_context->last_time, 0,
 	       sizeof gpu_context->last_time);
 
+	gpu_context->skipped_updates_counter = 0U;
+
+	gpu_context->has_sync = false;
 	gpu_context->has_window = false;
 	gpu_context->has_egl_surface = false;
 	gpu_context->has_egl_context = false;
@@ -363,6 +372,8 @@ linted_gpu_remove_window(struct linted_gpu_context *gpu_context)
 void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
                              struct linted_gpu_update const *glupdate)
 {
+	if (gpu_context->update_pending)
+		++gpu_context->skipped_updates_counter;
 	gpu_context->update = *glupdate;
 	gpu_context->update_pending = true;
 }
@@ -374,6 +385,7 @@ void linted_gpu_resize(struct linted_gpu_context *gpu_context,
 	gpu_context->height = height;
 
 	gpu_context->resize_pending = true;
+	gpu_context->drawn = false;
 }
 
 static struct timespec timespec_subtract(struct timespec x,
@@ -409,9 +421,61 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 	if (err != 0)
 		return err;
 
-	bool buffer_commands = gpu_context->buffer_commands;
+	if (gpu_context->drawn)
+		return 0;
 
-	if (buffer_commands) {
+	if (gpu_context->has_sync) {
+		glDeleteSync(gpu_context->sync);
+		gpu_context->has_sync = false;
+	}
+
+	/* Emergency badness */
+	if (gpu_context->draws_before_swap > 10U) {
+		gpu_context->drawn = true;
+		return 0;
+	}
+	++gpu_context->draws_before_swap;
+
+	{
+		GLenum attachments[] = {GL_COLOR, GL_DEPTH};
+		glInvalidateFramebuffer(GL_FRAMEBUFFER,
+		                        LINTED_ARRAY_SIZE(attachments),
+		                        attachments);
+	}
+
+	real_draw(gpu_context);
+
+	{
+		GLenum attachments[] = {GL_DEPTH};
+		glInvalidateFramebuffer(GL_FRAMEBUFFER,
+		                        LINTED_ARRAY_SIZE(attachments),
+		                        attachments);
+	}
+
+	glFlush();
+
+	gpu_context->drawn = true;
+
+	return 0;
+}
+
+linted_error linted_gpu_swap(struct linted_gpu_context *gpu_context)
+{
+	linted_error err;
+
+	err = setup_gl(gpu_context);
+	if (err != 0)
+		return err;
+
+	if (!gpu_context->drawn) {
+		{
+			GLenum attachments[] = {GL_COLOR, GL_DEPTH};
+			glInvalidateFramebuffer(
+			    GL_FRAMEBUFFER,
+			    LINTED_ARRAY_SIZE(attachments),
+			    attachments);
+		}
+
 		real_draw(gpu_context);
 
 		{
@@ -421,78 +485,106 @@ linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context)
 			    LINTED_ARRAY_SIZE(attachments),
 			    attachments);
 		}
-
-		glFlush();
-		gpu_context->buffer_commands = false;
-	} else {
-		EGLDisplay display = gpu_context->display;
-		EGLSurface surface = gpu_context->surface;
-
-		if (EGL_FALSE == eglSwapBuffers(display, surface)) {
-			EGLint err_egl = eglGetError();
-			LINTED_ASSUME(err_egl != EGL_SUCCESS);
-
-			/* Shouldn't Happen */
-			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-			LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
-			LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
-			LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
-			LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
-			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-			LINTED_ASSERT(err_egl !=
-			              EGL_BAD_CURRENT_SURFACE);
-
-			/* Maybe the current surface or context can
-			 * become invalidated somehow? */
-			switch (err_egl) {
-			case EGL_BAD_NATIVE_PIXMAP:
-			case EGL_BAD_NATIVE_WINDOW:
-			case EGL_CONTEXT_LOST:
-				goto destroy_context;
-
-			case EGL_BAD_ALLOC:
-				return LINTED_ERROR_OUT_OF_MEMORY;
-			}
-
-			LINTED_ASSERT(false);
-		}
-
-		{
-			GLenum attachments[] = {GL_COLOR};
-			glInvalidateFramebuffer(
-			    GL_FRAMEBUFFER,
-			    LINTED_ARRAY_SIZE(attachments),
-			    attachments);
-		}
-
-		if (0) {
-			struct timespec last_time =
-			    gpu_context->last_time;
-
-			struct timespec now;
-			linted_sched_time(&now);
-
-			struct timespec diff =
-			    timespec_subtract(now, last_time);
-
-			long const second = 1000000000;
-
-			double nanoseconds =
-			    diff.tv_sec * second + diff.tv_nsec;
-
-			if (nanoseconds <= 0.0)
-				nanoseconds = 1.0;
-
-			linted_log(LINTED_LOG_INFO,
-			           "FPS: %lf, SPF: %lf",
-			           second / (double)nanoseconds,
-			           nanoseconds / (double)second);
-
-			gpu_context->last_time = now;
-		}
-
-		gpu_context->buffer_commands = true;
 	}
+
+	GLsync sync;
+	if (gpu_context->has_sync) {
+		sync = gpu_context->sync;
+	} else {
+		sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		gpu_context->sync = sync;
+		gpu_context->has_sync = true;
+	}
+
+	if (gpu_context->draws_before_swap <= 10U) {
+		switch (glClientWaitSync(
+		    sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1)) {
+		case GL_ALREADY_SIGNALED:
+		case GL_CONDITION_SATISFIED:
+			break;
+
+		case GL_TIMEOUT_EXPIRED:
+			return 0;
+
+		case GL_WAIT_FAILED:
+			return get_gl_error();
+		}
+	}
+	glDeleteSync(sync);
+	gpu_context->has_sync = false;
+
+	gpu_context->draws_before_swap = 0U;
+
+	EGLDisplay display = gpu_context->display;
+	EGLSurface surface = gpu_context->surface;
+
+	if (EGL_FALSE == eglSwapBuffers(display, surface)) {
+		EGLint err_egl = eglGetError();
+		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+
+		/* Shouldn't Happen */
+		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
+		LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
+		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
+		LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
+		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LINTED_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
+
+		/* Maybe the current surface or context can
+		 * become invalidated somehow? */
+		switch (err_egl) {
+		case EGL_BAD_NATIVE_PIXMAP:
+		case EGL_BAD_NATIVE_WINDOW:
+		case EGL_CONTEXT_LOST:
+			goto destroy_context;
+
+		case EGL_BAD_ALLOC:
+			return LINTED_ERROR_OUT_OF_MEMORY;
+		}
+
+		LINTED_ASSERT(false);
+	}
+
+	{
+		GLenum attachments[] = {GL_COLOR};
+		glInvalidateFramebuffer(GL_FRAMEBUFFER,
+		                        LINTED_ARRAY_SIZE(attachments),
+		                        attachments);
+	}
+
+	if (0) {
+		if (gpu_context->skipped_updates_counter > 0U)
+			linted_log(
+			    LINTED_LOG_INFO, "skipped updates: %lu",
+			    gpu_context->skipped_updates_counter);
+
+		struct timespec last_time = gpu_context->last_time;
+
+		struct timespec now;
+		linted_sched_time(&now);
+
+		struct timespec diff =
+		    timespec_subtract(now, last_time);
+
+		long const second = 1000000000;
+
+		double nanoseconds =
+		    diff.tv_sec * second + diff.tv_nsec;
+
+		if (nanoseconds <= 0.0)
+			nanoseconds = 1.0;
+
+		linted_log(LINTED_LOG_INFO, "FPS: %lf, SPF: %lf",
+		           second / (double)nanoseconds,
+		           nanoseconds / (double)second);
+
+		gpu_context->last_time = now;
+	}
+	gpu_context->skipped_updates_counter = 0;
+
+	/* Draw for the next swap */
+	gpu_context->drawn = false;
 
 	return 0;
 
@@ -1049,12 +1141,13 @@ static linted_error setup_gl(struct linted_gpu_context *gpu_context)
 	gpu_context->index_buffer = index_buffer;
 	gpu_context->model_view_projection_matrix = mvp_matrix;
 	gpu_context->eye_vertex = eye_vertex;
-	gpu_context->buffer_commands = true;
 
+	gpu_context->draws_before_swap = 0U;
 	gpu_context->update_pending = true;
 	gpu_context->resize_pending = true;
 
 	gpu_context->has_setup_gl = true;
+	gpu_context->has_sync = false;
 
 	return 0;
 

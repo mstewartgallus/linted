@@ -54,6 +54,8 @@ static linted_error drawer_start(struct drawer *drawer);
 static linted_error drawer_stop(struct drawer *drawer);
 static linted_error drawer_destroy(struct drawer *drawer);
 
+static void drawer_maybe_swap(struct drawer *drawer);
+
 static linted_error dispatch(struct drawer *drawer,
                              struct linted_async_task *task);
 static linted_error drawer_on_idle(struct drawer *drawer,
@@ -153,7 +155,7 @@ static unsigned char linted_start_main(char const *process_name,
 				goto stop_drawer;
 		}
 
-		drawer_maybe_idle(&drawer);
+		drawer_maybe_swap(&drawer);
 
 		struct linted_async_task *completed_task;
 		{
@@ -437,6 +439,17 @@ static linted_error drawer_stop(struct drawer *drawer)
 	return 0;
 }
 
+static void drawer_maybe_swap(struct drawer *drawer)
+{
+	struct linted_gpu_context *gpu_context = drawer->gpu_context;
+	bool window_viewable = drawer->window_viewable;
+
+	if (!window_viewable)
+		return;
+
+	linted_gpu_swap(gpu_context);
+}
+
 static linted_error dispatch(struct drawer *drawer,
                              struct linted_async_task *task)
 {
@@ -473,6 +486,8 @@ static linted_error drawer_on_idle(struct drawer *drawer,
 
 	/* Draw or resize if we have time to waste */
 	linted_gpu_draw(gpu_context);
+
+	drawer_maybe_idle(drawer);
 
 	return 0;
 }
@@ -604,6 +619,8 @@ drawer_on_update_recved(struct drawer *drawer,
 	gpu_update.z_position = gpu_z_position;
 
 	linted_gpu_update_state(gpu_context, &gpu_update);
+
+	drawer_maybe_idle(drawer);
 
 	return 0;
 }

@@ -24,6 +24,7 @@
 #include "linted/util.h"
 
 #include <errno.h>
+#include <sched.h>
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <time.h>
@@ -168,6 +169,7 @@ struct linted_async_task *linted_sched_task_sleep_until_to_async(
 struct linted_sched_task_sleep_until *
 linted_sched_task_sleep_until_from_async(struct linted_async_task *task)
 {
+	sched_yield();
 	return linted_async_task_data(task);
 }
 
