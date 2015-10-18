@@ -751,6 +751,9 @@ static linted_error gui_on_conn_ready(struct gui *gui,
 		}
 	}
 
+	/* All X11 processing should be done by this point */
+	linted_async_pool_submit(pool, task);
+
 clear:
 	if (clear_controls) {
 		gui->update.z_tilt = 0;
@@ -767,8 +770,6 @@ clear:
 	}
 
 	maybe_update_controller(gui);
-
-	linted_async_pool_submit(pool, task);
 
 	return 0;
 }

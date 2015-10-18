@@ -489,17 +489,6 @@ static linted_error drawer_on_conn_ready(struct drawer *drawer,
 	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
-	{
-		struct linted_io_task_poll *poll_conn_task =
-		    drawer->poll_conn_task;
-
-		linted_io_task_poll_prepare(
-		    poll_conn_task,
-		    (union linted_async_ck){.u64 = ON_POLL_CONN},
-		    xcb_get_file_descriptor(connection), POLLIN);
-
-		linted_async_pool_submit(pool, task);
-	}
 
 	bool window_destroyed = false;
 	for (;;) {
@@ -537,6 +526,18 @@ static linted_error drawer_on_conn_ready(struct drawer *drawer,
 			break;
 		}
 		linted_mem_free(event);
+	}
+
+	{
+		struct linted_io_task_poll *poll_conn_task =
+		    drawer->poll_conn_task;
+
+		linted_io_task_poll_prepare(
+		    poll_conn_task,
+		    (union linted_async_ck){.u64 = ON_POLL_CONN},
+		    xcb_get_file_descriptor(connection), POLLIN);
+
+		linted_async_pool_submit(pool, task);
 	}
 
 	if (window_destroyed) {
