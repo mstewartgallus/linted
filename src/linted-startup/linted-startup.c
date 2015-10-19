@@ -905,6 +905,8 @@ static linted_error service_activate(char const *process_name,
 	struct linted_unit_service *unit_service = (void *)unit;
 
 	char const *name = unit->name;
+	char const *fstab = unit_service->fstab;
+	char const *chdir_path = unit_service->chdir_path;
 	char const *const *command = unit_service->command;
 
 	bool has_priority = unit_service->has_priority;
@@ -920,6 +922,12 @@ static linted_error service_activate(char const *process_name,
 	bool clone_newuts = unit_service->clone_newuts;
 
 	bool no_new_privs = unit_service->no_new_privs;
+
+	if (0 == fstab)
+		fstab = "";
+
+	if (0 == chdir_path)
+		chdir_path = "";
 
 	{
 		union linted_admin_request request = {0};
@@ -942,6 +950,8 @@ static linted_error service_activate(char const *process_name,
 		request.add_unit.no_new_privs = no_new_privs;
 
 		request.add_unit.name = name;
+		request.add_unit.fstab = fstab;
+		request.add_unit.chdir_path = chdir_path;
 		request.add_unit.command = command;
 
 		err = linted_admin_in_send(admin_in, &request);

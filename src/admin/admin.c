@@ -151,6 +151,26 @@ linted_error linted_admin_in_task_recv_request(
 			goto free_request;
 		tip += name_size;
 
+		size_t fstab_size;
+		memcpy(&fstab_size, tip, sizeof fstab_size);
+		tip += sizeof fstab_size;
+
+		char *fstab;
+		err = linted_str_dup_len(&fstab, tip, fstab_size);
+		if (err != 0)
+			goto free_request;
+		tip += fstab_size;
+
+		size_t chdir_size;
+		memcpy(&chdir_size, tip, sizeof chdir_size);
+		tip += sizeof chdir_size;
+
+		char *chdir_path;
+		err = linted_str_dup_len(&chdir_path, tip, chdir_size);
+		if (err != 0)
+			goto free_request;
+		tip += chdir_size;
+
 		size_t command_count = 0;
 		memcpy(&command_count, tip, sizeof command_count);
 		tip += sizeof command_count;
@@ -224,6 +244,8 @@ linted_error linted_admin_in_task_recv_request(
 		status->no_new_privs = no_new_privs;
 
 		status->name = name;
+		status->fstab = fstab;
+		status->chdir_path = chdir_path;
 		status->command = (char const *const *)command;
 		break;
 	}
@@ -285,6 +307,8 @@ void linted_admin_request_free(union linted_admin_request *request)
 		struct linted_admin_add_unit_request *status =
 		    (void *)request;
 		linted_mem_free((void *)status->name);
+		linted_mem_free((void *)status->fstab);
+		linted_mem_free((void *)status->chdir_path);
 		break;
 	}
 
@@ -352,16 +376,34 @@ linted_admin_in_send(linted_admin_in admin,
 		tip += sizeof bitfield;
 
 		char const *namep = status->name;
-		size_t size = strlen(namep);
+		size_t name_size = strlen(namep);
 
-		if (size > LINTED_UNIT_NAME_MAX)
+		if (name_size > LINTED_UNIT_NAME_MAX)
 			return LINTED_ERROR_INVALID_PARAMETER;
 
-		memcpy(tip, &size, sizeof size);
-		tip += sizeof size;
+		memcpy(tip, &name_size, sizeof name_size);
+		tip += sizeof name_size;
 
-		memcpy(tip, namep, size);
-		tip += size;
+		memcpy(tip, namep, name_size);
+		tip += name_size;
+
+		char const *fstabp = status->fstab;
+		size_t fstab_size = strlen(fstabp);
+
+		memcpy(tip, &fstab_size, sizeof fstab_size);
+		tip += sizeof fstab_size;
+
+		memcpy(tip, fstabp, fstab_size);
+		tip += fstab_size;
+
+		char const *chdir_pathp = status->chdir_path;
+		size_t chdir_path_size = strlen(chdir_pathp);
+
+		memcpy(tip, &chdir_path_size, sizeof chdir_path_size);
+		tip += sizeof chdir_path_size;
+
+		memcpy(tip, chdir_pathp, chdir_path_size);
+		tip += chdir_path_size;
 
 		char const *const *command = status->command;
 

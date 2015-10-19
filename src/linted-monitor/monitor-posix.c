@@ -1298,6 +1298,8 @@ on_add_unit(struct monitor *monitor,
 	struct linted_unit_db *unit_db = monitor->unit_db;
 
 	char const *unit_name = request->name;
+	char const *unit_fstab = request->fstab;
+	char const *unit_chdir_path = request->chdir_path;
 	char const *const *unit_command = request->command;
 
 	bool has_priority = request->has_priority;
@@ -1321,6 +1323,28 @@ on_add_unit(struct monitor *monitor,
 		if (err != 0)
 			return err;
 		name = xx;
+	}
+
+	char *fstab;
+	if (0 == strcmp("", unit_fstab)) {
+		fstab = 0;
+	} else {
+		char *xx;
+		err = linted_str_dup(&xx, unit_fstab);
+		if (err != 0)
+			return err;
+		fstab = xx;
+	}
+
+	char *chdir_path;
+	if (0 == strcmp("", unit_chdir_path)) {
+		chdir_path = 0;
+	} else {
+		char *xx;
+		err = linted_str_dup(&xx, unit_chdir_path);
+		if (err != 0)
+			return err;
+		chdir_path = xx;
 	}
 
 	size_t command_size = null_list_size(unit_command);
@@ -1363,8 +1387,8 @@ on_add_unit(struct monitor *monitor,
 	struct linted_unit_service *unit_service = (void *)unit;
 
 	unit_service->command = (char const *const *)command;
-	unit_service->fstab = 0;
-	unit_service->chdir_path = 0;
+	unit_service->fstab = fstab;
+	unit_service->chdir_path = chdir_path;
 	unit_service->env_whitelist = 0;
 
 	unit_service->priority = -1;

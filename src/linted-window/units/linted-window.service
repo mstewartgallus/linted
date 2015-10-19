@@ -16,8 +16,7 @@ Description=Linted-Window Window Creator
 Documentation='man:linted-window(6)'
 
 [Service]
-ExecStart="${LINTED_WINDOW}" "kill" "window" "window-notifier-gui" "window-notifier-drawer"
-# ExecStart="/boot/linted-window" "/run/kill" "/run/window" "/run/window-notifier-gui" "/run/window-notifier-drawer"
+ExecStart="/boot/linted-window" "/run/kill" "/run/window" "/run/window-notifier-gui" "/run/window-notifier-drawer"
 
 NoNewPrivileges=true
 

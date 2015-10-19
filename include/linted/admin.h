@@ -41,6 +41,8 @@ struct linted_admin_add_unit_request {
 	linted_admin_type type;
 
 	char const *name;
+	char const *fstab;
+	char const *chdir_path;
 
 	char const *const *command;
 
