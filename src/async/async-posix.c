@@ -23,7 +23,6 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/pid.h"
-#include "linted/prctl.h"
 #include "linted/channel.h"
 #include "linted/queue.h"
 #include "linted/sched.h"

@@ -450,6 +450,8 @@ static void drawer_maybe_swap(struct drawer *drawer)
 		return;
 
 	linted_gpu_swap(gpu_context);
+
+	drawer_maybe_idle(drawer);
 }
 
 static linted_error dispatch(struct drawer *drawer,
@@ -488,8 +490,6 @@ static linted_error drawer_on_idle(struct drawer *drawer,
 
 	/* Draw or resize if we have time to waste */
 	linted_gpu_draw(gpu_context);
-
-	drawer_maybe_idle(drawer);
 
 	return 0;
 }
@@ -621,8 +621,6 @@ drawer_on_update_recved(struct drawer *drawer,
 	gpu_update.z_position = gpu_z_position;
 
 	linted_gpu_update_state(gpu_context, &gpu_update);
-
-	drawer_maybe_idle(drawer);
 
 	return 0;
 }
