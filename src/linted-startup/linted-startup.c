@@ -908,6 +908,7 @@ static linted_error service_activate(char const *process_name,
 	char const *fstab = unit_service->fstab;
 	char const *chdir_path = unit_service->chdir_path;
 	char const *const *command = unit_service->command;
+	char const *const *env_whitelist = unit_service->env_whitelist;
 
 	bool has_priority = unit_service->has_priority;
 	bool has_limit_no_file = unit_service->has_limit_no_file;
@@ -929,6 +930,9 @@ static linted_error service_activate(char const *process_name,
 	if (0 == chdir_path)
 		chdir_path = "";
 
+	char const *const null_list[] = {0};
+	if (0 == env_whitelist)
+		env_whitelist = null_list;
 	{
 		struct linted_admin_request request = {0};
 
@@ -954,6 +958,7 @@ static linted_error service_activate(char const *process_name,
 		request.x.add_unit.fstab = fstab;
 		request.x.add_unit.chdir_path = chdir_path;
 		request.x.add_unit.command = command;
+		request.x.add_unit.env_whitelist = env_whitelist;
 
 		err = linted_admin_in_send(admin_in, &request);
 	}

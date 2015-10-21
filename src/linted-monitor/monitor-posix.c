@@ -1301,6 +1301,7 @@ on_add_unit(struct monitor *monitor,
 	char const *unit_fstab = request->fstab;
 	char const *unit_chdir_path = request->chdir_path;
 	char const *const *unit_command = request->command;
+	char const *const *unit_env_whitelist = request->env_whitelist;
 
 	bool has_priority = request->has_priority;
 	bool has_limit_no_file = request->has_limit_no_file;
@@ -1370,6 +1371,31 @@ on_add_unit(struct monitor *monitor,
 	}
 	command[command_size] = 0;
 
+	size_t env_whitelist_size = null_list_size(unit_env_whitelist);
+
+	char **env_whitelist;
+	{
+		void *xx;
+		err =
+		    linted_mem_alloc_array(&xx, env_whitelist_size + 1U,
+		                           sizeof env_whitelist[0U]);
+		if (err != 0)
+			goto free_name;
+		env_whitelist = xx;
+	}
+
+	for (size_t ii = 0U; ii < env_whitelist_size; ++ii) {
+		err = linted_str_dup(&env_whitelist[ii],
+		                     unit_env_whitelist[ii]);
+		if (err != 0) {
+			for (size_t jj = 0U; jj < ii; ++jj)
+				linted_mem_free(env_whitelist[jj]);
+			linted_mem_free(env_whitelist);
+			goto free_name;
+		}
+	}
+	env_whitelist[env_whitelist_size] = 0;
+
 	struct linted_unit *unit;
 	{
 		struct linted_unit *xx;
@@ -1389,7 +1415,8 @@ on_add_unit(struct monitor *monitor,
 	unit_service->command = (char const *const *)command;
 	unit_service->fstab = fstab;
 	unit_service->chdir_path = chdir_path;
-	unit_service->env_whitelist = 0;
+	unit_service->env_whitelist =
+	    (char const *const *)env_whitelist;
 
 	unit_service->priority = -1;
 	unit_service->limit_no_file = -1;

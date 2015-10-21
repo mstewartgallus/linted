@@ -45,6 +45,7 @@ struct linted_admin_add_unit_request {
 	char const *chdir_path;
 
 	char const *const *command;
+	char const *const *env_whitelist;
 
 	_Bool has_priority : 1U;
 	_Bool has_limit_no_file : 1U;

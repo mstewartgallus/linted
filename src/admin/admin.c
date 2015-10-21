@@ -39,7 +39,7 @@
  *       for linted_admin instead of just copying.
  */
 
-#define CHUNK_SIZE 1024U
+#define CHUNK_SIZE 2048U
 
 #define ALIGN(X)                                                       \
 	(sizeof(struct {                                               \
@@ -174,12 +174,10 @@ linted_error linted_admin_in_task_recv_request(
 		memcpy(&chdir_size, tip, sizeof chdir_size);
 		tip += sizeof chdir_size;
 
-		size_t command_count = 0;
-		memcpy(&command_count, tip, sizeof command_count);
+		size_t command_count = bytes_to_size(tip);
 		tip += sizeof command_count;
 
 		char const *command_sizes_start = tip;
-
 		size_t total_command_size = 0U;
 		for (size_t ii = 0U; ii < command_count; ++ii) {
 			total_command_size +=
@@ -187,11 +185,25 @@ linted_error linted_admin_in_task_recv_request(
 			tip += sizeof(size_t);
 		}
 
+		size_t env_whitelist_count = bytes_to_size(tip);
+		tip += sizeof env_whitelist_count;
+
+		char const *env_whitelist_sizes_start = tip;
+		size_t total_env_whitelist_size = 0U;
+		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
+			total_env_whitelist_size +=
+			    nth_size(env_whitelist_sizes_start, ii) +
+			    1U;
+			tip += sizeof(size_t);
+		}
+
 		enum { COMMAND,
+		       ENV_WHITELIST,
 		       NAME,
 		       FSTAB,
 		       CHDIR_PATH,
-		       COMMAND_STORAGE };
+		       COMMAND_STORAGE,
+		       ENV_WHITELIST_STORAGE };
 		struct {
 			size_t size;
 			size_t align;
@@ -200,6 +212,10 @@ linted_error linted_admin_in_task_recv_request(
 		    {[COMMAND] = {.size = (command_count + 1U) *
 		                          sizeof(char *),
 		                  .align = ALIGN(char *)},
+		     [ENV_WHITELIST] = {.size =
+		                            (env_whitelist_count + 1U) *
+		                            sizeof(char *),
+		                        .align = ALIGN(char *)},
 		     [NAME] = {.size = name_size + 1U,
 		               .align = ALIGN(char)},
 		     [FSTAB] = {.size = fstab_size + 1U,
@@ -207,7 +223,10 @@ linted_error linted_admin_in_task_recv_request(
 		     [CHDIR_PATH] = {.size = chdir_size + 1U,
 		                     .align = ALIGN(char)},
 		     [COMMAND_STORAGE] = {.size = total_command_size,
-		                          .align = ALIGN(char)}};
+		                          .align = ALIGN(char)},
+		     [ENV_WHITELIST_STORAGE] = {
+		         .size = total_env_whitelist_size,
+		         .align = ALIGN(char)}};
 
 		size_t total_size = 0U;
 		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(mem_sizes);
@@ -235,6 +254,8 @@ linted_error linted_admin_in_task_recv_request(
 		char *chdir_path = &mem[mem_sizes[CHDIR_PATH].offset];
 		char **command =
 		    (void *)&mem[mem_sizes[COMMAND].offset];
+		char **env_whitelist =
+		    (void *)&mem[mem_sizes[ENV_WHITELIST].offset];
 
 		char *command_storage =
 		    &mem[mem_sizes[COMMAND_STORAGE].offset];
@@ -242,6 +263,15 @@ linted_error linted_admin_in_task_recv_request(
 			command[ii] = command_storage;
 			command_storage +=
 			    nth_size(command_sizes_start, ii) + 1U;
+		}
+
+		char *env_whitelist_storage =
+		    &mem[mem_sizes[ENV_WHITELIST_STORAGE].offset];
+		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
+			env_whitelist[ii] = env_whitelist_storage;
+			env_whitelist_storage +=
+			    nth_size(env_whitelist_sizes_start, ii) +
+			    1U;
 		}
 
 		memcpy(name, tip, name_size);
@@ -267,8 +297,20 @@ linted_error linted_admin_in_task_recv_request(
 
 			arg[arg_size] = '\0';
 		}
-
 		command[command_count] = 0;
+
+		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
+			size_t arg_size =
+			    nth_size(env_whitelist_sizes_start, ii);
+
+			char *arg = env_whitelist[ii];
+
+			memcpy(arg, tip, arg_size);
+			tip += arg_size;
+
+			arg[arg_size] = '\0';
+		}
+		env_whitelist[env_whitelist_count] = 0;
 
 		status->type = type;
 
@@ -290,6 +332,8 @@ linted_error linted_admin_in_task_recv_request(
 		status->fstab = fstab;
 		status->chdir_path = chdir_path;
 		status->command = (char const *const *)command;
+		status->env_whitelist =
+		    (char const *const *)env_whitelist;
 
 		request->private_data = mem;
 		break;
@@ -455,6 +499,25 @@ linted_admin_in_send(linted_admin_in admin,
 			tip += sizeof arg_size;
 		}
 
+		char const *const *env_whitelist =
+		    status->env_whitelist;
+
+		size_t env_whitelist_count = 0U;
+		for (; env_whitelist[env_whitelist_count] != 0;
+		     ++env_whitelist_count) {
+		}
+
+		memcpy(tip, &env_whitelist_count,
+		       sizeof env_whitelist_count);
+		tip += sizeof env_whitelist_count;
+
+		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
+			size_t arg_size = strlen(env_whitelist[ii]);
+
+			memcpy(tip, &arg_size, sizeof arg_size);
+			tip += sizeof arg_size;
+		}
+
 		/* Now do actual stuff */
 
 		memcpy(tip, namep, name_size);
@@ -474,6 +537,13 @@ linted_admin_in_send(linted_admin_in admin,
 			tip += arg_size;
 		}
 
+		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
+			char const *arg = env_whitelist[ii];
+			size_t arg_size = strlen(arg);
+
+			memcpy(tip, arg, arg_size);
+			tip += arg_size;
+		}
 		break;
 	}
 
