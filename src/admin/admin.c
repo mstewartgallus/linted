@@ -102,6 +102,20 @@ linted_admin_in_task_recv_data(struct linted_admin_in_task_recv *task)
 	return task->data;
 }
 
+static size_t bytes_to_size(char const *bytes)
+{
+	size_t size;
+	memcpy(&size, bytes, sizeof size);
+	return size;
+}
+
+static size_t nth_size(char const *bytes, size_t ii)
+{
+	size_t size;
+	memcpy(&size, bytes + ii * sizeof(size_t), sizeof size);
+	return size;
+}
+
 linted_error linted_admin_in_task_recv_request(
     struct linted_admin_request **outp,
     struct linted_admin_in_task_recv *task)
@@ -164,26 +178,13 @@ linted_error linted_admin_in_task_recv_request(
 		memcpy(&command_count, tip, sizeof command_count);
 		tip += sizeof command_count;
 
-		size_t *command_sizes;
-		{
-			void *xx;
-			err = linted_mem_alloc_array(
-			    &xx, command_count,
-			    sizeof command_sizes[0U]);
-			if (err != 0)
-				goto free_request;
-			command_sizes = xx;
-		}
-
-		for (size_t ii = 0U; ii < command_count; ++ii) {
-			memcpy(&command_sizes[ii], tip,
-			       sizeof command_sizes[0U]);
-			tip += sizeof command_sizes[0U];
-		}
+		char const *command_sizes_start = tip;
 
 		size_t total_command_size = 0U;
 		for (size_t ii = 0U; ii < command_count; ++ii) {
-			total_command_size += command_sizes[ii] + 1U;
+			total_command_size +=
+			    nth_size(command_sizes_start, ii) + 1U;
+			tip += sizeof(size_t);
 		}
 
 		enum { COMMAND,
@@ -207,6 +208,7 @@ linted_error linted_admin_in_task_recv_request(
 		                     .align = ALIGN(char)},
 		     [COMMAND_STORAGE] = {.size = total_command_size,
 		                          .align = ALIGN(char)}};
+
 		size_t total_size = 0U;
 		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(mem_sizes);
 		     ++ii) {
@@ -238,7 +240,8 @@ linted_error linted_admin_in_task_recv_request(
 		    &mem[mem_sizes[COMMAND_STORAGE].offset];
 		for (size_t ii = 0U; ii < command_count; ++ii) {
 			command[ii] = command_storage;
-			command_storage += command_sizes[ii] + 1U;
+			command_storage +=
+			    nth_size(command_sizes_start, ii) + 1U;
 		}
 
 		memcpy(name, tip, name_size);
@@ -254,7 +257,8 @@ linted_error linted_admin_in_task_recv_request(
 		tip += chdir_size;
 
 		for (size_t ii = 0U; ii < command_count; ++ii) {
-			size_t arg_size = command_sizes[ii];
+			size_t arg_size =
+			    nth_size(command_sizes_start, ii);
 
 			char *arg = command[ii];
 
@@ -265,8 +269,6 @@ linted_error linted_admin_in_task_recv_request(
 		}
 
 		command[command_count] = 0;
-
-		linted_mem_free(command_sizes);
 
 		status->type = type;
 
