@@ -36,16 +36,15 @@
 #include <GLES3/gl3.h>
 
 struct linted_gpu_context {
+	struct linted_gpu_update update;
+	struct timespec last_time;
+
 	EGLDisplay display;
 	EGLSurface surface;
 	EGLConfig config;
 	EGLContext context;
 
 	linted_gpu_x11_window window;
-
-	struct linted_gpu_update update;
-
-	struct timespec last_time;
 
 	GLsync sync;
 
