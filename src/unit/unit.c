@@ -13,28 +13,23 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 
 #include "config.h"
 
-#include "linted/dir.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
-#include "linted/fifo.h"
-#include "linted/file.h"
 #include "linted/pid.h"
 #include "linted/unit.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <fcntl.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <string.h>
 
@@ -287,62 +282,4 @@ free_buf:
 		*pidp = pid;
 
 	return 0;
-}
-
-linted_error
-linted_unit_socket_activate(struct linted_unit_socket *unit)
-{
-	linted_error err = 0;
-
-	linted_unit_type type = unit->type;
-	char const *path = unit->path;
-
-	switch (type) {
-	case LINTED_UNIT_SOCKET_TYPE_DIR:
-		err = linted_dir_create(0, LINTED_KO_CWD, path, 0U,
-		                        S_IRWXU);
-		break;
-
-	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		err = linted_file_create(0, LINTED_KO_CWD, path, 0U,
-		                         S_IRWXU);
-		break;
-
-	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
-		int fifo_size = unit->fifo_size;
-
-#if defined F_SETPIPE_SZ
-		if (fifo_size >= 0) {
-			linted_ko fifo;
-			{
-				linted_ko xx;
-				err = linted_fifo_create(
-				    &xx, LINTED_KO_CWD, path,
-				    LINTED_FIFO_RDWR, S_IRWXU);
-				if (err != 0)
-					return err;
-				fifo = xx;
-			}
-
-			if (-1 ==
-			    fcntl(fifo, F_SETPIPE_SZ, fifo_size)) {
-				err = errno;
-				LINTED_ASSUME(err != 0);
-			}
-
-			linted_error close_err = linted_ko_close(fifo);
-			if (0 == err)
-				err = close_err;
-		} else
-#endif
-		{
-			err = linted_fifo_create(0, LINTED_KO_CWD, path,
-			                         0U, S_IRWXU);
-		}
-
-		break;
-	}
-	}
-
-	return err;
 }

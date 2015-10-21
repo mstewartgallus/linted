@@ -13,6 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#define _GNU_SOURCE
+
 #include "linted/admin.h"
 #include "linted/async.h"
 #include "linted/dir.h"
@@ -163,6 +165,7 @@ on_child_linted_ptrace_event_stopped(char const *process_name,
 static linted_error service_activate(struct monitor *monitor,
                                      struct linted_unit *unit,
                                      bool check);
+linted_error socket_activate(struct linted_unit_socket *unit);
 
 static linted_error filter_envvars(char ***resultsp,
                                    char const *const *allowed_envvars);
@@ -1515,7 +1518,7 @@ on_add_socket(struct monitor *monitor,
 	unit_socket->fifo_size = fifo_size;
 	unit_socket->type = type;
 
-	err = linted_unit_socket_activate((void *)unit);
+	err = socket_activate(unit_socket);
 
 	reply->type = LINTED_ADMIN_ADD_SOCKET;
 	return err;
@@ -2077,6 +2080,63 @@ free_limit_msgqueue_str:
 
 free_no_file_str:
 	linted_mem_free(limit_no_file_str);
+
+	return err;
+}
+
+linted_error socket_activate(struct linted_unit_socket *unit)
+{
+	linted_error err = 0;
+
+	linted_unit_type type = unit->type;
+	char const *path = unit->path;
+
+	switch (type) {
+	case LINTED_UNIT_SOCKET_TYPE_DIR:
+		err = linted_dir_create(0, LINTED_KO_CWD, path, 0U,
+		                        S_IRWXU);
+		break;
+
+	case LINTED_UNIT_SOCKET_TYPE_FILE:
+		err = linted_file_create(0, LINTED_KO_CWD, path, 0U,
+		                         S_IRWXU);
+		break;
+
+	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
+		int fifo_size = unit->fifo_size;
+
+#if defined F_SETPIPE_SZ
+		if (fifo_size >= 0) {
+			linted_ko fifo;
+			{
+				linted_ko xx;
+				err = linted_fifo_create(
+				    &xx, LINTED_KO_CWD, path,
+				    LINTED_FIFO_RDWR, S_IRWXU);
+				if (err != 0)
+					return err;
+				fifo = xx;
+			}
+
+			if (-1 ==
+			    fcntl(fifo, F_SETPIPE_SZ, fifo_size)) {
+				err = errno;
+				LINTED_ASSUME(err != 0);
+			}
+
+			linted_error close_err = linted_ko_close(fifo);
+			if (0 == err)
+				err = close_err;
+		} else
+#endif
+		{
+			err = linted_fifo_create(0, LINTED_KO_CWD, path,
+			                         0U, S_IRWXU);
+		}
+
+		break;
+	}
+	}
 
 	return err;
 }

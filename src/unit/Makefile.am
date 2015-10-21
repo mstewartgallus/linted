@@ -18,8 +18,5 @@
 noinst_LTLIBRARIES+=%D%/libunit.la
 %C%_libunit_la_SOURCES=%D%/unit.c include/linted/unit.h
 %C%_libunit_la_LIBADD=\
-  src/dir/libdir.la\
-  src/fifo/libfifo.la\
-  src/file/libfile.la\
   src/ko/libko.la\
   src/pid/libpid.la
