@@ -121,10 +121,16 @@ monitor_on_kill_read(struct monitor *monitor,
 
 static linted_error on_sigchld(struct monitor *monitor);
 static linted_error on_death_sig(struct monitor *monitor, int signo);
+
 static linted_error
 on_add_unit(struct monitor *monitor,
             struct linted_admin_add_unit_request const *request,
             struct linted_admin_add_unit_reply *reply);
+static linted_error
+on_add_socket(struct monitor *monitor,
+              struct linted_admin_add_socket_request const *request,
+              struct linted_admin_add_socket_reply *reply);
+
 static linted_error
 on_status_request(linted_pid manager_pid,
                   struct linted_admin_status_request const *request,
@@ -830,6 +836,14 @@ monitor_on_admin_in_read(struct monitor *monitor,
 		break;
 	}
 
+	case LINTED_ADMIN_ADD_SOCKET: {
+		struct linted_admin_add_socket_reply yy = {0};
+		err =
+		    on_add_socket(monitor, &request->x.add_socket, &yy);
+		reply.add_socket = yy;
+		break;
+	}
+
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_reply yy = {0};
 		err = on_status_request(manager_pid, &request->x.status,
@@ -1441,6 +1455,69 @@ on_add_unit(struct monitor *monitor,
 	err = service_activate(monitor, unit, false);
 
 	reply->type = LINTED_ADMIN_ADD_UNIT;
+	return err;
+
+free_name:
+	linted_mem_free(name);
+
+	return err;
+}
+
+static linted_error
+on_add_socket(struct monitor *monitor,
+              struct linted_admin_add_socket_request const *request,
+              struct linted_admin_add_socket_reply *reply)
+{
+	linted_error err = 0;
+
+	struct linted_unit_db *unit_db = monitor->unit_db;
+
+	char const *unit_name = request->name;
+	char const *unit_path = request->path;
+	int32_t fifo_size = request->fifo_size;
+	linted_unit_socket_type type = request->sock_type;
+
+	char *name;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, unit_name);
+		if (err != 0)
+			return err;
+		name = xx;
+	}
+
+	char *path;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, unit_path);
+		if (err != 0)
+			goto free_name;
+		path = xx;
+	}
+
+	struct linted_unit *unit;
+	{
+		struct linted_unit *xx;
+		err = linted_unit_db_add_unit(unit_db, &xx);
+		if (err != 0) {
+			linted_mem_free(name);
+			return err;
+		}
+		unit = xx;
+	}
+
+	unit->type = LINTED_UNIT_TYPE_SOCKET;
+	unit->name = name;
+
+	struct linted_unit_socket *unit_socket = (void *)unit;
+
+	unit_socket->path = path;
+	unit_socket->fifo_size = fifo_size;
+	unit_socket->type = type;
+
+	err = linted_unit_socket_activate((void *)unit);
+
+	reply->type = LINTED_ADMIN_ADD_SOCKET;
 	return err;
 
 free_name:

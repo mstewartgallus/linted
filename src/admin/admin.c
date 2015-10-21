@@ -60,6 +60,27 @@ struct linted_admin_out_task_send {
 	char reply[CHUNK_SIZE];
 };
 
+struct mem_field {
+	size_t size;
+	size_t align;
+	size_t offset;
+};
+
+size_t process_mem_fields(struct mem_field *mem_fields, size_t size)
+{
+	size_t total_size = 0U;
+	for (size_t ii = 0U; ii < size; ++ii) {
+		size_t size = mem_fields[ii].size;
+		size_t align = mem_fields[ii].align;
+		total_size += 0U == total_size % align
+		                  ? 0U
+		                  : align - total_size % align;
+		mem_fields[ii].offset = total_size;
+		total_size += size;
+	}
+	return total_size;
+}
+
 linted_error linted_admin_in_task_recv_create(
     struct linted_admin_in_task_recv **taskp, void *data)
 {
@@ -204,11 +225,7 @@ linted_error linted_admin_in_task_recv_request(
 		       CHDIR_PATH,
 		       COMMAND_STORAGE,
 		       ENV_WHITELIST_STORAGE };
-		struct {
-			size_t size;
-			size_t align;
-			size_t offset;
-		} mem_sizes[] =
+		struct mem_field mem_sizes[] =
 		    {[COMMAND] = {.size = (command_count + 1U) *
 		                          sizeof(char *),
 		                  .align = ALIGN(char *)},
@@ -228,18 +245,8 @@ linted_error linted_admin_in_task_recv_request(
 		         .size = total_env_whitelist_size,
 		         .align = ALIGN(char)}};
 
-		size_t total_size = 0U;
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(mem_sizes);
-		     ++ii) {
-			size_t size = mem_sizes[ii].size;
-			size_t align = mem_sizes[ii].align;
-			total_size += 0U == total_size % align
-			                  ? 0U
-			                  : align - total_size % align;
-			mem_sizes[ii].offset = total_size;
-			total_size += size;
-		}
-
+		size_t total_size = process_mem_fields(
+		    mem_sizes, LINTED_ARRAY_SIZE(mem_sizes));
 		char *mem;
 		{
 			void *xx;
@@ -339,6 +346,65 @@ linted_error linted_admin_in_task_recv_request(
 		break;
 	}
 
+	case LINTED_ADMIN_ADD_SOCKET: {
+		struct linted_admin_add_socket_request *add_socket =
+		    &request->x.add_socket;
+
+		int32_t fifo_size;
+		memcpy(&fifo_size, tip, sizeof fifo_size);
+		tip += sizeof fifo_size;
+
+		linted_unit_socket_type sock_type;
+		memcpy(&sock_type, tip, sizeof sock_type);
+		tip += sizeof sock_type;
+
+		size_t name_size;
+		memcpy(&name_size, tip, sizeof name_size);
+		tip += sizeof name_size;
+
+		size_t path_size;
+		memcpy(&path_size, tip, sizeof path_size);
+		tip += sizeof path_size;
+
+		enum { NAME, PATH };
+		struct mem_field mem_sizes[] =
+		    {[NAME] = {.size = name_size + 1U,
+		               .align = ALIGN(char)},
+		     [PATH] = {.size = path_size + 1U,
+		               .align = ALIGN(char)}};
+		size_t total_size = process_mem_fields(
+		    mem_sizes, LINTED_ARRAY_SIZE(mem_sizes));
+		char *mem;
+		{
+			void *xx;
+			err = linted_mem_alloc(&xx, total_size);
+			if (err != 0)
+				goto free_request;
+			mem = xx;
+		}
+
+		char *name = &mem[mem_sizes[NAME].offset];
+		char *path = &mem[mem_sizes[PATH].offset];
+
+		memcpy(name, tip, name_size);
+		name[name_size] = '\0';
+		tip += name_size;
+
+		memcpy(path, tip, path_size);
+		path[path_size] = '\0';
+		tip += path_size;
+
+		add_socket->type = type;
+
+		add_socket->name = name;
+		add_socket->path = path;
+		add_socket->fifo_size = fifo_size;
+		add_socket->sock_type = sock_type;
+
+		request->private_data = mem;
+		break;
+	}
+
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request *status =
 		    &request->x.status;
@@ -392,12 +458,10 @@ free_request:
 void linted_admin_request_free(struct linted_admin_request *request)
 {
 	switch (request->x.type) {
-	case LINTED_ADMIN_ADD_UNIT: {
-		struct linted_admin_add_unit_request *status =
-		    &request->x.add_unit;
+	case LINTED_ADMIN_ADD_UNIT:
+	case LINTED_ADMIN_ADD_SOCKET:
 		linted_mem_free(request->private_data);
 		break;
-	}
 
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request *status =
@@ -547,6 +611,47 @@ linted_admin_in_send(linted_admin_in admin,
 		break;
 	}
 
+	case LINTED_ADMIN_ADD_SOCKET: {
+		struct linted_admin_add_socket_request const *
+		    add_socket = &request->x.add_socket;
+
+		memcpy(tip, &type, sizeof type);
+		tip += sizeof type;
+
+		char const *namep = add_socket->name;
+		char const *path = add_socket->path;
+		int32_t fifo_size = add_socket->fifo_size;
+		linted_unit_socket_type sock_type =
+		    add_socket->sock_type;
+
+		memcpy(tip, &fifo_size, sizeof fifo_size);
+		tip += sizeof fifo_size;
+
+		memcpy(tip, &sock_type, sizeof sock_type);
+		tip += sizeof sock_type;
+
+		size_t name_size = strlen(namep);
+		size_t path_size = strlen(path);
+
+		if (name_size > LINTED_UNIT_NAME_MAX)
+			return LINTED_ERROR_INVALID_PARAMETER;
+
+		memcpy(tip, &name_size, sizeof name_size);
+		tip += sizeof name_size;
+
+		memcpy(tip, &path_size, sizeof path_size);
+		tip += sizeof path_size;
+
+		/* Now do actual stuff */
+
+		memcpy(tip, namep, name_size);
+		tip += name_size;
+
+		memcpy(tip, path, path_size);
+		tip += path_size;
+		break;
+	}
+
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request const *status =
 		    (void *)request;
@@ -670,9 +775,9 @@ void linted_admin_out_task_send_prepare(
 	tip += sizeof type;
 
 	switch (type) {
-	case LINTED_ADMIN_ADD_UNIT: {
+	case LINTED_ADMIN_ADD_UNIT:
+	case LINTED_ADMIN_ADD_SOCKET:
 		break;
-	}
 
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_reply const *status =

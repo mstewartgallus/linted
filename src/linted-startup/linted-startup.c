@@ -78,6 +78,12 @@ static linted_error activate_unit_db(char const *process_name,
                                      struct linted_unit_db *unit_db,
                                      linted_ko admin_in,
                                      linted_ko admin_out);
+
+static linted_error socket_activate(char const *process_name,
+                                    struct linted_unit *unit,
+                                    linted_ko admin_in,
+                                    linted_ko admin_out);
+
 static linted_error service_activate(char const *process_name,
                                      struct linted_unit *unit,
                                      linted_ko admin_in,
@@ -874,7 +880,8 @@ static linted_error activate_unit_db(char const *process_name,
 		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
 			continue;
 
-		err = linted_unit_socket_activate((void *)unit);
+		err = socket_activate(process_name, unit, admin_in,
+		                      admin_out);
 		if (err != 0)
 			return err;
 	}
@@ -888,6 +895,45 @@ static linted_error activate_unit_db(char const *process_name,
 
 		err = service_activate(process_name, unit, admin_in,
 		                       admin_out);
+		if (err != 0)
+			return err;
+	}
+
+	return 0;
+}
+
+static linted_error socket_activate(char const *process_name,
+                                    struct linted_unit *unit,
+                                    linted_ko admin_in,
+                                    linted_ko admin_out)
+{
+	linted_error err = 0;
+
+	struct linted_unit_socket *unit_socket = (void *)unit;
+
+	char const *name = unit->name;
+	char const *path = unit_socket->path;
+	int fifo_size = unit_socket->fifo_size;
+	linted_unit_socket_type sock_type = unit_socket->type;
+
+	{
+		struct linted_admin_request request = {0};
+
+		request.x.type = LINTED_ADMIN_ADD_SOCKET;
+
+		request.x.add_socket.name = name;
+		request.x.add_socket.path = path;
+		request.x.add_socket.fifo_size = fifo_size;
+		request.x.add_socket.sock_type = sock_type;
+
+		err = linted_admin_in_send(admin_in, &request);
+	}
+	if (err != 0)
+		return err;
+
+	{
+		union linted_admin_reply xx;
+		err = linted_admin_out_recv(admin_out, &xx);
 		if (err != 0)
 			return err;
 	}
