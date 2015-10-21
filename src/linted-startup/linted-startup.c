@@ -930,29 +930,30 @@ static linted_error service_activate(char const *process_name,
 		chdir_path = "";
 
 	{
-		union linted_admin_request request = {0};
+		struct linted_admin_request request = {0};
 
-		request.type = LINTED_ADMIN_ADD_UNIT;
+		request.x.type = LINTED_ADMIN_ADD_UNIT;
 
-		request.add_unit.has_priority = has_priority;
-		request.add_unit.has_limit_no_file = has_limit_no_file;
-		request.add_unit.has_limit_msgqueue =
+		request.x.add_unit.has_priority = has_priority;
+		request.x.add_unit.has_limit_no_file =
+		    has_limit_no_file;
+		request.x.add_unit.has_limit_msgqueue =
 		    has_limit_msgqueue;
-		request.add_unit.has_limit_locks = has_limit_locks;
+		request.x.add_unit.has_limit_locks = has_limit_locks;
 
-		request.add_unit.clone_newuser = clone_newuser;
-		request.add_unit.clone_newpid = clone_newpid;
-		request.add_unit.clone_newipc = clone_newipc;
-		request.add_unit.clone_newnet = clone_newnet;
-		request.add_unit.clone_newns = clone_newns;
-		request.add_unit.clone_newuts = clone_newuts;
+		request.x.add_unit.clone_newuser = clone_newuser;
+		request.x.add_unit.clone_newpid = clone_newpid;
+		request.x.add_unit.clone_newipc = clone_newipc;
+		request.x.add_unit.clone_newnet = clone_newnet;
+		request.x.add_unit.clone_newns = clone_newns;
+		request.x.add_unit.clone_newuts = clone_newuts;
 
-		request.add_unit.no_new_privs = no_new_privs;
+		request.x.add_unit.no_new_privs = no_new_privs;
 
-		request.add_unit.name = name;
-		request.add_unit.fstab = fstab;
-		request.add_unit.chdir_path = chdir_path;
-		request.add_unit.command = command;
+		request.x.add_unit.name = name;
+		request.x.add_unit.fstab = fstab;
+		request.x.add_unit.chdir_path = chdir_path;
+		request.x.add_unit.command = command;
 
 		err = linted_admin_in_send(admin_in, &request);
 	}

@@ -811,9 +811,9 @@ monitor_on_admin_in_read(struct monitor *monitor,
 	struct linted_admin_in_task_recv *admin_in_read_task =
 	    linted_admin_in_task_recv_from_async(task);
 
-	union linted_admin_request *request;
+	struct linted_admin_request *request;
 	{
-		union linted_admin_request *xx;
+		struct linted_admin_request *xx;
 		err = linted_admin_in_task_recv_request(
 		    &xx, admin_in_read_task);
 		if (err != 0)
@@ -822,17 +822,17 @@ monitor_on_admin_in_read(struct monitor *monitor,
 	}
 
 	union linted_admin_reply reply;
-	switch (request->type) {
+	switch (request->x.type) {
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_reply yy = {0};
-		err = on_add_unit(monitor, (void *)request, &yy);
+		err = on_add_unit(monitor, &request->x.add_unit, &yy);
 		reply.add_unit = yy;
 		break;
 	}
 
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_reply yy = {0};
-		err = on_status_request(manager_pid, (void *)request,
+		err = on_status_request(manager_pid, &request->x.status,
 		                        &yy);
 		reply.status = yy;
 		break;
@@ -841,7 +841,7 @@ monitor_on_admin_in_read(struct monitor *monitor,
 	case LINTED_ADMIN_STOP: {
 		struct linted_admin_stop_reply yy = {0};
 		err =
-		    on_stop_request(manager_pid, (void *)request, &yy);
+		    on_stop_request(manager_pid, &request->x.stop, &yy);
 		reply.stop = yy;
 		break;
 	}

@@ -336,10 +336,10 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	    name);
 
 	{
-		union linted_admin_request request = {0};
+		struct linted_admin_request request = {0};
 
-		request.type = LINTED_ADMIN_STATUS;
-		request.status.name = name;
+		request.x.type = LINTED_ADMIN_STATUS;
+		request.x.status.name = name;
 
 		err = linted_admin_in_send(admin_in, &request);
 		if (err != 0) {
@@ -456,10 +456,10 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	    "%s: sending the stop request for the gui\n", process_name);
 
 	{
-		union linted_admin_request request = {0};
+		struct linted_admin_request request = {0};
 
-		request.type = LINTED_ADMIN_STOP;
-		request.status.name = "linted-gui";
+		request.x.type = LINTED_ADMIN_STOP;
+		request.x.status.name = "linted-gui";
 
 		err = linted_admin_in_send(admin_in, &request);
 	}

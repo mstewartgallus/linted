@@ -85,11 +85,16 @@ struct linted_admin_stop_reply {
 	_Bool was_up;
 };
 
-union linted_admin_request {
+union linted_admin_request_union {
 	linted_admin_type type;
 	struct linted_admin_add_unit_request add_unit;
 	struct linted_admin_status_request status;
 	struct linted_admin_stop_request stop;
+};
+
+struct linted_admin_request {
+	void *private_data;
+	union linted_admin_request_union x;
 };
 
 union linted_admin_reply {
@@ -108,10 +113,10 @@ void linted_admin_in_task_recv_destroy(
     struct linted_admin_in_task_recv *task);
 
 linted_error linted_admin_in_task_recv_request(
-    union linted_admin_request **outp,
+    struct linted_admin_request **outp,
     struct linted_admin_in_task_recv *task);
 
-void linted_admin_request_free(union linted_admin_request *outp);
+void linted_admin_request_free(struct linted_admin_request *outp);
 
 void *
 linted_admin_in_task_recv_data(struct linted_admin_in_task_recv *task);
@@ -141,7 +146,7 @@ linted_admin_out_task_send_from_async(struct linted_async_task *task);
 
 linted_error
 linted_admin_in_send(linted_admin_in admin,
-                     union linted_admin_request const *request);
+                     struct linted_admin_request const *request);
 
 linted_error linted_admin_out_recv(linted_admin_out admin,
                                    union linted_admin_reply *reply);

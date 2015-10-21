@@ -41,6 +41,13 @@
 
 #define CHUNK_SIZE 1024U
 
+#define ALIGN(X)                                                       \
+	(sizeof(struct {                                               \
+		char _a;                                               \
+		X _b;                                                  \
+	}) -                                                           \
+	 sizeof(X))
+
 struct linted_admin_in_task_recv {
 	struct linted_io_task_read *parent;
 	void *data;
@@ -96,12 +103,12 @@ linted_admin_in_task_recv_data(struct linted_admin_in_task_recv *task)
 }
 
 linted_error linted_admin_in_task_recv_request(
-    union linted_admin_request **outp,
+    struct linted_admin_request **outp,
     struct linted_admin_in_task_recv *task)
 {
 	linted_error err = 0;
 
-	union linted_admin_request *request;
+	struct linted_admin_request *request;
 	{
 		void *xx;
 		err = linted_mem_alloc(&xx, sizeof *request);
@@ -119,7 +126,7 @@ linted_error linted_admin_in_task_recv_request(
 	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_request *status =
-		    (void *)request;
+		    &request->x.add_unit;
 
 		unsigned char bitfield[2U];
 		memcpy(bitfield, tip, sizeof bitfield);
@@ -145,31 +152,13 @@ linted_error linted_admin_in_task_recv_request(
 		memcpy(&name_size, tip, sizeof name_size);
 		tip += sizeof name_size;
 
-		char *name;
-		err = linted_str_dup_len(&name, tip, name_size);
-		if (err != 0)
-			goto free_request;
-		tip += name_size;
-
 		size_t fstab_size;
 		memcpy(&fstab_size, tip, sizeof fstab_size);
 		tip += sizeof fstab_size;
 
-		char *fstab;
-		err = linted_str_dup_len(&fstab, tip, fstab_size);
-		if (err != 0)
-			goto free_request;
-		tip += fstab_size;
-
 		size_t chdir_size;
 		memcpy(&chdir_size, tip, sizeof chdir_size);
 		tip += sizeof chdir_size;
-
-		char *chdir_path;
-		err = linted_str_dup_len(&chdir_path, tip, chdir_size);
-		if (err != 0)
-			goto free_request;
-		tip += chdir_size;
 
 		size_t command_count = 0;
 		memcpy(&command_count, tip, sizeof command_count);
@@ -186,31 +175,83 @@ linted_error linted_admin_in_task_recv_request(
 			command_sizes = xx;
 		}
 
-		char **command;
-		{
-			void *xx;
-			err = linted_mem_alloc_array(
-			    &xx, command_count + 1U,
-			    sizeof command[0U]);
-			if (err != 0)
-				goto free_request;
-			command = xx;
-		}
-
 		for (size_t ii = 0U; ii < command_count; ++ii) {
 			memcpy(&command_sizes[ii], tip,
 			       sizeof command_sizes[0U]);
 			tip += sizeof command_sizes[0U];
 		}
 
+		size_t total_command_size = 0U;
 		for (size_t ii = 0U; ii < command_count; ++ii) {
+			total_command_size += command_sizes[ii] + 1U;
+		}
+
+		enum { COMMAND,
+		       NAME,
+		       FSTAB,
+		       CHDIR_PATH,
+		       COMMAND_STORAGE };
+		struct {
+			size_t size;
+			size_t align;
+			size_t offset;
+		} mem_sizes[] =
+		    {[COMMAND] = {.size = (command_count + 1U) *
+		                          sizeof(char *),
+		                  .align = ALIGN(char *)},
+		     [NAME] = {.size = name_size + 1U,
+		               .align = ALIGN(char)},
+		     [FSTAB] = {.size = fstab_size + 1U,
+		                .align = ALIGN(char)},
+		     [CHDIR_PATH] = {.size = chdir_size + 1U,
+		                     .align = ALIGN(char)},
+		     [COMMAND_STORAGE] = {.size = total_command_size,
+		                          .align = ALIGN(char)}};
+		size_t total_size = 0U;
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(mem_sizes);
+		     ++ii) {
+			size_t size = mem_sizes[ii].size;
+			size_t align = mem_sizes[ii].align;
+			total_size += 0U == total_size % align
+			                  ? 0U
+			                  : align - total_size % align;
+			mem_sizes[ii].offset = total_size;
+			total_size += size;
+		}
+
+		char *mem;
+		{
 			void *xx;
-			err = linted_mem_alloc(&xx,
-			                       command_sizes[ii] + 1U);
+			err = linted_mem_alloc(&xx, total_size);
 			if (err != 0)
 				goto free_request;
-			command[ii] = xx;
+			mem = xx;
 		}
+
+		char *name = &mem[mem_sizes[NAME].offset];
+		char *fstab = &mem[mem_sizes[FSTAB].offset];
+		char *chdir_path = &mem[mem_sizes[CHDIR_PATH].offset];
+		char **command =
+		    (void *)&mem[mem_sizes[COMMAND].offset];
+
+		char *command_storage =
+		    &mem[mem_sizes[COMMAND_STORAGE].offset];
+		for (size_t ii = 0U; ii < command_count; ++ii) {
+			command[ii] = command_storage;
+			command_storage += command_sizes[ii] + 1U;
+		}
+
+		memcpy(name, tip, name_size);
+		name[name_size] = '\0';
+		tip += name_size;
+
+		memcpy(fstab, tip, fstab_size);
+		fstab[fstab_size] = '\0';
+		tip += fstab_size;
+
+		memcpy(chdir_path, tip, chdir_size);
+		chdir_path[chdir_size] = '\0';
+		tip += chdir_size;
 
 		for (size_t ii = 0U; ii < command_count; ++ii) {
 			size_t arg_size = command_sizes[ii];
@@ -247,12 +288,14 @@ linted_error linted_admin_in_task_recv_request(
 		status->fstab = fstab;
 		status->chdir_path = chdir_path;
 		status->command = (char const *const *)command;
+
+		request->private_data = mem;
 		break;
 	}
 
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request *status =
-		    (void *)request;
+		    &request->x.status;
 
 		size_t size;
 		memcpy(&size, tip, sizeof size);
@@ -270,7 +313,7 @@ linted_error linted_admin_in_task_recv_request(
 
 	case LINTED_ADMIN_STOP: {
 		struct linted_admin_stop_request *stop =
-		    (void *)request;
+		    &request->x.stop;
 
 		size_t size;
 		memcpy(&size, tip, sizeof size);
@@ -300,28 +343,26 @@ free_request:
 	return 0;
 }
 
-void linted_admin_request_free(union linted_admin_request *request)
+void linted_admin_request_free(struct linted_admin_request *request)
 {
-	switch (request->type) {
+	switch (request->x.type) {
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_request *status =
-		    (void *)request;
-		linted_mem_free((void *)status->name);
-		linted_mem_free((void *)status->fstab);
-		linted_mem_free((void *)status->chdir_path);
+		    &request->x.add_unit;
+		linted_mem_free(request->private_data);
 		break;
 	}
 
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request *status =
-		    (void *)request;
+		    &request->x.status;
 		linted_mem_free((void *)status->name);
 		break;
 	}
 
 	case LINTED_ADMIN_STOP: {
 		struct linted_admin_stop_request *stop =
-		    (void *)request;
+		    &request->x.stop;
 		linted_mem_free((void *)stop->name);
 		break;
 	}
@@ -332,16 +373,16 @@ void linted_admin_request_free(union linted_admin_request *request)
 
 linted_error
 linted_admin_in_send(linted_admin_in admin,
-                     union linted_admin_request const *request)
+                     struct linted_admin_request const *request)
 {
-	linted_admin_type type = request->type;
+	linted_admin_type type = request->x.type;
 
 	char raw[CHUNK_SIZE] = {0};
 	char *tip = raw;
 	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_request const *status =
-		    (void *)request;
+		    &request->x.add_unit;
 
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
@@ -384,26 +425,17 @@ linted_admin_in_send(linted_admin_in admin,
 		memcpy(tip, &name_size, sizeof name_size);
 		tip += sizeof name_size;
 
-		memcpy(tip, namep, name_size);
-		tip += name_size;
-
 		char const *fstabp = status->fstab;
 		size_t fstab_size = strlen(fstabp);
 
 		memcpy(tip, &fstab_size, sizeof fstab_size);
 		tip += sizeof fstab_size;
 
-		memcpy(tip, fstabp, fstab_size);
-		tip += fstab_size;
-
 		char const *chdir_pathp = status->chdir_path;
 		size_t chdir_path_size = strlen(chdir_pathp);
 
 		memcpy(tip, &chdir_path_size, sizeof chdir_path_size);
 		tip += sizeof chdir_path_size;
-
-		memcpy(tip, chdir_pathp, chdir_path_size);
-		tip += chdir_path_size;
 
 		char const *const *command = status->command;
 
@@ -420,6 +452,17 @@ linted_admin_in_send(linted_admin_in admin,
 			memcpy(tip, &arg_size, sizeof arg_size);
 			tip += sizeof arg_size;
 		}
+
+		/* Now do actual stuff */
+
+		memcpy(tip, namep, name_size);
+		tip += name_size;
+
+		memcpy(tip, fstabp, fstab_size);
+		tip += fstab_size;
+
+		memcpy(tip, chdir_pathp, chdir_path_size);
+		tip += chdir_path_size;
 
 		for (size_t ii = 0U; ii < command_count; ++ii) {
 			char const *arg = command[ii];

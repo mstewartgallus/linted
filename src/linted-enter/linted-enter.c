@@ -138,7 +138,6 @@ static unsigned char linted_start_main(char const *const process_name,
 			LINTED_ASSUME(err != 0);
 			linted_log(LINTED_LOG_ERROR, "setns: %s",
 			           linted_error_string(err));
-			return EXIT_FAILURE;
 		}
 	}
 
