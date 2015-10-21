@@ -62,8 +62,6 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
                                        linted_ko cwd,
                                        char const *dir_name);
-static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
-                                   struct linted_conf_db *conf_db);
 
 static linted_error service_create(struct linted_unit_service *unit,
                                    struct linted_conf *conf);
@@ -74,18 +72,11 @@ static linted_error str_from_strs(char const *const *strs,
                                   char const **strp);
 static linted_error bool_from_cstring(char const *str, bool *boolp);
 
-static linted_error activate_unit_db(char const *process_name,
-                                     struct linted_unit_db *unit_db,
-                                     linted_ko admin_in,
-                                     linted_ko admin_out);
-
-static linted_error socket_activate(char const *process_name,
-                                    struct linted_unit *unit,
+static linted_error socket_activate(struct linted_unit *unit,
                                     linted_ko admin_in,
                                     linted_ko admin_out);
 
-static linted_error service_activate(char const *process_name,
-                                     struct linted_unit *unit,
+static linted_error service_activate(struct linted_unit *unit,
                                      linted_ko admin_in,
                                      linted_ko admin_out);
 
@@ -208,18 +199,107 @@ static linted_error startup_start(struct startup *startup)
 	struct linted_unit_db *unit_db;
 	{
 		struct linted_unit_db *xx;
-		err = create_unit_db(&xx, conf_db);
+		err = linted_unit_db_create(&xx);
 		if (err != 0)
 			return err;
 		unit_db = xx;
 	}
 
-	err = activate_unit_db("linted-monitor", unit_db, admin_in,
-	                       admin_out);
-	if (err != 0)
-		return err;
+	size_t size = linted_conf_db_size(conf_db);
+	for (size_t ii = 0U; ii < size; ++ii) {
+		struct linted_unit *unit;
+		{
+			struct linted_unit *xx;
+			err = linted_unit_db_add_unit(unit_db, &xx);
+			if (err != 0)
+				goto destroy_unit_db;
+			unit = xx;
+		}
+
+		struct linted_conf *conf =
+		    linted_conf_db_get_conf(conf_db, ii);
+
+		char const *file_name = linted_conf_peek_name(conf);
+
+		char const *dot = strchr(file_name, '.');
+
+		char const *suffix = dot + 1U;
+
+		linted_unit_type unit_type;
+		if (0 == strcmp(suffix, "socket")) {
+			unit_type = LINTED_UNIT_TYPE_SOCKET;
+		} else if (0 == strcmp(suffix, "service")) {
+			unit_type = LINTED_UNIT_TYPE_SERVICE;
+		} else {
+			err = LINTED_ERROR_INVALID_PARAMETER;
+			goto destroy_unit_db;
+		}
+
+		char *unit_name;
+		{
+			char *xx;
+			err = linted_str_dup_len(&xx, file_name,
+			                         dot - file_name);
+			if (err != 0)
+				goto destroy_unit_db;
+			unit_name = xx;
+		}
+
+		unit->type = unit_type;
+		unit->name = unit_name;
+
+		switch (unit_type) {
+		case LINTED_UNIT_TYPE_SERVICE: {
+			struct linted_unit_service *s = (void *)unit;
+
+			err = service_create(s, conf);
+			if (err != 0)
+				goto destroy_unit_db;
+			break;
+		}
+
+		case LINTED_UNIT_TYPE_SOCKET: {
+			struct linted_unit_socket *s = (void *)unit;
+
+			err = socket_create(s, conf);
+			if (err != 0)
+				goto destroy_unit_db;
+			break;
+		}
+		}
+	}
+
+	size_t db_size = linted_unit_db_size(unit_db);
+
+	for (size_t ii = 0U; ii < db_size; ++ii) {
+		struct linted_unit *unit =
+		    linted_unit_db_get_unit(unit_db, ii);
+
+		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
+			continue;
+
+		err = socket_activate(unit, admin_in, admin_out);
+		if (err != 0)
+			goto destroy_unit_db;
+	}
+
+	for (size_t ii = 0U; ii < db_size; ++ii) {
+		struct linted_unit *unit =
+		    linted_unit_db_get_unit(unit_db, ii);
+
+		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
+			continue;
+
+		err = service_activate(unit, admin_in, admin_out);
+		if (err != 0)
+			goto destroy_unit_db;
+	}
 
 	return 0;
+
+destroy_unit_db:
+	linted_unit_db_destroy(unit_db);
+	return err;
 }
 
 static linted_error startup_stop(struct startup *startup)
@@ -476,92 +556,6 @@ free_file_names:
 		}
 	}
 
-	return err;
-}
-static linted_error create_unit_db(struct linted_unit_db **unit_dbp,
-                                   struct linted_conf_db *conf_db)
-{
-	linted_error err;
-
-	struct linted_unit_db *unit_db;
-	{
-		struct linted_unit_db *xx;
-		err = linted_unit_db_create(&xx);
-		if (err != 0)
-			return err;
-		unit_db = xx;
-	}
-
-	size_t size = linted_conf_db_size(conf_db);
-	for (size_t ii = 0U; ii < size; ++ii) {
-		struct linted_unit *unit;
-		{
-			struct linted_unit *xx;
-			err = linted_unit_db_add_unit(unit_db, &xx);
-			if (err != 0)
-				goto destroy_unit_db;
-			unit = xx;
-		}
-
-		struct linted_conf *conf =
-		    linted_conf_db_get_conf(conf_db, ii);
-
-		char const *file_name = linted_conf_peek_name(conf);
-
-		char const *dot = strchr(file_name, '.');
-
-		char const *suffix = dot + 1U;
-
-		linted_unit_type unit_type;
-		if (0 == strcmp(suffix, "socket")) {
-			unit_type = LINTED_UNIT_TYPE_SOCKET;
-		} else if (0 == strcmp(suffix, "service")) {
-			unit_type = LINTED_UNIT_TYPE_SERVICE;
-		} else {
-			err = LINTED_ERROR_INVALID_PARAMETER;
-			goto destroy_unit_db;
-		}
-
-		char *unit_name;
-		{
-			char *xx;
-			err = linted_str_dup_len(&xx, file_name,
-			                         dot - file_name);
-			if (err != 0)
-				goto destroy_unit_db;
-			unit_name = xx;
-		}
-
-		unit->type = unit_type;
-		unit->name = unit_name;
-
-		switch (unit_type) {
-		case LINTED_UNIT_TYPE_SERVICE: {
-			struct linted_unit_service *s = (void *)unit;
-
-			err = service_create(s, conf);
-			if (err != 0)
-				goto destroy_unit_db;
-			break;
-		}
-
-		case LINTED_UNIT_TYPE_SOCKET: {
-			struct linted_unit_socket *s = (void *)unit;
-
-			err = socket_create(s, conf);
-			if (err != 0)
-				goto destroy_unit_db;
-			break;
-		}
-		}
-	}
-
-	*unit_dbp = unit_db;
-
-	return err;
-
-destroy_unit_db:
-	linted_unit_db_destroy(unit_db);
 	return err;
 }
 
@@ -864,46 +858,7 @@ return_result:
 	return 0;
 }
 
-static linted_error activate_unit_db(char const *process_name,
-                                     struct linted_unit_db *unit_db,
-                                     linted_ko admin_in,
-                                     linted_ko admin_out)
-{
-	linted_error err;
-
-	size_t db_size = linted_unit_db_size(unit_db);
-
-	for (size_t ii = 0U; ii < db_size; ++ii) {
-		struct linted_unit *unit =
-		    linted_unit_db_get_unit(unit_db, ii);
-
-		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
-			continue;
-
-		err = socket_activate(process_name, unit, admin_in,
-		                      admin_out);
-		if (err != 0)
-			return err;
-	}
-
-	for (size_t ii = 0U; ii < db_size; ++ii) {
-		struct linted_unit *unit =
-		    linted_unit_db_get_unit(unit_db, ii);
-
-		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
-			continue;
-
-		err = service_activate(process_name, unit, admin_in,
-		                       admin_out);
-		if (err != 0)
-			return err;
-	}
-
-	return 0;
-}
-
-static linted_error socket_activate(char const *process_name,
-                                    struct linted_unit *unit,
+static linted_error socket_activate(struct linted_unit *unit,
                                     linted_ko admin_in,
                                     linted_ko admin_out)
 {
@@ -941,8 +896,7 @@ static linted_error socket_activate(char const *process_name,
 	return 0;
 }
 
-static linted_error service_activate(char const *process_name,
-                                     struct linted_unit *unit,
+static linted_error service_activate(struct linted_unit *unit,
                                      linted_ko admin_in,
                                      linted_ko admin_out)
 {
