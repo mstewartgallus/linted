@@ -98,9 +98,8 @@ static linted_error monitor_stop(struct monitor *monitor);
 static linted_error dispatch(struct monitor *monitor,
                              struct linted_async_task *completed_task);
 
-static linted_error
-monitor_monitor_monitor_on_signal(struct monitor *monitor,
-                                  struct linted_async_task *task);
+static linted_error monitor_on_signal(struct monitor *monitor,
+                                      struct linted_async_task *task);
 static linted_error
 monitor_on_admin_in_read(struct monitor *monitor,
                          struct linted_async_task *task);
@@ -135,22 +134,18 @@ on_stop_request(linted_pid manager_pid,
 static linted_error on_child_stopped(char const *process_name,
                                      linted_pid pid);
 
-static linted_error
-on_child_trapped(struct monitor *monitor, char const *process_name,
-                 bool time_to_exit, linted_pid pid, int exit_status,
-                 linted_pid manager_pid, linted_ko cwd,
-                 struct linted_unit_db *unit_db);
+static linted_error on_child_trapped(struct monitor *monitor,
+                                     linted_pid pid, int exit_status,
+                                     struct linted_unit_db *unit_db);
 static linted_error on_child_signaled(char const *process_name,
                                       linted_pid pid, int exit_status);
 static linted_error on_child_about_to_clone(linted_pid pid);
 static linted_error
-on_child_about_to_exit(struct monitor *monitor,
-                       char const *process_name, bool time_to_exit,
-                       linted_pid pid, linted_pid manager_pid,
-                       struct linted_unit_db *unit_db);
+on_child_about_to_exit(struct monitor *monitor, bool time_to_exit,
+                       linted_pid pid, struct linted_unit_db *unit_db);
 static linted_error
-on_child_linted_ptrace_event_stopped(char const *process_name,
-                                     linted_pid pid, int exit_status);
+on_child_ptrace_event_stopped(char const *process_name, linted_pid pid,
+                              int exit_status);
 
 static linted_error service_activate(struct monitor *monitor,
                                      struct linted_unit *unit,
@@ -708,7 +703,7 @@ static linted_error dispatch(struct monitor *monitor,
 {
 	switch (linted_async_task_ck(task).u64) {
 	case SIGNAL_WAIT:
-		return monitor_monitor_monitor_on_signal(monitor, task);
+		return monitor_on_signal(monitor, task);
 
 	case ADMIN_IN_READ:
 		return monitor_on_admin_in_read(monitor, task);
@@ -724,9 +719,8 @@ static linted_error dispatch(struct monitor *monitor,
 	}
 }
 
-static linted_error
-monitor_monitor_monitor_on_signal(struct monitor *monitor,
-                                  struct linted_async_task *task)
+static linted_error monitor_on_signal(struct monitor *monitor,
+                                      struct linted_async_task *task)
 {
 	struct linted_async_pool *pool = monitor->pool;
 
@@ -930,10 +924,7 @@ static linted_error monitor_on_kill_read(struct monitor *monitor,
 static linted_error on_sigchld(struct monitor *monitor)
 {
 	char const *process_name = monitor->process_name;
-	linted_pid manager_pid = monitor->manager_pid;
-	linted_ko cwd = monitor->cwd;
 	struct linted_unit_db *unit_db = monitor->unit_db;
-	bool time_to_exit = monitor->time_to_exit;
 
 	linted_error err = 0;
 
@@ -969,9 +960,8 @@ static linted_error on_sigchld(struct monitor *monitor)
 			break;
 
 		case CLD_TRAPPED:
-			err = on_child_trapped(
-			    monitor, process_name, time_to_exit, pid,
-			    exit_status, manager_pid, cwd, unit_db);
+			err = on_child_trapped(monitor, pid,
+			                       exit_status, unit_db);
 			break;
 
 		default:
@@ -1031,12 +1021,13 @@ static linted_error on_death_sig(struct monitor *monitor, int signo)
 	return 0;
 }
 
-static linted_error
-on_child_trapped(struct monitor *monitor, char const *process_name,
-                 bool time_to_exit, linted_pid pid, int exit_status,
-                 linted_pid manager_pid, linted_ko cwd,
-                 struct linted_unit_db *unit_db)
+static linted_error on_child_trapped(struct monitor *monitor,
+                                     linted_pid pid, int exit_status,
+                                     struct linted_unit_db *unit_db)
 {
+	bool time_to_exit = monitor->time_to_exit;
+	char const *process_name = monitor->process_name;
+
 	int event = exit_status >> 8U;
 	exit_status = exit_status & 0xFF;
 	switch (event) {
@@ -1045,13 +1036,12 @@ on_child_trapped(struct monitor *monitor, char const *process_name,
 		                         exit_status);
 
 	case PTRACE_EVENT_EXIT:
-		return on_child_about_to_exit(monitor, process_name,
-		                              time_to_exit, pid,
-		                              manager_pid, unit_db);
+		return on_child_about_to_exit(monitor, time_to_exit,
+		                              pid, unit_db);
 
 	case PTRACE_EVENT_STOP:
-		return on_child_linted_ptrace_event_stopped(
-		    process_name, pid, exit_status);
+		return on_child_ptrace_event_stopped(process_name, pid,
+		                                     exit_status);
 
 	case PTRACE_EVENT_VFORK:
 	case PTRACE_EVENT_FORK:
@@ -1154,8 +1144,8 @@ continue_process:
 }
 
 static linted_error
-on_child_linted_ptrace_event_stopped(char const *process_name,
-                                     linted_pid pid, int exit_status)
+on_child_ptrace_event_stopped(char const *process_name, linted_pid pid,
+                              int exit_status)
 {
 	linted_error err = 0;
 
@@ -1197,14 +1187,14 @@ continue_process:
 }
 
 static linted_error
-on_child_about_to_exit(struct monitor *monitor,
-                       char const *process_name, bool time_to_exit,
-                       linted_pid pid, linted_pid manager_pid,
-                       struct linted_unit_db *unit_db)
+on_child_about_to_exit(struct monitor *monitor, bool time_to_exit,
+                       linted_pid pid, struct linted_unit_db *unit_db)
 {
 
 	linted_error err = 0;
 	struct linted_unit *unit = 0;
+
+	char const *process_name = monitor->process_name;
 
 	err = service_children_terminate(pid);
 	if (err != 0)
