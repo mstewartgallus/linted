@@ -74,7 +74,6 @@ enum { SIGNAL_WAIT,
 
 struct monitor {
 	char const *process_name;
-	char const *unit_path;
 	char const *startup;
 	char const *sandbox;
 	char const *waiter;
@@ -84,10 +83,10 @@ struct monitor {
 	struct linted_io_task_read *kill_read_task;
 	struct linted_async_pool *pool;
 	struct linted_unit_db *unit_db;
+	linted_pid manager_pid;
 	linted_ko kill_fifo;
 	linted_admin_in admin_in;
 	linted_admin_out admin_out;
-	linted_pid manager_pid;
 	linted_ko cwd;
 	bool time_to_exit : 1U;
 };
@@ -96,9 +95,8 @@ static linted_error
 monitor_init(struct monitor *monitor, linted_ko admin_in,
              linted_ko admin_out, linted_ko kill_fifo, linted_ko cwd,
              linted_pid manager_pid, struct linted_async_pool *pool,
-             char const *process_name, char const *unit_path,
-             char const *startup, char const *sandbox,
-             char const *waiter);
+             char const *process_name, char const *startup,
+             char const *sandbox, char const *waiter);
 
 static linted_error monitor_destroy(struct monitor *monitor);
 
@@ -157,7 +155,7 @@ static linted_error
 on_child_about_to_exit(struct monitor *monitor,
                        char const *process_name, bool time_to_exit,
                        linted_pid pid, linted_pid manager_pid,
-                       linted_ko cwd, struct linted_unit_db *unit_db);
+                       struct linted_unit_db *unit_db);
 static linted_error
 on_child_linted_ptrace_event_stopped(char const *process_name,
                                      linted_pid pid, int exit_status);
@@ -197,19 +195,6 @@ static unsigned char linted_start_main(char const *process_name,
 			return EXIT_FAILURE;
 		}
 		manager_pid_str = xx;
-	}
-
-	char const *unit_path;
-	{
-		char *xx;
-		err = linted_environment_get("LINTED_UNIT_PATH", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		unit_path = xx;
 	}
 
 	char const *startup;
@@ -255,13 +240,6 @@ static unsigned char linted_start_main(char const *process_name,
 		linted_log(LINTED_LOG_ERROR,
 		           "%s is a required environment variable",
 		           "MANAGERPID");
-		return EXIT_FAILURE;
-	}
-
-	if (0 == unit_path) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "LINTED_UNIT_PATH");
 		return EXIT_FAILURE;
 	}
 
@@ -482,7 +460,7 @@ static unsigned char linted_start_main(char const *process_name,
 
 	err = monitor_init(&monitor, admin_in, admin_out, kill_fifo,
 	                   cwd, manager_pid, pool, process_name,
-	                   unit_path, startup, sandbox, waiter);
+	                   startup, sandbox, waiter);
 	if (err != 0)
 		goto destroy_pool;
 
@@ -547,9 +525,8 @@ static linted_error
 monitor_init(struct monitor *monitor, linted_ko admin_in,
              linted_ko admin_out, linted_ko kill_fifo, linted_ko cwd,
              linted_pid manager_pid, struct linted_async_pool *pool,
-             char const *process_name, char const *unit_path,
-             char const *startup, char const *sandbox,
-             char const *waiter)
+             char const *process_name, char const *startup,
+             char const *sandbox, char const *waiter)
 {
 	linted_error err = 0;
 
@@ -611,7 +588,6 @@ monitor_init(struct monitor *monitor, linted_ko admin_in,
 	monitor->write_task = write_task;
 	monitor->process_name = process_name;
 	monitor->startup = startup;
-	monitor->unit_path = unit_path;
 	monitor->sandbox = sandbox;
 	monitor->waiter = waiter;
 	monitor->time_to_exit = false;
@@ -643,7 +619,6 @@ static linted_error monitor_start(struct monitor *monitor)
 	linted_error err = 0;
 
 	linted_ko cwd = monitor->cwd;
-	char const *unit_path = monitor->unit_path;
 	char const *startup = monitor->startup;
 
 	struct linted_async_pool *pool = monitor->pool;
@@ -700,8 +675,8 @@ static linted_error monitor_start(struct monitor *monitor)
 	linted_pid startup_pid;
 	{
 		linted_pid xx;
-		char const *const arguments[] = {
-		    startup, "admin-in", "admin-out", unit_path, 0};
+		char const *const arguments[] = {startup, "admin-in",
+		                                 "admin-out", 0};
 		err = linted_spawn(&xx, cwd, startup, 0, attr,
 		                   arguments, 0);
 		if (err != 0)
@@ -1078,9 +1053,9 @@ on_child_trapped(struct monitor *monitor, char const *process_name,
 		                         exit_status);
 
 	case PTRACE_EVENT_EXIT:
-		return on_child_about_to_exit(
-		    monitor, process_name, time_to_exit, pid,
-		    manager_pid, cwd, unit_db);
+		return on_child_about_to_exit(monitor, process_name,
+		                              time_to_exit, pid,
+		                              manager_pid, unit_db);
 
 	case PTRACE_EVENT_STOP:
 		return on_child_linted_ptrace_event_stopped(
@@ -1233,7 +1208,7 @@ static linted_error
 on_child_about_to_exit(struct monitor *monitor,
                        char const *process_name, bool time_to_exit,
                        linted_pid pid, linted_pid manager_pid,
-                       linted_ko cwd, struct linted_unit_db *unit_db)
+                       struct linted_unit_db *unit_db)
 {
 
 	linted_error err = 0;

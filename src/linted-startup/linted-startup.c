@@ -19,6 +19,7 @@
 
 #include "linted/admin.h"
 #include "linted/conf.h"
+#include "linted/environment.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
@@ -89,15 +90,33 @@ static unsigned char linted_start_main(char const *const process_name,
 {
 	linted_error err = 0;
 
-	if (argc != 4U) {
+	if (argc != 3U) {
 		linted_log(LINTED_LOG_ERROR,
-		           "missing some of 3 file operands");
+		           "missing some of 2 file operands");
+		return EXIT_FAILURE;
+	}
+
+	char const *unit_path;
+	{
+		char *xx;
+		err = linted_environment_get("LINTED_UNIT_PATH", &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		unit_path = xx;
+	}
+	if (0 == unit_path) {
+		linted_log(LINTED_LOG_ERROR,
+		           "%s is a required environment variable",
+		           "LINTED_UNIT_PATH");
 		return EXIT_FAILURE;
 	}
 
 	char const *admin_in = argv[1U];
 	char const *admin_out = argv[2U];
-	char const *unit_path = argv[3U];
 
 	static struct startup startup = {0};
 	err = startup_init(&startup, admin_in, admin_out, unit_path);
