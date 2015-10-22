@@ -39,7 +39,7 @@
  *       for linted_admin instead of just copying.
  */
 
-#define CHUNK_SIZE 2048U
+#define CHUNK_SIZE 4096U
 
 #define ALIGN(X)                                                       \
 	(sizeof(struct {                                               \
@@ -66,10 +66,11 @@ struct mem_field {
 	size_t offset;
 };
 
-size_t process_mem_fields(struct mem_field *mem_fields, size_t size)
+size_t process_mem_fields(struct mem_field *mem_fields,
+                          size_t fields_size)
 {
 	size_t total_size = 0U;
-	for (size_t ii = 0U; ii < size; ++ii) {
+	for (size_t ii = 0U; ii < fields_size; ++ii) {
 		size_t size = mem_fields[ii].size;
 		size_t align = mem_fields[ii].align;
 		total_size += 0U == total_size % align
@@ -487,7 +488,16 @@ linted_admin_in_send(linted_admin_in admin,
 {
 	linted_admin_type type = request->x.type;
 
-	char raw[CHUNK_SIZE] = {0};
+	linted_error err = 0;
+
+	char *raw;
+	{
+		void *xx;
+		err = linted_mem_alloc_zeroed(&xx, CHUNK_SIZE);
+		if (err != 0)
+			return err;
+		raw = xx;
+	}
 	char *tip = raw;
 	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
@@ -529,8 +539,10 @@ linted_admin_in_send(linted_admin_in admin,
 		char const *namep = status->name;
 		size_t name_size = strlen(namep);
 
-		if (name_size > LINTED_UNIT_NAME_MAX)
-			return LINTED_ERROR_INVALID_PARAMETER;
+		if (name_size > LINTED_UNIT_NAME_MAX) {
+			err = LINTED_ERROR_INVALID_PARAMETER;
+			goto free_raw;
+		}
 
 		memcpy(tip, &name_size, sizeof name_size);
 		tip += sizeof name_size;
@@ -633,8 +645,10 @@ linted_admin_in_send(linted_admin_in admin,
 		size_t name_size = strlen(namep);
 		size_t path_size = strlen(path);
 
-		if (name_size > LINTED_UNIT_NAME_MAX)
-			return LINTED_ERROR_INVALID_PARAMETER;
+		if (name_size > LINTED_UNIT_NAME_MAX) {
+			err = LINTED_ERROR_INVALID_PARAMETER;
+			goto free_raw;
+		}
 
 		memcpy(tip, &name_size, sizeof name_size);
 		tip += sizeof name_size;
@@ -677,8 +691,10 @@ linted_admin_in_send(linted_admin_in admin,
 		char const *namep = stop->name;
 
 		size_t size = strlen(namep);
-		if (size > LINTED_UNIT_NAME_MAX)
-			return LINTED_ERROR_INVALID_PARAMETER;
+		if (size > LINTED_UNIT_NAME_MAX) {
+			err = LINTED_ERROR_INVALID_PARAMETER;
+			goto free_raw;
+		}
 
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
@@ -691,10 +707,16 @@ linted_admin_in_send(linted_admin_in admin,
 	}
 
 	default:
-		return LINTED_ERROR_INVALID_PARAMETER;
+		err = LINTED_ERROR_INVALID_PARAMETER;
+		goto free_raw;
 	}
 
-	return linted_io_write_all(admin, 0, raw, sizeof raw);
+	err = linted_io_write_all(admin, 0, raw, CHUNK_SIZE);
+
+free_raw:
+	linted_mem_free(raw);
+
+	return err;
 }
 
 void linted_admin_in_task_recv_prepare(

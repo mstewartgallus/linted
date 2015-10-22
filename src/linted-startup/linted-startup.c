@@ -817,10 +817,10 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FIFO:
-		unit->fifo_size = fifo_size_value;
 		break;
 	}
 
+	unit->fifo_size = fifo_size_value;
 	unit->type = socket_type;
 	unit->path = path;
 
