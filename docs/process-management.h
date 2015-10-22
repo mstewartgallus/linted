@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Steven Stewart-Gallus
+/* Copyright (C) 2014, 2015 Steven Stewart-Gallus
  *
  * Copying and distribution of this file, with or without
  * modification, are permitted in any medium without royalty provided
@@ -10,7 +10,37 @@
  *
  * Linted -- Process Management
  *
- * Process hierarchy
+ * @section lifecycle Life-Cycle
+ *
+ * - `linted` -> `init`
+ * - `monitor`
+ * - `startup`
+ * - services
+ *
+ * First, the `linted` process starts up.  It sets a few environment
+ * variables or possibly displays some sort of help.
+ *
+ * Next, the `linted` binary executes and becomes the `init` process.
+ * Using some of the set environment variables it forks off and spawns
+ * the `monitor` process.
+ *
+ * The `monitor` process then sets up a little bit of state such as
+ * important IPC channels and then spawns the `startup` process.
+ * After spawning the `startup` process the `monitor` process then
+ * idly waits for commands.
+ *
+ * Meanwhile, the `startup` process reads through the unit files in
+ * the directories listed in `LINTED_UNIT_PATH` and registers those
+ * units with the `monitor`.
+ *
+ * Once the `monitor` receives units to regiister it then spawns
+ * associated processes or creates associated files.
+ *
+ * In the future, I would like to have the `monitor` automatically
+ * deduce unit file dependencies and only spawn processes once their
+ * dependencies are met.
+ *
+ * @section hierarchy Process hierarchy
  *
  * - `init`
  *   - `audio`
@@ -39,6 +69,11 @@
  * to `monitor` who ptraces and monitor these service processes (but
  * not the children of the service processes.)
  *
+ * `monitor` manually kills any children of dying
+ * `PR_SET_CHILD_SUBREAPER` type sandboxes and children of dying
+ * `CLONE_NEWPID` type sandboxes are killed by the kernel
+ * automatically.
+ *
  * @bug Currently not all sandboxed processes are killed on `init`
  * death.  Currently `monitor` will receive a `SIGHUP` because `init`
  * will be the controlling process for the controlling terminal (if
@@ -50,11 +85,6 @@
  *   reparented to `init`.  However, I am not sure how they would wait
  *   until they have been reparented to `init` before using
  *   `PR_SET_PDEATHSIG`.
- *
- * `monitor` manually kills any children of dying
- * `PR_SET_CHILD_SUBREAPER` type sandboxes and children of dying
- * `CLONE_NEWPID` type sandboxes are killed by the kernel
- * automatically.
  *
  * @section ipc IPC
  *
@@ -150,7 +180,7 @@
  * System V IPC types:
  * - message queues
  * - semaphore sets
- * - shared  memory  segments
+ * - shared memory segments
  *
  * @section sandboxing Sandboxing
  *
