@@ -56,7 +56,8 @@ static char const *const default_envvars[] = {
     "MALLOC_CHECK_", "MALLOC_PERTURB_", "MANAGERPID", "USER", "LOGNAME",
     "HOME", "SHELL", "XDG_RUNTIME_DIR"
                      "XDG_SESSION_ID",
-    "XDG_SEAT", "TERM", "LD_DEBUG", "LD_DEBUG_OUTPUT", 0};
+    "XDG_SEAT", "TERM", "LD_WARN", "LD_VERBOSE", "LD_DEBUG",
+    "LD_DEBUG_OUTPUT", 0};
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
                                       linted_ko cwd, char const *path);

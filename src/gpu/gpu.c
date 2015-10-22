@@ -548,7 +548,7 @@ linted_error linted_gpu_swap(struct linted_gpu_context *gpu_context)
 		                        attachments);
 	}
 
-	if (1) {
+	if (0) {
 		if (gpu_context->skipped_updates_counter > 1U)
 			linted_log(
 			    LINTED_LOG_INFO, "skipped updates: %lu",
