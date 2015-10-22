@@ -28,6 +28,7 @@
 #include "linted/mem.h"
 #include "linted/path.h"
 #include "linted/pid.h"
+#include "linted/ptrace.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
 #include "linted/spawn.h"
@@ -35,10 +36,6 @@
 #include "linted/str.h"
 #include "linted/unit.h"
 #include "linted/util.h"
-
-#if defined HAVE_POSIX_API
-#include "linted/ptrace.h"
-#endif
 
 #include <ctype.h>
 #include <errno.h>
@@ -54,16 +51,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
-#if defined HAVE_POSIX_API
-#include <sys/wait.h>
-#endif
-
-#if defined HAVE_POSIX_API
 #ifndef PTRACE_EVENT_STOP
 #define PTRACE_EVENT_STOP 128
-#endif
 #endif
 
 enum { SIGNAL_WAIT,

@@ -147,6 +147,10 @@ int linted_start__main(struct linted_start_config const *config,
 
 	tzset();
 
+	if (config->dont_fork_thread)
+		return start(process_basename, argc,
+		             (char const *const *)argv);
+
 	struct start_args *start_args;
 	{
 		void *xx;
@@ -164,10 +168,6 @@ int linted_start__main(struct linted_start_config const *config,
 	start_args->process_basename = process_basename;
 	start_args->argc = argc;
 	start_args->argv = (char const *const *)argv;
-
-	if (config->dont_fork_thread)
-		return start(process_basename, argc,
-		             (char const *const *)argv);
 
 	pthread_t child;
 	{
