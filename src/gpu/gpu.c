@@ -13,7 +13,7 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200112L
 
 #include "config.h"
 
@@ -30,6 +30,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
