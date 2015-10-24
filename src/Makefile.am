@@ -35,7 +35,6 @@ include %C%/linted-window/Makefile.am
 
 if WINDOWS_API
 else
-# These have not been ported to Windows yet
 include %C%/linted-audio/Makefile.am
 include %C%/linted-drawer/Makefile.am
 include %C%/linted-gui/Makefile.am

@@ -1,4 +1,4 @@
-/* Copyright (C) 2013, 2014 Steven Stewart-Gallus
+/* Copyright (C) 2013, 2014, 2015 Steven Stewart-Gallus
  *
  * Copying and distribution of this file, with or without
  * modification, are permitted in any medium without royalty provided
@@ -15,30 +15,6 @@
  *      draw to a part of the window opposite from the part offscreen
  *      (not my bug works with glxgears too.)
  *
- * @todo Fix collision handling. I want to prevent interpenetration
- *       and properly handle discontinuities in velocity. I need
- *       proper collision response and not the hacky spring like thing
- *       I have currently.
- *       Resources:
- *       - http://www.gdcvault.com/play/1018239/Physics-for-Game-Programmers-Continuous
- *       - http://gafferongames.com/virtualgo/collision-response-and-coulomb-friction/
- *       - http://www.codezealot.org/archives/55
- *       - http://www.codezealot.org/archives/88
- *       - http://mollyrocket.com/849
- *       - http://chrishecker.com/images/d/df/Gdmphys1.pdf
- *       - http://chrishecker.com/images/c/c2/Gdmphys2.pdf
- *       - http://chrishecker.com/images/e/e7/Gdmphys3.pdf
- *       - http://chrishecker.com/images/b/bb/Gdmphys4.pdf
- *       - http://www.pixar.com/companyinfo/research/pbm2001/pdf/notesg.pdf
- *       - http://www.wildbunny.co.uk/blog/2011/04/06/physics-engines-for-dummies/
- *       - http://www.bulletphysics.com/ftp/pub/test/physics/papers/IterativeDynamics.pdf
- *
- * @todo Once EGL_KHR_get_all_proc_addresses is supported by my Mesa
- *       use it.
- *
- * @todo Fork off a process at startup to do service file parsing and startup.
- *       The monitor should simply expose an API that lets startup do its work.
- *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *
@@ -54,36 +30,45 @@
  *       generate notifications. User Mode Linux has the same problem
  *       and we should learn from how they solve it.
  *
- * @todo Fall back to an error display in the window if the drawer fails to
- *       initialize.
+ * @todo Harden bind mounts with extra flags:
+ *       Possible mount flags:
+ *       - `MS_RDONLY`
+ *       - `MS_NOSUID`
+ *       - `MS_NODEV`
+ *       - `MS_NOEXEC`
+ *       - `MS_SYNCHRONOUS`
+ *       - `MS_REMOUNT`
+ *       - `MS_MANDLOCK`
+ *       - `MS_DIRSYNC`
+ *       - `MS_NOATIME`
+ *       - `MS_NODIRATIME`
+ *       - `MS_BIND`
+ *       - `MS_MOVE`
+ *       - `MS_REC`
+ *       - `MS_SILENT`
+ *       - `MS_POSIXACL`
+ *       - `MS_UNBINDABLE`
+ *       - `MS_PRIVATE`
+ *       - `MS_SLAVE`
+ *       - `MS_SHARED`
+ *       - `MS_RELATIME`
+ *       - `MS_KERNMOUNT`
+ *       - `MS_I_VERSION`
+ *       - `MS_STRICTATIME`
+ *       - `MS_ACTIVE`
+ *       - `MS_NOUSER`
+ *       Mount flags that work on remounts (binds only allow you to remount flags):
+ *       - `MS_RDONLY`
+ *       - `MS_SYNCHRONOUS`
+ *       - `MS_MANDLOCK`
+ *       - `MS_I_VERSION`
  *
- * @todo Harden bind mounts with extra flags
- *
- * @todo Check child processes for hangups
- *
- * @todo Use the monitor to report crashes such as from seccomp rule
- *       violations.
+ * @todo Check child processes for hangups with a watchdog timer
  *
  * @todo Create a feed of possible vulnerabilities in all dependencies
  *
- * @todo Sandbox leaked file descriptors before spawning new processes
- *       in sandbox.c
- *
  * @todo Achieve deterministic builds.
- *
- *       As far I know, `DW_AT_comp_dir` is the one major source of
- *       nondeterminism left.  There is also a debug string that has the build
- *       directory in it as well.
- *
- *       Adding
- *       `-Wno-builtin-macro-redefined -D__FILE__='"$(subst $(srcdir)/,,$(abspath $<))"'`
- *       to `AM_CFLAGS` seems like a good solution for solving the `__FILE__`
- *       nondeterminism problem but unfortunately that functionality is not
- *       portable.  Another possible solution is to manually add `#line`
- *       directives to the every source file to give each one a good name but
- *       that solution is labour intensive and error-prone.
- *
  *       The Dwarf Directory Table can be sort of solved with the option
- *       `-fdebug-prefix-map=$(srcdir)=.` but that still leaves the problem of
+ *       `-fdebug-prefix-map` but that still leaves the problem of
  *       system include files.
  */

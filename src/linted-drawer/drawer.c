@@ -41,8 +41,16 @@
 /**
  * @file
  *
- * @todo Handle sudden window death better.
+ * @bug Sudden window death freezes the drawer process on Mesa.
+ *      Unfortunately, this is a deadlock deep inside Mesa's `glClear`
+ *and not really fixable.
+ *
+ * @todo Fall back to an error display in the window if the drawer fails
+ *to
+ *       initialize.
+ *
  */
+
 struct drawer;
 
 static linted_error
@@ -134,7 +142,6 @@ static unsigned char linted_start_main(char const *process_name,
 	if (err != 0)
 		goto destroy_drawer;
 
-	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
 		for (;;) {
 			struct linted_async_task *completed_task;

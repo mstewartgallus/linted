@@ -37,7 +37,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD, "/",
 		                     LINTED_KO_DIRECTORY);
-		/* Can happen on Windows */
+		/* Can happen on Windows NT */
 		if (LINTED_ERROR_PERMISSION == err)
 			return EXIT_SUCCESS;
 		if (err != 0)

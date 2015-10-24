@@ -40,9 +40,6 @@
 #include <winsock2.h>
 #include <windows.h>
 
-/**
- * @bug dirko is not respected.
- */
 linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
                             char const *pathname, unsigned long flags)
 {
@@ -222,6 +219,10 @@ free_oldpath:
 	return err;
 }
 
+/**
+ * @bug Windows NT: work on directories other than `LINTED_KO_CWD`
+ * @bug Windows NT: actually resolve the path
+ */
 linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
                                  char const *pathname)
 {
@@ -230,11 +231,9 @@ linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
 	LINTED_ASSERT(resultp != 0);
 	LINTED_ASSERT(pathname != 0);
 
-	/* TDOO: work on more directories */
 	if (dirko != LINTED_KO_CWD)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
-	/* TDOO: actually resolve the path */
 	char *result;
 	{
 		char *xx;

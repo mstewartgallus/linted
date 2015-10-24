@@ -35,8 +35,10 @@
 #include <string.h>
 
 /**
+ * @file
+ *
  * @todo Use proper marshalling between structures and byte arrays
- *       for linted_admin instead of just copying.
+ *       for `linted_admin` instead of just copying.
  */
 
 #define CHUNK_SIZE 4096U

@@ -45,7 +45,7 @@
 /**
  * @file
  *
- * @todo Replace as much xkbcommon code with xcb-xkb code as possible
+ * @todo Replace as much xkb x11 code with xcb xkb code as possible
  * to get more accurate error handling.
  */
 
@@ -145,7 +145,6 @@ static unsigned char linted_start_main(char const *process_name,
 	if (err != 0)
 		goto destroy_pool;
 
-	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
 		struct linted_async_task *completed_task;
 		{

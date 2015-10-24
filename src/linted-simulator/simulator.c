@@ -35,6 +35,34 @@
 #include <stdlib.h>
 #include <time.h>
 
+/**
+ * @file
+ *
+ * @todo Fix collision handling. I want to prevent interpenetration
+ *       and properly handle discontinuities in velocity. I need
+ *       proper collision response and not the hacky spring like thing
+ *       I have currently.
+ *       Resources:
+ *       -
+ *http://www.gdcvault.com/play/1018239/Physics-for-Game-Programmers-Continuous
+ *       -
+ *http://gafferongames.com/virtualgo/collision-response-and-coulomb-friction/
+ *       - http://www.codezealot.org/archives/55
+ *       - http://www.codezealot.org/archives/88
+ *       - http://mollyrocket.com/849
+ *       - http://chrishecker.com/images/d/df/Gdmphys1.pdf
+ *       - http://chrishecker.com/images/c/c2/Gdmphys2.pdf
+ *       - http://chrishecker.com/images/e/e7/Gdmphys3.pdf
+ *       - http://chrishecker.com/images/b/bb/Gdmphys4.pdf
+ *       -
+ *http://www.pixar.com/companyinfo/research/pbm2001/pdf/notesg.pdf
+ *       -
+ *http://www.wildbunny.co.uk/blog/2011/04/06/physics-engines-for-dummies/
+ *       -
+ *http://www.bulletphysics.com/ftp/pub/test/physics/papers/IterativeDynamics.pdf
+ *
+ */
+
 #define ROTATION_SPEED 512U
 #define DEAD_ZONE (SIM_UINT_MAX / 8)
 
@@ -148,7 +176,6 @@ static unsigned char linted_start_main(char const *const process_name,
 	if (err != 0)
 		goto destroy_pool;
 
-	/* TODO: Detect SIGTERM and exit normally */
 	for (;;) {
 		struct linted_async_task *completed_task;
 		{

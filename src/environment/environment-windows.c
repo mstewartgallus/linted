@@ -119,7 +119,7 @@ linted_error linted_environment_get(char const *key, char **valuep)
 			break;
 
 		case EINVAL:
-			/* Work around a bug in Wine or Windows */
+			/* Work around a bug in Wine or Windows NT */
 			break;
 
 		default:

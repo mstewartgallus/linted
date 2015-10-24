@@ -1468,6 +1468,10 @@ typedef struct tagTHREADNAME_INFO {
 } THREADNAME_INFO;
 #pragma pack(pop)
 
+/**
+ * @todo Get Window's thread name setting to work on GCC which doesn't
+ * support SEH.
+ */
 static void set_thread_name(char const *name)
 {
 
@@ -1483,8 +1487,6 @@ static void set_thread_name(char const *name)
 	/* Reserved for the future */
 	info.dwFlags = 0;
 
-/* TODO: Find some way of getting this working with GCC which
- * doesn't support SEH. */
 #if !defined __GNUC__
 	__try
 	{

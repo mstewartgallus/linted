@@ -108,7 +108,7 @@ int linted_start__main(struct linted_start_config const *config,
 	LocalFree(wide_argv);
 
 	/**
-	 * @todo Open up standard handles if GetStdHandle returns a
+	 * @todo Open up standard handles if `GetStdHandle` returns a
 	 *       null pointer for any of them (they weren't set by the
 	 *       spawner).
 	 */

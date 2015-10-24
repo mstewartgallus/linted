@@ -42,11 +42,6 @@
 
 #include <windows.h>
 
-/**
- * @todo Contain everything in a job.
- * @todo Get a proper process handle out of linted_spawn.
- */
-
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init", 0};
 

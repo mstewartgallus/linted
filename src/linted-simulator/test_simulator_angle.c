@@ -66,7 +66,6 @@ static unsigned char linted_start_main(char const *const process_name,
 			                    sin_quarter);
 		}
 
-		/* TODO This isn't totally correct */
 		sim_angle half = SIM_ANGLE(1U, 2U);
 		sim_int sin_half = sim_sin(half);
 		if (sin_half != 0) {
@@ -102,7 +101,6 @@ static unsigned char linted_start_main(char const *const process_name,
 			                    cos_zero);
 		}
 
-		/* TODO This isn't totally correct */
 		sim_angle quarter = SIM_ANGLE(1U, 4U);
 		sim_int cos_quarter = sim_cos(quarter);
 		if (cos_quarter != 0) {
@@ -119,7 +117,6 @@ static unsigned char linted_start_main(char const *const process_name,
 			                    cos_half);
 		}
 
-		/* TODO This isn't totally correct */
 		sim_angle three_quarters = SIM_ANGLE(3U, 4U);
 		sim_int cos_three_quarters = sim_cos(three_quarters);
 		if (cos_three_quarters != 0) {

@@ -11,7 +11,7 @@ none	../../var/gui	none	mkdir,nomount
 tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 ../../controller	run/controller	none	touch,bind
 ../../window	run/window	none	touch,bind
-../../window-notifier-gui	run/window-notifier	none	touch,bind
+../../window-notifier-gui	run/window-notifier-gui	none	touch,bind
 
 tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,ro,bind
@@ -23,8 +23,8 @@ tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 /etc	etc	none	mkdir,shared,bind
 
 /lib	lib	none	mkdir,shared,bind
-/lib64	lib64	none	mkdir,shared,bind 
+/lib64	lib64	none	mkdir,shared,bind
 
-/usr	usr	none	mkdir,shared,bind 
+/usr	usr	none	mkdir,shared,bind
 
 /bin	bin	none	mkdir,shared,bind

@@ -19,15 +19,15 @@
 #include <stdarg.h>
 
 /**
- * @todo Implement logging on Microsoft Windows
+ * @file
+ *
+ * @bug Windows NT: provide Event Tracing events.
  */
+
 void linted_log_open(char const *ident)
 {
 }
 
-/**
- * @todo Implement logging on Microsoft Windows
- */
 void linted_log(linted_log_level log_level, char const *format, ...)
 {
 

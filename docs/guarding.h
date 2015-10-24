@@ -63,6 +63,21 @@
  * - Toolchain hardening:
  *   - stack smashing protection with -fstack-protector-all
  *
+ * @section determinism Determinism
+ *
+ * To achieve more determinism we define `__FILE__` to be the null pointer.
+ *
+ * We use the options: `-fno-working-directory`, `-gno-record-gcc-switches`,
+ * `-fdebug-prefix-map=${srcdir}=.`.
+ *
+ * We set the environment variable `PWD` to be `/proc/self/cwd`.
+ *
+ * We give `ranlib` the `-D` option.
+ *
+ * We give `ar` the `D` option.
+ *
+ * We set the `frandom-seed` option to be a hash of the source file.
+ *
  * @section formal-methods Formal Methods
  *
  * The process of proving properties of a program using formal methods
