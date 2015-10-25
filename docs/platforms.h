@@ -17,8 +17,10 @@
  *
  * @section supported Supported Platforms
  *
- * These are the only supported platforms.  Other platforms may work but are
- * only worked on for the purpose of making the code more modular and better.
+ * These are the only supported platforms.  Other platforms may work but
+ *are
+ * only worked on for the purpose of making the code more modular and
+ *better.
  *
  * @subsection x86_64-linux-gnu x86_64 GNU/Linux
  *
@@ -83,10 +85,12 @@
  *   - Bug Database - https://bugzilla.kernel.org/
  * - Xorg X11 Server
  *   - Main Site - http://www.x.org/wiki/
- *   - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
+ *   - Bug Database -
+ *https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
  * - Xorg X11 client libraries (Xlib, XCB, GLX)
  *   - Main Site - http://www.x.org/wiki/
- *   - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
+ *   - Bug Database -
+ *https://bugs.freedesktop.org/describecomponents.cgi?product=xorg
  *   - Binaries
  *     - /usr/lib/x86_64-linux-gnu/libX11.so.6.3.0
  *     - /usr/lib/x86_64-linux-gnu/libX11-xcb.so.1.0.0
@@ -100,13 +104,15 @@
  *     - /usr/lib/x86_64-linux-gnu/libpciaccess.so.0.11.1
  * - Wayland
  *   - Main Site - http://wayland.freedesktop.org/
- *   - But Database - https://bugs.freedesktop.org/enter_bug.cgi?product=Wayland
+ *   - But Database -
+ *https://bugs.freedesktop.org/enter_bug.cgi?product=Wayland
  *   - Binaries
  *     - /usr/lib/x86_64-linux-gnu/libwayland-client.so.0.2.0
  *     - /usr/lib/x86_64-linux-gnu/libwayland-server.so.0.1.0
  * - DRI
  *   - Main Site - http://dri.freedesktop.org/wiki/
- *   - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=DRI
+ *   - Bug Database -
+ *https://bugs.freedesktop.org/describecomponents.cgi?product=DRI
  *   - Binaries
  *     - /usr/lib/x86_64-linux-gnu/dri/i965_dri.so
  *     - /usr/lib/x86_64-linux-gnu/libgallium.so.0.0.0
@@ -116,7 +122,8 @@
  *     - /usr/lib/x86_64-linux-gnu/libdrm_radeon.so.1.0.1
  * - Mesa
  *   - Main Site - http://www.mesa3d.org/
- *   - Bug Database - https://bugs.freedesktop.org/describecomponents.cgi?product=Mesa
+ *   - Bug Database -
+ *https://bugs.freedesktop.org/describecomponents.cgi?product=Mesa
  *   - Binaries
  *     - /usr/lib/x86_64-linux-gnu/libgbm.so.1.0.0
  *     - /usr/lib/x86_64-linux-gnu/egl/egl_gallium.so
@@ -166,7 +173,8 @@
  *     - /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.19
  * - The GNU C Library
  *   - Main Site - https://www.gnu.org/software/libc/
- *   - Bug Database - https://sourceware.org/bugzilla/describecomponents.cgi?product=glibc
+ *   - Bug Database -
+ *https://sourceware.org/bugzilla/describecomponents.cgi?product=glibc
  *   - Binaries
  *     - /lib/x86_64-linux-gnu/ld-2.19.so
  *     - /lib/x86_64-linux-gnu/libc-2.19.so
@@ -174,7 +182,8 @@
  *     - /lib/x86_64-linux-gnu/libm-2.19.so
  *     - /lib/x86_64-linux-gnu/libpthread-2.19.so
  *     - /lib/x86_64-linux-gnu/librt-2.19.so
- * - Unknown user machine that implements the amd64 hardware architecture
+ * - Unknown user machine that implements the amd64 hardware
+ *architecture
  *
  * @subsection i686-linux-gnu i686 GNU/Linux
  *

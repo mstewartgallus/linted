@@ -15,7 +15,8 @@
  *
  * @section supported-builds Supported Builds
  *
- * @subsection x86_64-linux-gnu x86_64 Linux GNU with GCC and GNU ld (GNU Binutils)
+ * @subsection x86_64-linux-gnu x86_64 Linux GNU with GCC and GNU ld
+ *(GNU Binutils)
  *
  * This is the main build.  Other builds may work but are only worked
  * on for the purpose of making the code more modular and better.
@@ -28,18 +29,23 @@
  *   - Bug Database - http://gcc.gnu.org/bugzilla/
  * - The GNU Binary Utilities
  *   - Main Site - https://www.gnu.org/software/binutils/
- *   - Bug Mailing List - <a href="mailto://bug-binutils@gnu.org">&lt;bug-binutils@gnu.org&gt;</a>
+ *   - Bug Mailing List - <a
+ *href="mailto://bug-binutils@gnu.org">&lt;bug-binutils@gnu.org&gt;</a>
  * - Autoconf
  *   - Main Site - https://www.gnu.org/software/autoconf
- *   - Bug Mailing List - <a href="mailto://bug-autoconf@gnu.org">&lt;bug-autoconf@gnu.org&gt;</a>
+ *   - Bug Mailing List - <a
+ *href="mailto://bug-autoconf@gnu.org">&lt;bug-autoconf@gnu.org&gt;</a>
  * - Automake
  *   - Main Site - https://www.gnu.org/software/automake
- *   - Bug Mailing List - <a href="mailto://bug-automake@gnu.org">&lt;bug-automake@gnu.org&gt;</a>
+ *   - Bug Mailing List - <a
+ *href="mailto://bug-automake@gnu.org">&lt;bug-automake@gnu.org&gt;</a>
  * - GNU Make
  *   - Main Site - https://www.gnu.org/software/make
- *   - Bug Mailing List - <a href="mailto://bug-make@gnu.org">&lt;bug-make@gnu.org&gt;</a>
+ *   - Bug Mailing List - <a
+ *href="mailto://bug-make@gnu.org">&lt;bug-make@gnu.org&gt;</a>
  *
- * @subsection i686-linux-gnu i686 Linux GNU with GCC and GNU ld (GNU Binutils)
+ * @subsection i686-linux-gnu i686 Linux GNU with GCC and GNU ld (GNU
+ *Binutils)
  *
  * This is basically the same as for x86_64 but 32 bit.
  *
@@ -71,18 +77,25 @@
  *
  * <table>
  * <tr><td> `isalnum` </td><td> `IsCharAlphaNumeric`</td></tr>
- * <tr><td> `isalpha` </td><td> `IsCharAlpha`, `GetStringTypeW (Unicode)`</td></tr>
+ * <tr><td> `isalpha` </td><td> `IsCharAlpha`, `GetStringTypeW
+ *(Unicode)`</td></tr>
  * <tr><td> `__isascii` </td><td> none</td></tr>
- * <tr><td> `iscntrl` </td><td> none, `GetStringTypeW (Unicode)`</td></tr>
+ * <tr><td> `iscntrl` </td><td> none, `GetStringTypeW
+ *(Unicode)`</td></tr>
  * <tr><td> `__iscsym` </td><td> none</td></tr>
  * <tr><td> `__iscsymf` </td><td> none</td></tr>
- * <tr><td> `isdigit` </td><td> none, `GetStringTypeW (Unicode)`</td></tr>
+ * <tr><td> `isdigit` </td><td> none, `GetStringTypeW
+ *(Unicode)`</td></tr>
  * <tr><td> `isgraph` </td><td> none</td></tr>
- * <tr><td> `islower` </td><td> `IsCharLower`, `GetStringTypeW (Unicode)`</td></tr>
+ * <tr><td> `islower` </td><td> `IsCharLower`, `GetStringTypeW
+ *(Unicode)`</td></tr>
  * <tr><td> `isprint` </td><td> none</td></tr>
- * <tr><td> `ispunct` </td><td> none, `GetStringTypeW (Unicode)`</td></tr>
- * <tr><td> `isspace` </td><td> none, `GetStringTypeW (Unicode)`</td></tr>
- * <tr><td> `isupper` </td><td> `IsCharUpper`, `GetStringTypeW (Unicode)`</td></tr>
+ * <tr><td> `ispunct` </td><td> none, `GetStringTypeW
+ *(Unicode)`</td></tr>
+ * <tr><td> `isspace` </td><td> none, `GetStringTypeW
+ *(Unicode)`</td></tr>
+ * <tr><td> `isupper` </td><td> `IsCharUpper`, `GetStringTypeW
+ *(Unicode)`</td></tr>
  * <tr><td> `isxdigit` </td><td> none, `GetStringTypeW (Unicode)`
  * <tr><td> `__toascii` </td><td> none</td></tr>
  * <tr><td> `tolower` </td><td> `CharLower`</td></tr>
@@ -116,15 +129,20 @@
  * <tr><td> `_umask` </td><td> none</td></tr>
  * <tr><td> `_unlink` </td><td> `DeleteFile`</td></tr>
  * <tr><td> `_displaycursor` </td><td> `SetConsoleCursorInfo`</td></tr>
- * <tr><td> `_gettextcolor` </td><td> `GetConsoleScreenBufferInfo`</td></tr>
+ * <tr><td> `_gettextcolor` </td><td>
+ *`GetConsoleScreenBufferInfo`</td></tr>
  * <tr><td> `_gettextcursor` </td><td> `GetConsoleCursorInfo`</td></tr>
- * <tr><td> `_gettextposition` </td><td> `GetConsoleScreenBufferInfo`</td></tr>
+ * <tr><td> `_gettextposition` </td><td>
+ *`GetConsoleScreenBufferInfo`</td></tr>
  * <tr><td> `_gettextwindow` </td><td> `GetConsoleWindowInfo`</td></tr>
  * <tr><td> `_outtext` </td><td> `WriteConsole`</td></tr>
- * <tr><td> `_scrolltextwindow` </td><td> `ScrollConsoleScreenBuffer`</td></tr>
- * <tr><td> `_settextcolor` </td><td> `SetConsoleTextAttribute`</td></tr>
+ * <tr><td> `_scrolltextwindow` </td><td>
+ *`ScrollConsoleScreenBuffer`</td></tr>
+ * <tr><td> `_settextcolor` </td><td>
+ *`SetConsoleTextAttribute`</td></tr>
  * <tr><td> `_settextcursor` </td><td> `SetConsoleCursorInfo`</td></tr>
- * <tr><td> `_settextposition` </td><td> `SetConsoleCursorPosition`</td></tr>
+ * <tr><td> `_settextposition` </td><td>
+ *`SetConsoleCursorPosition`</td></tr>
  * <tr><td> `_settextwindow` </td><td> `SetConsoleWindowInfo`</td></tr>
  * <tr><td> `_wrapon` </td><td> `SetConsoleMode`</td></tr>
  * <tr><td> `clearerr` </td><td> none</td></tr>
@@ -151,7 +169,8 @@
  * <tr><td> `fseek` </td><td> `SetFilePointer`</td></tr>
  * <tr><td> `fsetpos` </td><td> `SetFilePointer`</td></tr>
  * <tr><td> `_fsopen` </td><td> `CreateFile`</td></tr>
- * <tr><td> `ftell` </td><td> `SetFilePointer` (check return value)</td></tr>
+ * <tr><td> `ftell` </td><td> `SetFilePointer` (check return
+ *value)</td></tr>
  * <tr><td> `fwrite` </td><td> `WriteFile`</td></tr>
  * <tr><td> `getc` </td><td> none</td></tr>
  * <tr><td> `getchar` </td><td> none</td></tr>
@@ -188,7 +207,8 @@
  * <tr><td> `_open` </td><td> `_lopen`, `CreateFile`</td></tr>
  * <tr><td> `_read` </td><td> `_lread`, `ReadFile`</td></tr>
  * <tr><td> `_sopen` </td><td> `CreateFile`</td></tr>
- * <tr><td> `_tell` </td><td> `SetFilePointer (check return value)`</td></tr>
+ * <tr><td> `_tell` </td><td> `SetFilePointer (check return
+ *value)`</td></tr>
  * <tr><td> `_write` </td><td> `_lread`</td></tr>
  * <tr><td> `_cgets` </td><td> none</td></tr>
  * <tr><td> `_cprintf` </td><td> none</td></tr>
@@ -241,7 +261,8 @@
  * <tr><td> `_putenv` </td><td> `SetEnvironmentVariable`</td></tr>
  * <tr><td> `raise` </td><td> `RaiseException`</td></tr>
  * <tr><td> `setjmp` </td><td> none</td></tr>
- * <tr><td> `signal` (ctrl-c only) </td><td> `SetConsoleCtrlHandler`</td></tr>
+ * <tr><td> `signal` (ctrl-c only) </td><td>
+ *`SetConsoleCtrlHandler`</td></tr>
  * <tr><td> `_spawn` functions </td><td> `CreateProcess`</td></tr>
  * <tr><td> `system` </td><td> `CreateProcess`</td></tr>
  * <tr><td> `strcat`, `wcscat` </td><td> `lstrcat`</td></tr>
@@ -254,20 +275,24 @@
  * <tr><td> `_strerror` </td><td> `FormatMessage`</td></tr>
  * <tr><td> `_stricmp`, `_wcsicmp` </td><td> `lstrcmpi`</td></tr>
  * <tr><td> `strlen`, `wcslen` </td><td> `lstrlen`</td></tr>
- * <tr><td> `_strlwr`, `_wcslwr` </td><td> `CharLower`, `CharLowerBuffer`</td></tr>
+ * <tr><td> `_strlwr`, `_wcslwr` </td><td> `CharLower`,
+ *`CharLowerBuffer`</td></tr>
  * <tr><td> `strncat`, `wcsncat` </td><td> none</td></tr>
  * <tr><td> `strncmp`, `wcsncmp` </td><td> none</td></tr>
  * <tr><td> `strncpy`, `wcsncpy` </td><td> none</td></tr>
  * <tr><td> `_strnicmp`, `_wcsnicmp` </td><td> none</td></tr>
- * <tr><td> `_strnset`, `_wcsnset` </td><td> `FillMemory`, `ZeroMemory`</td></tr>
+ * <tr><td> `_strnset`, `_wcsnset` </td><td> `FillMemory`,
+ *`ZeroMemory`</td></tr>
  * <tr><td> `strpbrk`, `wcspbrk` </td><td> none</td></tr>
  * <tr><td> `strrchr`, `wcsrchr` </td><td> none</td></tr>
  * <tr><td> `_strrev`, `_wcsrev` </td><td> none</td></tr>
- * <tr><td> `_strset`, `_wcsset` </td><td> `FillMemory, ZeroMemory`</td></tr>
+ * <tr><td> `_strset`, `_wcsset` </td><td> `FillMemory,
+ *ZeroMemory`</td></tr>
  * <tr><td> `strspn`, `wcsspn` </td><td> none</td></tr>
  * <tr><td> `strstr`, `wcsstr` </td><td> none</td></tr>
  * <tr><td> `strtok`, `wcstok` </td><td> none</td></tr>
- * <tr><td> `_strupr`, `_wcsupr` </td><td> `CharUpper`, `CharUpperBuffer`</td></tr>
+ * <tr><td> `_strupr`, `_wcsupr` </td><td> `CharUpper`,
+ *`CharUpperBuffer`</td></tr>
  * <tr><td> `_bdos` </td><td> none</td></tr>
  * <tr><td> `_chain_intr` </td><td> none</td></tr>
  * <tr><td> `_disable` </td><td> none</td></tr>
@@ -334,7 +359,8 @@
  * <tr><td> `_vrealloc` </td><td> See Note 3</td></tr>
  * <tr><td> `_vunlock` </td><td> See Note 3</td></tr>
  * <tr><td> `_beginthread` </td><td> `CreateThread`</td></tr>
- * <tr><td> `_cwait` </td><td> `WaitForSingleObject` w/ `GetExitCodeProcess`</td></tr>
+ * <tr><td> `_cwait` </td><td> `WaitForSingleObject` w/
+ *`GetExitCodeProcess`</td></tr>
  * <tr><td> `_endthread` </td><td> `ExitThread`</td></tr>
  * <tr><td> `_findclose` </td><td> `FindClose`</td></tr>
  * <tr><td> `_findfirst` </td><td> `FindFirstFile`</td></tr>
@@ -346,7 +372,8 @@
  * <tr><td> `_pipe` </td><td> `CreatePipe`</td></tr>
  * <tr><td> `_popen` </td><td> See Note 4</td></tr>
  * <tr><td> `_popen` </td><td> `CreatePipe`, `CreateProcess`</td></tr>
- * <tr><td> `_pclose` </td><td> `WaitForSingleObject`, `CloseHandle`</td></tr>
+ * <tr><td> `_pclose` </td><td> `WaitForSingleObject`,
+ *`CloseHandle`</td></tr>
  * </table>
  *
  * @subsection asmjs-unknown-emscripten Emscripten

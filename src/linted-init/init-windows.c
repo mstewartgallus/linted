@@ -42,6 +42,12 @@
 
 #include <windows.h>
 
+/**
+ * @file
+ *
+ * @todo Windows: delegate exit signals from `init` to `monitor`.
+ */
+
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init", 0};
 

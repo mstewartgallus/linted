@@ -216,7 +216,7 @@ linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
 }
 
 /**
- * @todo POSIX, work on directories other than`LINTED_KO_CWD`.
+ * @todo POSIX: work on directories other than `LINTED_KO_CWD`.
  */
 linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
                                  char const *pathname)

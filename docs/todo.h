@@ -11,10 +11,6 @@
  *
  * Linted -- TODO
  *
- * @bug If window is moved partially offscreen and resized it fails to
- *      draw to a part of the window opposite from the part offscreen
- *      (not my bug works with glxgears too.)
- *
  * @todo Add platform specific information and defines to static
  *       analysis tooling.
  *
@@ -25,7 +21,7 @@
  * @todo Use length annotated strings instead of C strings.
  *
  * @todo Create a notification method.
- *       Currently, outside administrator can create requests to the
+ *       Currently, outside administrators can create requests to the
  *       monitor system but there needs to be a way for the monitor to
  *       generate notifications. User Mode Linux has the same problem
  *       and we should learn from how they solve it.
@@ -57,7 +53,8 @@
  *       - `MS_STRICTATIME`
  *       - `MS_ACTIVE`
  *       - `MS_NOUSER`
- *       Mount flags that work on remounts (binds only allow you to remount flags):
+ *       Mount flags that work on remounts (binds only allow you to
+ *       remount flags):
  *       - `MS_RDONLY`
  *       - `MS_SYNCHRONOUS`
  *       - `MS_MANDLOCK`

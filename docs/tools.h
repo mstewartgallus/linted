@@ -14,23 +14,30 @@
  * @section potential Potential tools
  * <ul>
  *
- * <li> [Ada SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
+ * <li> [Ada
+SPARK](http://libre.adacore.com/libre/tools/spark-gpl-edition/) </li>
  * <li> [Daikon](http://plse.cs.washington.edu/daikon/) </li>
  * <li> [AFL](http://lcamtuf.coredump.cx/afl/) </li>
- * <li> [BOON "Buffer Overrun detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
+ * <li> [BOON "Buffer Overrun
+detectiON"](http://www.cs.berkeley.edu/~daw/boon/) </li>
  * <li> [Cqual](http://www.cs.umd.edu/~jfoster/cqual/) </li>
- * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve) </li>
+ * <li> [ImProve](https://github.com/tomahawkins/improve/wiki/ImProve)
+</li>
  * <li> [Infer](http://fbinfer.com/) </li>
  * <li> [joern](https://github.com/fabsx00/joern) </li>
  * <li> [KLEE](https://klee.github.io/) </li>
- * <li> [Oink](http://daniel-wilkerson.appspot.com/oink/index.html) </li>
+ * <li> [Oink](http://daniel-wilkerson.appspot.com/oink/index.html)
+</li>
  * <li> [Overture Tool](http://overturetool.org/) </li>
  * <li> [RTL-check](http://rtlcheck.sourceforge.net/) </li>
  * <li> [Saturn](http://saturn.stanford.edu/) </li>
  * <li> [S-Spider](https://code.google.com/p/s-spider/) </li>
  * <li> [Stanse](http://stanse.fi.muni.cz/) </li>
- * <li> [TLA+](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html) </li>
- * <li> [OWASP's Dependency Check](https://bintray.com/jeremy-long/owasp/dependency-check) </li>
+ * <li>
+[TLA+](http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html)
+</li>
+ * <li> [OWASP's Dependency
+Check](https://bintray.com/jeremy-long/owasp/dependency-check) </li>
  * <li> [unifdef](http://dotat.at/prog/unifdef/) </li>
  * <li> [Why3](http://why3.lri.fr/) </li>
  * <li> [Vera++](https://bitbucket.org/verateam/vera/wiki/Home) </li>
@@ -96,13 +103,16 @@
  *   like:
  *   <code>
  *   ExecStart=/usr/bin/env
- *   ExecStart=LD_PRELOAD=/home/sstewartgallus/root/usr/local/stow/apitrace/lib/x86_64-linux-gnu/apitrace/wrappers/egltrace.so
- *   ExecStart="${LINTED_DRAWER}" "window" "window-notifier-drawer" "updater"
+ *
+ExecStart=LD_PRELOAD=/home/sstewartgallus/root/usr/local/stow/apitrace/lib/x86_64-linux-gnu/apitrace/wrappers/egltrace.so
+ *   ExecStart="${LINTED_DRAWER}" "window" "window-notifier-drawer"
+"updater"
  *   </code>
  *
  * </li>
  *
- * <li> [Linux Perf Utils](https://git.kernel.org/cgit/linux/kernel/git/namhyung/linux-perf.git/)
+ * <li> [Linux Perf
+Utils](https://git.kernel.org/cgit/linux/kernel/git/namhyung/linux-perf.git/)
  *
  * Profiles code performance using CPU counters.
  *
@@ -145,10 +155,12 @@
  * - It's a bit buggy with sandboxing but works fine.
  * - memcheck works fine.
  * - helgrind can't cope with asynchronous cancellation well.
- * - All together something like `valgrind --vgdb-prefix=/tmp/vgdb --trace-children=yes ./scripts/test` works.
+ * - All together something like `valgrind --vgdb-prefix=/tmp/vgdb
+--trace-children=yes ./scripts/test` works.
  * </li>
  *
- * <li> [Address Sanitizer](http://clang.llvm.org/docs/AddressSanitizer.html)
+ * <li> [Address
+Sanitizer](http://clang.llvm.org/docs/AddressSanitizer.html)
  *
  * A compiler debug mode that checks code for errors.
  *
@@ -168,7 +180,8 @@
  *
  * <li> [IWYU](https://code.google.com/p/include-what-you-use/)
  * Is a bit buggy.
- * Use like: `make CC='iwyu -I/usr/lib/clang/3.6/include' -k | tee iwyu.log`
+ * Use like: `make CC='iwyu -I/usr/lib/clang/3.6/include' -k | tee
+iwyu.log`
  * </li>
  *
  * <li> [CBMC](http://www.cprover.org/cbmc/)
@@ -192,7 +205,8 @@
 * <li> [Frama-C](http://frama-c.com/)
  * As of version Neon-20140301:
  * - It's a bit fiddly to get working.
- * - It doesn't work with the system's standard library headers and supplies
+ * - It doesn't work with the system's standard library headers and
+supplies
  *   its own but it only has a very limited standard library.
  * - It can't handle concurrency or function pointers in some cases.
  * </li>
@@ -225,7 +239,8 @@
  *   https://github.com/ValveSoftware/vogl/issues/193
  * </li>
  *
- * <li> [Eclipse's CODAN and builtin analyzers](http://wiki.eclipse.org/CDT/designs/StaticAnalysis)
+ * <li> [Eclipse's CODAN and builtin
+analyzers](http://wiki.eclipse.org/CDT/designs/StaticAnalysis)
  * - Projects can be easily imported into Eclipse via the Autotools
  *   project import tool.
  *
@@ -251,7 +266,8 @@
  *   old commands.
  * </li>
  *
- * <li> [Linux Dwarves tools](https://git.kernel.org/cgit/devel/pahole/pahole.git/)
+ * <li> [Linux Dwarves
+tools](https://git.kernel.org/cgit/devel/pahole/pahole.git/)
  *
  * A set of simple binary analysis tools.
  *
@@ -271,7 +287,8 @@
  *
  * </li>
  *
- * <li> [Clang's -Wthread-safety flag](http://clang.llvm.org/docs/ThreadSafetyAnalysis.html)
+ * <li> [Clang's -Wthread-safety
+flag](http://clang.llvm.org/docs/ThreadSafetyAnalysis.html)
  * As of version 3.5:
  * - This tool is okay but cannot handle thread cancellation which is
  *   needed to kill worker threads that are taking too long.  Luckily,
@@ -306,8 +323,9 @@
  * </li>
  *
  * <li> [sixgill](http://sixgill.org/)
- * - This fails compiling due to the use of `-Werror` in the build scripts and
- *   sixgill deleting an abstract object with a non-virtual destructor. 
+ * - This fails compiling due to the use of `-Werror` in the build
+scripts and
+ *   sixgill deleting an abstract object with a non-virtual destructor.
  * </li>
  *
  * @section also See Also

@@ -19,8 +19,6 @@
  * @file
  *
  * Start the monitor and monitor it.
- *
- * @todo Delegate exit signals to the monitor child on Windows.
  */
 
 #if defined HAVE_WINDOWS_API

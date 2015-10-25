@@ -57,7 +57,4 @@ void linted_gpu_update_state(
 void linted_gpu_resize(struct linted_gpu_context *gpu_context,
                        unsigned width, unsigned height);
 
-linted_error linted_gpu_draw(struct linted_gpu_context *gpu_context);
-linted_error linted_gpu_swap(struct linted_gpu_context *gpu_context);
-
 #endif /* LINTED_GPU_H */

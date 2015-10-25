@@ -174,11 +174,15 @@
  *
  * <ul>
  *
- * <li> User interaction should log errors and notify the user on failure.
+ * <li> User interaction should log errors and notify the user on
+ *failure.
  *
- * Example: Commands like `./my-binary --help > /dev/full` or similar user
- * interactions that fail should log errors and notify the user as otherwise
- * the user might find silently truncate output files when they are trying to
+ * Example: Commands like `./my-binary --help > /dev/full` or similar
+ *user
+ * interactions that fail should log errors and notify the user as
+ *otherwise
+ * the user might find silently truncate output files when they are
+ *trying to
  * record or view program output.
  *
  * </li>
@@ -259,10 +263,16 @@
  * @section resources Other Resources
  *
  * <ul>
- * <li> [The CERT C Coding Standards](https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard) </li>
- * <li> [EC-- Rule Set](http://www.leshatton.org/ISOC_subset1103.html) </li>
- * <li> [Defensive Coding](https://docs.fedoraproject.org/en-US/Fedora_Security_Team/1/html/Defensive_Coding) </li>
- * <li> [Cryptography Coding Standard](https://cryptocoding.net/index.php/Coding_rules)
+ * <li> [The CERT C Coding
+ *Standards](https://www.securecoding.cert.org/confluence/display/seccode/CERT+C+Coding+Standard)
+ *</li>
+ * <li> [EC-- Rule Set](http://www.leshatton.org/ISOC_subset1103.html)
+ *</li>
+ * <li> [Defensive
+ *Coding](https://docs.fedoraproject.org/en-US/Fedora_Security_Team/1/html/Defensive_Coding)
+ *</li>
+ * <li> [Cryptography Coding
+ *Standard](https://cryptocoding.net/index.php/Coding_rules)
  *
  * Note that this standard currently has dangerous and incorrect
  * advice on how to use the volatile qualifier to guarantee that
@@ -280,7 +290,11 @@
  * and hardware support. Instead one should use encryption or hashing
  * to prevent any possible leakage of data through timing attacks.
  * </li>
- * <li> [OWASP Secure Coding Principles](https://www.owasp.org/index.php/Secure_Coding_Principles) </li>
- * <li> [JPL Institutional Coding Standard for the C Programming Language](http://lars-lab.jpl.nasa.gov/JPL_Coding_Standard_C.pdf) </li>
+ * <li> [OWASP Secure Coding
+ *Principles](https://www.owasp.org/index.php/Secure_Coding_Principles)
+ *</li>
+ * <li> [JPL Institutional Coding Standard for the C Programming
+ *Language](http://lars-lab.jpl.nasa.gov/JPL_Coding_Standard_C.pdf)
+ *</li>
  * </ul>
  */

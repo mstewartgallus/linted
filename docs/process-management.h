@@ -74,17 +74,19 @@
  * `CLONE_NEWPID` type sandboxes are killed by the kernel
  * automatically.
  *
- * @bug Currently not all sandboxed processes are killed on `init`
- * death.  Currently `monitor` will receive a `SIGHUP` because `init`
+ * When `init` dies `monitor` will receive a `SIGHUP` because `init`
  * will be the controlling process for the controlling terminal (if
- * there is a terminal) or from a `SIGKILL` from set parent death
- * signal.  Possible solutions:
- * - `monitor` could ptrace `init` and kill its children when `init`
- *   is about to die.
- * - Sandboxes could use `PR_SET_PDEATHSIG` once they have been
- *   reparented to `init`.  However, I am not sure how they would wait
- *   until they have been reparented to `init` before using
- *   `PR_SET_PDEATHSIG`.
+ * there is a terminal) or from a `SIGKILL` from a set
+ * parent death signal.
+ *
+ * @bug Currently not all sandboxed processes are killed on `init`
+ *      death.   Possible solutions:
+ *      - `monitor` could ptrace `init` and kill its children when
+ *        `init` is about to die.
+ *      - Sandboxes could use `PR_SET_PDEATHSIG` once they have been
+ *        reparented to `init`.  However, I am not sure how they would
+ *        wait until they have been reparented to `init` before using
+ *        `PR_SET_PDEATHSIG`.
  *
  * @section ipc IPC
  *
@@ -163,18 +165,18 @@
  * Shared memory is unsuitable because:
  *
  * - `mmap`able files can be `ftruncate`d by attackers
- * - We can only share memory mappings without files using a weird trick using
- *   `fork`.
- * - File sealing only works on `shmfs` (files created using `memfd_create`)
- *   and those files cannot be mounted.
- * - System V IPC sort of works but is awkward.  Sandboxed processes would
- *   have to share the same IPC namespace (and so would have access every
- *   shared memory segment), `shmget` does sets the initial size of the memory
- *   segment which cannot be changed later and so attackers can't create
- *   `SIGSEGV`s in users.
- * - Hilariously, it is possible to use `mmap` with netlink sockets (which
- *   should only be used for kernel space to user-space communication) and so
- *   achieve safe `mmap` between processes.
+ * - We can only share memory mappings without files using a weird trick
+ *   using `fork`.
+ * - File sealing only works on `shmfs` (files created using
+ *   `memfd_create`) and those files cannot be mounted.
+ * - System V IPC sort of works but is awkward.  Sandboxed processes
+ *   would have to share the same IPC namespace (and so would have
+ *   access every shared memory segment), `shmget` does sets the initial
+ *   size of the memory segment which cannot be changed later and so
+ *   attackers can't create `SIGSEGV`s in users.
+ * - Hilariously, it is possible to use `mmap` with netlink sockets
+ *   (which should only be used for kernel space to user-space
+ *   communication) and so achieve safe `mmap` between processes.
  *
  * @subsubsection sysvipc System V IPC
  * System V IPC types:
