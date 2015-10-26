@@ -63,8 +63,7 @@ struct command_queue {
 	bool resize_pending : 1U;
 };
 
-struct private
-{
+struct privates {
 	struct linted_gpu_update update;
 	bool update_pending;
 
@@ -103,7 +102,7 @@ struct private
 
 struct linted_gpu_context {
 	struct command_queue command_queue;
-	struct private private;
+	struct privates privates;
 
 	pthread_t thread;
 	EGLDisplay display;
@@ -137,17 +136,17 @@ static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION,
 
 static void *gpu_routine(void *);
 
-static linted_error destroy_gl(struct private *private);
-static linted_error remove_current_context(struct private *private);
-static linted_error destroy_egl_context(struct private *private);
-static linted_error destroy_egl_surface(struct private *private);
+static linted_error destroy_gl(struct privates *privates);
+static linted_error remove_current_context(struct privates *privates);
+static linted_error destroy_egl_context(struct privates *privates);
+static linted_error destroy_egl_surface(struct privates *privates);
 
-static linted_error create_egl_context(struct private *private);
-static linted_error create_egl_surface(struct private *private);
-static linted_error make_current(struct private *private);
-static linted_error setup_gl(struct private *private);
+static linted_error create_egl_context(struct privates *privates);
+static linted_error create_egl_surface(struct privates *privates);
+static linted_error make_current(struct privates *privates);
+static linted_error setup_gl(struct privates *privates);
 
-static void real_draw(struct private *private);
+static void real_draw(struct privates *privates);
 
 static void flush_gl_errors(void);
 
@@ -249,7 +248,7 @@ choose_config_succeeded:
 	}
 
 	{
-		struct private xx = {0};
+		struct privates xx = {0};
 		xx.display = display;
 		xx.config = config;
 
@@ -259,7 +258,7 @@ choose_config_succeeded:
 		xx.height = 1U;
 		xx.resize_pending = true;
 
-		gpu_context->private = xx;
+		gpu_context->privates = xx;
 	}
 
 	{
@@ -421,7 +420,7 @@ static void *gpu_routine(void *arg)
 	struct linted_gpu_context *gpu_context = arg;
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
-	struct private *private = &gpu_context->private;
+	struct privates *privates = &gpu_context->privates;
 
 	struct timespec last_time = {0};
 	uint64_t skipped_updates_counter = {0};
@@ -470,40 +469,34 @@ static void *gpu_routine(void *arg)
 			break;
 
 		if (remove_window) {
-			destroy_egl_context(private);
+			destroy_egl_context(privates);
+			privates->has_window = false;
 		}
 
 		if (has_new_window) {
-			destroy_egl_context(private);
-		      private
-			->window = new_window;
-		      private
-			->has_window = true;
+			destroy_egl_context(privates);
+			privates->window = new_window;
+			privates->has_window = true;
 		}
 
 		if (update_pending) {
-		      private
-			->update = update;
-		      private
-			->update_pending = true;
+			privates->update = update;
+			privates->update_pending = true;
 		}
 
 		if (resize_pending) {
-		      private
-			->width = width;
-		      private
-			->height = height;
-		      private
-			->resize_pending = true;
+			privates->width = width;
+			privates->height = height;
+			privates->resize_pending = true;
 		}
 
-		err = setup_gl(private);
+		err = setup_gl(privates);
 		if (err != 0) {
 			sched_yield();
 			continue;
 		}
 
-		real_draw(private);
+		real_draw(privates);
 
 		{
 			GLenum attachments[] = {GL_DEPTH, GL_STENCIL};
@@ -513,8 +506,8 @@ static void *gpu_routine(void *arg)
 			    attachments);
 		}
 
-		if (EGL_FALSE == eglSwapBuffers(private->display,
-		                                private->surface)) {
+		if (EGL_FALSE == eglSwapBuffers(privates->display,
+		                                privates->surface)) {
 			EGLint err_egl = eglGetError();
 			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
@@ -534,7 +527,7 @@ static void *gpu_routine(void *arg)
 			case EGL_BAD_NATIVE_PIXMAP:
 			case EGL_BAD_NATIVE_WINDOW:
 			case EGL_CONTEXT_LOST:
-				destroy_egl_context(private);
+				destroy_egl_context(privates);
 				continue;
 
 			case EGL_BAD_ALLOC:
@@ -585,23 +578,22 @@ static void *gpu_routine(void *arg)
 		skipped_updates_counter = 0;
 	}
 
-	destroy_egl_context(private);
+	destroy_egl_context(privates);
 
 	return 0;
 }
 
-static linted_error destroy_gl(struct private *private)
+static linted_error destroy_gl(struct privates *privates)
 {
-	if (!private->has_setup_gl)
+	if (!privates->has_setup_gl)
 		return 0;
-      private
-	->has_setup_gl = false;
+	privates->has_setup_gl = false;
 
-	GLuint vertex_buffer = private->vertex_buffer;
-	GLuint normal_buffer = private->normal_buffer;
-	GLuint index_buffer = private->index_buffer;
+	GLuint vertex_buffer = privates->vertex_buffer;
+	GLuint normal_buffer = privates->normal_buffer;
+	GLuint index_buffer = privates->index_buffer;
 
-	GLuint program = private->program;
+	GLuint program = privates->program;
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
@@ -617,16 +609,15 @@ static linted_error destroy_gl(struct private *private)
 	return 0;
 }
 
-static linted_error remove_current_context(struct private *private)
+static linted_error remove_current_context(struct privates *privates)
 {
-	if (!private->has_current_context)
+	if (!privates->has_current_context)
 		return 0;
-      private
-	->has_current_context = false;
+	privates->has_current_context = false;
 
 	linted_error err = 0;
 
-	EGLDisplay display = private->display;
+	EGLDisplay display = privates->display;
 
 	if (EGL_FALSE == eglMakeCurrent(display, EGL_NO_SURFACE,
 	                                EGL_NO_SURFACE,
@@ -673,19 +664,18 @@ static linted_error remove_current_context(struct private *private)
 	return err;
 }
 
-static linted_error destroy_egl_surface(struct private *private)
+static linted_error destroy_egl_surface(struct privates *privates)
 {
-	destroy_gl(private);
+	destroy_gl(privates);
 
-	remove_current_context(private);
+	remove_current_context(privates);
 
-	if (!private->has_egl_surface)
+	if (!privates->has_egl_surface)
 		return 0;
-      private
-	->has_egl_surface = false;
+	privates->has_egl_surface = false;
 
-	EGLDisplay display = private->display;
-	EGLSurface surface = private->surface;
+	EGLDisplay display = privates->display;
+	EGLSurface surface = privates->surface;
 
 	if (EGL_FALSE == eglDestroySurface(display, surface)) {
 		EGLint err_egl = eglGetError();
@@ -700,21 +690,20 @@ static linted_error destroy_egl_surface(struct private *private)
 	return 0;
 }
 
-static linted_error destroy_egl_context(struct private *private)
+static linted_error destroy_egl_context(struct privates *privates)
 {
-	destroy_gl(private);
+	destroy_gl(privates);
 
-	remove_current_context(private);
+	remove_current_context(privates);
 
-	destroy_egl_surface(private);
+	destroy_egl_surface(privates);
 
-	if (!private->has_egl_context)
+	if (!privates->has_egl_context)
 		return 0;
-      private
-	->has_egl_context = false;
+	privates->has_egl_context = false;
 
-	EGLDisplay display = private->display;
-	EGLContext context = private->context;
+	EGLDisplay display = privates->display;
+	EGLContext context = privates->context;
 
 	if (EGL_FALSE == eglDestroyContext(display, context)) {
 		EGLint err_egl = eglGetError();
@@ -729,13 +718,13 @@ static linted_error destroy_egl_context(struct private *private)
 	return 0;
 }
 
-static linted_error create_egl_context(struct private *private)
+static linted_error create_egl_context(struct privates *privates)
 {
-	if (private->has_egl_context)
+	if (privates->has_egl_context)
 		return 0;
 
-	EGLDisplay display = private->display;
-	EGLConfig config = private->config;
+	EGLDisplay display = privates->display;
+	EGLConfig config = privates->config;
 
 	EGLContext context = eglCreateContext(
 	    display, config, EGL_NO_CONTEXT, context_attr);
@@ -761,25 +750,23 @@ static linted_error create_egl_context(struct private *private)
 
 		LINTED_ASSERT(false);
 	}
-      private
-	->context = context;
-      private
-	->has_egl_context = true;
+	privates->context = context;
+	privates->has_egl_context = true;
 
 	return 0;
 }
 
-static linted_error create_egl_surface(struct private *private)
+static linted_error create_egl_surface(struct privates *privates)
 {
-	if (private->has_egl_surface)
+	if (privates->has_egl_surface)
 		return 0;
 
-	if (!private->has_window)
+	if (!privates->has_window)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
-	EGLDisplay display = private->display;
-	EGLConfig config = private->config;
-	linted_gpu_x11_window window = private->window;
+	EGLDisplay display = privates->display;
+	EGLConfig config = privates->config;
+	linted_gpu_x11_window window = privates->window;
 
 	EGLSurface surface =
 	    eglCreateWindowSurface(display, config, window, 0);
@@ -818,32 +805,30 @@ static linted_error create_egl_surface(struct private *private)
 		LINTED_ASSERT(false);
 	}
 
-      private
-	->surface = surface;
-      private
-	->has_egl_surface = true;
+	privates->surface = surface;
+	privates->has_egl_surface = true;
 
 	return 0;
 }
 
-static linted_error make_current(struct private *private)
+static linted_error make_current(struct privates *privates)
 {
-	if (private->has_current_context)
+	if (privates->has_current_context)
 		return 0;
 
 	linted_error err = 0;
 
-	err = create_egl_context(private);
+	err = create_egl_context(privates);
 	if (err != 0)
 		return err;
 
-	err = create_egl_surface(private);
+	err = create_egl_surface(privates);
 	if (err != 0)
 		return err;
 
-	EGLDisplay display = private->display;
-	EGLSurface surface = private->surface;
-	EGLContext context = private->context;
+	EGLDisplay display = privates->display;
+	EGLSurface surface = privates->surface;
+	EGLContext context = privates->context;
 
 	if (EGL_FALSE ==
 	    eglMakeCurrent(display, surface, surface, context)) {
@@ -901,19 +886,18 @@ static linted_error make_current(struct private *private)
 		}
 	}
 
-      private
-	->has_current_context = true;
+	privates->has_current_context = true;
 	return 0;
 }
 
-static linted_error setup_gl(struct private *private)
+static linted_error setup_gl(struct privates *privates)
 {
-	if (private->has_setup_gl)
+	if (privates->has_setup_gl)
 		return 0;
 
 	linted_error err = 0;
 
-	err = make_current(private);
+	err = make_current(privates);
 	if (err != 0)
 		return err;
 
@@ -1135,26 +1119,17 @@ static linted_error setup_gl(struct private *private)
 
 	glClearColor(0.94, 0.9, 1.0, 0.0);
 
-      private
-	->program = program;
-      private
-	->vertex_buffer = vertex_buffer;
-      private
-	->normal_buffer = normal_buffer;
-      private
-	->index_buffer = index_buffer;
-      private
-	->model_view_projection_matrix = mvp_matrix;
-      private
-	->eye_vertex = eye_vertex;
+	privates->program = program;
+	privates->vertex_buffer = vertex_buffer;
+	privates->normal_buffer = normal_buffer;
+	privates->index_buffer = index_buffer;
+	privates->model_view_projection_matrix = mvp_matrix;
+	privates->eye_vertex = eye_vertex;
 
-      private
-	->update_pending = true;
-      private
-	->resize_pending = true;
+	privates->update_pending = true;
+	privates->resize_pending = true;
 
-      private
-	->has_setup_gl = true;
+	privates->has_setup_gl = true;
 
 	return 0;
 
@@ -1169,18 +1144,18 @@ cleanup_program:
 	return err;
 }
 
-static void real_draw(struct private *private)
+static void real_draw(struct privates *privates)
 {
-	struct linted_gpu_update const *update = &private->update;
+	struct linted_gpu_update const *update = &privates->update;
 
-	unsigned width = private->width;
-	unsigned height = private->height;
+	unsigned width = privates->width;
+	unsigned height = privates->height;
 
-	bool update_pending = private->update_pending;
-	bool resize_pending = private->resize_pending;
+	bool update_pending = privates->update_pending;
+	bool resize_pending = privates->resize_pending;
 
-	GLint mvp_matrix = private->model_view_projection_matrix;
-	GLint eye_vertex = private->eye_vertex;
+	GLint mvp_matrix = privates->model_view_projection_matrix;
+	GLint eye_vertex = privates->eye_vertex;
 
 	if (update_pending || resize_pending) {
 		/* X, Y, Z, W coords of the resultant vector are the
@@ -1205,8 +1180,7 @@ static void real_draw(struct private *private)
 
 	if (resize_pending) {
 		glViewport(0, 0, width, height);
-	      private
-		->resize_pending = false;
+		privates->resize_pending = false;
 	}
 
 	if (update_pending) {
@@ -1217,8 +1191,7 @@ static void real_draw(struct private *private)
 		if (eye_vertex >= 0)
 			glUniform3f(eye_vertex, x_position, y_position,
 			            z_position);
-	      private
-		->update_pending = false;
+		privates->update_pending = false;
 	}
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
