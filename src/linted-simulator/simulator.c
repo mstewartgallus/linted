@@ -581,8 +581,8 @@ static void simulate_tick(struct state *state,
 
 	bool contacting_ground = positions[2U].value >= 0;
 
-	sim_int cos_z = downscale(sim_cos(z_rotation), 16);
-	sim_int sin_z = downscale(sim_sin(z_rotation), 16);
+	sim_int cos_z = downscale(sim_cos(z_rotation), 32);
+	sim_int sin_z = downscale(sim_sin(z_rotation), 32);
 
 	sim_int y_thrust[3U] = {contacting_ground * y * sin_z,
 	                        contacting_ground * y * cos_z, 0};

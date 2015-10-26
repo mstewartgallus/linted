@@ -525,9 +525,9 @@ drawer_on_update_recved(struct drawer *drawer,
 	float gpu_x_rotation =
 	    linted_updater_angle_to_double(x_rotation);
 
-	float gpu_x_position = x_position * (1 / 2048.0);
-	float gpu_y_position = y_position * (1 / 2048.0);
-	float gpu_z_position = z_position * (1 / 2048.0);
+	float gpu_x_position = x_position * (1 / 4096.0);
+	float gpu_y_position = y_position * (1 / 4096.0);
+	float gpu_z_position = z_position * (1 / 4096.0);
 
 	struct linted_gpu_update gpu_update;
 
