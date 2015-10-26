@@ -16,6 +16,8 @@ Description=Linted-Gui Game Interface
 Documentation='man:linted-gui(6)'
 
 [Service]
+# ExecStart="${LINTED_GUI}" "window" "window-notifier-gui" "controller"
+
 ExecStart="/boot/linted-gui" "/run/window" "/run/window-notifier-gui" "/run/controller"
 
 NoNewPrivileges=true

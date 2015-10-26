@@ -16,6 +16,8 @@ Description=Linted-Simulator Game Simulator
 Documentation='man:linted-simulator(6)'
 
 [Service]
+# ExecStart="${LINTED_SIMULATOR}" "controller" "updater"
+
 ExecStart="/boot/linted-simulator" "/run/controller" "/run/updater"
 
 NoNewPrivileges=true

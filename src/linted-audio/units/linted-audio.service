@@ -16,6 +16,8 @@ Description=Linted-Audio Game Audio
 Documentation='man:linted-audio(6)'
 
 [Service]
+# ExecStart="${LINTED_AUDIO}"
+
 ExecStart="/boot/linted-audio"
 
 NoNewPrivileges=true
