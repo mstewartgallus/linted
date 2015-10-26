@@ -55,6 +55,7 @@ struct command_queue {
 	linted_gpu_x11_window window;
 	unsigned width;
 	unsigned height;
+	uint64_t skipped_updates_counter;
 
 	bool time_to_quit : 1U;
 	bool has_new_window : 1U;
@@ -87,8 +88,6 @@ struct privates {
 
 	GLint model_view_projection_matrix;
 	GLint eye_vertex;
-
-	uint64_t skipped_updates_counter;
 
 	bool has_egl_surface : 1U;
 	bool has_egl_context : 1U;
@@ -369,6 +368,7 @@ void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
 		pthread_spin_lock(&command_queue->lock);
 		command_queue->update = *glupdate;
 		command_queue->update_pending = true;
+		++command_queue->skipped_updates_counter;
 		pthread_spin_unlock(&command_queue->lock);
 	}
 }
@@ -423,13 +423,13 @@ static void *gpu_routine(void *arg)
 	struct privates *privates = &gpu_context->privates;
 
 	struct timespec last_time = {0};
-	uint64_t skipped_updates_counter = {0};
 
 	for (;;) {
 		linted_gpu_x11_window new_window;
 		struct linted_gpu_update update;
 		unsigned width;
 		unsigned height;
+		uint64_t skipped_updates_counter = 0U;
 
 		bool time_to_quit;
 		bool has_new_window;
@@ -448,13 +448,19 @@ static void *gpu_routine(void *arg)
 			if (has_new_window)
 				new_window = command_queue->window;
 
-			if (update_pending)
+			if (update_pending) {
 				update = command_queue->update;
+				skipped_updates_counter =
+				    command_queue
+				        ->skipped_updates_counter;
+			}
 
 			if (resize_pending) {
 				width = command_queue->width;
 				height = command_queue->height;
 			}
+
+			command_queue->skipped_updates_counter = 0U;
 
 			command_queue->time_to_quit = false;
 			command_queue->has_new_window = false;
@@ -546,8 +552,8 @@ static void *gpu_routine(void *arg)
 			    attachments);
 		}
 
-		if (0) {
-			if (skipped_updates_counter > 1U)
+		if (1) {
+			if (skipped_updates_counter > 2U)
 				linted_log(LINTED_LOG_INFO,
 				           "skipped updates: %lu",
 				           skipped_updates_counter);
@@ -575,7 +581,6 @@ static void *gpu_routine(void *arg)
 
 			last_time = now;
 		}
-		skipped_updates_counter = 0;
 	}
 
 	destroy_egl_context(privates);
