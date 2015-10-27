@@ -306,9 +306,6 @@ dnl
         PKG_CHECK_MODULES(EGL, egl, [], [
                 AC_MSG_WARN([Unable to find an EGL library])
         ])
-        PKG_CHECK_MODULES(GLES, glesv2, [], [
-                AC_MSG_WARN([Unable to find an OpenGLES version 2 library])
-        ])
 dnl
         PKG_CHECK_MODULES(PULSE, libpulse, [], [
                 AC_MSG_WARN([Unable to find a PulseAudio library])

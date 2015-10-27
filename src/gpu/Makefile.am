@@ -26,8 +26,8 @@ noinst_LTLIBRARIES+=%D%/libgpu.la
   src/sched/libsched.la\
   \
   $(MATH_LIBS)\
-  $(EGL_LIBS) $(GLES_LIBS)
+  $(EGL_LIBS)
 
 %C%_libgpu_la_CPPFLAGS=\
-  $(EGL_FLAGS) $(GLES_FLAGS)\
+  $(EGL_FLAGS)\
   $(AM_CPPFLAGS)

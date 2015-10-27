@@ -37,8 +37,6 @@
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-
-#define GL_GLEXT_PROTOTYPES
 #include <GLES3/gl3.h>
 
 /*
@@ -54,10 +52,10 @@ struct command_queue {
 	pthread_spinlock_t lock;
 
 	struct linted_gpu_update update;
+	uint64_t skipped_updates_counter;
 	linted_gpu_x11_window window;
 	unsigned width;
 	unsigned height;
-	uint64_t skipped_updates_counter;
 
 	bool time_to_quit : 1U;
 	bool has_new_window : 1U;
@@ -68,7 +66,6 @@ struct command_queue {
 
 struct privates {
 	struct linted_gpu_update update;
-	bool update_pending;
 
 	struct timespec last_time;
 
@@ -76,6 +73,41 @@ struct privates {
 	EGLContext context;
 	EGLDisplay display;
 	EGLConfig config;
+
+	PFNGLGETERRORPROC glGetError;
+	PFNGLINVALIDATEFRAMEBUFFERPROC glInvalidateFramebuffer;
+	PFNGLCLEARPROC glClear;
+	PFNGLHINTPROC glHint;
+	PFNGLENABLEPROC glEnable;
+	PFNGLCREATEPROGRAMPROC glCreateProgram;
+	PFNGLCREATESHADERPROC glCreateShader;
+	PFNGLATTACHSHADERPROC glAttachShader;
+	PFNGLDELETESHADERPROC glDeleteShader;
+	PFNGLSHADERSOURCEPROC glShaderSource;
+	PFNGLCOMPILESHADERPROC glCompileShader;
+	PFNGLGETSHADERIVPROC glGetShaderiv;
+	PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
+	PFNGLLINKPROGRAMPROC glLinkProgram;
+	PFNGLVALIDATEPROGRAMPROC glValidateProgram;
+	PFNGLGETPROGRAMIVPROC glGetProgramiv;
+	PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
+	PFNGLGENBUFFERSPROC glGenBuffers;
+	PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;
+	PFNGLGETATTRIBLOCATIONPROC glGetAttribLocation;
+	PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
+	PFNGLBINDBUFFERPROC glBindBuffer;
+	PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
+	PFNGLBUFFERDATAPROC glBufferData;
+	PFNGLUSEPROGRAMPROC glUseProgram;
+	PFNGLRELEASESHADERCOMPILERPROC glReleaseShaderCompiler;
+	PFNGLCLEARCOLORPROC glClearColor;
+
+	PFNGLDELETEBUFFERSPROC glDeleteBuffers;
+	PFNGLDELETEPROGRAMPROC glDeleteProgram;
+	PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv;
+	PFNGLVIEWPORTPROC glViewport;
+	PFNGLUNIFORM3FPROC glUniform3f;
+	PFNGLDRAWELEMENTSPROC glDrawElements;
 
 	linted_gpu_x11_window window;
 
@@ -95,6 +127,7 @@ struct privates {
 	bool has_egl_context : 1U;
 	bool has_window : 1U;
 
+	bool update_pending : 1U;
 	bool resize_pending : 1U;
 
 	bool has_current_context : 1U;
@@ -149,7 +182,7 @@ static linted_error setup_gl(struct privates *privates);
 
 static void real_draw(struct privates *privates);
 
-static void flush_gl_errors(void);
+static void flush_gl_errors(struct privates *privates);
 
 static struct matrix
 model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
@@ -159,7 +192,7 @@ model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
 
 static struct matrix matrix_multiply(struct matrix a, struct matrix b);
 
-static linted_error get_gl_error(void);
+static linted_error get_gl_error(struct privates *privates);
 
 linted_error
 linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
@@ -508,7 +541,7 @@ static void *gpu_routine(void *arg)
 
 		{
 			GLenum attachments[] = {GL_DEPTH, GL_STENCIL};
-			glInvalidateFramebuffer(
+			privates->glInvalidateFramebuffer(
 			    GL_FRAMEBUFFER,
 			    LINTED_ARRAY_SIZE(attachments),
 			    attachments);
@@ -548,7 +581,7 @@ static void *gpu_routine(void *arg)
 		{
 			GLenum attachments[] = {GL_COLOR, GL_DEPTH,
 			                        GL_STENCIL};
-			glInvalidateFramebuffer(
+			privates->glInvalidateFramebuffer(
 			    GL_FRAMEBUFFER,
 			    LINTED_ARRAY_SIZE(attachments),
 			    attachments);
@@ -602,16 +635,16 @@ static linted_error destroy_gl(struct privates *privates)
 
 	GLuint program = privates->program;
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	privates->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	{
 		GLuint xx[] = {vertex_buffer, normal_buffer,
 		               index_buffer};
-		glDeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
+		privates->glDeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
 	}
 
-	glUseProgram(0);
-	glDeleteProgram(program);
+	privates->glUseProgram(0);
+	privates->glDeleteProgram(program);
 
 	return 0;
 }
@@ -908,38 +941,121 @@ static linted_error setup_gl(struct privates *privates)
 	if (err != 0)
 		return err;
 
-	glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
-	glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
+	privates->glGetError =
+	    (PFNGLGETERRORPROC)eglGetProcAddress("glGetError");
+	privates->glInvalidateFramebuffer =
+	    (PFNGLINVALIDATEFRAMEBUFFERPROC)eglGetProcAddress(
+	        "glInvalidateFrameBuffer");
+	privates->glClear =
+	    (PFNGLCLEARPROC)eglGetProcAddress("glClear");
+	privates->glHint = (PFNGLHINTPROC)eglGetProcAddress("glHint");
+	privates->glEnable =
+	    (PFNGLENABLEPROC)eglGetProcAddress("glEnable");
+	privates->glCreateProgram =
+	    (PFNGLCREATEPROGRAMPROC)eglGetProcAddress(
+	        "glCreateProgram");
+	privates->glCreateShader =
+	    (PFNGLCREATESHADERPROC)eglGetProcAddress("glCreateShader");
+	privates->glAttachShader =
+	    (PFNGLATTACHSHADERPROC)eglGetProcAddress("glAttachShader");
+	privates->glDeleteShader =
+	    (PFNGLDELETESHADERPROC)eglGetProcAddress("glDeleteShader");
+	privates->glShaderSource =
+	    (PFNGLSHADERSOURCEPROC)eglGetProcAddress("glShaderSource");
+	privates->glCompileShader =
+	    (PFNGLCOMPILESHADERPROC)eglGetProcAddress(
+	        "glCompileShader");
+	privates->glGetShaderiv =
+	    (PFNGLGETSHADERIVPROC)eglGetProcAddress("glGetShaderiv");
+	privates->glGetShaderInfoLog =
+	    (PFNGLGETSHADERINFOLOGPROC)eglGetProcAddress(
+	        "glGetShaderInfoLog");
+	privates->glLinkProgram =
+	    (PFNGLLINKPROGRAMPROC)eglGetProcAddress("glLinkProgram");
+	privates->glValidateProgram =
+	    (PFNGLVALIDATEPROGRAMPROC)eglGetProcAddress(
+	        "glValidateProgram");
+	privates->glGetProgramiv =
+	    (PFNGLGETPROGRAMIVPROC)eglGetProcAddress("glGetProgramiv");
+	privates->glGetProgramInfoLog =
+	    (PFNGLGETPROGRAMINFOLOGPROC)eglGetProcAddress(
+	        "glGetProgramInfoLog");
+	privates->glGenBuffers =
+	    (PFNGLGENBUFFERSPROC)eglGetProcAddress("glGenBuffers");
+	privates->glGetUniformLocation =
+	    (PFNGLGETUNIFORMLOCATIONPROC)eglGetProcAddress(
+	        "glGetUniformLocation");
+	privates->glGetAttribLocation =
+	    (PFNGLGETATTRIBLOCATIONPROC)eglGetProcAddress(
+	        "glGetAttribLocation");
+	privates->glEnableVertexAttribArray =
+	    (PFNGLENABLEVERTEXATTRIBARRAYPROC)eglGetProcAddress(
+	        "glEnableVertexAttribArray");
+	privates->glBindBuffer =
+	    (PFNGLBINDBUFFERPROC)eglGetProcAddress("glBindBuffer");
+	privates->glVertexAttribPointer =
+	    (PFNGLVERTEXATTRIBPOINTERPROC)eglGetProcAddress(
+	        "glVertexAttribPointer");
+	privates->glBufferData =
+	    (PFNGLBUFFERDATAPROC)eglGetProcAddress("glBufferData");
+	privates->glUseProgram =
+	    (PFNGLUSEPROGRAMPROC)eglGetProcAddress("glUseProgram");
+	privates->glReleaseShaderCompiler =
+	    (PFNGLRELEASESHADERCOMPILERPROC)eglGetProcAddress(
+	        "glReleaseShaderCompiler");
+	privates->glClearColor =
+	    (PFNGLCLEARCOLORPROC)eglGetProcAddress("glClearColor");
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	privates->glDeleteBuffers =
+	    (PFNGLDELETEBUFFERSPROC)eglGetProcAddress(
+	        "glDeleteBuffers");
+	privates->glDeleteProgram =
+	    (PFNGLDELETEPROGRAMPROC)eglGetProcAddress(
+	        "glDeleteProgram");
+	privates->glUniformMatrix4fv =
+	    (PFNGLUNIFORMMATRIX4FVPROC)eglGetProcAddress(
+	        "glUniformMatrix4fv");
+	privates->glViewport =
+	    (PFNGLVIEWPORTPROC)eglGetProcAddress("glViewport");
+	privates->glUniform3f =
+	    (PFNGLUNIFORM3FPROC)eglGetProcAddress("glUniform3f");
+	privates->glDrawElements =
+	    (PFNGLDRAWELEMENTSPROC)eglGetProcAddress("glDrawElements");
+
+	privates->glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
+	privates->glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
+
+	privates->glEnable(GL_DEPTH_TEST);
+	privates->glEnable(GL_CULL_FACE);
 
 	/* Use the default clear color for performance */
 
-	flush_gl_errors();
-	GLuint program = glCreateProgram();
+	flush_gl_errors(privates);
+	GLuint program = privates->glCreateProgram();
 	if (0 == program) {
-		return get_gl_error();
+		return get_gl_error(privates);
 	}
 
-	flush_gl_errors();
-	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	flush_gl_errors(privates);
+	GLuint fragment_shader =
+	    privates->glCreateShader(GL_FRAGMENT_SHADER);
 	if (0 == fragment_shader) {
-		err = get_gl_error();
+		err = get_gl_error(privates);
 		goto cleanup_program;
 	}
-	glAttachShader(program, fragment_shader);
-	glDeleteShader(fragment_shader);
+	privates->glAttachShader(program, fragment_shader);
+	privates->glDeleteShader(fragment_shader);
 
-	glShaderSource(fragment_shader, 1U,
-	               (GLchar const **)&linted_assets_fragment_shader,
-	               0);
-	glCompileShader(fragment_shader);
+	privates->glShaderSource(
+	    fragment_shader, 1U,
+	    (GLchar const **)&linted_assets_fragment_shader, 0);
+	privates->glCompileShader(fragment_shader);
 
 	GLint fragment_is_valid;
 	{
 		GLint xx = false;
-		glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &xx);
+		privates->glGetShaderiv(fragment_shader,
+		                        GL_COMPILE_STATUS, &xx);
 		fragment_is_valid = xx;
 	}
 	if (!fragment_is_valid) {
@@ -948,8 +1064,8 @@ static linted_error setup_gl(struct privates *privates)
 		size_t info_log_length;
 		{
 			GLint xx = 0;
-			glGetShaderiv(fragment_shader,
-			              GL_INFO_LOG_LENGTH, &xx);
+			privates->glGetShaderiv(
+			    fragment_shader, GL_INFO_LOG_LENGTH, &xx);
 			info_log_length = xx;
 		}
 
@@ -962,31 +1078,33 @@ static linted_error setup_gl(struct privates *privates)
 				goto cleanup_program;
 			info_log = xx;
 		}
-		glGetShaderInfoLog(fragment_shader, info_log_length, 0,
-		                   info_log);
+		privates->glGetShaderInfoLog(
+		    fragment_shader, info_log_length, 0, info_log);
 		linted_log(LINTED_LOG_ERROR, "invalid shader: %s",
 		           info_log);
 		linted_mem_free(info_log);
 	}
 
-	flush_gl_errors();
-	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+	flush_gl_errors(privates);
+	GLuint vertex_shader =
+	    privates->glCreateShader(GL_VERTEX_SHADER);
 	if (0 == vertex_shader) {
-		err = get_gl_error();
+		err = get_gl_error(privates);
 		goto cleanup_program;
 	}
-	glAttachShader(program, vertex_shader);
-	glDeleteShader(vertex_shader);
+	privates->glAttachShader(program, vertex_shader);
+	privates->glDeleteShader(vertex_shader);
 
-	glShaderSource(vertex_shader, 1U,
-	               (GLchar const **)&linted_assets_vertex_shader,
-	               0);
-	glCompileShader(vertex_shader);
+	privates->glShaderSource(
+	    vertex_shader, 1U,
+	    (GLchar const **)&linted_assets_vertex_shader, 0);
+	privates->glCompileShader(vertex_shader);
 
 	GLint vertex_is_valid;
 	{
 		GLint xx = false;
-		glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &xx);
+		privates->glGetShaderiv(vertex_shader,
+		                        GL_COMPILE_STATUS, &xx);
 		vertex_is_valid = xx;
 	}
 	if (!vertex_is_valid) {
@@ -995,8 +1113,8 @@ static linted_error setup_gl(struct privates *privates)
 		size_t info_log_length = 0;
 		{
 			GLint xx;
-			glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH,
-			              &xx);
+			privates->glGetShaderiv(
+			    vertex_shader, GL_INFO_LOG_LENGTH, &xx);
 			info_log_length = xx;
 		}
 
@@ -1010,21 +1128,22 @@ static linted_error setup_gl(struct privates *privates)
 			info_log = xx;
 		}
 
-		glGetShaderInfoLog(vertex_shader, info_log_length, 0,
-		                   info_log);
+		privates->glGetShaderInfoLog(
+		    vertex_shader, info_log_length, 0, info_log);
 		linted_log(LINTED_LOG_ERROR, "invalid shader: %s",
 		           info_log);
 		linted_mem_free(info_log);
 		goto cleanup_program;
 	}
-	glLinkProgram(program);
+	privates->glLinkProgram(program);
 
-	glValidateProgram(program);
+	privates->glValidateProgram(program);
 
 	GLint program_is_valid;
 	{
 		GLint xx = false;
-		glGetProgramiv(program, GL_VALIDATE_STATUS, &xx);
+		privates->glGetProgramiv(program, GL_VALIDATE_STATUS,
+		                         &xx);
 		program_is_valid = xx;
 	}
 	if (!program_is_valid) {
@@ -1033,8 +1152,8 @@ static linted_error setup_gl(struct privates *privates)
 		size_t info_log_length;
 		{
 			GLint xx = 0;
-			glGetProgramiv(program, GL_INFO_LOG_LENGTH,
-			               &xx);
+			privates->glGetProgramiv(
+			    program, GL_INFO_LOG_LENGTH, &xx);
 			info_log_length = xx;
 		}
 
@@ -1048,8 +1167,8 @@ static linted_error setup_gl(struct privates *privates)
 			info_log = xx;
 		}
 
-		glGetProgramInfoLog(program, info_log_length, 0,
-		                    info_log);
+		privates->glGetProgramInfoLog(program, info_log_length,
+		                              0, info_log);
 		linted_log(LINTED_LOG_ERROR, "invalid program: %s",
 		           info_log);
 		linted_mem_free(info_log);
@@ -1061,70 +1180,73 @@ static linted_error setup_gl(struct privates *privates)
 	GLuint index_buffer;
 	{
 		GLuint xx[3U];
-		glGenBuffers(LINTED_ARRAY_SIZE(xx), xx);
+		privates->glGenBuffers(LINTED_ARRAY_SIZE(xx), xx);
 		vertex_buffer = xx[0U];
 		normal_buffer = xx[1U];
 		index_buffer = xx[2U];
 	}
 
-	GLint eye_vertex = glGetUniformLocation(program, "eye_vertex");
+	GLint eye_vertex =
+	    privates->glGetUniformLocation(program, "eye_vertex");
 
-	GLint mvp_matrix = glGetUniformLocation(
+	GLint mvp_matrix = privates->glGetUniformLocation(
 	    program, "model_view_projection_matrix");
 
-	GLint maybe_vertex = glGetAttribLocation(program, "vertex");
+	GLint maybe_vertex =
+	    privates->glGetAttribLocation(program, "vertex");
 	if (maybe_vertex < 0) {
 		err = LINTED_ERROR_INVALID_PARAMETER;
 		goto cleanup_buffers;
 	}
 	GLuint vertex = maybe_vertex;
 
-	GLint maybe_normal = glGetAttribLocation(program, "normal");
+	GLint maybe_normal =
+	    privates->glGetAttribLocation(program, "normal");
 	if (maybe_normal < 0) {
 		err = LINTED_ERROR_INVALID_PARAMETER;
 		goto cleanup_buffers;
 	}
 	GLuint normal = maybe_normal;
 
-	glEnableVertexAttribArray(vertex);
-	glEnableVertexAttribArray(normal);
+	privates->glEnableVertexAttribArray(vertex);
+	privates->glEnableVertexAttribArray(normal);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glVertexAttribPointer(
+	privates->glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	privates->glVertexAttribPointer(
 	    vertex, LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
 	    GL_FLOAT, false, 0, 0);
 
-	glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
-	glVertexAttribPointer(
+	privates->glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
+	privates->glVertexAttribPointer(
 	    normal, LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
 	    GL_FLOAT, false, 0, 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	privates->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER,
-	             linted_assets_size *
-	                 sizeof linted_assets_vertices[0U],
-	             linted_assets_vertices, GL_STATIC_DRAW);
+	privates->glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	privates->glBufferData(GL_ARRAY_BUFFER,
+	                       linted_assets_size *
+	                           sizeof linted_assets_vertices[0U],
+	                       linted_assets_vertices, GL_STATIC_DRAW);
 
-	glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
-	glBufferData(GL_ARRAY_BUFFER,
-	             linted_assets_size *
-	                 sizeof linted_assets_normals[0U],
-	             linted_assets_normals, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	privates->glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
+	privates->glBufferData(GL_ARRAY_BUFFER,
+	                       linted_assets_size *
+	                           sizeof linted_assets_normals[0U],
+	                       linted_assets_normals, GL_STATIC_DRAW);
+	privates->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	glUseProgram(program);
+	privates->glUseProgram(program);
 
-	glReleaseShaderCompiler();
+	privates->glReleaseShaderCompiler();
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-	             3U * linted_assets_indices_size *
-	                 sizeof linted_assets_indices[0U],
-	             linted_assets_indices, GL_STATIC_DRAW);
+	privates->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+	privates->glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+	                       3U * linted_assets_indices_size *
+	                           sizeof linted_assets_indices[0U],
+	                       linted_assets_indices, GL_STATIC_DRAW);
 	/* Leave bound for DrawElements */
 
-	glClearColor(0.94, 0.9, 1.0, 0.0);
+	privates->glClearColor(0.94, 0.9, 1.0, 0.0);
 
 	privates->program = program;
 	privates->vertex_buffer = vertex_buffer;
@@ -1142,11 +1264,11 @@ static linted_error setup_gl(struct privates *privates)
 
 cleanup_buffers : {
 	GLuint xx[] = {vertex_buffer, normal_buffer, index_buffer};
-	glDeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
+	privates->glDeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
 }
 
 cleanup_program:
-	glDeleteProgram(program);
+	privates->glDeleteProgram(program);
 
 	return err;
 }
@@ -1180,13 +1302,13 @@ static void real_draw(struct privates *privates)
 			struct matrix mvp = model_view_projection(
 			    x_rotation, z_rotation, x_position,
 			    y_position, z_position, width, height);
-			glUniformMatrix4fv(mvp_matrix, 1U, false,
-			                   (void const *)&mvp);
+			privates->glUniformMatrix4fv(
+			    mvp_matrix, 1U, false, (void const *)&mvp);
 		}
 	}
 
 	if (resize_pending) {
-		glViewport(0, 0, width, height);
+		privates->glViewport(0, 0, width, height);
 		privates->resize_pending = false;
 	}
 
@@ -1196,26 +1318,27 @@ static void real_draw(struct privates *privates)
 		GLfloat z_position = update->z_position;
 
 		if (eye_vertex >= 0)
-			glUniform3f(eye_vertex, x_position, y_position,
-			            z_position);
+			privates->glUniform3f(eye_vertex, x_position,
+			                      y_position, z_position);
 		privates->update_pending = false;
 	}
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
-	        GL_STENCIL_BUFFER_BIT);
-	glDrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
-	               GL_UNSIGNED_SHORT, 0);
+	privates->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
+	                  GL_STENCIL_BUFFER_BIT);
+	privates->glDrawElements(GL_TRIANGLES,
+	                         3U * linted_assets_indices_size,
+	                         GL_UNSIGNED_SHORT, 0);
 }
 
-static void flush_gl_errors(void)
+static void flush_gl_errors(struct privates *privates)
 {
 	GLenum error;
 	do {
-		error = glGetError();
+		error = privates->glGetError();
 	} while (error != GL_NO_ERROR);
 }
 
-static linted_error get_gl_error(void)
+static linted_error get_gl_error(struct privates *privates)
 {
 	/* Note that a single OpenGL call may return multiple errors
 	 * so we get them all and then return the most serious.
@@ -1227,7 +1350,7 @@ static linted_error get_gl_error(void)
 	for (;;) {
 		bool exit = false;
 
-		switch (glGetError()) {
+		switch (privates->glGetError()) {
 		case GL_NO_ERROR:
 			exit = true;
 			break;
