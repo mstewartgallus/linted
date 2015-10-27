@@ -37,6 +37,8 @@
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+
+#define GL_GLEXT_PROTOTYPES
 #include <GLES3/gl3.h>
 
 /*
@@ -552,7 +554,7 @@ static void *gpu_routine(void *arg)
 			    attachments);
 		}
 
-		if (1) {
+		if (0) {
 			if (skipped_updates_counter > 2U)
 				linted_log(LINTED_LOG_INFO,
 				           "skipped updates: %lu",
