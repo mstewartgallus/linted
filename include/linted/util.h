@@ -60,10 +60,6 @@
 #define LINTED_ARRAY_SIZE(...)                                         \
 	((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
 
-#define LINTED_UPCAST(X) (&(X)->parent)
-#define LINTED_DOWNCAST(T, X)                                          \
-	((T *)(((char *)(X)) - offsetof(T, parent)))
-
 #define LINTED_NUMBER_TYPE_STRING_SIZE(T)                              \
 	((CHAR_BIT * sizeof(T) - 1U) / 3U + 2U)
 

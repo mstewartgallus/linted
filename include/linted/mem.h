@@ -70,7 +70,7 @@ linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 		return err;
 
 	void *memory;
-	if (0U == size) {
+	if (0U == total) {
 		memory = 0;
 	} else {
 		memory = malloc(total);

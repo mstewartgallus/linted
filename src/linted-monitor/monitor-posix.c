@@ -1310,7 +1310,7 @@ on_add_unit(struct monitor *monitor,
 		char *xx;
 		err = linted_str_dup(&xx, unit_fstab);
 		if (err != 0)
-			return err;
+			goto free_name;
 		fstab = xx;
 	}
 
@@ -1321,7 +1321,7 @@ on_add_unit(struct monitor *monitor,
 		char *xx;
 		err = linted_str_dup(&xx, unit_chdir_path);
 		if (err != 0)
-			return err;
+			goto free_fstab;
 		chdir_path = xx;
 	}
 
@@ -1333,18 +1333,17 @@ on_add_unit(struct monitor *monitor,
 		err = linted_mem_alloc_array(&xx, command_size + 1U,
 		                             sizeof command[0U]);
 		if (err != 0)
-			goto free_name;
+			goto free_chdir_path;
 		command = xx;
 	}
 
-	for (size_t ii = 0U; ii < command_size; ++ii) {
-		err = linted_str_dup(&command[ii], unit_command[ii]);
-		if (err != 0) {
-			for (size_t jj = 0U; jj < ii; ++jj)
-				linted_mem_free(command[jj]);
-			linted_mem_free(command);
-			goto free_name;
-		}
+	size_t command_alloced = 0U;
+	for (size_t command_alloced = 0U;
+	     command_alloced < command_size; ++command_alloced) {
+		err = linted_str_dup(&command[command_alloced],
+		                     unit_command[command_alloced]);
+		if (err != 0)
+			goto free_command;
 	}
 	command[command_size] = 0;
 
@@ -1357,19 +1356,16 @@ on_add_unit(struct monitor *monitor,
 		    linted_mem_alloc_array(&xx, env_whitelist_size + 1U,
 		                           sizeof env_whitelist[0U]);
 		if (err != 0)
-			goto free_name;
+			goto free_command;
 		env_whitelist = xx;
 	}
 
-	for (size_t ii = 0U; ii < env_whitelist_size; ++ii) {
+	size_t ii = 0U;
+	for (; ii < env_whitelist_size; ++ii) {
 		err = linted_str_dup(&env_whitelist[ii],
 		                     unit_env_whitelist[ii]);
-		if (err != 0) {
-			for (size_t jj = 0U; jj < ii; ++jj)
-				linted_mem_free(env_whitelist[jj]);
-			linted_mem_free(env_whitelist);
-			goto free_name;
-		}
+		if (err != 0)
+			goto free_whitelist;
 	}
 	env_whitelist[env_whitelist_size] = 0;
 
@@ -1377,10 +1373,8 @@ on_add_unit(struct monitor *monitor,
 	{
 		struct linted_unit *xx;
 		err = linted_unit_db_add_unit(unit_db, &xx);
-		if (err != 0) {
-			linted_mem_free(name);
-			return err;
-		}
+		if (err != 0)
+			goto free_whitelist;
 		unit = xx;
 	}
 
@@ -1419,6 +1413,22 @@ on_add_unit(struct monitor *monitor,
 
 	reply->type = LINTED_ADMIN_ADD_UNIT;
 	return err;
+
+free_whitelist:
+	for (size_t jj = 0U; jj < ii; ++jj)
+		linted_mem_free(env_whitelist[jj]);
+	linted_mem_free(env_whitelist);
+
+free_command:
+	for (size_t jj = 0U; jj < command_alloced; ++jj)
+		linted_mem_free(command[jj]);
+	linted_mem_free(command);
+
+free_chdir_path:
+	linted_mem_free(chdir_path);
+
+free_fstab:
+	linted_mem_free(fstab);
 
 free_name:
 	linted_mem_free(name);
@@ -1887,6 +1897,7 @@ spawn_service:
 	size_t envvars_size =
 	    null_list_size((char const *const *)envvars);
 	size_t new_size = envvars_size + 2U;
+	LINTED_ASSERT(new_size > 0U);
 	{
 		void *xx;
 		err = linted_mem_realloc_array(&xx, envvars, new_size,

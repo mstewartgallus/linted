@@ -395,7 +395,6 @@ linted_error linted_admin_in_task_recv_request(
 
 		memcpy(path, tip, path_size);
 		path[path_size] = '\0';
-		tip += path_size;
 
 		add_socket->type = type;
 
@@ -664,7 +663,6 @@ linted_admin_in_send(linted_admin_in admin,
 		tip += name_size;
 
 		memcpy(tip, path, path_size);
-		tip += path_size;
 		break;
 	}
 

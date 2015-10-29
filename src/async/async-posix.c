@@ -47,6 +47,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define UPCAST(X) ((void *)(X))
+#define DOWNCAST(T, X) ((T *)(X))
+
 #if defined _POSIX_SPIN_LOCKS
 typedef pthread_spinlock_t spinlock;
 #else
@@ -504,6 +507,7 @@ static linted_error worker_pool_create(
 	struct worker_pool *pool;
 	size_t workers_size = workers_count * sizeof pool->workers[0U];
 	size_t worker_pool_size = sizeof *pool + workers_size;
+	LINTED_ASSERT(worker_pool_size > 0U);
 	{
 		void *xx;
 		err = linted_mem_alloc(&xx, worker_pool_size);
@@ -1135,6 +1139,8 @@ static linted_error recv_waiters(struct linted_async_pool *async_pool,
 			err = waiter_try_recv(waiter_queue, &xx);
 			if (EAGAIN == err)
 				break;
+			if (err != 0)
+				return err;
 			waiter = xx;
 		}
 
@@ -1251,8 +1257,7 @@ static void complete_task(struct completion_queue *queue,
 	LINTED_ASSERT(queue != 0);
 	LINTED_ASSERT(task != 0);
 
-	linted_queue_send((struct linted_queue *)queue,
-	                  LINTED_UPCAST(task));
+	linted_queue_send((struct linted_queue *)queue, UPCAST(task));
 }
 
 static linted_error completion_recv(struct completion_queue *queue,
@@ -1265,7 +1270,7 @@ static linted_error completion_recv(struct completion_queue *queue,
 
 	linted_queue_recv((struct linted_queue *)queue, &node);
 
-	*taskp = LINTED_DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct linted_async_task, node);
 
 	return 0;
 }
@@ -1289,7 +1294,7 @@ completion_try_recv(struct completion_queue *queue,
 		node = xx;
 	}
 
-	*taskp = LINTED_DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct linted_async_task, node);
 
 	return 0;
 }
@@ -1322,8 +1327,7 @@ static linted_error job_queue_create(struct job_queue **queuep)
 static void job_submit(struct job_queue *queue,
                        struct linted_async_task *task)
 {
-	linted_queue_send((struct linted_queue *)queue,
-	                  LINTED_UPCAST(task));
+	linted_queue_send((struct linted_queue *)queue, UPCAST(task));
 }
 
 static linted_error job_recv(struct job_queue *queue,
@@ -1340,7 +1344,7 @@ static linted_error job_recv(struct job_queue *queue,
 		node = xx;
 	}
 
-	*taskp = LINTED_DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct linted_async_task, node);
 
 	return 0;
 }
@@ -1437,7 +1441,7 @@ static void waiter_submit(struct waiter_queue *queue,
 	LINTED_ASSERT(queue != 0);
 	LINTED_ASSERT(waiter != 0);
 
-	linted_ko_queue_send((void *)queue, LINTED_UPCAST(waiter));
+	linted_ko_queue_send((void *)queue, UPCAST(waiter));
 }
 
 static linted_error
