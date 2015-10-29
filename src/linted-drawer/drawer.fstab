@@ -3,7 +3,7 @@
 #
 # <file system>	<mount point>	<type>	<options>
 none	boot	none	mkdir,nomount
-"${LINTED_DRAWER}"	boot/linted-drawer	none	touch,ro,bind
+"${LINTED_DRAWER}"	"./${LINTED_DRAWER}"	none	touch,ro,bind
 
 none	../../var/drawer	none	mkdir,nomount
 ../../var/drawer	var	none	mkdir,shared,bind

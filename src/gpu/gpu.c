@@ -40,15 +40,6 @@
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
 
-/*
- * @file
- *
- * @todo Factor out the render loop into another thread.
- *
- * @todo Once `EGL_KHR_get_all_proc_addresses` is supported by my Mesa
- *       use it.
- */
-
 struct command_queue {
 	pthread_spinlock_t lock;
 

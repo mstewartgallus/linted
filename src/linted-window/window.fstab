@@ -3,7 +3,7 @@
 #
 # <file system>	<mount point>	<type>	<options>
 none	boot	none	mkdir,nomount
-"${LINTED_WINDOW}"	boot/linted-window	none	touch,ro,bind
+"${LINTED_WINDOW}"	"./${LINTED_WINDOW}"	none	touch,ro,bind
 
 none	../../var/window	none	mkdir,nomount
 ../../var/window	var	none	mkdir,shared,bind
@@ -25,8 +25,8 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 /etc	etc	none	mkdir,shared,bind
 
 /lib	lib	none	mkdir,shared,bind
-/lib64	lib64	none	mkdir,shared,bind 
+/lib64	lib64	none	mkdir,shared,bind
 
-/usr	usr	none	mkdir,shared,bind 
+/usr	usr	none	mkdir,shared,bind
 
 /bin	bin	none	mkdir,shared,bind

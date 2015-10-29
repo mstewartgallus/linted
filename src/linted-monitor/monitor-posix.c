@@ -488,6 +488,8 @@ cancel_tasks:
 		if (0 == err)
 			err = dispatch_error;
 	}
+	if (LINTED_ERROR_CANCELLED == err)
+		err = 0;
 
 destroy_monitor:
 	monitor_destroy(&monitor);
@@ -736,6 +738,8 @@ static linted_error monitor_on_signal(struct monitor *monitor,
 
 	int signo = linted_signal_task_wait_signo(wait_task);
 
+	linted_async_pool_submit(pool, task);
+
 	switch (signo) {
 	case SIGCHLD:
 		err = on_sigchld(monitor);
@@ -752,8 +756,6 @@ static linted_error monitor_on_signal(struct monitor *monitor,
 			return err;
 		break;
 	}
-
-	linted_async_pool_submit(pool, task);
 
 	return 0;
 }

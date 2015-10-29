@@ -3,7 +3,7 @@
 #
 # <file system>	<mount point>	<type>	<options>
 none	boot	none	mkdir,nomount
-"${LINTED_SIMULATOR}"	boot/linted-simulator	none	touch,ro,bind
+"${LINTED_SIMULATOR}"	"./${LINTED_SIMULATOR}"	none	touch,ro,bind
 
 none	../../var/simulator	none	mkdir,nomount
 ../../var/simulator	var	none	mkdir,shared,bind
@@ -19,9 +19,9 @@ tmpfs	dev	tmpfs	mkdir,nosuid,noexec,mode=700
 /etc	etc	none	mkdir,shared,bind
 
 /lib	lib	none	mkdir,shared,bind
-/lib64	lib64	none	mkdir,shared,bind 
+/lib64	lib64	none	mkdir,shared,bind
 
-/usr	usr	none	mkdir,shared,bind 
+/usr	usr	none	mkdir,shared,bind
 
 tmpfs	tmp	tmpfs	mkdir,nosuid,noexec,mode=700
 

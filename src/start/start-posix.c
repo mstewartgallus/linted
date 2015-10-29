@@ -61,6 +61,7 @@ static void do_nothing(int signo);
 
 linted_error open_standard_handles(void);
 linted_error privilege_check(void);
+linted_error sanitize_fds(void);
 
 int linted_start__main(struct linted_start_config const *config,
                        unsigned char (*start)(char const *process_name,
@@ -113,108 +114,12 @@ int linted_start__main(struct linted_start_config const *config,
 	}
 
 	if (config->sanitize_fds) {
-		linted_ko fds_dir_ko;
-		{
-			linted_ko xx;
-			err = linted_ko_open(&xx, LINTED_KO_CWD,
-			                     "/proc/thread-self/fd",
-			                     LINTED_KO_DIRECTORY);
-			if (err != 0) {
-				linted_log(LINTED_LOG_ERROR,
-				           "%s: "
-				           "linted_ko_open(/proc/"
-				           "thread-self/fd): %s",
-				           PACKAGE_NAME,
-				           linted_error_string(err));
-				return EXIT_FAILURE;
-			}
-			fds_dir_ko = xx;
-		}
-
-		DIR *fds_dir = fdopendir(fds_dir_ko);
-		if (0 == fds_dir) {
-			linted_log(LINTED_LOG_ERROR,
-			           "%s: fdopendir: %s", PACKAGE_NAME,
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-
-		linted_ko *kos_to_close = 0;
-		size_t num_kos_to_close = 0U;
-		/* Read all the open fds first and then close the fds
-		 * after
-		 * because otherwise there is a race condition */
-		for (;;) {
-			errno = 0;
-			struct dirent *direntry = readdir(fds_dir);
-			if (0 == direntry) {
-				err = errno;
-				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "%s: readdir: %s",
-					    PACKAGE_NAME,
-					    linted_error_string(err));
-					return EXIT_FAILURE;
-				}
-				break;
-			}
-
-			char const *fdname = direntry->d_name;
-
-			if (0 == strcmp(".", fdname))
-				continue;
-			if (0 == strcmp("..", fdname))
-				continue;
-
-			linted_ko open_fd = (linted_ko)atoi(fdname);
-			if (0U == open_fd)
-				continue;
-			if (1U == open_fd)
-				continue;
-			if (2U == open_fd)
-				continue;
-
-			if (fds_dir_ko == open_fd)
-				continue;
-
-			{
-				void *xx;
-				err = linted_mem_realloc_array(
-				    &xx, kos_to_close,
-				    num_kos_to_close + 1U,
-				    sizeof kos_to_close[0U]);
-				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "%s: "
-					    "linted_mem_realloc_array: "
-					    "%s",
-					    PACKAGE_NAME,
-					    linted_error_string(err));
-					return EXIT_FAILURE;
-				}
-				kos_to_close = xx;
-			}
-			kos_to_close[num_kos_to_close] = open_fd;
-			++num_kos_to_close;
-		}
-
-		if (-1 == closedir(fds_dir)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-		}
+		err = sanitize_fds();
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "%s: closedir: %s",
-			           PACKAGE_NAME,
+			linted_log(LINTED_LOG_ERROR, "sanitize_fds: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-
-		/* Deliberately don't check the closed fds */
-		for (size_t ii = 0U; ii < num_kos_to_close; ++ii)
-			linted_ko_close(kos_to_close[ii]);
-		linted_mem_free(kos_to_close);
 	}
 
 	if (config->check_privilege) {
@@ -372,4 +277,86 @@ linted_error privilege_check(void)
 #endif
 
 	return 0;
+}
+
+linted_error sanitize_fds(void)
+{
+	linted_error err = 0;
+
+	linted_ko fds_dir_ko;
+	{
+		linted_ko xx;
+		err = linted_ko_open(&xx, LINTED_KO_CWD,
+		                     "/proc/thread-self/fd",
+		                     LINTED_KO_DIRECTORY);
+		if (err != 0)
+			return err;
+		fds_dir_ko = xx;
+	}
+
+	DIR *fds_dir = fdopendir(fds_dir_ko);
+	if (0 == fds_dir) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+
+		linted_ko_close(fds_dir_ko);
+
+		return err;
+	}
+
+	linted_ko *kos_to_close = 0;
+	size_t num_kos_to_close = 0U;
+	/* Read all the open fds first and then close the fds
+	 * after
+	 * because otherwise there is a race condition */
+	for (;;) {
+		errno = 0;
+		struct dirent *direntry = readdir(fds_dir);
+		if (0 == direntry) {
+			err = errno;
+			break;
+		}
+
+		char const *fdname = direntry->d_name;
+
+		if (0 == strcmp(".", fdname))
+			continue;
+		if (0 == strcmp("..", fdname))
+			continue;
+
+		linted_ko open_fd = (linted_ko)atoi(fdname);
+		if (0U == open_fd)
+			continue;
+		if (1U == open_fd)
+			continue;
+		if (2U == open_fd)
+			continue;
+
+		if (fds_dir_ko == open_fd)
+			continue;
+
+		{
+			void *xx;
+			err = linted_mem_realloc_array(
+			    &xx, kos_to_close, num_kos_to_close + 1U,
+			    sizeof kos_to_close[0U]);
+			if (err != 0)
+				break;
+			kos_to_close = xx;
+		}
+		kos_to_close[num_kos_to_close] = open_fd;
+		++num_kos_to_close;
+	}
+
+	if (-1 == closedir(fds_dir)) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+	}
+
+	/* Deliberately don't check the closed fds */
+	for (size_t ii = 0U; ii < num_kos_to_close; ++ii)
+		linted_ko_close(kos_to_close[ii]);
+	linted_mem_free(kos_to_close);
+
+	return err;
 }

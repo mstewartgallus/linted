@@ -100,7 +100,7 @@ enum { STOP_OPTIONS,
 
 struct mount_args {
 	char const *fsname;
-	char const *dir;
+	char *dir;
 	char const *type;
 	char const *data;
 
@@ -683,10 +683,24 @@ exit_loop:
 				data = xx;
 			}
 
+			char *dir_dup;
+			{
+				char *xx;
+				err = linted_str_dup(&xx, dir);
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "linted_str_dup: %s",
+					    linted_error_string(err));
+					return EXIT_FAILURE;
+				}
+				dir_dup = xx;
+			}
+
 			struct mount_args *new_mount_arg =
 			    &mount_args[mount_args_size];
 			new_mount_arg->fsname = fsname;
-			new_mount_arg->dir = dir;
+			new_mount_arg->dir = dir_dup;
 			new_mount_arg->type = type;
 			new_mount_arg->data = data;
 			new_mount_arg->mountflags = mountflags;
@@ -1245,7 +1259,7 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 	for (size_t ii = 0U; ii < size; ++ii) {
 		struct mount_args const *arg = &mount_args[ii];
 		char const *fsname = arg->fsname;
-		char const *dir = arg->dir;
+		char *dir = arg->dir;
 		char const *type = arg->type;
 		char const *data = arg->data;
 		bool mkdir_flag = arg->mkdir_flag;
@@ -1259,6 +1273,25 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 			if (err != 0)
 				return err;
 		} else if (touch_flag) {
+			/* Disgusting */
+			char *xx = dir;
+			if ('/' == *xx)
+				++xx;
+			for (;;) {
+				xx = strchr(xx, '/');
+				if (0 == xx)
+					break;
+				*xx = '\0';
+				err = linted_dir_create(
+				    0, LINTED_KO_CWD, dir, 0U, S_IRWXU);
+				if (EEXIST == err)
+					err = 0;
+				if (err != 0)
+					return err;
+				*xx = '/';
+				++xx;
+			}
+
 			err = linted_file_create(0, LINTED_KO_CWD, dir,
 			                         0U, S_IRWXU);
 			if (err != 0)
@@ -1271,21 +1304,30 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 		unsigned long aliasflags =
 		    mountflags & (MS_BIND | MS_SHARED | MS_SLAVE);
 		if (0 == aliasflags) {
-			if (-1 ==
-			    mount(fsname, dir, type, mountflags, data))
-				return errno;
+			if (-1 == mount(fsname, dir, type, mountflags,
+			                data)) {
+				err = errno;
+				LINTED_ASSUME(err != 0);
+				return err;
+			}
 			continue;
 		}
 
-		if (-1 == mount(fsname, dir, type, aliasflags, 0))
-			return errno;
+		if (-1 == mount(fsname, dir, type, aliasflags, 0)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
+		}
 
 		if (0 == data && 0 == (mountflags & ~aliasflags))
 			continue;
 
 		if (-1 == mount(fsname, dir, type,
-		                MS_REMOUNT | mountflags, data))
-			return errno;
+		                MS_REMOUNT | mountflags, data)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			return err;
+		}
 	}
 
 	/* Magic incantation that clears up /proc/mounts more than

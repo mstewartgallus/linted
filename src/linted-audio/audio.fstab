@@ -3,7 +3,7 @@
 #
 # <file system>	<mount point>	<type>	<options>
 none	boot	none	mkdir,nomount
-"${LINTED_AUDIO}"	boot/linted-audio	none	touch,ro,bind
+"${LINTED_AUDIO}"	"./${LINTED_AUDIO}"	none	touch,ro,bind
 
 none	../../var/audio	none	mkdir,nomount
 ../../var/audio	var	none	mkdir,shared,bind

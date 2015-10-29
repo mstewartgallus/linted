@@ -158,7 +158,9 @@ linted_error linted_path_base(char **basep, char const *str)
 	{
 		char const *base = basename(str_dup);
 		base_len = strlen(base);
-		memcpy(str_dup, base, base_len);
+
+		/* MAY OVERLAP SO USE MEMMOVE! */
+		memmove(str_dup, base, base_len);
 	}
 	str_dup[base_len] = '\0';
 
@@ -193,7 +195,9 @@ linted_error linted_path_dir(char **dirp, char const *str)
 	{
 		char const *dir = dirname(str_dup);
 		dir_len = strlen(dir);
-		memcpy(str_dup, dir, dir_len);
+
+		/* MAY OVERLAP SO USE MEMMOVE! */
+		memmove(str_dup, dir, dir_len);
 	}
 	str_dup[dir_len] = '\0';
 
