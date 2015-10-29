@@ -101,7 +101,6 @@ struct privates {
 	PFNGLUSEPROGRAMPROC glUseProgram;
 	PFNGLRELEASESHADERCOMPILERPROC glReleaseShaderCompiler;
 	PFNGLCLEARCOLORPROC glClearColor;
-
 	PFNGLDELETEBUFFERSPROC glDeleteBuffers;
 	PFNGLDELETEPROGRAMPROC glDeleteProgram;
 	PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv;
@@ -227,21 +226,33 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 		goto release_thread;
 	}
 
-	if (EGL_FALSE == eglInitialize(display, 0, 0)) {
-		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+	EGLint major;
+	EGLint minor;
+	{
+		EGLint xx;
+		EGLint yy;
+		if (EGL_FALSE == eglInitialize(display, &xx, &yy)) {
+			EGLint err_egl = eglGetError();
+			LINTED_ASSUME(err_egl != EGL_SUCCESS);
 
-		/* Shouldn't happen */
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			/* Shouldn't happen */
+			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
 
-		switch (err_egl) {
-		case EGL_NOT_INITIALIZED:
-		case EGL_BAD_ALLOC:
-			err = LINTED_ERROR_OUT_OF_MEMORY;
-			goto destroy_display;
+			switch (err_egl) {
+			case EGL_NOT_INITIALIZED:
+			case EGL_BAD_ALLOC:
+				err = LINTED_ERROR_OUT_OF_MEMORY;
+				goto destroy_display;
+			}
+
+			LINTED_ASSERT(false);
 		}
-
-		LINTED_ASSERT(false);
+		major = xx;
+		minor = yy;
+	}
+	if (1 == major && minor < 4) {
+		err = ENOSYS;
+		goto destroy_display;
 	}
 
 	EGLConfig config;

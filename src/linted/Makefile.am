@@ -17,13 +17,7 @@
 bin_PROGRAMS+=%D%/linted
 
 %C%_linted_DEPS=$(builddir)/%D%/settings.h
-%C%_linted_SOURCES=\
-  %D%/linted.c\
-  %D%/privilege.c %D%/privilege.h
-EXTRA_%C%_linted_SOURCES=\
-  %D%/privilege-emscripten.c\
-  %D%/privilege-posix.c\
-  %D%/privilege-windows.c
+%C%_linted_SOURCES=%D%/linted.c
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
   src/dir/libdir.la\
@@ -31,6 +25,7 @@ EXTRA_%C%_linted_SOURCES=\
   src/io/libio.la\
   src/locale/liblocale.la\
   src/log/liblog.la\
+  src/path/libpath.la\
   src/pid/libpid.la\
   src/str/libstr.la\
   \
@@ -40,9 +35,7 @@ if WINDOWS_API
 %C%_linted_LDADD+=\
   src/utf/libutf.la\
   \
-  %D%/resources.$(OBJEXT)\
-  \
-  $(ADVAPI32_LIBS)
+  %D%/resources.$(OBJEXT)
 
 %D%/resources.$(OBJEXT): %D%/linted.manifest
 endif

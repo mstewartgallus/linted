@@ -13,6 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#define _POSIX_C_SOURCE 200809L
+
 #include "config.h"
 
 #include "linted/environment.h"
@@ -22,6 +24,8 @@
 #include "linted/str.h"
 
 #include <errno.h>
+#include <libgen.h>
+#include <string.h>
 
 linted_error linted_path_package_runtime_dir(char **packagep)
 {
@@ -134,4 +138,74 @@ fallback:
 	linted_mem_free(home_path);
 
 	return err;
+}
+
+linted_error linted_path_base(char **basep, char const *str)
+{
+	linted_error err = 0;
+
+	char *str_dup;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, str);
+		if (err != 0)
+			return err;
+		str_dup = xx;
+	}
+
+	size_t base_len;
+	{
+		char const *base = basename(str_dup);
+		base_len = strlen(base);
+		memcpy(str_dup, base, base_len);
+	}
+	str_dup[base_len] = '\0';
+
+	{
+		void *xx;
+		err = linted_mem_realloc(&xx, str_dup, base_len + 1U);
+		if (err != 0) {
+			linted_mem_free(str_dup);
+			return err;
+		}
+		str_dup = xx;
+	}
+
+	*basep = str_dup;
+	return 0;
+}
+
+linted_error linted_path_dir(char **dirp, char const *str)
+{
+	linted_error err = 0;
+
+	char *str_dup;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, str);
+		if (err != 0)
+			return err;
+		str_dup = xx;
+	}
+
+	size_t dir_len;
+	{
+		char const *dir = dirname(str_dup);
+		dir_len = strlen(dir);
+		memcpy(str_dup, dir, dir_len);
+	}
+	str_dup[dir_len] = '\0';
+
+	{
+		void *xx;
+		err = linted_mem_realloc(&xx, str_dup, dir_len + 1U);
+		if (err != 0) {
+			linted_mem_free(str_dup);
+			return err;
+		}
+		str_dup = xx;
+	}
+
+	*dirp = str_dup;
+	return 0;
 }

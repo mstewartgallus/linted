@@ -28,6 +28,7 @@ EXTRA_%C%_linted_init_SOURCES=\
   src/io/libio.la\
   src/ko/libko.la\
   src/log/liblog.la\
+  src/path/libpath.la\
   src/signal/libsignal.la\
   src/str/libstr.la
 

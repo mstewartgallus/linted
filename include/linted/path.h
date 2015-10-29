@@ -27,4 +27,7 @@
 linted_error linted_path_package_runtime_dir(char **packagep);
 linted_error linted_path_package_data_home(char **packagep);
 
+linted_error linted_path_base(char **basep, char const *str);
+linted_error linted_path_dir(char **dirp, char const *str);
+
 #endif /* LINTED_PATH_H */

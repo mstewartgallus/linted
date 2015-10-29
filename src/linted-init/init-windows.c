@@ -26,13 +26,13 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
+#include "linted/path.h"
 #include "linted/start.h"
 #include "linted/str.h"
 #include "linted/utf.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <libgen.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -77,20 +77,18 @@ static unsigned char linted_start_main(char const *process_name,
 		return EXIT_FAILURE;
 	}
 
-	char *monitor_dup;
+	char *monitor_base;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, monitor);
+		err = linted_path_base(&xx, monitor);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_dup: %s",
+			           "linted_path_base: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		monitor_dup = xx;
+		monitor_base = xx;
 	}
-
-	char *monitor_base = basename(monitor_dup);
 
 	wchar_t *monitor_utf2;
 	{

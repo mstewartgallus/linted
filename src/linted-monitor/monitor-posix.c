@@ -42,7 +42,6 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -1901,15 +1900,14 @@ envvar_allocate_succeeded:
 	envvars[envvars_size] = service_name_setting;
 	envvars[envvars_size + 1U] = 0;
 
-	char *sandbox_dup;
+	char *sandbox_base;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, sandbox);
+		err = linted_path_base(&xx, sandbox);
 		if (err != 0)
 			goto free_envvars;
-		sandbox_dup = xx;
+		sandbox_base = xx;
 	}
-	char *sandbox_base = basename(sandbox_dup);
 
 	size_t command_size =
 	    null_list_size((char const *const *)command);
@@ -2009,7 +2007,7 @@ free_args:
 	linted_mem_free(args);
 
 free_sandbox_dup:
-	linted_mem_free(sandbox_dup);
+	linted_mem_free(sandbox_base);
 
 free_envvars:
 	for (char **envp = envvars;;) {

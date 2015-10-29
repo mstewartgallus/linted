@@ -27,7 +27,6 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-#include "privilege.h"
 #include "settings.h"
 
 #include "linted/environment.h"
@@ -36,14 +35,11 @@
 #include "linted/ko.h"
 #include "linted/locale.h"
 #include "linted/log.h"
+#include "linted/path.h"
 #include "linted/pid.h"
 #include "linted/start.h"
 #include "linted/str.h"
 #include "linted/util.h"
-
-#ifdef HAVE_POSIX_API
-#include "linted/mem.h"
-#endif
 
 #ifdef HAVE_WINDOWS_API
 #include "linted/utf.h"
@@ -51,7 +47,6 @@
 
 #include <errno.h>
 #include <inttypes.h>
-#include <libgen.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -60,12 +55,12 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef HAVE_POSIX_API
-#include <dirent.h>
-#endif
-
 #ifdef HAVE_WINDOWS_API
 #include <windows.h>
+#endif
+
+#ifdef HAVE_POSIX_API
+extern char **environ;
 #endif
 
 struct envvar {
@@ -75,8 +70,6 @@ struct envvar {
 
 enum { HELP, VERSION_OPTION };
 
-extern char **environ;
-
 static linted_error do_help(linted_ko ko, char const *process_name,
                             char const *package_name,
                             char const *package_url,
@@ -84,8 +77,8 @@ static linted_error do_help(linted_ko ko, char const *process_name,
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-linted",
-    .dont_init_signals = true,
-    .dont_init_logging = true};
+    .check_privilege = true,
+    .sanitize_fds = true};
 
 static struct envvar const default_envvars[] = {
     {"LINTED_PROCESS_NAME", "linted"},
@@ -113,158 +106,7 @@ static unsigned char linted_start_main(char const *const process_name,
                                        size_t argc,
                                        char const *const *const argv)
 {
-	linted_error err = linted_linted_privilege_check();
-	if (err != 0) {
-		linted_log(
-		    LINTED_LOG_ERROR,
-		    "%s should not be run with high privileges: %s",
-		    PACKAGE_NAME, linted_error_string(err));
-		return EXIT_FAILURE;
-	}
-
-	linted_pid self = linted_pid_get_pid();
-
-#ifdef HAVE_POSIX_API
-	linted_ko fds_dir_ko;
-	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     "/proc/thread-self/fd",
-		                     LINTED_KO_DIRECTORY);
-		if (err != 0) {
-			linted_log(
-			    LINTED_LOG_ERROR, "%s: "
-			                      "linted_ko_open(/proc/"
-			                      "thread-self/fd): %s",
-			    PACKAGE_NAME, linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		fds_dir_ko = xx;
-	}
-
-	DIR *fds_dir = fdopendir(fds_dir_ko);
-	if (0 == fds_dir) {
-		linted_log(LINTED_LOG_ERROR, "%s: fdopendir: %s",
-		           PACKAGE_NAME, linted_error_string(err));
-		return EXIT_FAILURE;
-	}
-
-	linted_ko *kos_to_close = 0;
-	size_t num_kos_to_close = 0U;
-	/* Read all the open fds first and then close the fds after
-	 * because otherwise there is a race condition */
-	for (;;) {
-		errno = 0;
-		struct dirent *direntry = readdir(fds_dir);
-		if (0 == direntry) {
-			err = errno;
-			if (err != 0) {
-				linted_log(LINTED_LOG_ERROR,
-				           "%s: readdir: %s",
-				           PACKAGE_NAME,
-				           linted_error_string(err));
-				return EXIT_FAILURE;
-			}
-			break;
-		}
-
-		char const *fdname = direntry->d_name;
-
-		if (0 == strcmp(".", fdname))
-			continue;
-		if (0 == strcmp("..", fdname))
-			continue;
-
-		linted_ko open_fd = (linted_ko)atoi(fdname);
-		if (0U == open_fd)
-			continue;
-		if (1U == open_fd)
-			continue;
-		if (2U == open_fd)
-			continue;
-
-		if (fds_dir_ko == open_fd)
-			continue;
-
-		{
-			void *xx;
-			err = linted_mem_realloc_array(
-			    &xx, kos_to_close, num_kos_to_close + 1U,
-			    sizeof kos_to_close[0U]);
-			if (err != 0) {
-				linted_log(
-				    LINTED_LOG_ERROR,
-				    "%s: linted_mem_realloc_array: %s",
-				    PACKAGE_NAME,
-				    linted_error_string(err));
-				return EXIT_FAILURE;
-			}
-			kos_to_close = xx;
-		}
-		kos_to_close[num_kos_to_close] = open_fd;
-		++num_kos_to_close;
-	}
-
-	if (-1 == closedir(fds_dir)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-	}
-	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "%s: closedir: %s",
-		           PACKAGE_NAME, linted_error_string(err));
-		return EXIT_FAILURE;
-	}
-
-	/* Deliberately don't check the closed fds */
-	for (size_t ii = 0U; ii < num_kos_to_close; ++ii)
-		linted_ko_close(kos_to_close[ii]);
-	linted_mem_free(kos_to_close);
-#endif
-	linted_log_open(process_name);
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars);
-	     ++ii) {
-		struct envvar const *envvar = &default_envvars[ii];
-
-		err = linted_environment_set(envvar->key, envvar->value,
-		                             false);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_set: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-	}
-
-	{
-		char
-		    pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
-		            1U];
-		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)self);
-
-		err =
-		    linted_environment_set("MANAGERPID", pid_str, true);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_set: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-	}
-
-	char const *init;
-	{
-		char *xx;
-		err = linted_environment_get("LINTED_INIT", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		init = xx;
-	}
-	LINTED_ASSERT(init != 0);
+	linted_error err = 0;
 
 	bool need_help = false;
 	bool need_version = false;
@@ -318,23 +160,68 @@ static unsigned char linted_start_main(char const *const process_name,
 		return EXIT_SUCCESS;
 	}
 
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars);
+	     ++ii) {
+		struct envvar const *envvar = &default_envvars[ii];
+
+		err = linted_environment_set(envvar->key, envvar->value,
+		                             false);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_set: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+	}
+
+	linted_pid self = linted_pid_get_pid();
+
+	{
+		char
+		    pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		            1U];
+		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)self);
+
+		err =
+		    linted_environment_set("MANAGERPID", pid_str, true);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_set: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+	}
+
+	char const *init;
+	{
+		char *xx;
+		err = linted_environment_get("LINTED_INIT", &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_environment_get: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		init = xx;
+	}
+	LINTED_ASSERT(init != 0);
+
 	linted_io_write_format(LINTED_KO_STDOUT, 0,
 	                       "LINTED_PID=%" PRIuMAX "\n",
 	                       (uintmax_t)self);
 
-	char *init_dup;
+	char *init_base;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, init);
+		err = linted_path_base(&xx, init);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_dup: %s",
+			           "linted_path_base: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		init_dup = xx;
+		init_base = xx;
 	}
-	char *init_base = basename(init_dup);
 
 #ifdef HAVE_WINDOWS_API
 	wchar_t *init_utf2;

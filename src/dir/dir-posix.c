@@ -18,12 +18,12 @@
 #include "linted/dir.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/path.h"
 #include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <string.h>
@@ -75,26 +75,23 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 	if (dir_only)
 		oflags |= LINTED_KO_DIRECTORY;
 
-	char *pathnamedir_buffer;
+	char *pathnamedir;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, pathname);
+		err = linted_path_dir(&xx, pathname);
 		if (err != 0)
 			return err;
-		pathnamedir_buffer = xx;
+		pathnamedir = xx;
 	}
 
-	char *pathnamebase_buffer;
+	char *pathnamebase;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, pathname);
+		err = linted_path_base(&xx, pathname);
 		if (err != 0)
-			goto free_pathnamedir_buffer;
-		pathnamebase_buffer = xx;
+			goto free_pathnamedir;
+		pathnamebase = xx;
 	}
-
-	char *pathnamedir = dirname(pathnamedir_buffer);
-	char *pathnamebase = basename(pathnamebase_buffer);
 
 	/* To prevent concurrency issues with the directory pointed to
 	 * by pathnamedir being deleted or mounted over we need to be
@@ -105,7 +102,7 @@ linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
 		linted_ko xx;
 		err = linted_ko_open(&xx, dirko, pathnamedir, oflags);
 		if (err != 0)
-			goto free_pathnamebase_buffer;
+			goto free_pathnamebase;
 		realdir = xx;
 	}
 
@@ -131,7 +128,7 @@ open_directory : {
 	if (ENOENT == err)
 		goto make_directory;
 	if (err != 0)
-		goto free_pathnamebase_buffer;
+		goto free_pathnamebase;
 	fd = xx;
 }
 
@@ -142,11 +139,11 @@ close_realdir : {
 		err = close_err;
 }
 
-free_pathnamebase_buffer:
-	linted_mem_free(pathnamebase_buffer);
+free_pathnamebase:
+	linted_mem_free(pathnamebase);
 
-free_pathnamedir_buffer:
-	linted_mem_free(pathnamedir_buffer);
+free_pathnamedir:
+	linted_mem_free(pathnamedir);
 
 	if (err != 0) {
 		if (fd != -1) {

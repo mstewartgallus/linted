@@ -31,6 +31,7 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/path.h"
 #include "linted/start.h"
 #include "linted/str.h"
 #include "linted/utf.h"
@@ -38,7 +39,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -300,37 +300,34 @@ exit_loop:
 
 	char const **command = (char const **)argv + 1U + command_start;
 
-	char *command_dup;
+	char *command_base;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, command[0U]);
+		err = linted_path_base(&xx, command[0U]);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_dup: %s",
+			           "linted_path_base: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		command_dup = xx;
+		command_base = xx;
 	}
-
-	char const *command_base = basename(command_dup);
 
 	char const *binary = command[0U];
 	command[0U] = command_base;
 
-	char *binary_dup;
+	char *binary_base;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, binary);
+		err = linted_path_base(&xx, binary);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_dup: %s",
+			           "linted_path_base: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		binary_dup = xx;
+		binary_base = xx;
 	}
-	char *binary_base = basename(binary_dup);
 
 	wchar_t *binary_utf2;
 	{

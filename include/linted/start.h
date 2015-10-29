@@ -31,8 +31,9 @@
 struct linted_start_config {
 	char const *canonical_process_name;
 	_Bool dont_init_signals : 1U;
-	_Bool dont_init_logging : 1U;
 	_Bool dont_fork_thread : 1U;
+	_Bool sanitize_fds : 1U;
+	_Bool check_privilege : 1U;
 };
 
 #ifndef LINTED_START__NO_MAIN

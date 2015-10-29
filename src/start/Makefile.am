@@ -16,13 +16,14 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libstart.la
-%C%_libstart_la_SOURCES=%D%/start.c include/linted/start.h
-EXTRA_%C%_libstart_la_SOURCES=%D%/start-posix.c %D%/start-windows.c
+%C%_libstart_la_SOURCES=\
+  %D%/start.c include/linted/start.h
 %C%_libstart_la_LIBADD=\
   src/environment/libenvironment.la\
   src/error/liberror.la\
   src/ko/libko.la\
   src/log/liblog.la\
+  src/path/libpath.la\
   src/signal/libsignal.la\
   src/str/libstr.la
 
@@ -31,5 +32,7 @@ if WINDOWS_API
   src/utf/libutf.la\
   \
   $(SHELL32_LIBS)\
-  $(WS2_32_LIBS)
+  $(WS2_32_LIBS)\
+  $(ADVAPI32_LIBS)
+
 endif

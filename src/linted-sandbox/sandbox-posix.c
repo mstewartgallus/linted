@@ -25,6 +25,7 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/path.h"
 #include "linted/start.h"
 #include "linted/str.h"
 #include "linted/util.h"
@@ -32,7 +33,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <mntent.h>
 #include <wordexp.h>
 #include <sched.h>
@@ -412,23 +412,33 @@ exit_loop:
 		}
 	}
 
-	char *waiter_dup;
+	char *waiter_base;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, waiter);
+		err = linted_path_base(&xx, waiter);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_dup: %s",
+			           "linted_path_base: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		waiter_dup = xx;
+		waiter_base = xx;
 	}
 
-	char *command_base = basename(command_dup[0U]);
+	char *command_base;
+	{
+		char *xx;
+		err = linted_path_base(&xx, command_dup[0U]);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "linted_path_base: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		command_base = xx;
+	}
+	linted_mem_free(command_dup[0U]);
 	command_dup[0U] = command_base;
-
-	char const *waiter_base = basename(waiter_dup);
 
 	char const *binary = command[0U];
 

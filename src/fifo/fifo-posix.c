@@ -18,12 +18,12 @@
 #include "linted/fifo.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
+#include "linted/path.h"
 #include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -114,26 +114,23 @@ linted_error linted_fifo_create(linted_fifo *kop, linted_ko dirko,
 	if (fifo_rdwr)
 		oflags |= LINTED_KO_RDWR;
 
-	char *pathnamedir_buffer;
+	char *pathnamedir;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, pathname);
+		err = linted_path_dir(&xx, pathname);
 		if (err != 0)
 			return err;
-		pathnamedir_buffer = xx;
+		pathnamedir = xx;
 	}
 
-	char *pathnamebase_buffer;
+	char *pathnamebase;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, pathname);
+		err = linted_path_base(&xx, pathname);
 		if (err != 0)
-			goto free_pathnamedir_buffer;
-		pathnamebase_buffer = xx;
+			goto free_pathnamedir;
+		pathnamebase = xx;
 	}
-
-	char *pathnamedir = dirname(pathnamedir_buffer);
-	char *pathnamebase = basename(pathnamebase_buffer);
 
 	/* To prevent concurrency issues with the fifo pointed to by
 	 * pathnamedir being deleted or mounted over we need to be
@@ -145,7 +142,7 @@ linted_error linted_fifo_create(linted_fifo *kop, linted_ko dirko,
 		err = linted_ko_open(&xx, dirko, pathnamedir,
 		                     LINTED_KO_DIRECTORY);
 		if (err != 0)
-			goto free_pathnamebase_buffer;
+			goto free_pathnamebase;
 		realdir = xx;
 	}
 
@@ -170,7 +167,7 @@ open_fifo : {
 	if (ENOENT == err)
 		goto make_fifo;
 	if (err != 0)
-		goto free_pathnamebase_buffer;
+		goto free_pathnamebase;
 	fd = xx;
 }
 
@@ -181,11 +178,11 @@ close_realdir : {
 		err = close_err;
 }
 
-free_pathnamebase_buffer:
-	linted_mem_free(pathnamebase_buffer);
+free_pathnamebase:
+	linted_mem_free(pathnamebase);
 
-free_pathnamedir_buffer:
-	linted_mem_free(pathnamedir_buffer);
+free_pathnamedir:
+	linted_mem_free(pathnamedir);
 
 	if (err != 0) {
 		if (fd != -1) {

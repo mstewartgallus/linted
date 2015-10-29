@@ -14,10 +14,10 @@
  * permissions and limitations under the License.
  */
 #define _POSIX_C_SOURCE 200809L
-#define LINTED_START__NO_MAIN 1
 
 #include "config.h"
 
+#define LINTED_START__NO_MAIN 1
 #include "linted/start.h"
 
 #include "linted/async.h"
@@ -26,19 +26,26 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/path.h"
 #include "linted/signal.h"
 #include "linted/str.h"
 #include "linted/util.h"
 
+#include <dirent.h>
 #include <errno.h>
-#include <libgen.h>
 #include <locale.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
+
+#if defined HAVE_SYS_AUXV_H
+#include <sys/auxv.h>
+#endif
 
 struct start_args {
 	pthread_t parent;
@@ -52,6 +59,9 @@ struct start_args {
 static void *start_routine(void *arg);
 static void do_nothing(int signo);
 
+linted_error open_standard_handles(void);
+linted_error privilege_check(void);
+
 int linted_start__main(struct linted_start_config const *config,
                        unsigned char (*start)(char const *process_name,
                                               size_t argc,
@@ -60,22 +70,9 @@ int linted_start__main(struct linted_start_config const *config,
 {
 	linted_error err = 0;
 
-	for (;;) {
-		linted_ko ko;
-		{
-			linted_ko xx;
-			err =
-			    linted_ko_open(&xx, LINTED_KO_CWD,
-			                   "/dev/null", LINTED_KO_RDWR);
-			if (err != 0)
-				return EXIT_FAILURE;
-			ko = xx;
-		}
-
-		if (ko > 2U) {
-			linted_ko_close(ko);
-			break;
-		}
+	err = open_standard_handles();
+	if (err != 0) {
+		return EXIT_FAILURE;
 	}
 
 	char const *process_name = 0;
@@ -102,19 +99,132 @@ int linted_start__main(struct linted_start_config const *config,
 	char *process_basename;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, process_name);
+		err = linted_path_base(&xx, process_name);
 		if (err != 0)
 			return EXIT_FAILURE;
 		process_basename = xx;
 	}
-	process_basename = basename(process_basename);
 
-	if (!config->dont_init_logging)
-		linted_log_open(process_basename);
+	linted_log_open(process_basename);
 
 	if (missing_name) {
 		linted_log(LINTED_LOG_ERROR, "missing process name");
 		return EXIT_FAILURE;
+	}
+
+	if (config->sanitize_fds) {
+		linted_ko fds_dir_ko;
+		{
+			linted_ko xx;
+			err = linted_ko_open(&xx, LINTED_KO_CWD,
+			                     "/proc/thread-self/fd",
+			                     LINTED_KO_DIRECTORY);
+			if (err != 0) {
+				linted_log(LINTED_LOG_ERROR,
+				           "%s: "
+				           "linted_ko_open(/proc/"
+				           "thread-self/fd): %s",
+				           PACKAGE_NAME,
+				           linted_error_string(err));
+				return EXIT_FAILURE;
+			}
+			fds_dir_ko = xx;
+		}
+
+		DIR *fds_dir = fdopendir(fds_dir_ko);
+		if (0 == fds_dir) {
+			linted_log(LINTED_LOG_ERROR,
+			           "%s: fdopendir: %s", PACKAGE_NAME,
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+
+		linted_ko *kos_to_close = 0;
+		size_t num_kos_to_close = 0U;
+		/* Read all the open fds first and then close the fds
+		 * after
+		 * because otherwise there is a race condition */
+		for (;;) {
+			errno = 0;
+			struct dirent *direntry = readdir(fds_dir);
+			if (0 == direntry) {
+				err = errno;
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "%s: readdir: %s",
+					    PACKAGE_NAME,
+					    linted_error_string(err));
+					return EXIT_FAILURE;
+				}
+				break;
+			}
+
+			char const *fdname = direntry->d_name;
+
+			if (0 == strcmp(".", fdname))
+				continue;
+			if (0 == strcmp("..", fdname))
+				continue;
+
+			linted_ko open_fd = (linted_ko)atoi(fdname);
+			if (0U == open_fd)
+				continue;
+			if (1U == open_fd)
+				continue;
+			if (2U == open_fd)
+				continue;
+
+			if (fds_dir_ko == open_fd)
+				continue;
+
+			{
+				void *xx;
+				err = linted_mem_realloc_array(
+				    &xx, kos_to_close,
+				    num_kos_to_close + 1U,
+				    sizeof kos_to_close[0U]);
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "%s: "
+					    "linted_mem_realloc_array: "
+					    "%s",
+					    PACKAGE_NAME,
+					    linted_error_string(err));
+					return EXIT_FAILURE;
+				}
+				kos_to_close = xx;
+			}
+			kos_to_close[num_kos_to_close] = open_fd;
+			++num_kos_to_close;
+		}
+
+		if (-1 == closedir(fds_dir)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+		}
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "%s: closedir: %s",
+			           PACKAGE_NAME,
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+
+		/* Deliberately don't check the closed fds */
+		for (size_t ii = 0U; ii < num_kos_to_close; ++ii)
+			linted_ko_close(kos_to_close[ii]);
+		linted_mem_free(kos_to_close);
+	}
+
+	if (config->check_privilege) {
+		err = privilege_check();
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR,
+			           "privilege_check: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
 	}
 
 	{
@@ -218,4 +328,48 @@ static void *start_routine(void *foo)
 static void do_nothing(int signo)
 {
 	/* Do nothing */
+}
+
+linted_error open_standard_handles(void)
+{
+	linted_error err = 0;
+
+	for (;;) {
+		linted_ko ko;
+		{
+			linted_ko xx;
+			err =
+			    linted_ko_open(&xx, LINTED_KO_CWD,
+			                   "/dev/null", LINTED_KO_RDWR);
+			if (err != 0)
+				break;
+			ko = xx;
+		}
+
+		if (ko > 2U) {
+			err = linted_ko_close(ko);
+			break;
+		}
+	}
+
+	return err;
+}
+
+linted_error privilege_check(void)
+{
+	uid_t uid = getuid();
+	if (0 == uid)
+		return EPERM;
+
+	gid_t gid = getgid();
+	if (0 == gid)
+		return EPERM;
+
+#if defined HAVE_SYS_AUXV_H && defined HAVE_GETAUXVAL &&               \
+    defined AT_SECURE
+	if (getauxval(AT_SECURE))
+		return EPERM;
+#endif
+
+	return 0;
 }

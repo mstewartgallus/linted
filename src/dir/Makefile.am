@@ -20,4 +20,5 @@ noinst_LTLIBRARIES+=%D%/libdir.la
 EXTRA_%C%_libdir_la_SOURCES=%D%/dir-posix.c %D%/dir-windows.c
 %C%_linted_LDLIBS=\
   src/ko/libko.la\
+  src/path/libpath.la\
   src/str/libstr.la
