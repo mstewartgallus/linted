@@ -15,6 +15,8 @@
  */
 #define _POSIX_C_SOURCE 200809L
 
+#include "config.h"
+
 #include "linted/env.h"
 #include "linted/error.h"
 #include "linted/io.h"

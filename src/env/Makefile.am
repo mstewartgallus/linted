@@ -16,15 +16,17 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libenv.la
-%C%_libenv_la_SOURCES=%D%/env.c include/linted/env.h
-EXTRA_%C%_libenv_la_SOURCES=\
-  %D%/env-posix.c\
-  %D%/env-windows.c
+%C%_libenv_la_SOURCES=include/linted/env.h
 
 %C%_libenv_la_LIBADD=\
   src/str/libstr.la
 
+if POSIX_API
+%C%_libenv_la_SOURCES+=%D%/env-posix.c
+endif
+
 if WINDOWS_API
+%C%_libenv_la_SOURCES+=%D%/env-windows.c
 %C%_libenv_la_LIBADD+=\
   src/utf/libutf.la\
   $(CRT_LIBS)

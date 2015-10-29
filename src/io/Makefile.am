@@ -16,11 +16,15 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libio.la
-%C%_libio_la_SOURCES=%D%/io.c include/linted/io.h
-EXTRA_%C%_libio_la_SOURCES=\
-  %D%/io-emscripten.c\
-  %D%/io-posix.c\
-  %D%/io-windows.c
+%C%_libio_la_SOURCES=include/linted/io.h
 %C%_libio_la_LIBADD=\
   src/async/libasync.la\
   $(WS2_32_LIBS)
+
+if POSIX_API
+%C%_libio_la_SOURCES+=%D%/io-posix.c
+endif
+
+if WINDOWS_API
+%C%_libio_la_SOURCES+=%D%/io-windows.c
+endif

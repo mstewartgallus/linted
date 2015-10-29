@@ -21,6 +21,8 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#include "config.h"
+
 #include "linted/dir.h"
 
 linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,

@@ -15,6 +15,8 @@
  */
 #define _XOPEN_SOURCE 700
 
+#include "config.h"
+
 #include "linted/file.h"
 #include "linted/util.h"
 

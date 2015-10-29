@@ -23,6 +23,8 @@
 
 #define _WIN32_WINNT 0x0600
 
+#include "config.h"
+
 #include "linted/ko.h"
 
 #include "linted/mem.h"

@@ -13,6 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#include "config.h"
+
 #define _WIN32_WINNT 0x0600
 
 #ifndef UNICODE

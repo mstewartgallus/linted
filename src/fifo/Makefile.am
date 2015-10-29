@@ -16,10 +16,15 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libfifo.la
-%C%_libfifo_la_SOURCES=%D%/fifo.c include/linted/fifo.h
-EXTRA_%C%_libfifo_la_SOURCES=\
-  %D%/fifo-posix.c\
-  %D%/fifo-windows.c
+%C%_libfifo_la_SOURCES=include/linted/fifo.h
 %C%_linted_LDLIBS=\
   src/ko/libko.la\
   src/str/libstr.la
+
+if POSIX_API
+%C%_libfifo_la_SOURCES+=%D%/fifo-posix.c
+endif
+
+if WINDOWS_API
+%C%_libfifo_la_SOURCES+=%D%/fifo-windows.c
+endif

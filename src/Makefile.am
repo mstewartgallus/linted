@@ -16,6 +16,12 @@
 # permissions and limitations under the License.
 
 EXTRA_DIST+=\
+  include/GLES3/gl3.h\
+  include/GLES3/gl3platform.h\
+  include/EGL/egl.h\
+  include/EGL/eglplatform.h\
+  include/KHR/khrplatform.h\
+  \
   include/linted/rpc.h\
   include/linted/prctl.h\
   include/linted/ptrace.h\

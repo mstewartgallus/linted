@@ -16,8 +16,8 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-window
 
-%C%_linted_window_SOURCES=%D%/linted-window.c
-EXTRA_%C%_linted_window_SOURCES=%D%/linted-window-x11.c %D%/linted-window-windows.c
+%C%_linted_window_SOURCES=
+%C%_linted_window_CPPFLAGS=
 %C%_linted_window_LDADD=\
   src/start/libstart.la\
   \
@@ -29,18 +29,19 @@ EXTRA_%C%_linted_window_SOURCES=%D%/linted-window-x11.c %D%/linted-window-window
   src/window/libwindow.la
 
 if X11_API
+%C%_linted_window_SOURCES+=%D%/linted-window-x11.c
 %C%_linted_window_LDADD+=\
   src/xcb/libxcb.la\
   $(XCB_LIBS)
 endif
 
 if WINDOWS_API
+%C%_linted_window_SOURCES+=%D%/linted-window-windows.c
 %C%_linted_window_LDADD+=\
   $(USER_LIBS)\
   $(GDI_LIBS)
 endif
 
-%C%_linted_window_CPPFLAGS=
 if X11_API
 %C%_linted_window_CPPFLAGS+=$(XCB_FLAGS)
 endif

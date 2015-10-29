@@ -15,7 +15,7 @@
  */
 #define _GNU_SOURCE
 
-#include "linted/ko-queue.h"
+#include "config.h"
 
 #include "linted/async.h"
 
@@ -24,6 +24,7 @@
 #include "linted/mem.h"
 #include "linted/pid.h"
 #include "linted/channel.h"
+#include "linted/ko-queue.h"
 #include "linted/queue.h"
 #include "linted/sched.h"
 #include "linted/signal.h"

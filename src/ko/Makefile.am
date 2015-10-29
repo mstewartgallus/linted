@@ -16,19 +16,22 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libko.la
-%C%_libko_la_SOURCES=%D%/ko.c include/linted/ko.h
+%C%_libko_la_SOURCES=include/linted/ko.h
 EXTRA_%C%_libko_la_SOURCES=\
-  %D%/ko-posix.c\
-  %D%/ko-emscripten.c\
-  %D%/ko-windows.c\
   include/linted/ko-posix.h\
   include/linted/ko-windows.h
-%C%_libko_la_LIBADD=$(WS2_32_LIBS)
+%C%_libko_la_LIBADD=
+
+if POSIX_API
+%C%_libko_la_SOURCES+=%D%/ko-posix.c
+endif
 
 if WINDOWS_API
+%C%_libko_la_SOURCES+=%D%/ko-windows.c
 %C%_libko_la_LIBADD+=\
   src/str/libstr.la\
-  src/utf/libutf.la
+  src/utf/libutf.la\
+  $(WS2_32_LIBS)
 endif
 
 TESTS+=%D%/test_ko

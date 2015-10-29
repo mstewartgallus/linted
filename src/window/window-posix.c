@@ -13,9 +13,9 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#include "config.h"
-
 #define _POSIX_C_SOURCE 200809L
+
+#include "config.h"
 
 #include "linted/window.h"
 

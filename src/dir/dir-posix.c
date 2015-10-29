@@ -15,6 +15,8 @@
  */
 #define _POSIX_C_SOURCE 200809L
 
+#include "config.h"
+
 #include "linted/dir.h"
 #include "linted/ko.h"
 #include "linted/mem.h"

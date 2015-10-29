@@ -15,6 +15,8 @@
  */
 #define _GNU_SOURCE
 
+#include "config.h"
+
 #include "linted/fifo.h"
 #include "linted/ko.h"
 #include "linted/mem.h"

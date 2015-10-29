@@ -16,10 +16,7 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-monitor
 
-%C%_linted_monitor_SOURCES=%D%/monitor.c
-EXTRA_%C%_linted_monitor_SOURCES=\
-  %D%/monitor-posix.c\
-  %D%/monitor-windows.c
+%C%_linted_monitor_SOURCES=
 
 %C%_linted_monitor_LDADD=\
   src/start/libstart.la\
@@ -28,6 +25,7 @@ EXTRA_%C%_linted_monitor_SOURCES=\
   src/log/liblog.la
 
 if POSIX_API
+%C%_linted_monitor_SOURCES+=%D%/monitor-posix.c
 %C%_linted_monitor_LDADD+=\
   \
   src/async/libasync.la\
@@ -45,10 +43,10 @@ if POSIX_API
   src/unit/libunit.la\
   \
   src/admin/libadmin.la
-
 endif
 
 if WINDOWS_API
+%C%_linted_monitor_SOURCES+=%D%/monitor-windows.c
 %C%_linted_monitor_LDADD+=\
   src/utf/libutf.la\
   %D%/resources.$(OBJEXT)\

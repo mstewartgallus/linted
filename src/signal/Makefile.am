@@ -16,9 +16,16 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libsignal.la
 
-%C%_libsignal_la_SOURCES=%D%/signal.c include/linted/signal.h
-EXTRA_%C%_libsignal_la_SOURCES=%D%/signal-posix.c %D%/signal-windows.c
+%C%_libsignal_la_SOURCES=include/linted/signal.h
 %C%_libsignal_la_LIBADD=\
   src/async/libasync.la\
   src/fifo/libfifo.la\
   src/io/libio.la
+
+if POSIX_API
+%C%_libsignal_la_SOURCES+=%D%/signal-posix.c
+endif
+
+if WINDOWS_API
+%C%_libsignal_la_SOURCES+=%D%/signal-windows.c
+endif

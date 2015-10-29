@@ -16,24 +16,21 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libasync.la
 
-%C%_libasync_la_SOURCES=%D%/async.c include/linted/async.h
-EXTRA_%C%_libasync_la_SOURCES=\
-  %D%/async-emscripten.c\
-  %D%/async-posix.c\
-  %D%/async-windows.c
+%C%_libasync_la_SOURCES=include/linted/async.h
+
 %C%_libasync_la_LIBADD=\
   src/ko/libko.la\
   src/channel/libchannel.la\
   src/queue/libqueue.la
 
 if POSIX_API
-%C%_libasync_la_LIBADD+=\
-  src/ko-queue/libkoqueue.la
+%C%_libasync_la_SOURCES+=%D%/async-posix.c
+%C%_libasync_la_LIBADD+=src/ko-queue/libkoqueue.la
 endif
 
 if WINDOWS_API
-%C%_libasync_la_LIBADD+=\
-  $(WS2_32_LIBS)
+%C%_libasync_la_SOURCES+=%D%/async-windows.c
+%C%_libasync_la_LIBADD+=$(WS2_32_LIBS)
 endif
 
 TESTS+=%D%/test_async

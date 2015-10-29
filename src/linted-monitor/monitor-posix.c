@@ -15,6 +15,8 @@
  */
 #define _GNU_SOURCE
 
+#include "config.h"
+
 #include "linted/admin.h"
 #include "linted/async.h"
 #include "linted/dir.h"

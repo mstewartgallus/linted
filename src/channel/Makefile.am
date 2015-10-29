@@ -16,6 +16,12 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libchannel.la
-%C%_libchannel_la_SOURCES=%D%/channel.c include/linted/channel.h
-EXTRA_%C%_libchannel_la_SOURCES=\
-  %D%/channel-posix.c
+%C%_libchannel_la_SOURCES=include/linted/channel.h
+
+if POSIX_API
+%C%_libchannel_la_SOURCES+=%D%/channel-posix.c
+endif
+
+if WINDOWS_API
+%C%_libchannel_la_SOURCES+=%D%/channel-windows.c
+endif

@@ -25,6 +25,8 @@
 
 #define COBJMACROS
 
+#include "config.h"
+
 #include "linted/start.h"
 
 #include "linted/error.h"

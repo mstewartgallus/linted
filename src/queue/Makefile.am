@@ -16,8 +16,12 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libqueue.la
-%C%_libqueue_la_SOURCES=%D%/queue.c include/linted/queue.h
-EXTRA_%C%_libqueue_la_SOURCES=\
-  %D%/queue-emscripten.c\
-  %D%/queue-posix.c\
-  %D%/queue-windows.c
+%C%_libqueue_la_SOURCES=include/linted/queue.h
+
+if WINDOWS_API
+%C%_libqueue_la_SOURCES+=%D%/queue-windows.c
+endif
+
+if POSIX_API
+%C%_libqueue_la_SOURCES+=%D%/queue-posix.c
+endif

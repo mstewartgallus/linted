@@ -16,10 +16,14 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/liblog.la
-%C%_liblog_la_SOURCES=%D%/log.c include/linted/log.h
-EXTRA_%C%_liblog_la_SOURCES=\
-  %D%/log-emscripten.c\
-  %D%/log-posix.c\
-  %D%/log-windows.c
+%C%_liblog_la_SOURCES=include/linted/log.h
 %C%_liblog_la_LIBADD=\
   src/io/libio.la
+
+if POSIX_API
+%C%_liblog_la_SOURCES+=%D%/log-posix.c
+endif
+
+if WINDOWS_API
+%C%_liblog_la_SOURCES+=%D%/log-windows.c
+endif

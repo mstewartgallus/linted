@@ -17,12 +17,18 @@
 noinst_LTLIBRARIES+=%D%/libwindow.la
 
 %C%_libwindow_la_SOURCES=\
-  %D%/window.c\
   include/linted/window.h
-EXTRA_%C%_libwindow_la_SOURCES=%D%/window-posix.c %D%/window-windows.c
 %C%_libwindow_la_LIBADD=\
   src/io/libio.la
 dist_pkgdefaultunits_DATA+=\
   %D%/units/window.socket\
   %D%/units/window-notifier-gui.socket\
   %D%/units/window-notifier-drawer.socket
+
+if POSIX_API
+%C%_libwindow_la_SOURCES+=%D%/window-posix.c
+endif
+
+if WINDOWS_API
+%C%_libwindow_la_SOURCES+=%D%/window-windows.c
+endif

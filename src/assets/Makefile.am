@@ -24,6 +24,8 @@ noinst_LTLIBRARIES+=%D%/libassets.la
 
 EXTRA_DIST+=\
   %D%/assets/assets.py\
+  %D%/assets/fragment_shader.py\
+  %D%/assets/vertex_shader.py\
   %D%/assets/scene.blend\
   %D%/assets/shaders/fragment.glsl\
   %D%/assets/shaders/vertex.glsl\

@@ -27,7 +27,7 @@ EXTRA_DIST+=\
   %D%/check_symbol_clashes\
   %D%/setsysroot\
   %D%/check-clang-analysis.py\
-  %D%/check-cppcheck-analysis.py
+  %D%/check-cppcheck.py
 
 EXTRA_DIST+=\
   %D%/test.in\

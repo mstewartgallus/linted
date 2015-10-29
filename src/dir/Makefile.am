@@ -16,9 +16,16 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libdir.la
-%C%_libdir_la_SOURCES=%D%/dir.c include/linted/dir.h
-EXTRA_%C%_libdir_la_SOURCES=%D%/dir-posix.c %D%/dir-windows.c
+%C%_libdir_la_SOURCES=include/linted/dir.h
 %C%_linted_LDLIBS=\
   src/ko/libko.la\
   src/path/libpath.la\
   src/str/libstr.la
+
+if POSIX_API
+%C%_libdir_la_SOURCES+=%D%/dir-posix.c
+endif
+
+if WINDOWS_API
+%C%_libdir_la_SOURCES+=%D%/dir-windows.c
+endif

@@ -15,6 +15,8 @@
  */
 #define _POSIX_C_SOURCE 200112L
 
+#include "config.h"
+
 #include "linted/async.h"
 #include "linted/env.h"
 #include "linted/error.h"

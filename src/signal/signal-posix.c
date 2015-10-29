@@ -15,6 +15,8 @@
  */
 #define _GNU_SOURCE
 
+#include "config.h"
+
 #include "linted/signal.h"
 
 #include "linted/async.h"

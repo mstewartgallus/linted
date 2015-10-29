@@ -16,8 +16,15 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libsched.la
 
-%C%_libsched_la_SOURCES=%D%/sched.c include/linted/sched.h
-EXTRA_%C%_libsched_la_SOURCES=%D%/sched-posix.c %D%/sched-windows.c
+%C%_libsched_la_SOURCES=include/linted/sched.h
 %C%_libsched_la_LIBADD=\
   src/async/libasync.la\
   $(REALTIME_LIBS)
+
+if POSIX_API
+%C%_libsched_la_SOURCES+=%D%/sched-posix.c
+endif
+
+if WINDOWS_API
+%C%_libsched_la_SOURCES+=%D%/sched-windows.c
+endif
