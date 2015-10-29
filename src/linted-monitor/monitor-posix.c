@@ -18,7 +18,7 @@
 #include "linted/admin.h"
 #include "linted/async.h"
 #include "linted/dir.h"
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/error.h"
 #include "linted/file.h"
 #include "linted/fifo.h"
@@ -173,10 +173,10 @@ static unsigned char linted_start_main(char const *process_name,
 	char const *manager_pid_str;
 	{
 		char *xx;
-		err = linted_environment_get("MANAGERPID", &xx);
+		err = linted_env_get("MANAGERPID", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -186,10 +186,10 @@ static unsigned char linted_start_main(char const *process_name,
 	char const *startup;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_STARTUP", &xx);
+		err = linted_env_get("LINTED_STARTUP", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -199,10 +199,10 @@ static unsigned char linted_start_main(char const *process_name,
 	char const *sandbox;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_SANDBOX", &xx);
+		err = linted_env_get("LINTED_SANDBOX", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -212,10 +212,10 @@ static unsigned char linted_start_main(char const *process_name,
 	char const *waiter;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_WAITER", &xx);
+		err = linted_env_get("LINTED_WAITER", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -1646,7 +1646,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		char *envvar_value;
 		{
 			char *xx;
-			err = linted_environment_get(envvar_name, &xx);
+			err = linted_env_get(envvar_name, &xx);
 			if (err != 0)
 				goto free_result_envvars;
 			envvar_value = xx;

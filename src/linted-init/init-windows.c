@@ -21,7 +21,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -60,10 +60,10 @@ static unsigned char linted_start_main(char const *process_name,
 	char const *monitor;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_MONITOR", &xx);
+		err = linted_env_get("LINTED_MONITOR", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}

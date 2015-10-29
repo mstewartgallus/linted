@@ -21,13 +21,12 @@ bin_PROGRAMS+=%D%/linted
 %C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
 %C%_linted_LDADD=\
   src/dir/libdir.la\
-  src/environment/libenvironment.la\
+  src/env/libenv.la\
   src/io/libio.la\
   src/locale/liblocale.la\
   src/log/liblog.la\
   src/path/libpath.la\
   src/pid/libpid.la\
-  src/str/libstr.la\
   \
   src/start/libstart.la
 

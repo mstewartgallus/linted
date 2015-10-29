@@ -13,8 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LINTED_ENVIRONMENT_H
-#define LINTED_ENVIRONMENT_H
+#ifndef LINTED_ENV_H
+#define LINTED_ENV_H
 
 #include "linted/error.h"
 
@@ -24,8 +24,13 @@
  * Manipulate a process environment.
  */
 
-linted_error linted_environment_set(char const *key, char const *value,
-                                    _Bool overwrite);
-linted_error linted_environment_get(char const *key, char **valuep);
+/**
+ * @todo Deprecated `linted_env_set` as it is racy in multithreaded
+ * environments.
+ */
+linted_error linted_env_set(char const *key, char const *value,
+                            _Bool overwrite);
 
-#endif /* LINTED_LINTED_ENVIRONMENT_H */
+linted_error linted_env_get(char const *key, char **valuep);
+
+#endif /* LINTED_ENV_H */

@@ -25,6 +25,7 @@
 #include "linted/sched.h"
 #include "linted/util.h"
 
+#include <inttypes.h>
 #include <math.h>
 #include <pthread.h>
 #include <sched.h>
@@ -601,7 +602,7 @@ static void *gpu_routine(void *arg)
 		if (0) {
 			if (skipped_updates_counter > 2U)
 				linted_log(LINTED_LOG_INFO,
-				           "skipped updates: %lu",
+				           "skipped updates: %" PRIu64,
 				           skipped_updates_counter);
 		}
 

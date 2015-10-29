@@ -15,8 +15,10 @@
  */
 #include "config.h"
 
+#ifndef HAVE_WINDOWS_API
 #ifndef UNICODE
 #define UNICODE
+#endif
 
 #define _UNICODE
 
@@ -29,7 +31,7 @@
 
 #include "settings.h"
 
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -38,7 +40,6 @@
 #include "linted/path.h"
 #include "linted/pid.h"
 #include "linted/start.h"
-#include "linted/str.h"
 #include "linted/util.h"
 
 #ifdef HAVE_WINDOWS_API
@@ -164,11 +165,10 @@ static unsigned char linted_start_main(char const *const process_name,
 	     ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
 
-		err = linted_environment_set(envvar->key, envvar->value,
-		                             false);
+		err = linted_env_set(envvar->key, envvar->value, false);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_set: %s",
+			           "linted_env_set: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -182,11 +182,10 @@ static unsigned char linted_start_main(char const *const process_name,
 		            1U];
 		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)self);
 
-		err =
-		    linted_environment_set("MANAGERPID", pid_str, true);
+		err = linted_env_set("MANAGERPID", pid_str, true);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_set: %s",
+			           "linted_env_set: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -195,10 +194,10 @@ static unsigned char linted_start_main(char const *const process_name,
 	char const *init;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_INIT", &xx);
+		err = linted_env_get("LINTED_INIT", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}

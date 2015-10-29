@@ -16,9 +16,9 @@
 #include "config.h"
 
 #if defined HAVE_WINDOWS_API
-#include "environment-windows.c"
+#include "env-windows.c"
 #elif defined HAVE_POSIX_API
-#include "environment-posix.c"
+#include "env-posix.c"
 #else
 #error no environment changing implementation for this platform
 #endif

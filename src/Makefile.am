@@ -55,7 +55,7 @@ include %C%/assets/Makefile.am
 include %C%/async/Makefile.am
 include %C%/channel/Makefile.am
 include %C%/dir/Makefile.am
-include %C%/environment/Makefile.am
+include %C%/env/Makefile.am
 include %C%/error/Makefile.am
 include %C%/file/Makefile.am
 include %C%/fifo/Makefile.am

@@ -17,6 +17,7 @@
 
 #include "config.h"
 
+#include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/ko-queue.h"
 #include "linted/mem.h"

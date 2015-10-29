@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#include "linted/environment.h"
+#include "linted/env.h"
 
 #include "linted/error.h"
 #include "linted/mem.h"
@@ -44,8 +44,8 @@
 static void lock(void);
 static void unlock(void);
 
-linted_error linted_environment_set(char const *key, char const *value,
-                                    _Bool overwrite)
+linted_error linted_env_set(char const *key, char const *value,
+                            _Bool overwrite)
 {
 	linted_error err = 0;
 
@@ -93,7 +93,7 @@ free_key:
 	return err;
 }
 
-linted_error linted_environment_get(char const *key, char **valuep)
+linted_error linted_env_get(char const *key, char **valuep)
 {
 	linted_error err = 0;
 

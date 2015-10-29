@@ -17,7 +17,7 @@
 
 #include "config.h"
 
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/mem.h"
@@ -57,10 +57,10 @@ static unsigned char linted_start_main(char const *process_name,
 	char *service;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_SERVICE", &xx);
+		err = linted_env_get("LINTED_SERVICE", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}

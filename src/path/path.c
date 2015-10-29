@@ -17,7 +17,7 @@
 
 #include "config.h"
 
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/mem.h"
@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <libgen.h>
+#include <stddef.h>
 #include <string.h>
 
 linted_error linted_path_package_runtime_dir(char **packagep)
@@ -35,7 +36,7 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 
 	{
 		char *xx;
-		err = linted_environment_get("XDG_RUNTIME_DIR", &xx);
+		err = linted_env_get("XDG_RUNTIME_DIR", &xx);
 		if (err != 0)
 			return err;
 		runtime_dir_path = xx;
@@ -45,7 +46,7 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 
 	{
 		char *xx;
-		err = linted_environment_get("TMPDIR", &xx);
+		err = linted_env_get("TMPDIR", &xx);
 		if (err != 0)
 			return err;
 		runtime_dir_path = xx;
@@ -55,7 +56,7 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 
 	{
 		char *xx;
-		err = linted_environment_get("TEMP", &xx);
+		err = linted_env_get("TEMP", &xx);
 		if (err != 0)
 			return err;
 		runtime_dir_path = xx;
@@ -65,7 +66,7 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 
 	{
 		char *xx;
-		err = linted_environment_get("TMP", &xx);
+		err = linted_env_get("TMP", &xx);
 		if (err != 0)
 			return err;
 		runtime_dir_path = xx;
@@ -104,7 +105,7 @@ linted_error linted_path_package_data_home(char **packagep)
 	char *data_home_path;
 	{
 		char *xx;
-		err = linted_environment_get("XDG_DATA_HOME", &xx);
+		err = linted_env_get("XDG_DATA_HOME", &xx);
 		if (err != 0)
 			return err;
 		data_home_path = xx;
@@ -124,7 +125,7 @@ fallback:
 	char *home_path;
 	{
 		char *xx;
-		err = linted_environment_get("HOME", &xx);
+		err = linted_env_get("HOME", &xx);
 		if (err != 0)
 			return err;
 		home_path = xx;

@@ -15,17 +15,17 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-noinst_LTLIBRARIES+=%D%/libenvironment.la
-%C%_libenvironment_la_SOURCES=%D%/environment.c include/linted/environment.h
-EXTRA_%C%_libenvironment_la_SOURCES=\
-  %D%/environment-posix.c\
-  %D%/environment-windows.c
+noinst_LTLIBRARIES+=%D%/libenv.la
+%C%_libenv_la_SOURCES=%D%/env.c include/linted/env.h
+EXTRA_%C%_libenv_la_SOURCES=\
+  %D%/env-posix.c\
+  %D%/env-windows.c
 
-%C%_libenvironment_la_LIBADD=\
+%C%_libenv_la_LIBADD=\
   src/str/libstr.la
 
 if WINDOWS_API
-%C%_libenvironment_la_LIBADD+=\
+%C%_libenv_la_LIBADD+=\
   src/utf/libutf.la\
   $(CRT_LIBS)
 endif

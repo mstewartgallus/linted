@@ -18,7 +18,7 @@
 noinst_LTLIBRARIES+=%D%/libpath.la
 %C%_libpath_la_SOURCES=%D%/path.c include/linted/path.h
 %C%_linted_LDLIBS=\
-  src/environment/libenvironment.la\
+  src/env/libenv.la\
   src/log/liblog.la\
   src/mem/libmem.la\
   src/str/libstr.la

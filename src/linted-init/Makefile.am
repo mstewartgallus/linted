@@ -23,7 +23,7 @@ EXTRA_%C%_linted_init_SOURCES=\
 %C%_linted_init_LDADD=\
   src/start/libstart.la\
   \
-  src/environment/libenvironment.la\
+  src/env/libenv.la\
   src/error/liberror.la\
   src/io/libio.la\
   src/ko/libko.la\

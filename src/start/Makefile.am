@@ -19,7 +19,7 @@ noinst_LTLIBRARIES+=%D%/libstart.la
 %C%_libstart_la_SOURCES=\
   %D%/start.c include/linted/start.h
 %C%_libstart_la_LIBADD=\
-  src/environment/libenvironment.la\
+  src/env/libenv.la\
   src/error/liberror.la\
   src/ko/libko.la\
   src/log/liblog.la\

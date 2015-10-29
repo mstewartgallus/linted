@@ -18,7 +18,7 @@
 #include "config.h"
 
 #include "linted/admin.h"
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -120,10 +120,10 @@ static unsigned char linted_start_main(char const *const process_name,
 	char const *pid;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_PID", &xx);
+		err = linted_env_get("LINTED_PID", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -132,10 +132,10 @@ static unsigned char linted_start_main(char const *const process_name,
 	char const *runtime_dir_path;
 	{
 		char *xx;
-		err = linted_environment_get("XDG_RUNTIME_DIR", &xx);
+		err = linted_env_get("XDG_RUNTIME_DIR", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}

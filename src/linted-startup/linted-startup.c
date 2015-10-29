@@ -19,7 +19,7 @@
 
 #include "linted/admin.h"
 #include "linted/conf.h"
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
@@ -100,10 +100,10 @@ static unsigned char linted_start_main(char const *const process_name,
 	char const *unit_path;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_UNIT_PATH", &xx);
+		err = linted_env_get("LINTED_UNIT_PATH", &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-			           "linted_environment_get: %s",
+			           "linted_env_get: %s",
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}

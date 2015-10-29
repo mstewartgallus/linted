@@ -27,7 +27,7 @@
 #include "linted/start.h"
 
 #include "linted/async.h"
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/mem.h"
 #include "linted/path.h"
 #include "linted/signal.h"
@@ -122,7 +122,7 @@ int linted_start__main(struct linted_start_config const *config,
 	char const *service;
 	{
 		char *xx;
-		err = linted_environment_get("LINTED_SERVICE", &xx);
+		err = linted_env_get("LINTED_SERVICE", &xx);
 		if (err != 0)
 			return EXIT_FAILURE;
 		service = xx;

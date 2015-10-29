@@ -16,7 +16,7 @@
 #define _POSIX_C_SOURCE 200112L
 
 #include "linted/async.h"
-#include "linted/environment.h"
+#include "linted/env.h"
 #include "linted/error.h"
 #include "linted/io.h"
 #include "linted/ko.h"
@@ -100,7 +100,7 @@ static unsigned char linted_start_main(char const *process_name,
 	char const *root;
 	{
 		char *xx;
-		err = linted_environment_get("MANAGERPID", &xx);
+		err = linted_env_get("MANAGERPID", &xx);
 		if (err != 0)
 			return err;
 		root = xx;
