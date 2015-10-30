@@ -39,25 +39,34 @@
 #include "linted/unit.h"
 #include "linted/util.h"
 
-#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <limits.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <unistd.h>
+#include <time.h>
 
 #ifndef PTRACE_EVENT_STOP
 #define PTRACE_EVENT_STOP 128
 #endif
+
+enum { MANAGERPID,
+       LINTED_STARTUP,
+       LINTED_SANDBOX,
+       LINTED_WAITER,
+};
+
+static char const *const required_envs[] =
+    {[MANAGERPID] = "MANAGERPID", [LINTED_STARTUP] = "LINTED_STARTUP",
+     [LINTED_SANDBOX] = "LINTED_SANDBOX",
+     [LINTED_WAITER] = "LINTED_WAITER"};
 
 enum { SIGNAL_WAIT,
        ADMIN_IN_READ,
@@ -170,86 +179,43 @@ static unsigned char linted_start_main(char const *process_name,
                                        size_t argc,
                                        char const *const argv[])
 {
-	linted_error err;
+	linted_error err = 0;
 
 	char const *manager_pid_str;
-	{
-		char *xx;
-		err = linted_env_get("MANAGERPID", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		manager_pid_str = xx;
-	}
-
 	char const *startup;
-	{
-		char *xx;
-		err = linted_env_get("LINTED_STARTUP", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		startup = xx;
-	}
-
 	char const *sandbox;
-	{
-		char *xx;
-		err = linted_env_get("LINTED_SANDBOX", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
-		sandbox = xx;
-	}
-
 	char const *waiter;
 	{
-		char *xx;
-		err = linted_env_get("LINTED_WAITER", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
+		char *envs[LINTED_ARRAY_SIZE(required_envs)];
+		for (size_t ii = 0U;
+		     ii < LINTED_ARRAY_SIZE(required_envs); ++ii) {
+			char const *req = required_envs[ii];
+			char *value;
+			{
+				char *xx;
+				err = linted_env_get(req, &xx);
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "linted_env_get: %s",
+					    linted_error_string(err));
+					return EXIT_FAILURE;
+				}
+				value = xx;
+			}
+			if (0 == value) {
+				linted_log(LINTED_LOG_ERROR,
+				           "%s is a required "
+				           "environment variable",
+				           req);
+				return EXIT_FAILURE;
+			}
+			envs[ii] = value;
 		}
-		waiter = xx;
-	}
-
-	if (0 == manager_pid_str) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "MANAGERPID");
-		return EXIT_FAILURE;
-	}
-
-	if (0 == startup) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "LINTED_STARTUP");
-		return EXIT_FAILURE;
-	}
-
-	if (0 == sandbox) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "LINTED_SANDBOX");
-		return EXIT_FAILURE;
-	}
-
-	if (0 == waiter) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "LINTED_WAITER");
-		return EXIT_FAILURE;
+		manager_pid_str = envs[MANAGERPID];
+		startup = envs[LINTED_STARTUP];
+		sandbox = envs[LINTED_SANDBOX];
+		waiter = envs[LINTED_WAITER];
 	}
 
 	linted_pid manager_pid;
@@ -1338,8 +1304,7 @@ on_add_unit(struct monitor *monitor,
 	}
 
 	size_t command_alloced = 0U;
-	for (size_t command_alloced = 0U;
-	     command_alloced < command_size; ++command_alloced) {
+	for (; command_alloced < command_size; ++command_alloced) {
 		err = linted_str_dup(&command[command_alloced],
 		                     unit_command[command_alloced]);
 		if (err != 0)

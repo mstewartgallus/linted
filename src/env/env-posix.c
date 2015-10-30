@@ -27,7 +27,6 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
 
 static pthread_mutex_t mutex;
 

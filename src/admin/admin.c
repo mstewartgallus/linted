@@ -24,7 +24,6 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
-#include "linted/log.h"
 #include "linted/str.h"
 #include "linted/unit.h"
 #include "linted/util.h"
@@ -32,6 +31,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 /**

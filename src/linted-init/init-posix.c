@@ -20,22 +20,21 @@
 #include "linted/env.h"
 #include "linted/error.h"
 #include "linted/io.h"
+#include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/path.h"
+#include "linted/pid.h"
 #include "linted/prctl.h"
 #include "linted/signal.h"
 #include "linted/spawn.h"
 #include "linted/start.h"
-#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/wait.h>
 
 static void delegate_signal(int signo);

@@ -23,19 +23,16 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
-#include "linted/log.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
 #include <poll.h>
 #include <signal.h>
+#include <stddef.h>
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
 /* Android's libc does not have the pthread_sigmask declaration in

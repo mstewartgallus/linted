@@ -28,18 +28,17 @@
 #include "linted/mem.h"
 #include "linted/path.h"
 #include "linted/signal.h"
-#include "linted/str.h"
 #include "linted/util.h"
 
 #include <dirent.h>
 #include <errno.h>
 #include <locale.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 

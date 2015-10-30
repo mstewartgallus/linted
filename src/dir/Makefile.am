@@ -19,8 +19,7 @@ noinst_LTLIBRARIES+=%D%/libdir.la
 %C%_libdir_la_SOURCES=include/linted/dir.h
 %C%_linted_LDLIBS=\
   src/ko/libko.la\
-  src/path/libpath.la\
-  src/str/libstr.la
+  src/path/libpath.la
 
 if POSIX_API
 %C%_libdir_la_SOURCES+=%D%/dir-posix.c

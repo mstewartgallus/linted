@@ -27,8 +27,7 @@ pkglibexec_PROGRAMS+=%D%/linted-init
   src/ko/libko.la\
   src/log/liblog.la\
   src/path/libpath.la\
-  src/signal/libsignal.la\
-  src/str/libstr.la
+  src/signal/libsignal.la
 
 if POSIX_API
 %C%_linted_init_SOURCES+=%D%/init-posix.c

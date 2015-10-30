@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <stddef.h>
 #include <string.h>
 
 static char const invalid_error_string[] = "invalid error number";

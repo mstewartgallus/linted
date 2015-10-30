@@ -19,7 +19,7 @@ noinst_LTLIBRARIES+=%D%/libfifo.la
 %C%_libfifo_la_SOURCES=include/linted/fifo.h
 %C%_linted_LDLIBS=\
   src/ko/libko.la\
-  src/str/libstr.la
+  src/path/libpath.la
 
 if POSIX_API
 %C%_libfifo_la_SOURCES+=%D%/fifo-posix.c

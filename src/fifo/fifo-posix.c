@@ -17,11 +17,11 @@
 
 #include "config.h"
 
+#include "linted/error.h"
 #include "linted/fifo.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/path.h"
-#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>

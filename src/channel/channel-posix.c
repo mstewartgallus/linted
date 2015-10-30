@@ -17,12 +17,13 @@
 
 #include "config.h"
 
-#include "linted/queue.h"
+#include "linted/channel.h"
 
 #include "linted/error.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 

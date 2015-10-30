@@ -23,6 +23,7 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 

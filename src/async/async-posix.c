@@ -19,10 +19,10 @@
 
 #include "linted/async.h"
 
+#include "linted/error.h"
 #include "linted/io.h"
-#include "linted/log.h"
+#include "linted/ko.h"
 #include "linted/mem.h"
-#include "linted/pid.h"
 #include "linted/channel.h"
 #include "linted/ko-queue.h"
 #include "linted/queue.h"
@@ -37,12 +37,12 @@
 #include <errno.h>
 #include <poll.h>
 #include <pthread.h>
+#include <sched.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/epoll.h>
-#include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <unistd.h>

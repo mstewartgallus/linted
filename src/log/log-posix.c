@@ -20,12 +20,11 @@
 #include "linted/io.h"
 #include "linted/ko.h"
 #include "linted/log.h"
+#include "linted/util.h"
 
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <syslog.h>
-#include <unistd.h>
 
 static linted_ko tty;
 static bool tty_init;

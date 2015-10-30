@@ -18,19 +18,17 @@
 #include "config.h"
 
 #include "linted/dir.h"
+#include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/path.h"
-#include "linted/str.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdbool.h>
-#include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 
 linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
                                char const *pathname,
