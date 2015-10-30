@@ -399,7 +399,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	if (0 == envp)
 		envp = (char const *const *)environ;
 
-	if (LINTED_KO_CWD == dirko) {
+	if (LINTED_KO_CWD == dirko || '/' == binary[0U]) {
 		execve(binary, (char *const *)argv,
 		       (char *const *)envp);
 	} else {

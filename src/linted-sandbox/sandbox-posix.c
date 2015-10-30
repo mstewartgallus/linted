@@ -1175,14 +1175,16 @@ first_fork_routine(void *void_args)
 	if (err != 0)
 		goto fail;
 
-	if (mount_args_size > 0U) {
+	{
 		char const *const arguments[] = {waiter_base, 0};
-		syscall(__NR_execveat, (int)waiter_ko, "",
-		        (char *const *)arguments, environ,
-		        AT_EMPTY_PATH);
-	} else {
-		char const *const arguments[] = {waiter_base, 0};
-		execve(waiter, (char *const *)arguments, environ);
+		if (mount_args_size > 0U) {
+			syscall(__NR_execveat, (int)waiter_ko, "",
+			        (char *const *)arguments, environ,
+			        AT_EMPTY_PATH);
+		} else {
+			execve(waiter, (char *const *)arguments,
+			       environ);
+		}
 	}
 	err = errno;
 
