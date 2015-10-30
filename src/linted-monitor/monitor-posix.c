@@ -172,8 +172,7 @@ static linted_error pid_is_child_of(linted_pid parent, linted_pid child,
                                     bool *isp);
 
 static struct linted_start_config const linted_start_config = {
-    .canonical_process_name = PACKAGE_NAME "-monitor",
-    .dont_fork_thread = true};
+    .canonical_process_name = PACKAGE_NAME "-monitor"};
 
 static unsigned char linted_start_main(char const *process_name,
                                        size_t argc,
@@ -873,6 +872,7 @@ static linted_error monitor_on_kill_read(struct monitor *monitor,
 			}
 			pid = xx;
 		}
+
 		linted_error kill_err = linted_pid_kill(pid, SIGTERM);
 		if (kill_err != ESRCH) {
 			LINTED_ASSERT(kill_err !=

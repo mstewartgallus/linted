@@ -238,6 +238,9 @@ free_line:
 	return err;
 }
 
+/**
+ * @bug Only obtains children of the main thread.
+ */
 linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
                                  size_t *lenp)
 {

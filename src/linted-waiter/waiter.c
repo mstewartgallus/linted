@@ -42,6 +42,11 @@ static void do_nothing(int signo);
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-waiter",
     .dont_init_signals = true,
+
+    /* Signals are strange for PID 1 so forking doesn't work well.
+     * As well we still rely on the hack of scanning environ for the
+     * unit name.
+     */
     .dont_fork_thread = true};
 
 static int const various_sigs[] = {SIGCONT};
