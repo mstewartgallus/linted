@@ -17,7 +17,9 @@
 
 #include "config.h"
 
+#include "linted/error.h"
 #include "linted/file.h"
+#include "linted/ko.h"
 #include "linted/util.h"
 
 #include <errno.h>

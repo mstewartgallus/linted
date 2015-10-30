@@ -20,20 +20,19 @@
 #include "linted/signal.h"
 
 #include "linted/async.h"
+#include "linted/error.h"
 #include "linted/fifo.h"
+#include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <fcntl.h>
 #include <poll.h>
-#include <pthread.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-
-#include <stdio.h>
 
 enum { LINTED_SIGNAL_HUP,
        LINTED_SIGNAL_CHLD,

@@ -25,6 +25,7 @@
 #include "linted/sched.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <inttypes.h>
 #include <math.h>
 #include <pthread.h>
@@ -33,7 +34,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 #include <time.h>
 
 #include <EGL/egl.h>

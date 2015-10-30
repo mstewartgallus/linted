@@ -20,6 +20,7 @@
 #include "linted/error.h"
 #include "linted/util.h"
 
+#include <errno.h>
 #include <xcb/xcb.h>
 
 #define Success 0

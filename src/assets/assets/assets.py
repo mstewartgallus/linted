@@ -62,6 +62,7 @@ def output():
 #include "linted/util.h"
 
 #include <stddef.h>
+#include <stdint.h>
 
 static linted_assets_point const vertices[] = $vertices;
 linted_assets_point const * const linted_assets_vertices = vertices;

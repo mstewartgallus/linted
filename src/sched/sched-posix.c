@@ -20,6 +20,7 @@
 #include "linted/sched.h"
 
 #include "linted/async.h"
+#include "linted/error.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 

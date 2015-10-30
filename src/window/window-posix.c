@@ -19,7 +19,11 @@
 
 #include "linted/window.h"
 
+#include "linted/async.h"
+#include "linted/error.h"
 #include "linted/io.h"
+#include "linted/ko.h"
+#include "linted/mem.h"
 #include "linted/mem.h"
 #include "linted/rpc.h"
 #include "linted/util.h"
