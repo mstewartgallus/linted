@@ -22,6 +22,11 @@
 #include <stdint.h>
 #include <sys/prctl.h>
 
+static inline linted_error linted_prctl_set_death_sig(int signum);
+static inline linted_error linted_prctl_set_name(char const *name);
+static inline linted_error linted_prctl_set_child_subreaper(_Bool v);
+
+#ifdef PR_SET_PDEATHSIG
 static inline linted_error linted_prctl_set_death_sig(int signum)
 {
 	linted_error err;
@@ -35,7 +40,9 @@ static inline linted_error linted_prctl_set_death_sig(int signum)
 
 	return 0;
 }
+#endif
 
+#ifdef PR_SET_NAME
 static inline linted_error linted_prctl_set_name(char const *name)
 {
 	linted_error err;
@@ -51,7 +58,9 @@ static inline linted_error linted_prctl_set_name(char const *name)
 	}
 	return 0;
 }
+#endif
 
+#ifdef PR_SET_CHILD_SUBREAPER
 static inline linted_error linted_prctl_set_child_subreaper(_Bool v)
 {
 	linted_error err;
@@ -65,5 +74,6 @@ static inline linted_error linted_prctl_set_child_subreaper(_Bool v)
 
 	return 0;
 }
+#endif
 
 #endif /* LINTED_PRCTL_H */

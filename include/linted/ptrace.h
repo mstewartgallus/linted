@@ -26,11 +26,25 @@
 #include <sys/types.h>
 
 static inline linted_error linted_ptrace_detach(linted_pid pid,
+                                                int signo);
+static inline linted_error linted_ptrace_setoptions(linted_pid pid,
+                                                    unsigned options);
+static inline linted_error
+linted_ptrace_geteventmsg(linted_pid pid, unsigned long *msg);
+static inline linted_error linted_ptrace_getsiginfo(linted_pid pid,
+                                                    siginfo_t *infop);
+static inline linted_error linted_ptrace_seize(linted_pid pid,
+                                               uint_fast32_t options);
+static inline linted_error linted_ptrace_cont(linted_pid pid,
+                                              int signo);
+
+#ifdef PT_DETACH
+static inline linted_error linted_ptrace_detach(linted_pid pid,
                                                 int signo)
 {
 	linted_error err;
 
-	if (-1 == ptrace(PTRACE_DETACH, (pid_t)pid, (void *)0,
+	if (-1 == ptrace(PT_DETACH, (pid_t)pid, (void *)0,
 	                 (void *)(intptr_t)signo)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
@@ -39,13 +53,17 @@ static inline linted_error linted_ptrace_detach(linted_pid pid,
 
 	return 0;
 }
+#else
+#error foo
+#endif
 
+#ifdef PT_SETOPTIONS
 static inline linted_error linted_ptrace_setoptions(linted_pid pid,
                                                     unsigned options)
 {
 	linted_error err;
 
-	if (-1 == ptrace(PTRACE_SETOPTIONS, (pid_t)pid, (void *)0,
+	if (-1 == ptrace(PT_SETOPTIONS, (pid_t)pid, (void *)0,
 	                 (void *)(uintptr_t)options)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
@@ -54,13 +72,15 @@ static inline linted_error linted_ptrace_setoptions(linted_pid pid,
 
 	return 0;
 }
+#endif
 
+#ifdef PT_GETEVENTMSG
 static inline linted_error linted_ptrace_geteventmsg(linted_pid pid,
                                                      unsigned long *msg)
 {
 	linted_error err;
 
-	if (-1 == ptrace(PTRACE_GETEVENTMSG, (pid_t)pid, (void *)0,
+	if (-1 == ptrace(PT_GETEVENTMSG, (pid_t)pid, (void *)0,
 	                 (void *)(uintptr_t)msg)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
@@ -69,14 +89,15 @@ static inline linted_error linted_ptrace_geteventmsg(linted_pid pid,
 
 	return 0;
 }
+#endif
 
+#ifdef PT_GETSIGINFO
 static inline linted_error linted_ptrace_getsiginfo(linted_pid pid,
                                                     siginfo_t *infop)
 {
 	linted_error err;
 
-	if (-1 ==
-	    ptrace(PTRACE_GETSIGINFO, (pid_t)pid, (void *)0, infop)) {
+	if (-1 == ptrace(PT_GETSIGINFO, (pid_t)pid, (void *)0, infop)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 		return err;
@@ -84,7 +105,9 @@ static inline linted_error linted_ptrace_getsiginfo(linted_pid pid,
 
 	return 0;
 }
+#endif
 
+#ifdef PTRACE_SEIZE
 static inline linted_error linted_ptrace_seize(linted_pid pid,
                                                uint_fast32_t options)
 {
@@ -99,12 +122,14 @@ static inline linted_error linted_ptrace_seize(linted_pid pid,
 
 	return 0;
 }
+#endif
 
+#ifdef PT_CONTINUE
 static inline linted_error linted_ptrace_cont(linted_pid pid, int signo)
 {
 	linted_error err;
 
-	if (-1 == ptrace(PTRACE_CONT, (pid_t)pid, (void *)0,
+	if (-1 == ptrace(PT_CONTINUE, (pid_t)pid, (void *)0,
 	                 (void *)(intptr_t)signo)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
@@ -113,4 +138,6 @@ static inline linted_error linted_ptrace_cont(linted_pid pid, int signo)
 
 	return 0;
 }
+#endif
+
 #endif /* LINTED_PTRACE_H */
