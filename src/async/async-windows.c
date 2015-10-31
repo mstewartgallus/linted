@@ -43,6 +43,9 @@
 #include <windows.h>
 #include <winsock2.h>
 
+#define UPCAST(X) ((void *)(X))
+#define DOWNCAST(T, X) ((T *)(X))
+
 /**
  * A one reader to many writers queue. Should be able to retrieve
  * many values at once. As all writes are a direct result of
@@ -1085,8 +1088,7 @@ completion_queue_create(struct completion_queue **queuep)
 static void complete_task(struct completion_queue *queue,
                           struct linted_async_task *task)
 {
-	linted_queue_send((struct linted_queue *)queue,
-	                  LINTED_UPCAST(task));
+	linted_queue_send((struct linted_queue *)queue, UPCAST(task));
 }
 
 static linted_error completion_recv(struct completion_queue *queue,
@@ -1096,7 +1098,7 @@ static linted_error completion_recv(struct completion_queue *queue,
 
 	linted_queue_recv((struct linted_queue *)queue, &node);
 
-	*taskp = LINTED_DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct linted_async_task, node);
 
 	return 0;
 }
@@ -1117,7 +1119,7 @@ completion_try_recv(struct completion_queue *queue,
 		node = xx;
 	}
 
-	*taskp = LINTED_DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct linted_async_task, node);
 
 	return 0;
 }
@@ -1148,8 +1150,7 @@ static linted_error job_queue_create(struct job_queue **queuep)
 static void job_submit(struct job_queue *queue,
                        struct linted_async_task *task)
 {
-	linted_queue_send((struct linted_queue *)queue,
-	                  LINTED_UPCAST(task));
+	linted_queue_send((struct linted_queue *)queue, UPCAST(task));
 }
 
 static linted_error job_recv(struct job_queue *queue,
@@ -1163,7 +1164,7 @@ static linted_error job_recv(struct job_queue *queue,
 		node = xx;
 	}
 
-	*taskp = LINTED_DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct linted_async_task, node);
 
 	return 0;
 }
@@ -1252,8 +1253,7 @@ static void waiter_submit(struct waiter_queue *queue,
 	LINTED_ASSERT(queue != 0);
 	LINTED_ASSERT(waiter != 0);
 
-	linted_queue_send((struct linted_queue *)queue,
-	                  LINTED_UPCAST(waiter));
+	linted_queue_send((struct linted_queue *)queue, UPCAST(waiter));
 }
 
 static linted_error waiter_recv(struct waiter_queue *queue,
@@ -1269,7 +1269,7 @@ static linted_error waiter_recv(struct waiter_queue *queue,
 		node = xx;
 	}
 
-	*waiterp = LINTED_DOWNCAST(struct linted_async_waiter, node);
+	*waiterp = DOWNCAST(struct linted_async_waiter, node);
 
 	return 0;
 }
