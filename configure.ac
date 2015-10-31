@@ -352,6 +352,10 @@ LINTED_PROG_BLENDER
 AS_IF([test -z "${BLENDER}"],[
  AC_MSG_ERROR([Unable to find a Blender executable])
 ])
+LINTED_PROG_PYTHON3
+AS_IF([test -z "${PYTHON3}"],[
+ AC_MSG_ERROR([Unable to find a Python 3 program interpreter])
+])
 dnl
 LINTED_PROG_CLANG_FORMAT
 LINTED_PROG_VALGRIND

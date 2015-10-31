@@ -38,6 +38,11 @@ linted_v_BLENDER_= $(linted_v_BLENDER_@AM_DEFAULT_V@)
 linted_v_BLENDER_0= @echo "  BLENDER " $@;
 linted_v_BLENDER_1 =
 
+linted_V_PYTHON3= $(linted_v_PYTHON3_@AM_V@)
+linted_v_PYTHON3= $(linted_v_PYTHON3_@AM_DEFAULT_V@)
+linted_v_PYTHON3_0= @echo "  PYTHON3 " $@;
+linted_v_PYTHON3_1 =
+
 MOSTLYCLEANFILES+=%D%/assets.c
 %D%/assets.c:\
   %D%/assets/assets.py\
@@ -54,10 +59,9 @@ MOSTLYCLEANFILES+=%D%/fragment_shader.c
   %D%/assets/fragment_shader.py\
   %D%/assets/shaders/fragment.glsl\
   \
-  %D%/assets_generator/linted_assets_generator\
   %D%/assets_generator/linted_assets_generator.py
-	$(linted_V_BLENDER) BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
-	 $<\
+	$(linted_V_PYTHON3) PYTHONDONTWRITEBYTECODE=1 $(PYTHON3) $(srcdir)/%D%/assets_generator/linted_assets_generator.py --\
+	  $<\
 	  --output=$@
 
 MOSTLYCLEANFILES+=%D%/vertex_shader.c
@@ -65,8 +69,7 @@ MOSTLYCLEANFILES+=%D%/vertex_shader.c
   %D%/assets/vertex_shader.py\
   %D%/assets/shaders/vertex.glsl\
   \
-  %D%/assets_generator/linted_assets_generator\
   %D%/assets_generator/linted_assets_generator.py
-	$(linted_V_BLENDER) BLENDER=$(BLENDER) $(srcdir)/%D%/assets_generator/linted_assets_generator\
+	$(linted_V_PYTHON3) PYTHONDONTWRITEBYTECODE=1 $(PYTHON3) $(srcdir)/%D%/assets_generator/linted_assets_generator.py --\
 	 $<\
 	  --output=$@
