@@ -49,8 +49,7 @@
  *
  * @bug If the window is moved partially offscreen and resized it fails
  *      to draw to a part of the window opposite from the part
- *offscreen.
- *      This is not our bug but and happens glxgears too.
+ *      offscreen. This is not our bug but and happens glxgears too.
  */
 
 struct drawer;
@@ -548,6 +547,9 @@ drawer_on_notice_recved(struct drawer *drawer,
                         struct linted_async_task *task)
 {
 	struct linted_async_pool *pool = drawer->pool;
+	struct linted_window_task_watch *notice_task =
+	    drawer->notice_task;
+	linted_ko notifier = drawer->notifier;
 
 	linted_error err = 0;
 
@@ -555,11 +557,14 @@ drawer_on_notice_recved(struct drawer *drawer,
 	if (err != 0)
 		return err;
 
-	err = drawer_update_window(drawer);
+	linted_window_task_watch_prepare(
+	    notice_task,
+	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
+	    notifier);
+	linted_async_pool_submit(
+	    pool, linted_window_task_watch_to_async(notice_task));
 
-	linted_async_pool_submit(pool, task);
-
-	return err;
+	return drawer_update_window(drawer);
 }
 
 static linted_error drawer_update_window(struct drawer *drawer)
@@ -620,6 +625,8 @@ static linted_error drawer_update_window(struct drawer *drawer)
 
 		linted_mem_free(reply);
 	}
+
+	xcb_flush(connection);
 
 	linted_gpu_remove_window(gpu_context);
 	linted_gpu_set_x11_window(gpu_context, new_window);

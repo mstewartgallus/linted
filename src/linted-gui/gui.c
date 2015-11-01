@@ -98,6 +98,7 @@ static linted_error
 gui_on_sent_controller_state(struct gui *gui,
                              struct linted_async_task *task);
 
+static linted_error refresh_gui_window(struct gui *gui);
 static void maybe_update_controller(struct gui *gui);
 
 static linted_error get_mouse_position(xcb_connection_t *connection,
@@ -350,100 +351,6 @@ static linted_error gui_init(struct gui *gui,
 	gui->window = 0;
 	gui->window_ko = window_ko;
 
-	{
-		uint_fast32_t xx;
-		err = linted_window_read(window_ko, &xx);
-		if (err != 0)
-			goto on_window_read_err;
-		gui->window = xx;
-	}
-on_window_read_err:
-	if (EPROTO == err) {
-		/* Do nothing */
-	} else if (err != 0) {
-		goto destroy_keyboard_state;
-	} else {
-		xcb_change_window_attributes(connection, gui->window,
-		                             XCB_CW_EVENT_MASK,
-		                             window_opts);
-		err = linted_xcb_conn_error(connection);
-		if (err != 0)
-			goto destroy_keyboard_state;
-
-		xcb_get_geometry_cookie_t geom_ck =
-		    xcb_get_geometry(connection, gui->window);
-		err = linted_xcb_conn_error(connection);
-		if (err != 0)
-			goto destroy_keyboard_state;
-
-		xcb_query_pointer_cookie_t point_ck =
-		    xcb_query_pointer(connection, gui->window);
-		err = linted_xcb_conn_error(connection);
-		if (err != 0)
-			goto destroy_keyboard_state;
-
-		unsigned width, height;
-		{
-			xcb_generic_error_t *error;
-			xcb_get_geometry_reply_t *reply;
-			{
-				xcb_generic_error_t *xx = 0;
-				reply = xcb_get_geometry_reply(
-				    connection, geom_ck, &xx);
-				error = xx;
-			}
-
-			err = linted_xcb_conn_error(connection);
-			if (err != 0)
-				goto destroy_keyboard_state;
-
-			if (error != 0) {
-				err = linted_xcb_error(error);
-				linted_mem_free(error);
-				goto destroy_keyboard_state;
-			}
-
-			width = reply->width;
-			height = reply->height;
-
-			linted_mem_free(reply);
-		}
-
-		int x, y;
-		{
-			xcb_generic_error_t *error;
-			xcb_query_pointer_reply_t *reply;
-			{
-				xcb_generic_error_t *xx = 0;
-				reply = xcb_query_pointer_reply(
-				    connection, point_ck, &xx);
-				error = xx;
-			}
-
-			err = linted_xcb_conn_error(connection);
-			if (err != 0)
-				goto destroy_keyboard_state;
-
-			if (error != 0) {
-				err = linted_xcb_error(error);
-				linted_mem_free(error);
-				goto destroy_keyboard_state;
-			}
-
-			x = reply->win_x;
-			y = reply->win_y;
-
-			linted_mem_free(reply);
-		}
-
-		gui->width = width;
-		gui->height = height;
-
-		on_tilt(gui, x, y);
-
-		maybe_update_controller(gui);
-	}
-
 	linted_window_task_watch_prepare(
 	    notice_task,
 	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
@@ -457,6 +364,10 @@ on_window_read_err:
 	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_async_pool_submit(
 	    pool, linted_io_task_poll_to_async(poll_conn_task));
+
+	err = refresh_gui_window(gui);
+	if (err != 0)
+		goto destroy_keyboard_state;
 
 	return 0;
 
@@ -782,108 +693,18 @@ static linted_error gui_on_window_change(struct gui *gui,
 	if (err != 0)
 		return err;
 
+	struct linted_window_task_watch *notice_task = gui->notice_task;
+	linted_ko notifier = gui->notifier;
 	struct linted_async_pool *pool = gui->pool;
-	xcb_connection_t *connection = gui->connection;
-	linted_window window_ko = gui->window_ko;
 
-	uint_fast32_t window;
-	{
-		uint_fast32_t xx;
-		err = linted_window_read(window_ko, &xx);
-		if (EPROTO == err) {
-			err = 0;
-			goto reset_notice;
-		}
-		if (err != 0)
-			goto reset_notice;
-		window = xx;
-	}
+	linted_window_task_watch_prepare(
+	    notice_task,
+	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
+	    notifier);
+	linted_async_pool_submit(
+	    pool, linted_window_task_watch_to_async(notice_task));
 
-	xcb_change_window_attributes(connection, window,
-	                             XCB_CW_EVENT_MASK, window_opts);
-	err = linted_xcb_conn_error(connection);
-	if (err != 0)
-		goto reset_notice;
-
-	xcb_get_geometry_cookie_t geom_ck =
-	    xcb_get_geometry(connection, window);
-	err = linted_xcb_conn_error(connection);
-	if (err != 0)
-		goto reset_notice;
-
-	xcb_query_pointer_cookie_t point_ck =
-	    xcb_query_pointer(connection, window);
-	err = linted_xcb_conn_error(connection);
-	if (err != 0)
-		goto reset_notice;
-
-	unsigned width, height;
-	{
-		xcb_generic_error_t *error;
-		xcb_get_geometry_reply_t *reply;
-		{
-			xcb_generic_error_t *xx = 0;
-			reply = xcb_get_geometry_reply(connection,
-			                               geom_ck, &xx);
-			error = xx;
-		}
-
-		err = linted_xcb_conn_error(connection);
-		if (err != 0)
-			goto reset_notice;
-
-		if (error != 0) {
-			err = linted_xcb_error(error);
-			linted_mem_free(error);
-			goto reset_notice;
-		}
-
-		width = reply->width;
-		height = reply->height;
-
-		linted_mem_free(reply);
-	}
-
-	int x, y;
-	{
-		xcb_generic_error_t *error;
-		xcb_query_pointer_reply_t *reply;
-		{
-			xcb_generic_error_t *xx = 0;
-			reply = xcb_query_pointer_reply(connection,
-			                                point_ck, &xx);
-			error = xx;
-		}
-
-		err = linted_xcb_conn_error(connection);
-		if (err != 0)
-			goto reset_notice;
-
-		if (error != 0) {
-			err = linted_xcb_error(error);
-			linted_mem_free(error);
-			goto reset_notice;
-		}
-
-		x = reply->win_x;
-		y = reply->win_y;
-
-		linted_mem_free(reply);
-	}
-
-	gui->width = width;
-	gui->height = height;
-
-	on_tilt(gui, x, y);
-
-	maybe_update_controller(gui);
-
-	gui->window = window;
-
-reset_notice:
-	linted_async_pool_submit(pool, task);
-
-	return err;
+	return refresh_gui_window(gui);
 }
 
 static linted_error
@@ -927,6 +748,109 @@ static void maybe_update_controller(struct gui *gui)
 
 	gui->update_pending = false;
 	gui->update_in_progress = true;
+}
+
+static linted_error refresh_gui_window(struct gui *gui)
+{
+	linted_error err = 0;
+
+	xcb_connection_t *connection = gui->connection;
+	linted_window window_ko = gui->window_ko;
+
+	uint_fast32_t window;
+	{
+		uint_fast32_t xx;
+		err = linted_window_read(window_ko, &xx);
+		if (EPROTO == err)
+			return 0;
+		if (err != 0)
+			return err;
+		window = xx;
+	}
+	gui->window = window;
+
+	xcb_change_window_attributes(connection, window,
+	                             XCB_CW_EVENT_MASK, window_opts);
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
+		return err;
+
+	xcb_get_geometry_cookie_t geom_ck =
+	    xcb_get_geometry(connection, window);
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
+		return err;
+
+	xcb_query_pointer_cookie_t point_ck =
+	    xcb_query_pointer(connection, window);
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
+		return err;
+
+	unsigned width, height;
+	{
+		xcb_generic_error_t *error;
+		xcb_get_geometry_reply_t *reply;
+		{
+			xcb_generic_error_t *xx = 0;
+			reply = xcb_get_geometry_reply(connection,
+			                               geom_ck, &xx);
+			error = xx;
+		}
+
+		err = linted_xcb_conn_error(connection);
+		if (err != 0)
+			return err;
+
+		if (error != 0) {
+			err = linted_xcb_error(error);
+			linted_mem_free(error);
+			return err;
+		}
+
+		width = reply->width;
+		height = reply->height;
+
+		linted_mem_free(reply);
+	}
+
+	int x, y;
+	{
+		xcb_generic_error_t *error;
+		xcb_query_pointer_reply_t *reply;
+		{
+			xcb_generic_error_t *xx = 0;
+			reply = xcb_query_pointer_reply(connection,
+			                                point_ck, &xx);
+			error = xx;
+		}
+
+		err = linted_xcb_conn_error(connection);
+		if (err != 0)
+			return err;
+
+		if (error != 0) {
+			err = linted_xcb_error(error);
+			linted_mem_free(error);
+			return err;
+		}
+
+		x = reply->win_x;
+		y = reply->win_y;
+
+		linted_mem_free(reply);
+	}
+
+	xcb_flush(connection);
+
+	gui->width = width;
+	gui->height = height;
+
+	on_tilt(gui, x, y);
+
+	maybe_update_controller(gui);
+
+	return 0;
 }
 
 static void on_tilt(struct gui *gui, int_fast32_t mouse_x,

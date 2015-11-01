@@ -1045,13 +1045,22 @@ static linted_error on_child_signaled(char const *process_name,
 {
 	linted_error err = 0;
 
-	if (signo != SIGCHLD)
-		goto continue_process;
+	bool is_sigchld = SIGCHLD == signo;
 
 	siginfo_t info = {0};
-	err = linted_ptrace_getsiginfo(pid, &info);
+	if (is_sigchld) {
+		err = linted_ptrace_getsiginfo(pid, &info);
+	}
+
+	linted_error cont_err = linted_ptrace_cont(pid, signo);
+	if (0 == err)
+		err = cont_err;
+
 	if (err != 0)
 		return err;
+
+	if (!is_sigchld)
+		return 0;
 
 	int child_code = info.si_code;
 	char const *code_str;
@@ -1108,8 +1117,7 @@ static linted_error on_child_signaled(char const *process_name,
 	                         "\tstime: %" PRIuMAX "\n",
 	    (uintmax_t)child_utime, (uintmax_t)child_stime);
 
-continue_process:
-	return linted_ptrace_cont(pid, signo);
+	return 0;
 }
 
 static linted_error
