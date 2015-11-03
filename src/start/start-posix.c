@@ -306,8 +306,7 @@ linted_error sanitize_fds(void)
 	linted_ko *kos_to_close = 0;
 	size_t num_kos_to_close = 0U;
 	/* Read all the open fds first and then close the fds
-	 * after
-	 * because otherwise there is a race condition */
+	 * after because otherwise there is a race condition */
 	for (;;) {
 		errno = 0;
 		struct dirent *direntry = readdir(fds_dir);

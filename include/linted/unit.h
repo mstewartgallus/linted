@@ -21,6 +21,8 @@
 #include "linted/sched.h"
 
 #include <stddef.h>
+#include <stdint.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 
 /**
@@ -72,7 +74,7 @@ struct linted_unit {
 struct linted_unit_socket {
 	struct linted_unit common;
 	char const *path;
-	int fifo_size;
+	int_least32_t fifo_size;
 	linted_unit_socket_type type;
 };
 
@@ -86,9 +88,9 @@ struct linted_unit_service {
 
 	int priority;
 
-	int limit_no_file;
-	int limit_msgqueue;
-	int limit_locks;
+	rlim_t limit_no_file;
+	rlim_t limit_msgqueue;
+	rlim_t limit_locks;
 
 	_Bool has_priority : 1U;
 	_Bool has_limit_no_file : 1U;

@@ -21,6 +21,7 @@
 #include "linted/unit.h"
 
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @file
@@ -74,7 +75,7 @@ struct linted_admin_add_socket_request {
 
 	char const *name;
 	char const *path;
-	int fifo_size;
+	int_least32_t fifo_size;
 	linted_unit_socket_type sock_type;
 };
 

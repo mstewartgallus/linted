@@ -68,21 +68,11 @@ struct mem_field {
 	size_t offset;
 };
 
-size_t process_mem_fields(struct mem_field *mem_fields,
-                          size_t fields_size)
-{
-	size_t total_size = 0U;
-	for (size_t ii = 0U; ii < fields_size; ++ii) {
-		size_t size = mem_fields[ii].size;
-		size_t align = mem_fields[ii].align;
-		total_size += 0U == total_size % align
-		                  ? 0U
-		                  : align - total_size % align;
-		mem_fields[ii].offset = total_size;
-		total_size += size;
-	}
-	return total_size;
-}
+static size_t process_mem_fields(struct mem_field *mem_fields,
+                                 size_t fields_size);
+
+static size_t bytes_to_size(char const *bytes);
+static size_t nth_size(char const *bytes, size_t ii);
 
 linted_error linted_admin_in_task_recv_create(
     struct linted_admin_in_task_recv **taskp, void *data)
@@ -124,20 +114,6 @@ void *
 linted_admin_in_task_recv_data(struct linted_admin_in_task_recv *task)
 {
 	return task->data;
-}
-
-static size_t bytes_to_size(char const *bytes)
-{
-	size_t size;
-	memcpy(&size, bytes, sizeof size);
-	return size;
-}
-
-static size_t nth_size(char const *bytes, size_t ii)
-{
-	size_t size;
-	memcpy(&size, bytes + ii * sizeof(size_t), sizeof size);
-	return size;
 }
 
 linted_error linted_admin_in_task_recv_request(
@@ -186,16 +162,13 @@ linted_error linted_admin_in_task_recv_request(
 
 		bool no_new_privs = (bitfield[1U] & (1U << 2U)) != 0U;
 
-		size_t name_size;
-		memcpy(&name_size, tip, sizeof name_size);
+		size_t name_size = bytes_to_size(tip);
 		tip += sizeof name_size;
 
-		size_t fstab_size;
-		memcpy(&fstab_size, tip, sizeof fstab_size);
+		size_t fstab_size = bytes_to_size(tip);
 		tip += sizeof fstab_size;
 
-		size_t chdir_size;
-		memcpy(&chdir_size, tip, sizeof chdir_size);
+		size_t chdir_size = bytes_to_size(tip);
 		tip += sizeof chdir_size;
 
 		size_t command_count = bytes_to_size(tip);
@@ -361,12 +334,10 @@ linted_error linted_admin_in_task_recv_request(
 		memcpy(&sock_type, tip, sizeof sock_type);
 		tip += sizeof sock_type;
 
-		size_t name_size;
-		memcpy(&name_size, tip, sizeof name_size);
+		size_t name_size = bytes_to_size(tip);
 		tip += sizeof name_size;
 
-		size_t path_size;
-		memcpy(&path_size, tip, sizeof path_size);
+		size_t path_size = bytes_to_size(tip);
 		tip += sizeof path_size;
 
 		enum { NAME, PATH };
@@ -843,25 +814,65 @@ linted_admin_out_task_send_from_async(struct linted_async_task *task)
 linted_error linted_admin_out_recv(linted_admin_out admin,
                                    union linted_admin_reply *reply)
 {
-	linted_error err;
+	linted_error err = 0;
 
-	char chunk[CHUNK_SIZE] = {0};
+	char *chunk;
+	{
+		void *xx;
+		err = linted_mem_alloc_zeroed(&xx, CHUNK_SIZE);
+		if (err != 0)
+			return err;
+		chunk = xx;
+	}
 
 	size_t size;
 	{
 		size_t xx;
-		err =
-		    linted_io_read_all(admin, &xx, chunk, sizeof chunk);
+		err = linted_io_read_all(admin, &xx, chunk, CHUNK_SIZE);
 		if (err != 0)
-			return err;
+			goto free_chunk;
 		size = xx;
 	}
 
 	/* Sent malformed input */
-	if (size != sizeof chunk)
-		return EPROTO;
+	if (size != CHUNK_SIZE) {
+		err = EPROTO;
+		goto free_chunk;
+	}
 
 	memcpy(reply, chunk, sizeof *reply);
 
-	return 0;
+free_chunk:
+	linted_mem_free(chunk);
+	return err;
+}
+
+static size_t bytes_to_size(char const *bytes)
+{
+	size_t size;
+	memcpy(&size, bytes, sizeof size);
+	return size;
+}
+
+static size_t nth_size(char const *bytes, size_t ii)
+{
+	size_t size;
+	memcpy(&size, bytes + ii * sizeof(size_t), sizeof size);
+	return size;
+}
+
+static size_t process_mem_fields(struct mem_field *mem_fields,
+                                 size_t fields_size)
+{
+	size_t total_size = 0U;
+	for (size_t ii = 0U; ii < fields_size; ++ii) {
+		size_t size = mem_fields[ii].size;
+		size_t align = mem_fields[ii].align;
+		total_size += 0U == total_size % align
+		                  ? 0U
+		                  : align - total_size % align;
+		mem_fields[ii].offset = total_size;
+		total_size += size;
+	}
+	return total_size;
 }
