@@ -162,6 +162,22 @@ linted_error linted_admin_in_task_recv_request(
 
 		bool no_new_privs = (bitfield[1U] & (1U << 2U)) != 0U;
 
+		rlim_t priority;
+		memcpy(&priority, tip, sizeof priority);
+		tip += sizeof priority;
+
+		rlim_t limit_no_file;
+		memcpy(&limit_no_file, tip, sizeof limit_no_file);
+		tip += sizeof limit_no_file;
+
+		rlim_t limit_msgqueue;
+		memcpy(&limit_msgqueue, tip, sizeof limit_msgqueue);
+		tip += sizeof limit_msgqueue;
+
+		rlim_t limit_locks;
+		memcpy(&limit_locks, tip, sizeof limit_locks);
+		tip += sizeof limit_locks;
+
 		size_t name_size = bytes_to_size(tip);
 		tip += sizeof name_size;
 
@@ -296,6 +312,11 @@ linted_error linted_admin_in_task_recv_request(
 		env_whitelist[env_whitelist_count] = 0;
 
 		status->type = type;
+
+		status->priority = priority;
+		status->limit_no_file = limit_no_file;
+		status->limit_msgqueue = limit_msgqueue;
+		status->limit_locks = limit_locks;
 
 		status->has_priority = has_priority;
 		status->has_limit_no_file = has_limit_no_file;
@@ -479,6 +500,11 @@ linted_admin_in_send(linted_admin_in admin,
 		memcpy(tip, &type, sizeof type);
 		tip += sizeof type;
 
+		rlim_t priority = status->priority;
+		rlim_t limit_no_file = status->limit_no_file;
+		rlim_t limit_msgqueue = status->limit_msgqueue;
+		rlim_t limit_locks = status->limit_locks;
+
 		bool has_priority = status->has_priority;
 		bool has_limit_no_file = status->has_limit_no_file;
 		bool has_limit_msgqueue = status->has_limit_msgqueue;
@@ -507,6 +533,18 @@ linted_admin_in_send(linted_admin_in admin,
 
 		memcpy(tip, bitfield, sizeof bitfield);
 		tip += sizeof bitfield;
+
+		memcpy(tip, &priority, sizeof priority);
+		tip += sizeof priority;
+
+		memcpy(tip, &limit_no_file, sizeof limit_no_file);
+		tip += sizeof limit_no_file;
+
+		memcpy(tip, &limit_msgqueue, sizeof limit_msgqueue);
+		tip += sizeof limit_msgqueue;
+
+		memcpy(tip, &limit_locks, sizeof limit_locks);
+		tip += sizeof limit_locks;
 
 		char const *namep = status->name;
 		size_t name_size = strlen(namep);

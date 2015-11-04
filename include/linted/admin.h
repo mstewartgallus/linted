@@ -22,6 +22,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/resource.h>
 
 /**
  * @file
@@ -50,6 +51,11 @@ struct linted_admin_add_unit_request {
 
 	char const *const *command;
 	char const *const *env_whitelist;
+
+	rlim_t priority;
+	rlim_t limit_no_file;
+	rlim_t limit_msgqueue;
+	rlim_t limit_locks;
 
 	_Bool has_priority : 1U;
 	_Bool has_limit_no_file : 1U;

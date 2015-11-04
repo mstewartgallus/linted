@@ -1254,6 +1254,11 @@ on_add_unit(struct monitor *monitor,
 	char const *const *unit_command = request->command;
 	char const *const *unit_env_whitelist = request->env_whitelist;
 
+	rlim_t priority = request->priority;
+	rlim_t limit_no_file = request->limit_no_file;
+	rlim_t limit_msgqueue = request->limit_msgqueue;
+	rlim_t limit_locks = request->limit_locks;
+
 	bool has_priority = request->has_priority;
 	bool has_limit_no_file = request->has_limit_no_file;
 	bool has_limit_msgqueue = request->has_limit_msgqueue;
@@ -1362,16 +1367,16 @@ on_add_unit(struct monitor *monitor,
 	unit_service->env_whitelist =
 	    (char const *const *)env_whitelist;
 
-	unit_service->priority = -1;
-	unit_service->limit_no_file = -1;
-	unit_service->limit_msgqueue = -1;
-	unit_service->limit_locks = -1;
+	unit_service->priority = priority;
+	unit_service->limit_no_file = limit_no_file;
+	unit_service->limit_msgqueue = limit_msgqueue;
+	unit_service->limit_locks = limit_locks;
 
 	/* These aren't fully implemented yet */
-	unit_service->has_priority = false;
-	unit_service->has_limit_no_file = false;
-	unit_service->has_limit_locks = false;
-	unit_service->has_limit_msgqueue = false;
+	unit_service->has_priority = has_priority;
+	unit_service->has_limit_no_file = has_limit_no_file;
+	unit_service->has_limit_locks = has_limit_locks;
+	unit_service->has_limit_msgqueue = has_limit_msgqueue;
 
 	unit_service->clone_newuser = clone_newuser;
 	unit_service->clone_newpid = clone_newpid;

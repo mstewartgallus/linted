@@ -930,6 +930,11 @@ static linted_error service_activate(struct linted_unit *unit,
 	char const *const *command = unit_service->command;
 	char const *const *env_whitelist = unit_service->env_whitelist;
 
+	rlim_t priority = unit_service->priority;
+	rlim_t limit_no_file = unit_service->limit_no_file;
+	rlim_t limit_msgqueue = unit_service->limit_msgqueue;
+	rlim_t limit_locks = unit_service->limit_locks;
+
 	bool has_priority = unit_service->has_priority;
 	bool has_limit_no_file = unit_service->has_limit_no_file;
 	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
@@ -957,6 +962,11 @@ static linted_error service_activate(struct linted_unit *unit,
 		struct linted_admin_request request = {0};
 
 		request.x.type = LINTED_ADMIN_ADD_UNIT;
+
+		request.x.add_unit.priority = priority;
+		request.x.add_unit.limit_no_file = limit_no_file;
+		request.x.add_unit.limit_msgqueue = limit_msgqueue;
+		request.x.add_unit.limit_locks = limit_locks;
 
 		request.x.add_unit.has_priority = has_priority;
 		request.x.add_unit.has_limit_no_file =
