@@ -74,10 +74,11 @@ terminal) or from a `SIGKILL` from a set parent death signal.
 @bug Currently not all sandboxed processes are killed on `init`
      death.   Possible solutions:
      - `monitor` could ptrace `init` and kill its children when `init`
-is about to die.
+       is about to die.
      - Sandboxes could use `PR_SET_PDEATHSIG` once they have been
-reparented to `init`.  However, I am not sure how they would wait until
-they have been reparented to `init` before using `PR_SET_PDEATHSIG`.
+       reparented to `init`.  However, I am not sure how they would wait
+       until they have been reparented to `init` before using
+       `PR_SET_PDEATHSIG`.
 
 @section ipc IPC
 
@@ -103,14 +104,30 @@ transporting data.
 - gRPC
 - SOAP
 - CORBA
+- Apache Avro
+- Apache Thrift
+- XDR
 
 @subsection ipcencodings Encodings
 Currently we just use very arbitrary hacks for encoding our data.
-- XML
-- JSON
-- Google Protocol Buffers
-- Capn Proto
-- ASN.1 Compiler
+- Plain Text
+  - XML
+  - S-Expressions
+  - JSON
+  - CSV
+  - OGDL
+  - OpenDDL
+- Binary
+  - Schemaless
+    - SDXF
+    - Fast Infoset (basically binary XML)
+    - BSON, UBJSON, Smile
+    - MessagePack
+    - Binn
+  - Schema
+    - Google Protocol Buffers
+    - Capn Proto
+    - ASN.1 Compiler
 
 @subsection ipcprimitives Primitives
 @subsubsection files Files
