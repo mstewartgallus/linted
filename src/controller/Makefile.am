@@ -18,8 +18,23 @@ noinst_LTLIBRARIES+=%D%/libcontroller.la
 
 %C%_libcontroller_la_SOURCES=\
   %D%/controller.c\
+  %D%/controller_xdr.c\
+  %D%/controller.h\
   include/linted/controller.h
+%C%_libcontroller_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libcontroller_la_LIBADD=\
   src/io/libio.la\
   src/ko/libko.la
 dist_pkgdefaultunits_DATA+=%D%/units/controller.socket
+
+EXTRA_DIST+=%D%/controller.x
+
+BUILT_SOURCES+=%D%/controller_xdr.c
+MOSTLYCLEANFILES+=%D%/controller_xdr.c
+%D%/controller_xdr.c: %D%/controller.x
+	$(linted_V_RPCGEN) $(RPCGEN) -c -M -N $^ | sed -e 's|$(srcdir)/src/controller/controller.h|controller.h|g' > $@
+
+BUILT_SOURCES+=%D%/controller.h
+MOSTLYCLEANFILES+=%D%/controlller.h
+%D%/controller.h: %D%/controller.x
+	$(linted_V_RPCGEN) $(RPCGEN) -h -M -N $^ > $@

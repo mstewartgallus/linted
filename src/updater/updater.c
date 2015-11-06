@@ -26,6 +26,8 @@
 #include "linted/mem.h"
 #include "linted/rpc.h"
 
+#include <assert.h>
+
 struct linted_updater_task_send {
 	struct linted_io_task_write *parent;
 	void *data;
@@ -166,7 +168,8 @@ void linted_updater_task_send_prepare(
 	    .x_rotation = update->x_rotation._value,
 	};
 
-	xdr_linted_updater_code(&xdr, &code);
+	if (!xdr_linted_updater_code(&xdr, &code))
+		assert(0);
 }
 
 struct linted_updater_task_send *
@@ -196,7 +199,8 @@ void linted_updater_decode(struct linted_update_task_recv const *task,
 	              XDR_DECODE);
 
 	struct linted_updater_code code;
-	xdr_linted_updater_code(&xdr, &code);
+	if (!xdr_linted_updater_code(&xdr, &code))
+		assert(0);
 
 	update->x_position = code.x_position;
 	update->y_position = code.y_position;

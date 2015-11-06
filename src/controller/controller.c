@@ -15,6 +15,8 @@
  */
 #include "config.h"
 
+#include "controller.h"
+
 #include "linted/controller.h"
 
 #include "linted/async.h"
@@ -23,6 +25,7 @@
 #include "linted/mem.h"
 #include "linted/rpc.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -30,15 +33,15 @@
 struct linted_controller_task_send {
 	struct linted_io_task_write *parent;
 	void *data;
-	char
-	    message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
+	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
+	             LINTED_RPC_INT32_SIZE * 5U];
 };
 
 struct linted_controller_task_recv {
 	struct linted_io_task_read *parent;
 	void *data;
-	char
-	    message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE + 1U];
+	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
+	             LINTED_RPC_INT32_SIZE * 5U];
 };
 
 linted_error linted_controller_task_send_create(
@@ -101,24 +104,28 @@ void linted_controller_task_send_prepare(
     union linted_async_ck task_ck, linted_controller controller,
     struct linted_controller_message const *message)
 {
+	{
+		XDR xdr;
+		xdrmem_create(&xdr, task->message, sizeof task->message,
+		              XDR_ENCODE);
+
+		struct linted_controller_code code = {
+		    .z_tilt = message->z_tilt,
+		    .x_tilt = message->x_tilt,
+
+		    .left = message->left,
+		    .right = message->right,
+		    .forward = message->forward,
+		    .back = message->back,
+
+		    .jumping = message->jumping};
+
+		if (!xdr_linted_controller_code(&xdr, &code))
+			assert(0);
+	}
 	linted_io_task_write_prepare(task->parent, task_ck, controller,
 	                             task->message,
 	                             sizeof task->message);
-
-	char *tip = task->message;
-
-	linted_rpc_pack(message->z_tilt, tip);
-	tip += LINTED_RPC_INT32_SIZE;
-
-	linted_rpc_pack(message->x_tilt, tip);
-	tip += LINTED_RPC_INT32_SIZE;
-
-	unsigned char bitfield = ((uintmax_t)message->forward) |
-	                         ((uintmax_t)message->back) << 1U |
-	                         ((uintmax_t)message->right) << 2U |
-	                         ((uintmax_t)message->left) << 3U |
-	                         ((uintmax_t)message->jumping) << 4U;
-	memcpy(tip, &bitfield, sizeof bitfield);
 }
 
 linted_error linted_controller_task_recv_create(
@@ -189,27 +196,23 @@ linted_error
 linted_controller_decode(struct linted_controller_task_recv const *task,
                          struct linted_controller_message *message)
 {
-	char const *tip = task->message;
+	XDR xdr;
+	xdrmem_create(&xdr, (void *)task->message, sizeof task->message,
+	              XDR_DECODE);
 
-	message->z_tilt = linted_rpc_unpack(tip);
-	tip += LINTED_RPC_INT32_SIZE;
-
-	message->x_tilt = linted_rpc_unpack(tip);
-	tip += LINTED_RPC_INT32_SIZE;
-
-	unsigned char bitfield;
-	memcpy(&bitfield, tip, sizeof bitfield);
-
-	if ((bitfield &
-	     ~(1U | 1U << 1U | 1U << 2U | 1U << 3U | 1U << 4U)) != 0U)
+	struct linted_controller_code code = {0};
+	if (!xdr_linted_controller_code(&xdr, &code))
 		return EPROTO;
 
-	message->forward = bitfield & 1U;
-	message->back = (bitfield & (1U << 1U)) != 0U;
-	message->right = (bitfield & (1U << 2U)) != 0U;
-	message->left = (bitfield & (1U << 3U)) != 0U;
+	message->z_tilt = code.z_tilt;
+	message->x_tilt = code.x_tilt;
 
-	message->jumping = (bitfield & (1U << 4U)) != 0U;
+	message->left = code.left;
+	message->right = code.right;
+	message->forward = code.forward;
+	message->back = code.back;
+
+	message->jumping = code.jumping;
 
 	return 0;
 }
