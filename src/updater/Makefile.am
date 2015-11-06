@@ -18,9 +18,10 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
 
 %C%_libupdater_la_SOURCES=\
   %D%/updater.c\
-  %D%/updater_xdr.c\
-  %D%/updater.h\
   include/linted/updater.h
+nodist_%C%_libupdater_la_SOURCES=\
+  %D%/updater_xdr.c\
+  %D%/updater.h
 %C%_libupdater_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libupdater_la_LIBADD=\
   src/io/libio.la\
@@ -31,13 +32,12 @@ dist_pkgdefaultunits_DATA+=%D%/units/updater.socket
 
 EXTRA_DIST+=%D%/updater.x
 
-BUILT_SOURCES+=%D%/updater_xdr.c
 MOSTLYCLEANFILES+=%D%/updater_xdr.c
 %D%/updater_xdr.c: %D%/updater.x
-	$(linted_V_RPCGEN) $(RPCGEN) -c -M -N $^ | sed -e 's|$(srcdir)/src/updater/updater.h|updater.h|g' > $@
+	$(linted_V_RPCGEN) $(RPCGEN) -N -c $< | sed -e 's|$(srcdir)/src/updater/updater.h|updater.h|g' > $@
 
 BUILT_SOURCES+=%D%/updater.h
 MOSTLYCLEANFILES+=%D%/updater.h
 %D%/updater.h: %D%/updater.x
-	$(linted_V_RPCGEN) $(RPCGEN) -h -M -N $^ > $@
+	$(linted_V_RPCGEN) $(RPCGEN) -N -h $< > $@
 
