@@ -97,7 +97,8 @@ For example, in a well-known series of failures the Therac-21 machine
 overdosed patients on too much radiation.  In some of the cases, the
 Therac-21 machine noticed there was a fault but reported a confusing
 error message and the operators simply retried the machine resulting in
-yet more overdose of radiation.  In summary, at least for some software, not reporting error messages can kill people.
+yet more overdose of radiation.  In summary, at least for some software,
+not reporting error messages can kill people.
 
 
 </li>

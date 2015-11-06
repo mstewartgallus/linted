@@ -15,6 +15,8 @@
  */
 #include "config.h"
 
+#include "updater.h"
+
 #include "linted/updater.h"
 
 #include "linted/async.h"
@@ -61,6 +63,7 @@ linted_update_task_recv_create(struct linted_update_task_recv **taskp,
 			goto free_task;
 		parent = xx;
 	}
+
 	task->parent = parent;
 	task->data = data;
 	*taskp = task;
@@ -150,21 +153,20 @@ void linted_updater_task_send_prepare(
 	                             task->message,
 	                             sizeof task->message);
 
-	char *tip = task->message;
+	XDR xdr;
+	xdrmem_create(&xdr, task->message, sizeof task->message,
+	              XDR_ENCODE);
 
-	linted_rpc_pack(update->x_position, tip);
-	tip += LINTED_RPC_INT32_SIZE;
+	struct linted_updater_code code = {
+	    .x_position = update->x_position,
+	    .y_position = update->y_position,
+	    .z_position = update->z_position,
 
-	linted_rpc_pack(update->y_position, tip);
-	tip += LINTED_RPC_INT32_SIZE;
+	    .z_rotation = update->z_rotation._value,
+	    .x_rotation = update->x_rotation._value,
+	};
 
-	linted_rpc_pack(update->z_position, tip);
-	tip += LINTED_RPC_INT32_SIZE;
-
-	linted_rpc_pack_uint32(update->z_rotation._value, tip);
-	tip += LINTED_RPC_UINT32_SIZE;
-
-	linted_rpc_pack_uint32(update->x_rotation._value, tip);
+	xdr_linted_updater_code(&xdr, &code);
 }
 
 struct linted_updater_task_send *
@@ -189,19 +191,17 @@ linted_updater_task_send_data(struct linted_updater_task_send *task)
 void linted_updater_decode(struct linted_update_task_recv const *task,
                            struct linted_updater_update *update)
 {
-	char const *tip = task->message;
+	XDR xdr;
+	xdrmem_create(&xdr, (void *)task->message, sizeof task->message,
+	              XDR_DECODE);
 
-	update->x_position = linted_rpc_unpack(tip);
-	tip += LINTED_RPC_INT32_SIZE;
+	struct linted_updater_code code;
+	xdr_linted_updater_code(&xdr, &code);
 
-	update->y_position = linted_rpc_unpack(tip);
-	tip += LINTED_RPC_INT32_SIZE;
+	update->x_position = code.x_position;
+	update->y_position = code.y_position;
+	update->z_position = code.z_position;
 
-	update->z_position = linted_rpc_unpack(tip);
-	tip += LINTED_RPC_INT32_SIZE;
-
-	update->z_rotation._value = linted_rpc_unpack_uint32(tip);
-	tip += LINTED_RPC_UINT32_SIZE;
-
-	update->x_rotation._value = linted_rpc_unpack_uint32(tip);
+	update->z_rotation._value = code.z_rotation;
+	update->x_rotation._value = code.x_rotation;
 }

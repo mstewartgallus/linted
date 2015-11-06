@@ -121,6 +121,11 @@ linted_v_SED_ = $(linted_v_SED_@AM_DEFAULT_V@)
 linted_v_SED_0 = @echo "  SED     " $@;
 linted_v_SED_1 =
 
+linted_V_RPCGEN = $(linted_v_RPCGEN_@AM_V@)
+linted_v_RPCGEN_ = $(linted_v_RPCGEN_@AM_DEFAULT_V@)
+linted_v_RPCGEN_0 = @echo "  RPCGEN  " $@;
+linted_v_RPCGEN_1 =
+
 linted_V_WINDRES = $(linted_v_WINDRES_@AM_V@)
 linted_v_WINDRES_ = $(linted_v_WINDRES_@AM_DEFAULT_V@)
 linted_v_WINDRES_0 = @echo "  WINDRES " $@;

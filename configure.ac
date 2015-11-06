@@ -348,6 +348,10 @@ AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_UID_T
 dnl
+LINTED_PROG_RPCGEN
+AS_IF([test -z "${RPCGEN}"],[
+ AC_MSG_ERROR([Unable to find an rpcgen executable])
+])
 LINTED_PROG_BLENDER
 AS_IF([test -z "${BLENDER}"],[
  AC_MSG_ERROR([Unable to find a Blender executable])
