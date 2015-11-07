@@ -17,6 +17,8 @@
 
 #include "config.h"
 
+#include "admin.h"
+
 #include "linted/admin.h"
 
 #include "linted/async.h"
@@ -28,6 +30,7 @@
 #include "linted/unit.h"
 #include "linted/util.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -802,35 +805,29 @@ void linted_admin_out_task_send_prepare(
 	char *tip = task->reply;
 	memset(tip, 0, CHUNK_SIZE);
 
-	memcpy(tip, &type, sizeof type);
-	tip += sizeof type;
+	XDR xdr;
+	xdrmem_create(&xdr, tip, CHUNK_SIZE, XDR_ENCODE);
 
+	struct linted_admin_proto_reply code = {0};
+	code.type = type;
 	switch (type) {
-	case LINTED_ADMIN_ADD_UNIT:
-	case LINTED_ADMIN_ADD_SOCKET:
+	case LINTED_ADMIN_PROTO_ADD_UNIT:
+	case LINTED_ADMIN_PROTO_ADD_SOCKET:
 		break;
 
-	case LINTED_ADMIN_STATUS: {
-		struct linted_admin_status_reply const *status =
-		    (void *)reply;
-		bool is_up = status->is_up;
-
-		memcpy(tip, &is_up, sizeof is_up);
+	case LINTED_ADMIN_PROTO_STATUS:
+		code.linted_admin_proto_reply_u.status.is_up =
+		    reply->status.is_up;
 		break;
-	}
 
-	case LINTED_ADMIN_STOP: {
-		struct linted_admin_stop_reply const *stop =
-		    (void *)reply;
-		bool was_up = stop->was_up;
-
-		memcpy(tip, &was_up, sizeof was_up);
+	case LINTED_ADMIN_PROTO_STOP:
+		code.linted_admin_proto_reply_u.stop.was_up =
+		    reply->stop.was_up;
 		break;
 	}
 
-	default:
-		LINTED_ASSERT(0);
-	}
+	if (!xdr_linted_admin_proto_reply(&xdr, &code))
+		assert(0);
 
 	linted_io_task_write_prepare(task->parent, task_ck, ko,
 	                             task->reply, sizeof task->reply);
@@ -878,7 +875,29 @@ linted_error linted_admin_out_recv(linted_admin_out admin,
 		goto free_chunk;
 	}
 
-	memcpy(reply, chunk, sizeof *reply);
+	XDR xdr;
+	xdrmem_create(&xdr, chunk, CHUNK_SIZE, XDR_DECODE);
+
+	struct linted_admin_proto_reply code;
+	if (!xdr_linted_admin_proto_reply(&xdr, &code))
+		assert(0);
+
+	reply->type = code.type;
+	switch (code.type) {
+	case LINTED_ADMIN_PROTO_ADD_UNIT:
+	case LINTED_ADMIN_PROTO_ADD_SOCKET:
+		break;
+
+	case LINTED_ADMIN_PROTO_STATUS:
+		reply->status.is_up =
+		    code.linted_admin_proto_reply_u.status.is_up;
+		break;
+
+	case LINTED_ADMIN_PROTO_STOP:
+		reply->stop.was_up =
+		    code.linted_admin_proto_reply_u.stop.was_up;
+		break;
+	}
 
 free_chunk:
 	linted_mem_free(chunk);

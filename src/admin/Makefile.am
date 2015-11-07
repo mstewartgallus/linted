@@ -19,8 +19,24 @@ noinst_LTLIBRARIES+=%D%/libadmin.la
 %C%_libadmin_la_SOURCES=\
   %D%/admin.c\
   include/linted/admin.h
+nodist_%C%_libadmin_la_SOURCES=\
+  %D%/admin_xdr.c\
+  %D%/admin.h
+%C%_libadmin_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libadmin_la_LIBADD=\
   src/async/libasync.la\
   src/io/libio.la\
   src/str/libstr.la\
   src/ko/libko.la
+
+EXTRA_DIST+=%D%/admin.x
+
+MOSTLYCLEANFILES+=%D%/admin_xdr.c
+%D%/admin_xdr.c: %D%/admin.x
+	$(linted_V_RPCGEN) $(RPCGEN) -N -c $< | sed -e 's|$(srcdir)/src/admin/admin.h|admin.h|g' > $@
+
+BUILT_SOURCES+=%D%/admin.h
+MOSTLYCLEANFILES+=%D%/admin.h
+%D%/admin.h: %D%/admin.x
+	$(linted_V_RPCGEN) $(RPCGEN) -N -h $< > $@
+
