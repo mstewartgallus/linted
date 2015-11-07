@@ -71,11 +71,10 @@ struct mem_field {
 	size_t offset;
 };
 
+static size_t null_list_size(char const *const *list);
+
 static size_t process_mem_fields(struct mem_field *mem_fields,
                                  size_t fields_size);
-
-static size_t bytes_to_size(char const *bytes);
-static size_t nth_size(char const *bytes, size_t ii);
 
 linted_error linted_admin_in_task_recv_create(
     struct linted_admin_in_task_recv **taskp, void *data)
@@ -99,6 +98,9 @@ linted_error linted_admin_in_task_recv_create(
 	}
 	task->parent = parent;
 	task->data = data;
+
+	memset(task->request, 0, CHUNK_SIZE);
+
 	*taskp = task;
 	return 0;
 free_task:
@@ -134,83 +136,65 @@ linted_error linted_admin_in_task_recv_request(
 		request = xx;
 	}
 
-	char *tip = task->request;
+	char *raw = task->request;
 
-	linted_admin_type type;
-	memcpy(&type, tip, sizeof type);
-	tip += sizeof type;
+	XDR xdr = {0};
+	xdrmem_create(&xdr, raw, CHUNK_SIZE, XDR_DECODE);
 
+	struct linted_admin_proto_request code = {0};
+	if (!xdr_linted_admin_proto_request(&xdr, &code))
+		assert(0);
+
+	linted_admin_type type = code.type;
 	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
 		struct linted_admin_add_unit_request *status =
 		    &request->x.add_unit;
+		struct linted_admin_proto_request_add_unit *codes =
+		    &code.linted_admin_proto_request_u.add_unit;
 
-		unsigned char bitfield[2U];
-		memcpy(bitfield, tip, sizeof bitfield);
-		tip += sizeof bitfield;
+		bool has_priority = codes->priority != 0;
+		bool has_limit_no_file = codes->limit_no_file != 0;
+		bool has_limit_msgqueue = codes->limit_msgqueue != 0;
+		bool has_limit_locks = codes->limit_locks != 0;
 
-		bool has_priority = (bitfield[0U] & 1U) != 0U;
-		bool has_limit_no_file =
-		    (bitfield[0U] & (1U << 2U)) != 0;
-		bool has_limit_msgqueue =
-		    (bitfield[0U] & (1U << 3U)) != 0;
-		bool has_limit_locks = (bitfield[0U] & (1U << 4U)) != 0;
+		bool clone_newuser = codes->clone_newuser;
+		bool clone_newpid = codes->clone_newpid;
+		bool clone_newipc = codes->clone_newipc;
+		bool clone_newnet = codes->clone_newnet;
+		bool clone_newns = codes->clone_newns;
+		bool clone_newuts = codes->clone_newuts;
 
-		bool clone_newuser = (bitfield[0U] & (1U << 5U)) != 0;
-		bool clone_newpid = (bitfield[0U] & (1U << 6U)) != 0;
-		bool clone_newipc = (bitfield[0U] & (1U << 7U)) != 0;
-		bool clone_newnet = (bitfield[0U] & (1U << 7U)) != 0;
-		bool clone_newns = (bitfield[1U] & 1U) != 0;
-		bool clone_newuts = (bitfield[1U] & (1U << 1U)) != 0;
+		bool no_new_privs = codes->no_new_privs;
 
-		bool no_new_privs = (bitfield[1U] & (1U << 2U)) != 0U;
+		rlim_t priority = has_priority ? *codes->priority : 0;
+		rlim_t limit_no_file =
+		    has_limit_no_file ? *codes->limit_no_file : 0;
+		rlim_t limit_msgqueue =
+		    has_limit_msgqueue ? *codes->limit_msgqueue : 0;
+		rlim_t limit_locks =
+		    has_limit_locks ? *codes->limit_locks : 0;
 
-		rlim_t priority;
-		memcpy(&priority, tip, sizeof priority);
-		tip += sizeof priority;
+		size_t name_size = strlen(codes->name);
+		size_t fstab_size = strlen(codes->fstab);
+		size_t chdir_size = strlen(codes->chdir_path);
 
-		rlim_t limit_no_file;
-		memcpy(&limit_no_file, tip, sizeof limit_no_file);
-		tip += sizeof limit_no_file;
-
-		rlim_t limit_msgqueue;
-		memcpy(&limit_msgqueue, tip, sizeof limit_msgqueue);
-		tip += sizeof limit_msgqueue;
-
-		rlim_t limit_locks;
-		memcpy(&limit_locks, tip, sizeof limit_locks);
-		tip += sizeof limit_locks;
-
-		size_t name_size = bytes_to_size(tip);
-		tip += sizeof name_size;
-
-		size_t fstab_size = bytes_to_size(tip);
-		tip += sizeof fstab_size;
-
-		size_t chdir_size = bytes_to_size(tip);
-		tip += sizeof chdir_size;
-
-		size_t command_count = bytes_to_size(tip);
-		tip += sizeof command_count;
-
-		char const *command_sizes_start = tip;
+		size_t command_count = codes->command.command_len;
 		size_t total_command_size = 0U;
 		for (size_t ii = 0U; ii < command_count; ++ii) {
 			total_command_size +=
-			    nth_size(command_sizes_start, ii) + 1U;
-			tip += sizeof(size_t);
+			    strlen(codes->command.command_val[ii]) + 1U;
 		}
 
-		size_t env_whitelist_count = bytes_to_size(tip);
-		tip += sizeof env_whitelist_count;
+		size_t env_whitelist_count =
+		    codes->env_whitelist.env_whitelist_len;
 
-		char const *env_whitelist_sizes_start = tip;
 		size_t total_env_whitelist_size = 0U;
 		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
 			total_env_whitelist_size +=
-			    nth_size(env_whitelist_sizes_start, ii) +
+			    strlen(codes->env_whitelist
+			               .env_whitelist_val[ii]) +
 			    1U;
-			tip += sizeof(size_t);
 		}
 
 		enum { COMMAND,
@@ -264,7 +248,7 @@ linted_error linted_admin_in_task_recv_request(
 		for (size_t ii = 0U; ii < command_count; ++ii) {
 			command[ii] = command_storage;
 			command_storage +=
-			    nth_size(command_sizes_start, ii) + 1U;
+			    strlen(codes->command.command_val[ii]) + 1U;
 		}
 
 		char *env_whitelist_storage =
@@ -272,43 +256,43 @@ linted_error linted_admin_in_task_recv_request(
 		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
 			env_whitelist[ii] = env_whitelist_storage;
 			env_whitelist_storage +=
-			    nth_size(env_whitelist_sizes_start, ii) +
+			    strlen(codes->env_whitelist
+			               .env_whitelist_val[ii]) +
 			    1U;
 		}
 
-		memcpy(name, tip, name_size);
+		memcpy(name, codes->name, name_size);
 		name[name_size] = '\0';
-		tip += name_size;
 
-		memcpy(fstab, tip, fstab_size);
+		memcpy(fstab, codes->fstab, fstab_size);
 		fstab[fstab_size] = '\0';
-		tip += fstab_size;
 
-		memcpy(chdir_path, tip, chdir_size);
+		memcpy(chdir_path, codes->chdir_path, chdir_size);
 		chdir_path[chdir_size] = '\0';
-		tip += chdir_size;
 
 		for (size_t ii = 0U; ii < command_count; ++ii) {
 			size_t arg_size =
-			    nth_size(command_sizes_start, ii);
+			    strlen(codes->command.command_val[ii]);
 
 			char *arg = command[ii];
 
-			memcpy(arg, tip, arg_size);
-			tip += arg_size;
+			memcpy(arg, codes->command.command_val[ii],
+			       arg_size);
 
 			arg[arg_size] = '\0';
 		}
 		command[command_count] = 0;
 
 		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
-			size_t arg_size =
-			    nth_size(env_whitelist_sizes_start, ii);
+			size_t arg_size = strlen(
+			    codes->env_whitelist.env_whitelist_val[ii]);
 
 			char *arg = env_whitelist[ii];
 
-			memcpy(arg, tip, arg_size);
-			tip += arg_size;
+			memcpy(
+			    arg,
+			    codes->env_whitelist.env_whitelist_val[ii],
+			    arg_size);
 
 			arg[arg_size] = '\0';
 		}
@@ -350,19 +334,13 @@ linted_error linted_admin_in_task_recv_request(
 		struct linted_admin_add_socket_request *add_socket =
 		    &request->x.add_socket;
 
-		int32_t fifo_size;
-		memcpy(&fifo_size, tip, sizeof fifo_size);
-		tip += sizeof fifo_size;
+		struct linted_admin_proto_request_add_socket *codes =
+		    &code.linted_admin_proto_request_u.add_socket;
 
-		linted_unit_socket_type sock_type;
-		memcpy(&sock_type, tip, sizeof sock_type);
-		tip += sizeof sock_type;
-
-		size_t name_size = bytes_to_size(tip);
-		tip += sizeof name_size;
-
-		size_t path_size = bytes_to_size(tip);
-		tip += sizeof path_size;
+		int32_t fifo_size = codes->fifo_size;
+		int32_t sock_type = codes->sock_type;
+		size_t name_size = strlen(codes->name);
+		size_t path_size = strlen(codes->path);
 
 		enum { NAME, PATH };
 		struct mem_field mem_sizes[] =
@@ -384,11 +362,10 @@ linted_error linted_admin_in_task_recv_request(
 		char *name = &mem[mem_sizes[NAME].offset];
 		char *path = &mem[mem_sizes[PATH].offset];
 
-		memcpy(name, tip, name_size);
+		memcpy(name, codes->name, name_size);
 		name[name_size] = '\0';
-		tip += name_size;
 
-		memcpy(path, tip, path_size);
+		memcpy(path, codes->path, path_size);
 		path[path_size] = '\0';
 
 		add_socket->type = type;
@@ -405,13 +382,13 @@ linted_error linted_admin_in_task_recv_request(
 	case LINTED_ADMIN_STATUS: {
 		struct linted_admin_status_request *status =
 		    &request->x.status;
+		struct linted_admin_proto_request_status *codes =
+		    &code.linted_admin_proto_request_u.status;
 
-		size_t size;
-		memcpy(&size, tip, sizeof size);
-		tip += sizeof size;
+		size_t size = strlen(codes->name);
 
 		char *name;
-		err = linted_str_dup_len(&name, tip, size);
+		err = linted_str_dup_len(&name, codes->name, size);
 		if (err != 0)
 			goto free_request;
 
@@ -423,13 +400,13 @@ linted_error linted_admin_in_task_recv_request(
 	case LINTED_ADMIN_STOP: {
 		struct linted_admin_stop_request *stop =
 		    &request->x.stop;
+		struct linted_admin_proto_request_stop *codes =
+		    &code.linted_admin_proto_request_u.stop;
 
-		size_t size;
-		memcpy(&size, tip, sizeof size);
-		tip += sizeof size;
+		size_t size = strlen(codes->name);
 
 		char *name;
-		err = linted_str_dup_len(&name, tip, size);
+		err = linted_str_dup_len(&name, codes->name, size);
 		if (err != 0)
 			goto free_request;
 
@@ -441,6 +418,10 @@ linted_error linted_admin_in_task_recv_request(
 	default:
 		LINTED_ASSERT(0);
 	}
+
+	xdr_free((xdrproc_t)xdr_linted_admin_proto_request,
+	         (char *)&code);
+	xdr_destroy(&xdr);
 
 free_request:
 	if (err != 0) {
@@ -494,19 +475,21 @@ linted_admin_in_send(linted_admin_in admin,
 			return err;
 		raw = xx;
 	}
-	char *tip = raw;
+
+	XDR xdr = {0};
+	xdrmem_create(&xdr, raw, CHUNK_SIZE, XDR_ENCODE);
+
+	struct linted_admin_proto_request code = {0};
+	code.type = type;
 	switch (type) {
-	case LINTED_ADMIN_ADD_UNIT: {
-		struct linted_admin_add_unit_request const *status =
-		    &request->x.add_unit;
+	case LINTED_ADMIN_PROTO_ADD_UNIT: {
+		struct linted_admin_add_unit_request *status =
+		    (void *)&request->x.add_unit;
 
-		memcpy(tip, &type, sizeof type);
-		tip += sizeof type;
-
-		rlim_t priority = status->priority;
-		rlim_t limit_no_file = status->limit_no_file;
-		rlim_t limit_msgqueue = status->limit_msgqueue;
-		rlim_t limit_locks = status->limit_locks;
+		int64_t priority = status->priority;
+		int64_t limit_no_file = status->limit_no_file;
+		int64_t limit_msgqueue = status->limit_msgqueue;
+		int64_t limit_locks = status->limit_locks;
 
 		bool has_priority = status->has_priority;
 		bool has_limit_no_file = status->has_limit_no_file;
@@ -522,201 +505,101 @@ linted_admin_in_send(linted_admin_in admin,
 
 		bool no_new_privs = status->no_new_privs;
 
-		unsigned char bitfield[2U] = {
-		    has_priority | has_limit_no_file << 1U |
-		        has_limit_msgqueue << 2U |
-		        has_limit_locks << 3U |
+		char const *name = status->name;
 
-		        clone_newuser << 4U | clone_newpid << 5U |
-		        clone_newipc << 6U | clone_newnet << 7U,
+		code.linted_admin_proto_request_u.add_unit.name =
+		    (char *)name;
+		code.linted_admin_proto_request_u.add_unit.fstab =
+		    (char *)status->fstab;
+		code.linted_admin_proto_request_u.add_unit.chdir_path =
+		    (char *)status->chdir_path;
 
-		    clone_newns | clone_newuts << 1U |
+		code.linted_admin_proto_request_u.add_unit.command
+		    .command_len = null_list_size(status->command);
+		code.linted_admin_proto_request_u.add_unit.command
+		    .command_val = (char **)status->command;
 
-		        no_new_privs << 2U};
+		code.linted_admin_proto_request_u.add_unit.env_whitelist
+		    .env_whitelist_len =
+		    null_list_size(status->env_whitelist);
+		code.linted_admin_proto_request_u.add_unit.env_whitelist
+		    .env_whitelist_val = (char **)status->env_whitelist;
 
-		memcpy(tip, bitfield, sizeof bitfield);
-		tip += sizeof bitfield;
+		if (has_priority)
+			code.linted_admin_proto_request_u.add_unit
+			    .priority = &priority;
 
-		memcpy(tip, &priority, sizeof priority);
-		tip += sizeof priority;
+		if (has_limit_no_file)
+			code.linted_admin_proto_request_u.add_unit
+			    .limit_no_file = &limit_no_file;
 
-		memcpy(tip, &limit_no_file, sizeof limit_no_file);
-		tip += sizeof limit_no_file;
+		if (has_limit_msgqueue)
+			code.linted_admin_proto_request_u.add_unit
+			    .limit_msgqueue = &limit_msgqueue;
 
-		memcpy(tip, &limit_msgqueue, sizeof limit_msgqueue);
-		tip += sizeof limit_msgqueue;
+		if (has_limit_locks)
+			code.linted_admin_proto_request_u.add_unit
+			    .limit_locks = &limit_locks;
 
-		memcpy(tip, &limit_locks, sizeof limit_locks);
-		tip += sizeof limit_locks;
+		code.linted_admin_proto_request_u.add_unit
+		    .clone_newuser = clone_newuser;
+		code.linted_admin_proto_request_u.add_unit
+		    .clone_newpid = clone_newpid;
+		code.linted_admin_proto_request_u.add_unit
+		    .clone_newipc = clone_newipc;
+		code.linted_admin_proto_request_u.add_unit
+		    .clone_newnet = clone_newnet;
+		code.linted_admin_proto_request_u.add_unit.clone_newns =
+		    clone_newns;
+		code.linted_admin_proto_request_u.add_unit
+		    .clone_newuts = clone_newuts;
 
-		char const *namep = status->name;
-		size_t name_size = strlen(namep);
+		code.linted_admin_proto_request_u.add_unit
+		    .no_new_privs = no_new_privs;
 
-		if (name_size > LINTED_UNIT_NAME_MAX) {
-			err = LINTED_ERROR_INVALID_PARAMETER;
-			goto free_raw;
-		}
-
-		memcpy(tip, &name_size, sizeof name_size);
-		tip += sizeof name_size;
-
-		char const *fstabp = status->fstab;
-		size_t fstab_size = strlen(fstabp);
-
-		memcpy(tip, &fstab_size, sizeof fstab_size);
-		tip += sizeof fstab_size;
-
-		char const *chdir_pathp = status->chdir_path;
-		size_t chdir_path_size = strlen(chdir_pathp);
-
-		memcpy(tip, &chdir_path_size, sizeof chdir_path_size);
-		tip += sizeof chdir_path_size;
-
-		char const *const *command = status->command;
-
-		size_t command_count = 0U;
-		for (; command[command_count] != 0U; ++command_count) {
-		}
-
-		memcpy(tip, &command_count, sizeof command_count);
-		tip += sizeof command_count;
-
-		for (size_t ii = 0U; ii < command_count; ++ii) {
-			size_t arg_size = strlen(command[ii]);
-
-			memcpy(tip, &arg_size, sizeof arg_size);
-			tip += sizeof arg_size;
-		}
-
-		char const *const *env_whitelist =
-		    status->env_whitelist;
-
-		size_t env_whitelist_count = 0U;
-		for (; env_whitelist[env_whitelist_count] != 0;
-		     ++env_whitelist_count) {
-		}
-
-		memcpy(tip, &env_whitelist_count,
-		       sizeof env_whitelist_count);
-		tip += sizeof env_whitelist_count;
-
-		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
-			size_t arg_size = strlen(env_whitelist[ii]);
-
-			memcpy(tip, &arg_size, sizeof arg_size);
-			tip += sizeof arg_size;
-		}
-
-		/* Now do actual stuff */
-
-		memcpy(tip, namep, name_size);
-		tip += name_size;
-
-		memcpy(tip, fstabp, fstab_size);
-		tip += fstab_size;
-
-		memcpy(tip, chdir_pathp, chdir_path_size);
-		tip += chdir_path_size;
-
-		for (size_t ii = 0U; ii < command_count; ++ii) {
-			char const *arg = command[ii];
-			size_t arg_size = strlen(arg);
-
-			memcpy(tip, arg, arg_size);
-			tip += arg_size;
-		}
-
-		for (size_t ii = 0U; ii < env_whitelist_count; ++ii) {
-			char const *arg = env_whitelist[ii];
-			size_t arg_size = strlen(arg);
-
-			memcpy(tip, arg, arg_size);
-			tip += arg_size;
-		}
+		if (!xdr_linted_admin_proto_request(&xdr, &code))
+			assert(0);
 		break;
 	}
 
-	case LINTED_ADMIN_ADD_SOCKET: {
+	case LINTED_ADMIN_PROTO_ADD_SOCKET: {
 		struct linted_admin_add_socket_request const *
 		    add_socket = &request->x.add_socket;
 
-		memcpy(tip, &type, sizeof type);
-		tip += sizeof type;
-
-		char const *namep = add_socket->name;
+		char const *name = add_socket->name;
 		char const *path = add_socket->path;
 		int32_t fifo_size = add_socket->fifo_size;
 		linted_unit_socket_type sock_type =
 		    add_socket->sock_type;
 
-		memcpy(tip, &fifo_size, sizeof fifo_size);
-		tip += sizeof fifo_size;
+		code.linted_admin_proto_request_u.add_socket.name =
+		    (char *)name;
+		code.linted_admin_proto_request_u.add_socket.path =
+		    (char *)path;
+		code.linted_admin_proto_request_u.add_socket.fifo_size =
+		    fifo_size;
+		code.linted_admin_proto_request_u.add_socket.sock_type =
+		    sock_type;
 
-		memcpy(tip, &sock_type, sizeof sock_type);
-		tip += sizeof sock_type;
-
-		size_t name_size = strlen(namep);
-		size_t path_size = strlen(path);
-
-		if (name_size > LINTED_UNIT_NAME_MAX) {
-			err = LINTED_ERROR_INVALID_PARAMETER;
-			goto free_raw;
-		}
-
-		memcpy(tip, &name_size, sizeof name_size);
-		tip += sizeof name_size;
-
-		memcpy(tip, &path_size, sizeof path_size);
-		tip += sizeof path_size;
-
-		/* Now do actual stuff */
-
-		memcpy(tip, namep, name_size);
-		tip += name_size;
-
-		memcpy(tip, path, path_size);
+		if (!xdr_linted_admin_proto_request(&xdr, &code))
+			assert(0);
 		break;
 	}
 
-	case LINTED_ADMIN_STATUS: {
-		struct linted_admin_status_request const *status =
-		    (void *)request;
-		char const *namep = status->name;
-
-		size_t size = strlen(namep);
-		if (size > LINTED_UNIT_NAME_MAX)
-			return LINTED_ERROR_INVALID_PARAMETER;
-
-		memcpy(tip, &type, sizeof type);
-		tip += sizeof type;
-
-		memcpy(tip, &size, sizeof size);
-		tip += sizeof size;
-
-		memcpy(tip, namep, size);
+	case LINTED_ADMIN_PROTO_STATUS:
+		code.linted_admin_proto_request_u.status.name =
+		    (char *)request->x.status.name;
+		if (!xdr_linted_admin_proto_request(&xdr, &code))
+			assert(0);
 		break;
-	}
 
-	case LINTED_ADMIN_STOP: {
-		struct linted_admin_stop_request const *stop =
-		    (void *)request;
-		char const *namep = stop->name;
+	case LINTED_ADMIN_PROTO_STOP:
+		code.linted_admin_proto_request_u.stop.name =
+		    (char *)request->x.stop.name;
 
-		size_t size = strlen(namep);
-		if (size > LINTED_UNIT_NAME_MAX) {
-			err = LINTED_ERROR_INVALID_PARAMETER;
-			goto free_raw;
-		}
-
-		memcpy(tip, &type, sizeof type);
-		tip += sizeof type;
-
-		memcpy(tip, &size, sizeof size);
-		tip += sizeof size;
-
-		memcpy(tip, namep, size);
+		if (!xdr_linted_admin_proto_request(&xdr, &code))
+			assert(0);
 		break;
-	}
 
 	default:
 		err = LINTED_ERROR_INVALID_PARAMETER;
@@ -724,6 +607,8 @@ linted_admin_in_send(linted_admin_in admin,
 	}
 
 	err = linted_io_write_all(admin, 0, raw, CHUNK_SIZE);
+
+	xdr_destroy(&xdr);
 
 free_raw:
 	linted_mem_free(raw);
@@ -775,6 +660,9 @@ linted_error linted_admin_out_task_send_create(
 	}
 	task->parent = parent;
 	task->data = data;
+
+	memset(task->reply, 0, CHUNK_SIZE);
+
 	*taskp = task;
 	return 0;
 free_task:
@@ -805,7 +693,7 @@ void linted_admin_out_task_send_prepare(
 	char *tip = task->reply;
 	memset(tip, 0, CHUNK_SIZE);
 
-	XDR xdr;
+	XDR xdr = {0};
 	xdrmem_create(&xdr, tip, CHUNK_SIZE, XDR_ENCODE);
 
 	struct linted_admin_proto_reply code = {0};
@@ -828,6 +716,8 @@ void linted_admin_out_task_send_prepare(
 
 	if (!xdr_linted_admin_proto_reply(&xdr, &code))
 		assert(0);
+
+	xdr_destroy(&xdr);
 
 	linted_io_task_write_prepare(task->parent, task_ck, ko,
 	                             task->reply, sizeof task->reply);
@@ -875,10 +765,10 @@ linted_error linted_admin_out_recv(linted_admin_out admin,
 		goto free_chunk;
 	}
 
-	XDR xdr;
+	XDR xdr = {0};
 	xdrmem_create(&xdr, chunk, CHUNK_SIZE, XDR_DECODE);
 
-	struct linted_admin_proto_reply code;
+	struct linted_admin_proto_reply code = {0};
 	if (!xdr_linted_admin_proto_reply(&xdr, &code))
 		assert(0);
 
@@ -899,23 +789,20 @@ linted_error linted_admin_out_recv(linted_admin_out admin,
 		break;
 	}
 
+	xdr_free((xdrproc_t)xdr_linted_admin_proto_reply,
+	         (char *)&code);
+	xdr_destroy(&xdr);
+
 free_chunk:
 	linted_mem_free(chunk);
 	return err;
 }
 
-static size_t bytes_to_size(char const *bytes)
+static size_t null_list_size(char const *const *list)
 {
-	size_t size;
-	memcpy(&size, bytes, sizeof size);
-	return size;
-}
-
-static size_t nth_size(char const *bytes, size_t ii)
-{
-	size_t size;
-	memcpy(&size, bytes + ii * sizeof(size_t), sizeof size);
-	return size;
+	for (size_t ii = 0U;; ++ii)
+		if (0 == list[ii])
+			return ii;
 }
 
 static size_t process_mem_fields(struct mem_field *mem_fields,

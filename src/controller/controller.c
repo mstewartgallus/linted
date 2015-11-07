@@ -105,7 +105,7 @@ void linted_controller_task_send_prepare(
     struct linted_controller_message const *message)
 {
 	{
-		XDR xdr;
+		XDR xdr = {0};
 		xdrmem_create(&xdr, task->message, sizeof task->message,
 		              XDR_ENCODE);
 
@@ -122,7 +122,10 @@ void linted_controller_task_send_prepare(
 
 		if (!xdr_linted_controller_code(&xdr, &code))
 			assert(0);
+
+		xdr_destroy(&xdr);
 	}
+
 	linted_io_task_write_prepare(task->parent, task_ck, controller,
 	                             task->message,
 	                             sizeof task->message);
@@ -196,13 +199,15 @@ linted_error
 linted_controller_decode(struct linted_controller_task_recv const *task,
                          struct linted_controller_message *message)
 {
-	XDR xdr;
+	XDR xdr = {0};
 	xdrmem_create(&xdr, (void *)task->message, sizeof task->message,
 	              XDR_DECODE);
 
 	struct linted_controller_code code = {0};
 	if (!xdr_linted_controller_code(&xdr, &code))
 		return EPROTO;
+
+	xdr_destroy(&xdr);
 
 	message->z_tilt = code.z_tilt;
 	message->x_tilt = code.x_tilt;

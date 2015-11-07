@@ -155,7 +155,7 @@ void linted_updater_task_send_prepare(
 	                             task->message,
 	                             sizeof task->message);
 
-	XDR xdr;
+	XDR xdr = {0};
 	xdrmem_create(&xdr, task->message, sizeof task->message,
 	              XDR_ENCODE);
 
@@ -170,6 +170,8 @@ void linted_updater_task_send_prepare(
 
 	if (!xdr_linted_updater_code(&xdr, &code))
 		assert(0);
+
+	xdr_destroy(&xdr);
 }
 
 struct linted_updater_task_send *
@@ -194,11 +196,11 @@ linted_updater_task_send_data(struct linted_updater_task_send *task)
 void linted_updater_decode(struct linted_update_task_recv const *task,
                            struct linted_updater_update *update)
 {
-	XDR xdr;
+	XDR xdr = {0};
 	xdrmem_create(&xdr, (void *)task->message, sizeof task->message,
 	              XDR_DECODE);
 
-	struct linted_updater_code code;
+	struct linted_updater_code code = {0};
 	if (!xdr_linted_updater_code(&xdr, &code))
 		assert(0);
 
@@ -208,4 +210,6 @@ void linted_updater_decode(struct linted_update_task_recv const *task,
 
 	update->z_rotation._value = code.z_rotation;
 	update->x_rotation._value = code.x_rotation;
+
+	xdr_destroy(&xdr);
 }
