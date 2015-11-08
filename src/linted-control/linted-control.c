@@ -338,8 +338,9 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 	{
 		struct linted_admin_request request = {0};
 
-		request.x.type = LINTED_ADMIN_STATUS;
-		request.x.status.name = name;
+		request.type = LINTED_ADMIN_STATUS;
+		request.linted_admin_request_u.status.name =
+		    (char *)name;
 
 		err = linted_admin_in_send(admin_in, &request);
 		if (err != 0) {
@@ -349,7 +350,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		}
 	}
 
-	union linted_admin_reply reply;
+	struct linted_admin_reply reply;
 	err = linted_admin_out_recv(admin_out, &reply);
 	if (err != 0) {
 		failure(LINTED_KO_STDERR, process_name,
@@ -357,7 +358,7 @@ static uint_fast8_t run_status(char const *process_name, size_t argc,
 		return EXIT_FAILURE;
 	}
 
-	if (reply.status.is_up) {
+	if (reply.linted_admin_reply_u.status.is_up) {
 		linted_io_write_format(LINTED_KO_STDOUT, 0,
 		                       "%s: %s is up\n", process_name,
 		                       name);
@@ -458,8 +459,9 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 	{
 		struct linted_admin_request request = {0};
 
-		request.x.type = LINTED_ADMIN_STOP;
-		request.x.status.name = "linted-gui";
+		request.type = LINTED_ADMIN_STOP;
+		request.linted_admin_request_u.status.name =
+		    "linted-gui";
 
 		err = linted_admin_in_send(admin_in, &request);
 	}
@@ -471,14 +473,14 @@ static uint_fast8_t run_stop(char const *process_name, size_t argc,
 
 	bool was_up;
 	{
-		union linted_admin_reply xx;
+		struct linted_admin_reply xx;
 		err = linted_admin_out_recv(admin_out, &xx);
 		if (err != 0) {
 			failure(LINTED_KO_STDERR, process_name,
 			        "can not read reply", err);
 			return EXIT_FAILURE;
 		}
-		was_up = xx.stop.was_up;
+		was_up = xx.linted_admin_reply_u.stop.was_up;
 	}
 
 	if (was_up) {

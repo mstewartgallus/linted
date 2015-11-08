@@ -82,6 +82,8 @@ static linted_error service_activate(struct linted_unit *unit,
                                      linted_ko admin_in,
                                      linted_ko admin_out);
 
+static size_t null_list_size(char const *const *list);
+
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-startup", 0};
 
@@ -894,12 +896,16 @@ static linted_error socket_activate(struct linted_unit *unit,
 	{
 		struct linted_admin_request request = {0};
 
-		request.x.type = LINTED_ADMIN_ADD_SOCKET;
+		request.type = LINTED_ADMIN_ADD_SOCKET;
 
-		request.x.add_socket.name = name;
-		request.x.add_socket.path = path;
-		request.x.add_socket.fifo_size = fifo_size;
-		request.x.add_socket.sock_type = sock_type;
+		request.linted_admin_request_u.add_socket.name =
+		    (char *)name;
+		request.linted_admin_request_u.add_socket.path =
+		    (char *)path;
+		request.linted_admin_request_u.add_socket.fifo_size =
+		    fifo_size;
+		request.linted_admin_request_u.add_socket.sock_type =
+		    sock_type;
 
 		err = linted_admin_in_send(admin_in, &request);
 	}
@@ -907,7 +913,7 @@ static linted_error socket_activate(struct linted_unit *unit,
 		return err;
 
 	{
-		union linted_admin_reply xx;
+		struct linted_admin_reply xx;
 		err = linted_admin_out_recv(admin_out, &xx);
 		if (err != 0)
 			return err;
@@ -930,10 +936,10 @@ static linted_error service_activate(struct linted_unit *unit,
 	char const *const *command = unit_service->command;
 	char const *const *env_whitelist = unit_service->env_whitelist;
 
-	rlim_t priority = unit_service->priority;
-	rlim_t limit_no_file = unit_service->limit_no_file;
-	rlim_t limit_msgqueue = unit_service->limit_msgqueue;
-	rlim_t limit_locks = unit_service->limit_locks;
+	int_least64_t priority = unit_service->priority;
+	int_least64_t limit_no_file = unit_service->limit_no_file;
+	int_least64_t limit_msgqueue = unit_service->limit_msgqueue;
+	int_least64_t limit_locks = unit_service->limit_locks;
 
 	bool has_priority = unit_service->has_priority;
 	bool has_limit_no_file = unit_service->has_limit_no_file;
@@ -961,34 +967,49 @@ static linted_error service_activate(struct linted_unit *unit,
 	{
 		struct linted_admin_request request = {0};
 
-		request.x.type = LINTED_ADMIN_ADD_UNIT;
+		request.type = LINTED_ADMIN_ADD_UNIT;
 
-		request.x.add_unit.priority = priority;
-		request.x.add_unit.limit_no_file = limit_no_file;
-		request.x.add_unit.limit_msgqueue = limit_msgqueue;
-		request.x.add_unit.limit_locks = limit_locks;
+		request.linted_admin_request_u.add_unit.priority =
+		    has_priority ? &priority : 0;
+		request.linted_admin_request_u.add_unit.limit_no_file =
+		    has_limit_no_file ? &limit_no_file : 0;
+		request.linted_admin_request_u.add_unit.limit_msgqueue =
+		    has_limit_msgqueue ? &limit_msgqueue : 0;
+		request.linted_admin_request_u.add_unit.limit_locks =
+		    has_limit_locks ? &limit_locks : 0;
 
-		request.x.add_unit.has_priority = has_priority;
-		request.x.add_unit.has_limit_no_file =
-		    has_limit_no_file;
-		request.x.add_unit.has_limit_msgqueue =
-		    has_limit_msgqueue;
-		request.x.add_unit.has_limit_locks = has_limit_locks;
+		request.linted_admin_request_u.add_unit.clone_newuser =
+		    clone_newuser;
+		request.linted_admin_request_u.add_unit.clone_newpid =
+		    clone_newpid;
+		request.linted_admin_request_u.add_unit.clone_newipc =
+		    clone_newipc;
+		request.linted_admin_request_u.add_unit.clone_newnet =
+		    clone_newnet;
+		request.linted_admin_request_u.add_unit.clone_newns =
+		    clone_newns;
+		request.linted_admin_request_u.add_unit.clone_newuts =
+		    clone_newuts;
 
-		request.x.add_unit.clone_newuser = clone_newuser;
-		request.x.add_unit.clone_newpid = clone_newpid;
-		request.x.add_unit.clone_newipc = clone_newipc;
-		request.x.add_unit.clone_newnet = clone_newnet;
-		request.x.add_unit.clone_newns = clone_newns;
-		request.x.add_unit.clone_newuts = clone_newuts;
+		request.linted_admin_request_u.add_unit.no_new_privs =
+		    no_new_privs;
 
-		request.x.add_unit.no_new_privs = no_new_privs;
+		request.linted_admin_request_u.add_unit.name =
+		    (char *)name;
+		request.linted_admin_request_u.add_unit.fstab =
+		    (char *)fstab;
+		request.linted_admin_request_u.add_unit.chdir_path =
+		    (char *)chdir_path;
 
-		request.x.add_unit.name = name;
-		request.x.add_unit.fstab = fstab;
-		request.x.add_unit.chdir_path = chdir_path;
-		request.x.add_unit.command = command;
-		request.x.add_unit.env_whitelist = env_whitelist;
+		request.linted_admin_request_u.add_unit.command
+		    .command_len = null_list_size(command);
+		request.linted_admin_request_u.add_unit.command
+		    .command_val = (char **)command;
+
+		request.linted_admin_request_u.add_unit.env_whitelist
+		    .env_whitelist_len = null_list_size(env_whitelist);
+		request.linted_admin_request_u.add_unit.env_whitelist
+		    .env_whitelist_val = (char **)env_whitelist;
 
 		err = linted_admin_in_send(admin_in, &request);
 	}
@@ -996,11 +1017,18 @@ static linted_error service_activate(struct linted_unit *unit,
 		return err;
 
 	{
-		union linted_admin_reply xx;
+		struct linted_admin_reply xx;
 		err = linted_admin_out_recv(admin_out, &xx);
 		if (err != 0)
 			return err;
 	}
 
 	return 0;
+}
+
+static size_t null_list_size(char const *const *list)
+{
+	for (size_t ii = 0U;; ++ii)
+		if (0 == list[ii])
+			return ii;
 }

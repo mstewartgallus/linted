@@ -125,21 +125,21 @@ static linted_error on_death_sig(struct monitor *monitor, int signo);
 
 static linted_error
 on_add_unit(struct monitor *monitor,
-            struct linted_admin_add_unit_request const *request,
-            struct linted_admin_add_unit_reply *reply);
+            struct linted_admin_request_add_unit const *request,
+            struct linted_admin_reply_add_unit *reply);
 static linted_error
 on_add_socket(struct monitor *monitor,
-              struct linted_admin_add_socket_request const *request,
-              struct linted_admin_add_socket_reply *reply);
+              struct linted_admin_request_add_socket const *request,
+              struct linted_admin_reply_add_socket *reply);
 
 static linted_error
 on_status_request(linted_pid manager_pid,
-                  struct linted_admin_status_request const *request,
-                  struct linted_admin_status_reply *reply);
+                  struct linted_admin_request_status const *request,
+                  struct linted_admin_reply_status *reply);
 static linted_error
 on_stop_request(linted_pid manager_pid,
-                struct linted_admin_stop_request const *request,
-                struct linted_admin_stop_reply *reply);
+                struct linted_admin_request_stop const *request,
+                struct linted_admin_reply_stop *reply);
 
 static linted_error on_child_stopped(char const *process_name,
                                      linted_pid pid);
@@ -759,36 +759,44 @@ monitor_on_admin_in_read(struct monitor *monitor,
 		request = xx;
 	}
 
-	union linted_admin_reply reply;
-	switch (request->x.type) {
+	linted_admin_type type = request->type;
+
+	struct linted_admin_reply reply;
+	reply.type = type;
+	switch (type) {
 	case LINTED_ADMIN_ADD_UNIT: {
-		struct linted_admin_add_unit_reply yy = {0};
-		err = on_add_unit(monitor, &request->x.add_unit, &yy);
-		reply.add_unit = yy;
+		struct linted_admin_reply_add_unit yy = {0};
+		err = on_add_unit(
+		    monitor, &request->linted_admin_request_u.add_unit,
+		    &yy);
+		reply.linted_admin_reply_u.add_unit = yy;
 		break;
 	}
 
 	case LINTED_ADMIN_ADD_SOCKET: {
-		struct linted_admin_add_socket_reply yy = {0};
-		err =
-		    on_add_socket(monitor, &request->x.add_socket, &yy);
-		reply.add_socket = yy;
+		struct linted_admin_reply_add_socket yy = {0};
+		err = on_add_socket(
+		    monitor,
+		    &request->linted_admin_request_u.add_socket, &yy);
+		reply.linted_admin_reply_u.add_socket = yy;
 		break;
 	}
 
 	case LINTED_ADMIN_STATUS: {
-		struct linted_admin_status_reply yy = {0};
-		err = on_status_request(manager_pid, &request->x.status,
-		                        &yy);
-		reply.status = yy;
+		struct linted_admin_reply_status yy = {0};
+		err = on_status_request(
+		    manager_pid,
+		    &request->linted_admin_request_u.status, &yy);
+		reply.linted_admin_reply_u.status = yy;
 		break;
 	}
 
 	case LINTED_ADMIN_STOP: {
-		struct linted_admin_stop_reply yy = {0};
-		err =
-		    on_stop_request(manager_pid, &request->x.stop, &yy);
-		reply.stop = yy;
+		struct linted_admin_reply_stop yy = {0};
+		err = on_stop_request(
+		    manager_pid, &request->linted_admin_request_u.stop,
+		    &yy);
+		reply.linted_admin_reply_u.stop = yy;
 		break;
 	}
 
@@ -798,7 +806,7 @@ monitor_on_admin_in_read(struct monitor *monitor,
 	linted_admin_request_free(request);
 
 	{
-		union linted_admin_reply xx = reply;
+		struct linted_admin_reply xx = reply;
 		linted_admin_out_task_send_prepare(
 		    write_task,
 		    (union linted_async_ck){.u64 = ADMIN_OUT_WRITE},
@@ -1241,8 +1249,8 @@ static linted_error on_child_about_to_clone(linted_pid pid)
 
 static linted_error
 on_add_unit(struct monitor *monitor,
-            struct linted_admin_add_unit_request const *request,
-            struct linted_admin_add_unit_reply *reply)
+            struct linted_admin_request_add_unit const *request,
+            struct linted_admin_reply_add_unit *reply)
 {
 	linted_error err = 0;
 
@@ -1251,18 +1259,24 @@ on_add_unit(struct monitor *monitor,
 	char const *unit_name = request->name;
 	char const *unit_fstab = request->fstab;
 	char const *unit_chdir_path = request->chdir_path;
-	char const *const *unit_command = request->command;
-	char const *const *unit_env_whitelist = request->env_whitelist;
 
-	rlim_t priority = request->priority;
-	rlim_t limit_no_file = request->limit_no_file;
-	rlim_t limit_msgqueue = request->limit_msgqueue;
-	rlim_t limit_locks = request->limit_locks;
+	size_t command_size = request->command.command_len;
+	char **unit_command = request->command.command_val;
 
-	bool has_priority = request->has_priority;
-	bool has_limit_no_file = request->has_limit_no_file;
-	bool has_limit_msgqueue = request->has_limit_msgqueue;
-	bool has_limit_locks = request->has_limit_locks;
+	size_t env_whitelist_size =
+	    request->env_whitelist.env_whitelist_len;
+	char **unit_env_whitelist =
+	    request->env_whitelist.env_whitelist_val;
+
+	int_least64_t *priority = request->priority;
+	int_least64_t *limit_no_file = request->limit_no_file;
+	int_least64_t *limit_msgqueue = request->limit_msgqueue;
+	int_least64_t *limit_locks = request->limit_locks;
+
+	bool has_priority = priority != 0;
+	bool has_limit_no_file = limit_no_file != 0;
+	bool has_limit_msgqueue = limit_msgqueue != 0;
+	bool has_limit_locks = limit_locks != 0;
 
 	bool clone_newuser = request->clone_newuser;
 	bool clone_newpid = request->clone_newpid;
@@ -1304,8 +1318,6 @@ on_add_unit(struct monitor *monitor,
 		chdir_path = xx;
 	}
 
-	size_t command_size = null_list_size(unit_command);
-
 	char **command;
 	{
 		void *xx;
@@ -1324,8 +1336,6 @@ on_add_unit(struct monitor *monitor,
 			goto free_command;
 	}
 	command[command_size] = 0;
-
-	size_t env_whitelist_size = null_list_size(unit_env_whitelist);
 
 	char **env_whitelist;
 	{
@@ -1367,10 +1377,17 @@ on_add_unit(struct monitor *monitor,
 	unit_service->env_whitelist =
 	    (char const *const *)env_whitelist;
 
-	unit_service->priority = priority;
-	unit_service->limit_no_file = limit_no_file;
-	unit_service->limit_msgqueue = limit_msgqueue;
-	unit_service->limit_locks = limit_locks;
+	if (has_priority)
+		unit_service->priority = *priority;
+
+	if (has_limit_no_file)
+		unit_service->limit_no_file = *limit_no_file;
+
+	if (has_limit_msgqueue)
+		unit_service->limit_msgqueue = *limit_msgqueue;
+
+	if (has_limit_locks)
+		unit_service->limit_locks = *limit_locks;
 
 	/* These aren't fully implemented yet */
 	unit_service->has_priority = has_priority;
@@ -1389,7 +1406,6 @@ on_add_unit(struct monitor *monitor,
 
 	err = service_activate(monitor, unit, false);
 
-	reply->type = LINTED_ADMIN_ADD_UNIT;
 	return err;
 
 free_whitelist:
@@ -1416,8 +1432,8 @@ free_name:
 
 static linted_error
 on_add_socket(struct monitor *monitor,
-              struct linted_admin_add_socket_request const *request,
-              struct linted_admin_add_socket_reply *reply)
+              struct linted_admin_request_add_socket const *request,
+              struct linted_admin_reply_add_socket *reply)
 {
 	linted_error err = 0;
 
@@ -1468,7 +1484,6 @@ on_add_socket(struct monitor *monitor,
 
 	err = socket_activate(unit_socket);
 
-	reply->type = LINTED_ADMIN_ADD_SOCKET;
 	return err;
 
 free_name:
@@ -1479,8 +1494,8 @@ free_name:
 
 static linted_error
 on_status_request(linted_pid manager_pid,
-                  struct linted_admin_status_request const *request,
-                  struct linted_admin_status_reply *reply)
+                  struct linted_admin_request_status const *request,
+                  struct linted_admin_reply_status *reply)
 {
 	linted_error err = 0;
 	bool is_up;
@@ -1504,15 +1519,14 @@ reply:
 	if (err != 0)
 		return err;
 
-	reply->type = LINTED_ADMIN_STATUS;
 	reply->is_up = is_up;
 	return 0;
 }
 
 static linted_error
 on_stop_request(linted_pid manager_pid,
-                struct linted_admin_stop_request const *request,
-                struct linted_admin_stop_reply *reply)
+                struct linted_admin_request_stop const *request,
+                struct linted_admin_reply_stop *reply)
 {
 	linted_error err = 0;
 	bool was_up;
@@ -1549,7 +1563,6 @@ reply:
 	if (err != 0)
 		return err;
 
-	reply->type = LINTED_ADMIN_STOP;
 	reply->was_up = was_up;
 	return 0;
 }

@@ -22,13 +22,15 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/resource.h>
 
 /**
  * @file
  *
  * Monitor, probe and control an init process.
  */
+
+typedef int_least32_t linted_admin_bool;
+typedef int_least32_t linted_admin_enum;
 
 struct linted_async_pool;
 struct linted_async_task;
@@ -40,94 +42,87 @@ enum { LINTED_ADMIN_ADD_UNIT,
        LINTED_ADMIN_ADD_SOCKET,
        LINTED_ADMIN_STATUS,
        LINTED_ADMIN_STOP };
-typedef unsigned char linted_admin_type;
+typedef linted_admin_enum linted_admin_type;
 
-struct linted_admin_add_unit_request {
-	linted_admin_type type;
+struct linted_admin_request_add_unit {
+	char *name;
+	char *fstab;
+	char *chdir_path;
 
-	char const *name;
-	char const *fstab;
-	char const *chdir_path;
+	struct {
+		uint_least32_t command_len;
+		char **command_val;
+	} command;
 
-	char const *const *command;
-	char const *const *env_whitelist;
+	struct {
+		uint_least32_t env_whitelist_len;
+		char **env_whitelist_val;
+	} env_whitelist;
 
-	rlim_t priority;
-	rlim_t limit_no_file;
-	rlim_t limit_msgqueue;
-	rlim_t limit_locks;
+	int_least64_t *priority;
+	int_least64_t *limit_no_file;
+	int_least64_t *limit_msgqueue;
+	int_least64_t *limit_locks;
 
-	_Bool has_priority : 1U;
-	_Bool has_limit_no_file : 1U;
-	_Bool has_limit_msgqueue : 1U;
-	_Bool has_limit_locks : 1U;
+	linted_admin_bool clone_newuser;
+	linted_admin_bool clone_newpid;
+	linted_admin_bool clone_newipc;
+	linted_admin_bool clone_newnet;
+	linted_admin_bool clone_newns;
+	linted_admin_bool clone_newuts;
 
-	_Bool clone_newuser : 1U;
-	_Bool clone_newpid : 1U;
-	_Bool clone_newipc : 1U;
-	_Bool clone_newnet : 1U;
-	_Bool clone_newns : 1U;
-	_Bool clone_newuts : 1U;
-
-	_Bool no_new_privs : 1U;
+	linted_admin_bool no_new_privs : 1U;
 };
 
-struct linted_admin_add_unit_reply {
-	linted_admin_type type;
-};
-
-struct linted_admin_add_socket_request {
-	linted_admin_type type;
-
-	char const *name;
-	char const *path;
+struct linted_admin_request_add_socket {
+	char *name;
+	char *path;
 	int_least32_t fifo_size;
-	linted_unit_socket_type sock_type;
+	int_least32_t sock_type;
 };
 
-struct linted_admin_add_socket_reply {
-	linted_admin_type type;
+struct linted_admin_request_status {
+	char *name;
 };
 
-struct linted_admin_status_request {
-	linted_admin_type type;
-	char const *name;
-};
-
-struct linted_admin_status_reply {
-	linted_admin_type type;
-	_Bool is_up;
-};
-
-struct linted_admin_stop_request {
-	linted_admin_type type;
-	char const *name;
-};
-
-struct linted_admin_stop_reply {
-	linted_admin_type type;
-	_Bool was_up;
-};
-
-union linted_admin_request_union {
-	linted_admin_type type;
-	struct linted_admin_add_unit_request add_unit;
-	struct linted_admin_add_socket_request add_socket;
-	struct linted_admin_status_request status;
-	struct linted_admin_stop_request stop;
+struct linted_admin_request_stop {
+	char *name;
 };
 
 struct linted_admin_request {
-	void *private_data;
-	union linted_admin_request_union x;
+	linted_admin_type type;
+	union {
+		struct linted_admin_request_add_unit add_unit;
+		struct linted_admin_request_add_socket add_socket;
+		struct linted_admin_request_status status;
+		struct linted_admin_request_stop stop;
+	} linted_admin_request_u;
 };
 
-union linted_admin_reply {
+struct linted_admin_reply_add_unit {
+	char dummy;
+};
+
+struct linted_admin_reply_add_socket {
+	char dummy;
+};
+
+struct linted_admin_reply_status {
+	linted_admin_bool is_up;
+};
+
+struct linted_admin_reply_stop {
+	linted_admin_bool was_up;
+};
+
+struct linted_admin_reply {
 	linted_admin_type type;
-	struct linted_admin_add_unit_reply add_unit;
-	struct linted_admin_add_socket_reply add_socket;
-	struct linted_admin_status_reply status;
-	struct linted_admin_stop_reply stop;
+	union {
+		struct linted_admin_reply_add_unit add_unit;
+		struct linted_admin_reply_add_socket add_socket;
+		struct linted_admin_reply_status status;
+		struct linted_admin_reply_stop stop;
+	} linted_admin_reply_u;
 };
 
 struct linted_admin_in_task_recv;
@@ -162,7 +157,7 @@ void linted_admin_out_task_send_destroy(
 void linted_admin_out_task_send_prepare(
     struct linted_admin_out_task_send *task,
     union linted_async_ck task_ck, linted_ko ko,
-    union linted_admin_reply const *reply);
+    struct linted_admin_reply const *reply);
 void *linted_admin_out_task_send_data(
     struct linted_admin_out_task_send *task);
 struct linted_async_task *linted_admin_out_task_send_to_async(
@@ -175,6 +170,6 @@ linted_admin_in_send(linted_admin_in admin,
                      struct linted_admin_request const *request);
 
 linted_error linted_admin_out_recv(linted_admin_out admin,
-                                   union linted_admin_reply *reply);
+                                   struct linted_admin_reply *reply);
 
 #endif /* LINTED_ADMIN_H */
