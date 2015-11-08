@@ -155,8 +155,6 @@ linted_error
 linted_admin_in_send(linted_admin_in admin,
                      struct linted_admin_request const *request)
 {
-	linted_admin_type type = request->type;
-
 	linted_error err = 0;
 
 	char *raw;
@@ -171,122 +169,13 @@ linted_admin_in_send(linted_admin_in admin,
 	XDR xdr = {0};
 	xdrmem_create(&xdr, raw, CHUNK_SIZE, XDR_ENCODE);
 
-	struct linted_admin_proto_request code = {0};
-	code.type = type;
-	switch (type) {
-	case LINTED_ADMIN_PROTO_ADD_UNIT: {
-		struct linted_admin_request_add_unit *status =
-		    (void *)&request->linted_admin_request_u.add_unit;
-
-		int_least64_t *priority = status->priority;
-		int_least64_t *limit_no_file = status->limit_no_file;
-		int_least64_t *limit_msgqueue = status->limit_msgqueue;
-		int_least64_t *limit_locks = status->limit_locks;
-
-		linted_admin_bool clone_newuser = status->clone_newuser;
-		linted_admin_bool clone_newpid = status->clone_newpid;
-		linted_admin_bool clone_newipc = status->clone_newipc;
-		linted_admin_bool clone_newnet = status->clone_newnet;
-		linted_admin_bool clone_newns = status->clone_newns;
-		linted_admin_bool clone_newuts = status->clone_newuts;
-
-		linted_admin_bool no_new_privs = status->no_new_privs;
-
-		char *name = status->name;
-		char *fstab = status->fstab;
-		char *chdir_path = status->chdir_path;
-
-		code.linted_admin_proto_request_u.add_unit.name = name;
-		code.linted_admin_proto_request_u.add_unit.fstab =
-		    fstab;
-		code.linted_admin_proto_request_u.add_unit.chdir_path =
-		    chdir_path;
-
-		code.linted_admin_proto_request_u.add_unit.command
-		    .command_len = status->command.command_len;
-
-		code.linted_admin_proto_request_u.add_unit.command
-		    .command_val = status->command.command_val;
-
-		code.linted_admin_proto_request_u.add_unit.env_whitelist
-		    .env_whitelist_len =
-		    status->env_whitelist.env_whitelist_len;
-		code.linted_admin_proto_request_u.add_unit.env_whitelist
-		    .env_whitelist_val =
-		    status->env_whitelist.env_whitelist_val;
-
-		code.linted_admin_proto_request_u.add_unit.priority =
-		    priority;
-		code.linted_admin_proto_request_u.add_unit
-		    .limit_no_file = limit_no_file;
-		code.linted_admin_proto_request_u.add_unit
-		    .limit_msgqueue = limit_msgqueue;
-		code.linted_admin_proto_request_u.add_unit.limit_locks =
-		    limit_locks;
-
-		code.linted_admin_proto_request_u.add_unit
-		    .clone_newuser = clone_newuser;
-		code.linted_admin_proto_request_u.add_unit
-		    .clone_newpid = clone_newpid;
-		code.linted_admin_proto_request_u.add_unit
-		    .clone_newipc = clone_newipc;
-		code.linted_admin_proto_request_u.add_unit
-		    .clone_newnet = clone_newnet;
-		code.linted_admin_proto_request_u.add_unit.clone_newns =
-		    clone_newns;
-		code.linted_admin_proto_request_u.add_unit
-		    .clone_newuts = clone_newuts;
-
-		code.linted_admin_proto_request_u.add_unit
-		    .no_new_privs = no_new_privs;
-		break;
-	}
-
-	case LINTED_ADMIN_PROTO_ADD_SOCKET: {
-		struct linted_admin_request_add_socket const *
-		    add_socket =
-		        &request->linted_admin_request_u.add_socket;
-
-		char *name = add_socket->name;
-		char *path = add_socket->path;
-		int32_t fifo_size = add_socket->fifo_size;
-		linted_unit_socket_type sock_type =
-		    add_socket->sock_type;
-
-		code.linted_admin_proto_request_u.add_socket.name =
-		    name;
-		code.linted_admin_proto_request_u.add_socket.path =
-		    path;
-		code.linted_admin_proto_request_u.add_socket.fifo_size =
-		    fifo_size;
-		code.linted_admin_proto_request_u.add_socket.sock_type =
-		    sock_type;
-		break;
-	}
-
-	case LINTED_ADMIN_PROTO_STATUS:
-		code.linted_admin_proto_request_u.status.name =
-		    (char *)request->linted_admin_request_u.status.name;
-		break;
-
-	case LINTED_ADMIN_PROTO_STOP:
-		code.linted_admin_proto_request_u.stop.name =
-		    (char *)request->linted_admin_request_u.stop.name;
-		break;
-
-	default:
-		err = LINTED_ERROR_INVALID_PARAMETER;
-		goto free_raw;
-	}
-
-	if (!xdr_linted_admin_proto_request(&xdr, &code))
+	if (!xdr_linted_admin_proto_request(&xdr, (void *)request))
 		assert(0);
 
 	err = linted_io_write_all(admin, 0, raw, CHUNK_SIZE);
 
 	xdr_destroy(&xdr);
 
-free_raw:
 	linted_mem_free(raw);
 
 	return err;
