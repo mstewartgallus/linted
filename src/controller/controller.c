@@ -27,8 +27,7 @@
 #include "linted/util.h"
 
 #include <errno.h>
-#include <stdint.h>
-#include <string.h>
+#include <rpc/xdr.h>
 
 struct linted_controller_task_send {
 	struct linted_io_task_write *parent;

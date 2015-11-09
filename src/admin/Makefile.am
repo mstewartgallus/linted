@@ -26,7 +26,6 @@ nodist_%C%_libadmin_la_SOURCES=\
 %C%_libadmin_la_LIBADD=\
   src/async/libasync.la\
   src/io/libio.la\
-  src/str/libstr.la\
   src/ko/libko.la
 
 EXTRA_DIST+=%D%/admin.x
