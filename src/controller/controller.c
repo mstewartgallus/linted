@@ -24,8 +24,8 @@
 #include "linted/io.h"
 #include "linted/mem.h"
 #include "linted/rpc.h"
+#include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -121,7 +121,7 @@ void linted_controller_task_send_prepare(
 		    .jumping = message->jumping};
 
 		if (!xdr_linted_controller_code(&xdr, &code))
-			assert(0);
+			LINTED_ASSERT(0);
 
 		xdr_destroy(&xdr);
 	}

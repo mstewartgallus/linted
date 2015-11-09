@@ -30,7 +30,6 @@
 #include "linted/unit.h"
 #include "linted/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -136,7 +135,7 @@ linted_error linted_admin_in_task_recv_request(
 	xdrmem_create(&xdr, raw, CHUNK_SIZE, XDR_DECODE);
 
 	if (!xdr_linted_admin_proto_request(&xdr, (void *)request))
-		assert(0);
+		LINTED_ASSERT(0);
 
 	xdr_destroy(&xdr);
 
@@ -170,7 +169,7 @@ linted_admin_in_send(linted_admin_in admin,
 	xdrmem_create(&xdr, raw, CHUNK_SIZE, XDR_ENCODE);
 
 	if (!xdr_linted_admin_proto_request(&xdr, (void *)request))
-		assert(0);
+		LINTED_ASSERT(0);
 
 	err = linted_io_write_all(admin, 0, raw, CHUNK_SIZE);
 
@@ -260,7 +259,7 @@ void linted_admin_out_task_send_prepare(
 	xdrmem_create(&xdr, tip, CHUNK_SIZE, XDR_ENCODE);
 
 	if (!xdr_linted_admin_proto_reply(&xdr, (void *)reply))
-		assert(0);
+		LINTED_ASSERT(0);
 
 	xdr_destroy(&xdr);
 
@@ -314,7 +313,7 @@ linted_error linted_admin_out_recv(linted_admin_out admin,
 	xdrmem_create(&xdr, chunk, CHUNK_SIZE, XDR_DECODE);
 
 	if (!xdr_linted_admin_proto_reply(&xdr, (void *)reply))
-		assert(0);
+		LINTED_ASSERT(0);
 
 	xdr_destroy(&xdr);
 
