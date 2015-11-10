@@ -33,15 +33,9 @@
 #include <sys/types.h>
 #include <string.h>
 
-union unit_union {
-	struct linted_unit common;
-	struct linted_unit_service service;
-	struct linted_unit_socket socket;
-};
-
 struct linted_unit_db {
 	size_t size;
-	union unit_union *list;
+	struct linted_unit *list;
 };
 
 linted_error linted_unit_db_create(struct linted_unit_db **unitsp)
@@ -70,7 +64,7 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 {
 	linted_error err = 0;
 
-	union unit_union *list = units->list;
+	struct linted_unit *list = units->list;
 	size_t old_size = units->size;
 
 	size_t new_size = old_size + 1U;
@@ -83,8 +77,8 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 		list = xx;
 	}
 
-	list[old_size].common.name = 0;
-	*unitp = &(list[old_size].common);
+	list[old_size].name = 0;
+	*unitp = &(list[old_size]);
 
 	units->list = list;
 	units->size = new_size;
@@ -95,10 +89,10 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 void linted_unit_db_destroy(struct linted_unit_db *units)
 {
 	size_t size = units->size;
-	union unit_union *list = units->list;
+	struct linted_unit *list = units->list;
 
 	for (size_t ii = 0U; ii < size; ++ii)
-		linted_mem_free(list[ii].common.name);
+		linted_mem_free(list[ii].name);
 	linted_mem_free(list);
 
 	linted_mem_free(units);
@@ -112,7 +106,7 @@ size_t linted_unit_db_size(struct linted_unit_db *units)
 struct linted_unit *
 linted_unit_db_get_unit(struct linted_unit_db *units, size_t ii)
 {
-	return &units->list[ii].common;
+	return &units->list[ii];
 }
 
 struct linted_unit *
@@ -120,10 +114,10 @@ linted_unit_db_get_unit_by_name(struct linted_unit_db *units,
                                 char const *name)
 {
 	size_t size = units->size;
-	union unit_union *list = units->list;
+	struct linted_unit *list = units->list;
 
 	for (size_t ii = 0U; ii < size; ++ii) {
-		struct linted_unit *unit = &list[ii].common;
+		struct linted_unit *unit = &list[ii];
 
 		if (0 ==
 		    strncmp(unit->name, name, LINTED_UNIT_NAME_MAX))

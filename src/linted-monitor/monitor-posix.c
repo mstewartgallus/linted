@@ -1364,7 +1364,8 @@ on_add_unit(struct monitor *monitor,
 	unit->type = LINTED_UNIT_TYPE_SERVICE;
 	unit->name = name;
 
-	struct linted_unit_service *unit_service = (void *)unit;
+	struct linted_unit_service *unit_service =
+	    &unit->linted_unit_u.service;
 
 	unit_service->command = (char const *const *)command;
 	unit_service->fstab = fstab;
@@ -1470,7 +1471,8 @@ on_add_socket(struct monitor *monitor,
 	unit->type = LINTED_UNIT_TYPE_SOCKET;
 	unit->name = name;
 
-	struct linted_unit_socket *unit_socket = (void *)unit;
+	struct linted_unit_socket *unit_socket =
+	    &unit->linted_unit_u.socket;
 
 	unit_socket->path = path;
 	unit_socket->fifo_size = fifo_size;
@@ -1635,7 +1637,8 @@ static linted_error service_activate(struct monitor *monitor,
 
 	char const *unit_name = unit->name;
 
-	struct linted_unit_service *unit_service = (void *)unit;
+	struct linted_unit_service *unit_service =
+	    &unit->linted_unit_u.service;
 
 	if (!check)
 		goto spawn_service;

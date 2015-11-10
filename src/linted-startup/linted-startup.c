@@ -66,9 +66,9 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
                                        linted_ko cwd,
                                        char const *dir_name);
 
-static linted_error service_create(struct linted_unit_service *unit,
+static linted_error service_create(struct linted_unit *unit,
                                    struct linted_conf *conf);
-static linted_error socket_create(struct linted_unit_socket *unit,
+static linted_error socket_create(struct linted_unit *unit,
                                   struct linted_conf *conf);
 
 static linted_error str_from_strs(char const *const *strs,
@@ -275,24 +275,19 @@ static linted_error startup_start(struct startup *startup)
 		unit->name = unit_name;
 
 		switch (unit_type) {
-		case LINTED_UNIT_TYPE_SERVICE: {
-			struct linted_unit_service *s = (void *)unit;
-
-			err = service_create(s, conf);
-			if (err != 0)
-				goto destroy_unit_db;
+		case LINTED_UNIT_TYPE_SERVICE:
+			err = service_create(unit, conf);
 			break;
-		}
 
-		case LINTED_UNIT_TYPE_SOCKET: {
-			struct linted_unit_socket *s = (void *)unit;
-
-			err = socket_create(s, conf);
-			if (err != 0)
-				goto destroy_unit_db;
+		case LINTED_UNIT_TYPE_SOCKET:
+			err = socket_create(unit, conf);
 			break;
+
+		default:
+			LINTED_ASSUME_UNREACHABLE();
 		}
-		}
+		if (err != 0)
+			goto destroy_unit_db;
 	}
 
 	size_t db_size = linted_unit_db_size(unit_db);
@@ -585,12 +580,14 @@ free_file_names:
 	return err;
 }
 
-static linted_error service_create(struct linted_unit_service *unit,
+static linted_error service_create(struct linted_unit *unit,
                                    struct linted_conf *conf)
 {
 	linted_error err;
 
-	char const *unit_name = unit->common.name;
+	char const *unit_name = unit->name;
+	struct linted_unit_service *service =
+	    &unit->linted_unit_u.service;
 
 	char const *const *types =
 	    linted_conf_find(conf, "Service", "Type");
@@ -746,39 +743,41 @@ envvar_allocate_succeeded:
 	envvars[envvars_size] = service_name_setting;
 	envvars[envvars_size + 1U] = 0;
 
-	unit->command = command;
-	unit->no_new_privs = no_new_privs_value;
+	service->command = command;
+	service->no_new_privs = no_new_privs_value;
 
-	unit->limit_no_file = 15;
-	unit->has_limit_no_file = no_new_privs_value;
+	service->limit_no_file = 15;
+	service->has_limit_no_file = no_new_privs_value;
 
-	unit->limit_msgqueue = 0;
-	unit->has_limit_msgqueue = no_new_privs_value;
+	service->limit_msgqueue = 0;
+	service->has_limit_msgqueue = no_new_privs_value;
 
-	unit->limit_locks = 0;
-	unit->has_limit_locks = no_new_privs_value;
+	service->limit_locks = 0;
+	service->has_limit_locks = no_new_privs_value;
 
-	unit->fstab = fstab;
-	unit->chdir_path = chdir_path;
-	unit->environment = (char const *const *)envvars;
+	service->fstab = fstab;
+	service->chdir_path = chdir_path;
+	service->environment = (char const *const *)envvars;
 
-	unit->priority = priority_value;
-	unit->has_priority = priority_str != 0;
+	service->priority = priority_value;
+	service->has_priority = priority_str != 0;
 
-	unit->clone_newuser = clone_newuser;
-	unit->clone_newpid = clone_newpid;
-	unit->clone_newipc = clone_newipc;
-	unit->clone_newnet = clone_newnet;
-	unit->clone_newns = clone_newns;
-	unit->clone_newuts = clone_newuts;
+	service->clone_newuser = clone_newuser;
+	service->clone_newpid = clone_newpid;
+	service->clone_newipc = clone_newipc;
+	service->clone_newnet = clone_newnet;
+	service->clone_newns = clone_newns;
+	service->clone_newuts = clone_newuts;
 
 	return 0;
 }
 
-static linted_error socket_create(struct linted_unit_socket *unit,
+static linted_error socket_create(struct linted_unit *unit,
                                   struct linted_conf *conf)
 {
 	linted_error err;
+
+	struct linted_unit_socket *socket = &unit->linted_unit_u.socket;
 
 	char const *const *listen_dirs =
 	    linted_conf_find(conf, "Socket", "ListenDirectory");
@@ -869,9 +868,9 @@ static linted_error socket_create(struct linted_unit_socket *unit,
 		break;
 	}
 
-	unit->fifo_size = fifo_size_value;
-	unit->type = socket_type;
-	unit->path = path;
+	socket->fifo_size = fifo_size_value;
+	socket->type = socket_type;
+	socket->path = path;
 
 	return 0;
 }
@@ -932,7 +931,8 @@ static linted_error socket_activate(struct linted_unit *unit,
 {
 	linted_error err = 0;
 
-	struct linted_unit_socket *unit_socket = (void *)unit;
+	struct linted_unit_socket *unit_socket =
+	    &unit->linted_unit_u.socket;
 
 	char const *name = unit->name;
 	char const *path = unit_socket->path;
@@ -973,7 +973,8 @@ static linted_error service_activate(struct linted_unit *unit,
 {
 	linted_error err = 0;
 
-	struct linted_unit_service *unit_service = (void *)unit;
+	struct linted_unit_service *unit_service =
+	    &unit->linted_unit_u.service;
 
 	char const *name = unit->name;
 	char const *fstab = unit_service->fstab;
