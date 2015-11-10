@@ -82,9 +82,10 @@ struct linted_unit_service {
 	struct linted_unit common;
 
 	char const *const *command;
+	char const *const *environment;
+
 	char const *fstab;
 	char const *chdir_path;
-	char const *const *env_whitelist;
 
 	int priority;
 

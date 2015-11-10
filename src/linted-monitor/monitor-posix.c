@@ -162,8 +162,6 @@ static linted_error service_activate(struct monitor *monitor,
                                      bool check);
 linted_error socket_activate(struct linted_unit_socket *unit);
 
-static linted_error filter_envvars(char ***resultsp,
-                                   char const *const *allowed_envvars);
 static size_t null_list_size(char const *const *list);
 
 static linted_error service_children_terminate(linted_pid pid);
@@ -1263,10 +1261,8 @@ on_add_unit(struct monitor *monitor,
 	size_t command_size = request->command.command_len;
 	char **unit_command = request->command.command_val;
 
-	size_t env_whitelist_size =
-	    request->env_whitelist.env_whitelist_len;
-	char **unit_env_whitelist =
-	    request->env_whitelist.env_whitelist_val;
+	size_t environment_size = request->environment.environment_len;
+	char **unit_environment = request->environment.environment_val;
 
 	int_least64_t *priority = request->priority;
 	int_least64_t *limit_no_file = request->limit_no_file;
@@ -1337,32 +1333,31 @@ on_add_unit(struct monitor *monitor,
 	}
 	command[command_size] = 0;
 
-	char **env_whitelist;
+	char **environment;
 	{
 		void *xx;
-		err =
-		    linted_mem_alloc_array(&xx, env_whitelist_size + 1U,
-		                           sizeof env_whitelist[0U]);
+		err = linted_mem_alloc_array(&xx, environment_size + 1U,
+		                             sizeof environment[0U]);
 		if (err != 0)
 			goto free_command;
-		env_whitelist = xx;
+		environment = xx;
 	}
 
 	size_t ii = 0U;
-	for (; ii < env_whitelist_size; ++ii) {
-		err = linted_str_dup(&env_whitelist[ii],
-		                     unit_env_whitelist[ii]);
+	for (; ii < environment_size; ++ii) {
+		err = linted_str_dup(&environment[ii],
+		                     unit_environment[ii]);
 		if (err != 0)
-			goto free_whitelist;
+			goto free_environment;
 	}
-	env_whitelist[env_whitelist_size] = 0;
+	environment[environment_size] = 0;
 
 	struct linted_unit *unit;
 	{
 		struct linted_unit *xx;
 		err = linted_unit_db_add_unit(unit_db, &xx);
 		if (err != 0)
-			goto free_whitelist;
+			goto free_environment;
 		unit = xx;
 	}
 
@@ -1374,8 +1369,7 @@ on_add_unit(struct monitor *monitor,
 	unit_service->command = (char const *const *)command;
 	unit_service->fstab = fstab;
 	unit_service->chdir_path = chdir_path;
-	unit_service->env_whitelist =
-	    (char const *const *)env_whitelist;
+	unit_service->environment = (char const *const *)environment;
 
 	if (has_priority)
 		unit_service->priority = *priority;
@@ -1408,10 +1402,10 @@ on_add_unit(struct monitor *monitor,
 
 	return err;
 
-free_whitelist:
+free_environment:
 	for (size_t jj = 0U; jj < ii; ++jj)
-		linted_mem_free(env_whitelist[jj]);
-	linted_mem_free(env_whitelist);
+		linted_mem_free(environment[jj]);
+	linted_mem_free(environment);
 
 free_command:
 	for (size_t jj = 0U; jj < command_alloced; ++jj)
@@ -1595,94 +1589,6 @@ free_children:
 	return err;
 }
 
-extern char **environ;
-
-static linted_error filter_envvars(char ***result_envvarsp,
-                                   char const *const *allowed_envvars)
-{
-	char **result_envvars;
-	linted_error err;
-
-	if (0 == allowed_envvars) {
-		size_t size =
-		    null_list_size((char const *const *)environ);
-
-		{
-			void *xx;
-			err = linted_mem_alloc_array(
-			    &xx, size + 1U, sizeof result_envvars[0U]);
-			if (err != 0)
-				return err;
-			result_envvars = xx;
-		}
-
-		for (size_t ii = 0U; ii < size; ++ii) {
-			err = linted_str_dup(&result_envvars[ii],
-			                     environ[ii]);
-			if (err != 0) {
-				for (size_t jj = 0; jj <= ii; ++jj) {
-					linted_mem_free(
-					    result_envvars[jj]);
-				}
-				linted_mem_free(result_envvars);
-				return err;
-			}
-		}
-		result_envvars[size] = 0;
-		*result_envvarsp = result_envvars;
-		return 0;
-	}
-
-	size_t allowed_envvars_size = null_list_size(allowed_envvars);
-	{
-		void *xx;
-		err = linted_mem_alloc_array(&xx,
-		                             allowed_envvars_size + 1U,
-		                             sizeof result_envvars[0U]);
-		if (err != 0)
-			return err;
-		result_envvars = xx;
-	}
-
-	size_t result_envvars_size = 0U;
-	for (size_t ii = 0U; ii < allowed_envvars_size; ++ii) {
-		char const *envvar_name = allowed_envvars[ii];
-
-		char *envvar_value;
-		{
-			char *xx;
-			err = linted_env_get(envvar_name, &xx);
-			if (err != 0)
-				goto free_result_envvars;
-			envvar_value = xx;
-		}
-		if (0 == envvar_value)
-			continue;
-
-		++result_envvars_size;
-
-		err = linted_str_format(
-		    &result_envvars[result_envvars_size - 1U], "%s=%s",
-		    envvar_name, envvar_value);
-
-		linted_mem_free(envvar_value);
-
-		if (err != 0)
-			goto free_result_envvars;
-	}
-	result_envvars[result_envvars_size] = 0;
-
-	*result_envvarsp = result_envvars;
-
-	return 0;
-
-free_result_envvars:
-	for (size_t ii = 0U; ii < result_envvars_size; ++ii)
-		linted_mem_free(result_envvars[ii]);
-	linted_mem_free(result_envvars);
-	return err;
-}
-
 static size_t null_list_size(char const *const *list)
 {
 	for (size_t ii = 0U;; ++ii)
@@ -1755,10 +1661,10 @@ service_not_found:
 spawn_service:
 	;
 	char const *const *command = unit_service->command;
+	char const *const *environment = unit_service->environment;
 	bool no_new_privs = unit_service->no_new_privs;
 	char const *fstab = unit_service->fstab;
 	char const *chdir_path = unit_service->chdir_path;
-	char const *const *env_whitelist = unit_service->env_whitelist;
 
 	bool has_priority = unit_service->has_priority;
 	bool has_limit_no_file = unit_service->has_limit_no_file;
@@ -1867,51 +1773,12 @@ spawn_service:
 		chrootdir = xx;
 	}
 
-	char **envvars;
-	{
-		char **xx;
-		err = filter_envvars(&xx, env_whitelist);
-		if (err != 0)
-			goto free_chrootdir;
-		envvars = xx;
-	}
-
-	char *service_name_setting;
-	{
-		char *xx;
-		err = linted_str_format(&xx, "LINTED_SERVICE=%s",
-		                        unit_name);
-		if (err != 0)
-			goto free_envvars;
-		service_name_setting = xx;
-	}
-	size_t envvars_size =
-	    null_list_size((char const *const *)envvars);
-	size_t new_size = envvars_size + 2U;
-	LINTED_ASSERT(new_size > 0U);
-	{
-		void *xx;
-		err = linted_mem_realloc_array(&xx, envvars, new_size,
-		                               sizeof envvars[0U]);
-		if (err != 0)
-			goto envvar_allocate_failed;
-		envvars = xx;
-		goto envvar_allocate_succeeded;
-	}
-envvar_allocate_failed:
-	linted_mem_free(service_name_setting);
-	goto free_envvars;
-
-envvar_allocate_succeeded:
-	envvars[envvars_size] = service_name_setting;
-	envvars[envvars_size + 1U] = 0;
-
 	char *sandbox_base;
 	{
 		char *xx;
 		err = linted_path_base(&xx, sandbox);
 		if (err != 0)
-			goto free_envvars;
+			goto free_chrootdir;
 		sandbox_base = xx;
 	}
 
@@ -2004,8 +1871,7 @@ envvar_allocate_succeeded:
 
 	linted_spawn_attr_set_die_on_parent_death(attr);
 
-	err = linted_spawn(0, cwd, sandbox, 0, attr, args,
-	                   (char const *const *)envvars);
+	err = linted_spawn(0, cwd, sandbox, 0, attr, args, environment);
 
 	linted_spawn_attr_destroy(attr);
 
@@ -2014,18 +1880,6 @@ free_args:
 
 free_sandbox_dup:
 	linted_mem_free(sandbox_base);
-
-free_envvars:
-	for (char **envp = envvars;;) {
-		char *env = *envp;
-		if (0 == env)
-			break;
-
-		linted_mem_free(env);
-
-		++envp;
-	}
-	linted_mem_free(envvars);
 
 free_chrootdir:
 	linted_mem_free(chrootdir);

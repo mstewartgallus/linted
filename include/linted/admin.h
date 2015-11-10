@@ -55,9 +55,9 @@ struct linted_admin_request_add_unit {
 	} command;
 
 	struct {
-		uint_least32_t env_whitelist_len;
-		char **env_whitelist_val;
-	} env_whitelist;
+		uint_least32_t environment_len;
+		char **environment_val;
+	} environment;
 
 	int_least64_t *priority;
 	int_least64_t *limit_no_file;
