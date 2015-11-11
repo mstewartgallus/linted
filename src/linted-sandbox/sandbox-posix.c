@@ -882,7 +882,7 @@ exit_loop:
 		};
 
 		if (-1 == setrlimit(RLIMIT_LOCKS, &lim)) {
-			linted_log(RLIMIT_LOCKS, "setrlimit: %s",
+			linted_log(LINTED_LOG_ERROR, "setrlimit: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
@@ -895,7 +895,7 @@ exit_loop:
 		};
 
 		if (-1 == setrlimit(RLIMIT_MSGQUEUE, &lim)) {
-			linted_log(RLIMIT_MSGQUEUE, "setrlimit: %s",
+			linted_log(LINTED_LOG_ERROR, "setrlimit: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
