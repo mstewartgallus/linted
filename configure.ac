@@ -56,6 +56,16 @@ AS_IF([test "x${CC}" = "xwinegcc"], [
         [linted_posix_api_default=no]
 ])
 dnl
+AM_PROG_AR
+dnl
+dnl We only use static convenience libraries anyway
+LT_INIT([disable-shared])
+dnl
+AS_IF([test "x{lt_sysroot}" != 'x'], [
+      LINTED_CHECK_CFLAG([linted_CFLAGS_SYSROOT], [--sysroot="$lt_sysroot"])
+      [CC="${CC} ${linted_CFLAGS_SYSROOT}"]
+])
+dnl
 LINTED_FAST_BUILD
 [CC="${CC} ${linted_CFLAGS_FAST_BUILD}"]
 [CC="${CC} ${linted_LDFLAGS_FAST_BUILD}"]
@@ -70,11 +80,6 @@ AS_IF([test "x${host_cpu}" = 'xx86_64'], [
       LINTED_CHECK_LDFLAGS([linted_CFLAGS_HOSTFLAGS_BITS], [-m64])
 ])
 [CC="${CC} ${linted_CFLAGS_HOSTFLAGS_TARGET} ${linted_CFLAGS_HOSTFLAGS_BITS}"]
-dnl
-AM_PROG_AR
-dnl
-dnl We only use static convenience libraries anyway
-LT_INIT([disable-shared])
 dnl
 AS_IF([test "x${linted_posix_api_default}" = "xyes"], [[linted_x11_api_default=yes]])
 dnl
