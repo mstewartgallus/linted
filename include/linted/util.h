@@ -25,8 +25,13 @@
  * Various utility macroes and functions.
  */
 
+#if defined NDEBUG
+#define LINTED_ASSERT(...)                                             \
+	do {                                                           \
+	} while (0)
+#else
 /**
- * We need are own `LINTED_ASSERT` because the real `assert` uses
+ * We need our own `LINTED_ASSERT` because the real `assert` uses
  * `__FILE__`
  * which is nondeterministic.
  */
@@ -36,6 +41,23 @@
 		if (!(__VA_ARGS__))                                    \
 			abort();                                       \
 	} while (0)
+#endif
+
+#if defined NDEBUG
+#define LINTED_ASSERT_NOT_NULL(...)                                    \
+	do {                                                           \
+	} while (0)
+#else
+/*
+ * This is needed because other uses of null can be optimized
+ * dangerously or because deep array accesses can index into mapped
+ * memory.
+ */
+#define LINTED_ASSERT_NOT_NULL(...)                                    \
+	do {                                                           \
+		*((char const volatile *)(__VA_ARGS__));               \
+	} while (0)
+#endif
 
 #if defined __GNUC__ && !defined __clang__ && !defined __CHECKER__
 #define LINTED__IS_GCC 1

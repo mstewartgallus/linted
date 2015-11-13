@@ -181,7 +181,9 @@ model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
                       GLfloat z_position, unsigned width,
                       unsigned height);
 
-static struct matrix matrix_multiply(struct matrix a, struct matrix b);
+static void matrix_multiply(struct matrix const *restrict a,
+                            struct matrix const *restrict b,
+                            struct matrix *restrict result);
 
 static linted_error get_gl_error(struct privates *privates);
 
@@ -1432,9 +1434,9 @@ model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
 				      {0, 0, 1, 0},
 				      {0, 0, 0, 1}}};
 
-				rotations =
-				    matrix_multiply(z_rotation_matrix,
-				                    x_rotation_matrix);
+				matrix_multiply(&z_rotation_matrix,
+				                &x_rotation_matrix,
+				                &rotations);
 			}
 
 			/* Translate the camera */
@@ -1444,7 +1446,8 @@ model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
 			     {0, 0, 1, 0},
 			     {x_position, y_position, z_position, 1}}};
 
-			model_view = matrix_multiply(camera, rotations);
+			matrix_multiply(&camera, &rotations,
+			                &model_view);
 		}
 
 		struct matrix const projection = {
@@ -1454,11 +1457,15 @@ model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
 		      2 * far * near / (near - far)},
 		     {0, 0, -1, 0}}};
 
-		return matrix_multiply(model_view, projection);
+		struct matrix result;
+		matrix_multiply(&model_view, &projection, &result);
+		return result;
 	}
 }
 
-static struct matrix matrix_multiply(struct matrix a, struct matrix b)
+static inline void matrix_multiply(struct matrix const *restrict a,
+                                   struct matrix const *restrict b,
+                                   struct matrix *restrict result)
 {
 	struct matrix b_inverted;
 
@@ -1474,7 +1481,7 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 			GLfloat b_ii_3;
 
 			{
-				union chunk b_ii = b.x[ii];
+				union chunk b_ii = b->x[ii];
 
 				b_ii_0 = b_ii.x[0U];
 				b_ii_1 = b_ii.x[1U];
@@ -1496,8 +1503,6 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 		} while (ii != 0U);
 	}
 
-	struct matrix result;
-
 	uint_fast8_t ii = 4U;
 	do {
 		--ii;
@@ -1508,7 +1513,7 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 		GLfloat a_ii_3;
 
 		{
-			union chunk a_ii = a.x[ii];
+			union chunk a_ii = a->x[ii];
 
 			a_ii_0 = a_ii.x[0U];
 			a_ii_1 = a_ii.x[1U];
@@ -1549,8 +1554,6 @@ static struct matrix matrix_multiply(struct matrix a, struct matrix b)
 			result_ii.x[jj] = result_ii_jj;
 		} while (jj != 0U);
 
-		result.x[ii] = result_ii;
+		result->x[ii] = result_ii;
 	} while (ii != 0U);
-
-	return result;
 }

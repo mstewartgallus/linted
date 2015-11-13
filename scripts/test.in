@@ -68,7 +68,4 @@ export LINTED_DRAWER
 export LINTED_WINDOW_FSTAB
 export LINTED_WINDOW
 
-export MALLOC_CHECK_=3
-export MALLOC_PERTURB_=57005
-
 exec "${BUILDDIR}/src/linted/linted${EXEEXT}" "$@"

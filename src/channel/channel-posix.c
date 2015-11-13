@@ -122,8 +122,8 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 {
 	linted_error err = 0;
 
-	LINTED_ASSERT(channel != 0);
-	LINTED_ASSERT(node != 0);
+	LINTED_ASSERT_NOT_NULL(channel);
+	LINTED_ASSERT_NOT_NULL(node);
 
 	err = pthread_mutex_lock(&channel->lock);
 	if (err != 0) {
@@ -159,8 +159,8 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 {
 	linted_error err;
 
-	LINTED_ASSERT(channel != 0);
-	LINTED_ASSERT(nodep != 0);
+	LINTED_ASSERT_NOT_NULL(channel);
+	LINTED_ASSERT_NOT_NULL(nodep);
 
 	err = pthread_mutex_lock(&channel->lock);
 	if (err != 0) {
