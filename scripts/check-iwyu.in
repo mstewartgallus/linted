@@ -13,11 +13,7 @@ go() {
     SCRIPTS="@srcdir@/scripts"
     : ${LINTED_IWYU:=iwyu}
 
-    for BINARY in $(make -s list-programs)
-    do
-        "${SCRIPTS}/check-iwyu.py" -- "${BINARY}" & :
-    done
-    wait
+    make -s list-programs | xargs "${SCRIPTS}/check-iwyu.py" --
 }
 
 go "$@"

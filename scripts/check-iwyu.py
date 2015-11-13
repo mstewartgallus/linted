@@ -20,47 +20,65 @@ def go():
     parser = argparse.ArgumentParser(
         description = 'Analysis includes in a tree of sources')
     parser.add_argument(
-        'input_file',
+        'input_files',
         type = str,
+	nargs = '+',
         help = 'The recursive file of sources')
 
     arguments = parser.parse_args()
 
-    filename = arguments.input_file
+    filenames = arguments.input_files
 
     files_json = []
 
-    if filename.endswith('.a'):
-        members = subprocess.check_output(['ar', 't', filename]).decode('utf-8').split()
-        for member in members:
-            member_contents = subprocess.check_output(['ar', 'p', filename, member])
-            files_json.append(json.loads(member_contents.decode('utf-8')))
-    else:
-        inputdata = None
-        with open(arguments.input_file, 'r') as the_file:
-            inputdata = the_file.read()
+    for filename in filenames:
+        if filename.endswith('.a'):
+            members = subprocess.check_output(['ar', 't', filename]).decode('utf-8').split()
+            for member in members:
+                member_contents = subprocess.check_output(['ar', 'p', filename, member])
+                files_json.append(json.loads(member_contents.decode('utf-8')))
+        else:
+            inputdata = None
+            with open(filename, 'r') as the_file:
+                inputdata = the_file.read()
 
-        files_json.append(json.loads(inputdata))
+            files_json.append(json.loads(inputdata))
 
+    files = []
     def recurse(jsondata):
         for afile in jsondata['files']:
             if isinstance(afile, str):
                 flags = jsondata['flags']
-
-                arguments = ['iwyu',
-                             '-I/usr/lib/clang/3.6/include'
-                             ]
- 
-                arguments.extend(flags)
-                arguments.append(afile)
-                subprocess.call(arguments)
+                files.append({'file': afile, 'flags': flags})
             elif isinstance(afile, dict):
                 recurse(afile)
             else:
                 raise Exception('type error: ' + str(type(afile)))
-
     for data in files_json:
         recurse(data)
+
+    files_json = None
+
+    files = unique(files)
+
+    for afileandflags in files:
+        afile = afileandflags['file']
+        flags = afileandflags['flags']
+
+        arguments = ['iwyu',
+                     '-I/usr/lib/clang/3.6/include'
+                     ]
+
+        arguments.extend(flags)
+        arguments.append(afile)
+        subprocess.call(arguments)
+
+def unique(l):
+    newl = []
+    for x in l:
+        if x not in newl:
+            newl.append(x)
+    return newl
 
 if __name__ == '__main__':
     go()
