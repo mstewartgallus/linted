@@ -24,6 +24,7 @@
 #include "linted/fifo.h"
 #include "linted/io.h"
 #include "linted/ko.h"
+#include "linted/locale.h"
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/path.h"
@@ -156,6 +157,11 @@ struct second_fork_args {
 
 static int first_fork_routine(void *arg);
 static int second_fork_routine(void *arg);
+
+static linted_error do_help(linted_ko ko, char const *process_name,
+                            char const *package_name,
+                            char const *package_url,
+                            char const *package_bugreport);
 
 static linted_error
 parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
@@ -345,14 +351,26 @@ static unsigned char linted_start_main(char const *const process_name,
 		}
 	}
 exit_loop:
-	if (!have_command) {
-		linted_log(LINTED_LOG_ERROR, "need command");
-		return EXIT_FAILURE;
+	if (need_help) {
+		do_help(LINTED_KO_STDOUT, process_name, PACKAGE_NAME,
+		        PACKAGE_URL, PACKAGE_BUGREPORT);
+		return EXIT_SUCCESS;
 	}
 
 	if (bad_option != 0) {
 		linted_log(LINTED_LOG_ERROR, "bad option: %s",
 		           bad_option);
+		return EXIT_FAILURE;
+	}
+
+	if (need_version) {
+		linted_locale_version(LINTED_KO_STDOUT, PACKAGE_STRING,
+		                      COPYRIGHT_YEAR);
+		return EXIT_SUCCESS;
+	}
+
+	if (!have_command) {
+		linted_log(LINTED_LOG_ERROR, "need command");
 		return EXIT_FAILURE;
 	}
 
@@ -1175,9 +1193,10 @@ first_fork_routine(void *void_args)
 		} else {
 			execve(waiter, (char *const *)arguments,
 			       environ);
+			err = errno;
+			LINTED_ASSUME(err != 0);
 		}
 	}
-	err = errno;
 
 fail : {
 	linted_error xx = err;
@@ -1671,6 +1690,74 @@ static linted_error parse_int(char const *str, int *resultp)
 		return ERANGE;
 
 	*resultp = yy;
+	return 0;
+}
+
+static linted_error do_help(linted_ko ko, char const *process_name,
+                            char const *package_name,
+                            char const *package_url,
+                            char const *package_bugreport)
+{
+	linted_error err;
+
+	err = linted_io_write_string(ko, 0, "Usage: ");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, process_name);
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, " [OPTIONS]\n");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, "Play the game.\n");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, "\n");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, "\
+  --help              display this help and exit\n\
+  --version           display version information and exit\n");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, "\n");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, "Report bugs to <");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, package_bugreport);
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, ">\n");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, package_name);
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, " home page: <");
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, package_url);
+	if (err != 0)
+		return err;
+
+	err = linted_io_write_string(ko, 0, ">\n");
+	if (err != 0)
+		return err;
+
 	return 0;
 }
 

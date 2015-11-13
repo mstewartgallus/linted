@@ -27,6 +27,7 @@ EXTRA_%C%_linted_sandbox_SOURCES=\
   src/file/libfile.la\
   src/io/libio.la\
   src/ko/libko.la\
+  src/locale/liblocale.la\
   src/log/liblog.la\
   src/path/libpath.la\
   src/start/libstart.la\

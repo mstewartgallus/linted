@@ -60,12 +60,6 @@ struct linted_admin_out_task_send {
 	char reply[CHUNK_SIZE];
 };
 
-struct mem_field {
-	size_t size;
-	size_t align;
-	size_t offset;
-};
-
 linted_error linted_admin_in_task_recv_create(
     struct linted_admin_in_task_recv **taskp, void *data)
 {

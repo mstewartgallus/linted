@@ -13,11 +13,7 @@ go() {
     SCRIPTS="@srcdir@/scripts"
     : ${LINTED_PYTHON:=python3.4}
 
-    for BINARY in $(make -s list-programs)
-    do
-        "${LINTED_PYTHON}" "${SCRIPTS}/check-clang-analysis.py" "${BINARY}" & :
-    done
-    wait
+    make -s list-programs | xargs "${LINTED_PYTHON}" "${SCRIPTS}/check-clang-analysis.py"
 }
 
 go "$@"

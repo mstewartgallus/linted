@@ -64,20 +64,22 @@ linted_mem_alloc_array(void **memp, size_t nmemb, size_t size)
 
 	linted_error err;
 
+	void *memory;
+	if (0U == nmemb || 0U == size) {
+		memory = 0;
+		goto store_mem;
+	}
+
 	size_t total;
 	err = linted_mem_safe_multiply(nmemb, size, &total);
 	if (err != 0)
 		return err;
 
-	void *memory;
-	if (0U == total) {
-		memory = 0;
-	} else {
-		memory = malloc(total);
-		if (0 == memory)
-			return LINTED_ERROR_OUT_OF_MEMORY;
-	}
+	memory = malloc(total);
+	if (0 == memory)
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
+store_mem:
 	*memp = memory;
 	return 0;
 }
@@ -145,23 +147,25 @@ static inline linted_error linted_mem_realloc_array(void **memp,
 	extern void *realloc(void *ptr, size_t size);
 	extern void free(void *ptr);
 
-	linted_error err;
+	linted_error err = 0;
+
+	void *new_memory;
+	if (0U == nmemb || 0U == size) {
+		free(memory);
+		new_memory = 0;
+		goto store_mem;
+	}
 
 	size_t total;
 	err = linted_mem_safe_multiply(nmemb, size, &total);
 	if (err != 0)
 		return err;
 
-	void *new_memory;
-	if (0U == total) {
-		free(memory);
-		new_memory = 0;
-	} else {
-		new_memory = realloc(memory, total);
-		if (0 == new_memory)
-			return LINTED_ERROR_OUT_OF_MEMORY;
-	}
+	new_memory = realloc(memory, total);
+	if (0 == new_memory)
+		return LINTED_ERROR_OUT_OF_MEMORY;
 
+store_mem:
 	*memp = new_memory;
 	return 0;
 }

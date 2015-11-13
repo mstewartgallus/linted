@@ -21,83 +21,101 @@ def go():
     parser = argparse.ArgumentParser(
         description = 'Analysis a tree of sources')
     parser.add_argument(
-        'input_file',
+        'input_files',
         type = str,
+        nargs='+',
         help = 'The recursive file of sources')
 
     arguments = parser.parse_args()
 
-    filename = arguments.input_file
+    filenames = arguments.input_files
 
     files_json = []
 
-    if filename.endswith('.a'):
-        members = subprocess.check_output(['ar', 't', filename]).decode('utf-8').split()
-        for member in members:
-            member_contents = subprocess.check_output(['ar', 'p', filename, member])
-            files_json.append(json.loads(member_contents.decode('utf-8')))
-    else:
-        inputdata = None
-        with open(arguments.input_file, 'r') as the_file:
-            inputdata = the_file.read()
+    for filename in filenames:
+        if filename.endswith('.a'):
+            members = subprocess.check_output(['ar', 't', filename]).decode('utf-8').split()
+            for member in members:
+                member_contents = subprocess.check_output(['ar', 'p', filename, member])
+                files_json.append(json.loads(member_contents.decode('utf-8')))
+        else:
+            inputdata = None
+            with open(filename, 'r') as the_file:
+                inputdata = the_file.read()
 
-        files_json.append(json.loads(inputdata))
+            files_json.append(json.loads(inputdata))
 
+    files = []
     def recurse(jsondata):
         for afile in jsondata['files']:
             if isinstance(afile, str):
                 flags = jsondata['flags']
-
-                arguments = ['cppcheck',
-			     '-j8',
-                             '-D__linux__',
-                             '-D__unix__',
-                             '-D__amd64__',
-                             '-I/usr/include',
-                             '-I/usr/include/x86_64-linux-gnu',
-                             '-I/usr/lib/clang/3.6/include',
-                             '--platform=unix64',
-                             '--std=c99',
-                             '--std=posix',
-                             '--template={file}:{line}: ({id}) {message}',
-                             '--quiet',
-	                     '--library=' + os.path.dirname(__file__) + '/cppcheck.cfg'
-                             ]
-
-                checkers = ['--enable=warning',
-                            '--enable=style',
-                            '--enable=performance',
-                            '--enable=portability',
-                            '--enable=information',
-                            '--enable=missingInclude',
-                            '--suppress=nonreentrantFunctionscrypt',
-                            '--suppress=nonreentrantFunctionsctermid',
-                            '--suppress=nonreentrantFunctionsecvt',
-                            '--suppress=nonreentrantFunctionsfcvt',
-                            '--suppress=nonreentrantFunctionsgcvt',
-                            '--suppress=nonreentrantFunctionsgetlogin',
-                            '--suppress=nonreentrantFunctionsgmtime',
-                            '--suppress=nonreentrantFunctionslocaltime',
-                            '--suppress=nonreentrantFunctionsreaddir',
-                            '--suppress=nonreentrantFunctionsstrtok',
-                            '--suppress=nonreentrantFunctionstempnam',
-                            '--suppress=nonreentrantFunctionsttyname',
-                            '--suppress=duplicateExpression',
-                            '--suppress=unmatchedSuppression',
-                            '--suppress=obseleteFunctionsvfork']
-
-                arguments.extend(checkers)
-                arguments.extend([flag for flag in flags if flag != '-std=c99' and flag != '-c'])
-                arguments.append(afile)
-
-                subprocess.call(arguments)
+                files.append({'file': afile, 'flags': flags})
             elif isinstance(afile, dict):
                 recurse(afile)
             else:
                 raise Exception('type error: ' + str(type(afile)))
-
     for data in files_json:
         recurse(data)
+
+    files_json = None
+
+    files = unique(files)
+
+    for afileandflags in files:
+        afile = afileandflags['file']
+        flags = afileandflags['flags']
+
+        arguments = ['cppcheck',
+	             '-j8',
+                     '-D__linux__',
+                     '-D__unix__',
+                     '-D__amd64__',
+                     '-I/usr/include',
+                     '-I/usr/include/x86_64-linux-gnu',
+                     '-I/usr/lib/clang/3.6/include',
+                     '--platform=unix64',
+                     '--std=c99',
+                     '--std=posix',
+                     '--template={file}:{line}: ({id}) {message}',
+                     '--quiet',
+                     '--library=' + os.path.dirname(__file__) + '/cppcheck.cfg'
+                     ]
+
+        checkers = ['--enable=warning',
+                    '--enable=style',
+                    '--enable=performance',
+                    '--enable=portability',
+                    '--enable=information',
+                    '--enable=missingInclude',
+                    '--suppress=nonreentrantFunctionscrypt',
+                    '--suppress=nonreentrantFunctionsctermid',
+                    '--suppress=nonreentrantFunctionsecvt',
+                    '--suppress=nonreentrantFunctionsfcvt',
+                    '--suppress=nonreentrantFunctionsgcvt',
+                    '--suppress=nonreentrantFunctionsgetlogin',
+                    '--suppress=nonreentrantFunctionsgmtime',
+                    '--suppress=nonreentrantFunctionslocaltime',
+                    '--suppress=nonreentrantFunctionsreaddir',
+                    '--suppress=nonreentrantFunctionsstrtok',
+                    '--suppress=nonreentrantFunctionstempnam',
+                    '--suppress=nonreentrantFunctionsttyname',
+                    '--suppress=duplicateExpression',
+                    '--suppress=unmatchedSuppression',
+                    '--suppress=obseleteFunctionsvfork']
+
+        arguments.extend(checkers)
+        arguments.extend([flag for flag in flags if flag != '-std=c99' and flag != '-c'])
+        arguments.append(afile)
+
+        subprocess.call(arguments)
+
+def unique(l):
+    newl = []
+    for x in l:
+        if x not in newl:
+            newl.append(x)
+    return newl
 
 if __name__ == '__main__':
     go()

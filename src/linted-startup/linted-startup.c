@@ -712,18 +712,19 @@ static linted_error service_create(struct linted_unit *unit,
 		envvars = xx;
 	}
 
+	size_t envvars_size =
+	    null_list_size((char const *const *)envvars);
+
 	char *service_name_setting;
 	{
 		char *xx;
 		err = linted_str_format(&xx, "LINTED_SERVICE=%s",
 		                        unit_name);
 		if (err != 0)
-			return err;
+			goto free_envvars;
 		service_name_setting = xx;
 	}
 
-	size_t envvars_size =
-	    null_list_size((char const *const *)envvars);
 	size_t new_size = envvars_size + 2U;
 	LINTED_ASSERT(new_size > 0U);
 	{
@@ -737,7 +738,7 @@ static linted_error service_create(struct linted_unit *unit,
 	}
 envvar_allocate_failed:
 	linted_mem_free(service_name_setting);
-	return err;
+	goto free_envvars;
 
 envvar_allocate_succeeded:
 	envvars[envvars_size] = service_name_setting;
@@ -770,6 +771,13 @@ envvar_allocate_succeeded:
 	service->clone_newuts = clone_newuts;
 
 	return 0;
+
+free_envvars:
+	for (size_t ii = 0U; ii < envvars_size; ++ii) {
+		linted_mem_free(envvars[ii]);
+	}
+	linted_mem_free(envvars);
+	return err;
 }
 
 static linted_error socket_create(struct linted_unit *unit,

@@ -66,8 +66,7 @@ AM_CFLAGS+=\
   $(linted_CFLAGS_DEBUG)\
   $(linted_CFLAGS_DEBUG_INFO)\
   $(linted_CFLAGS_META)\
-  $(linted_CFLAGS_WARNINGS)\
-  -DLINTED_FILE="\"$$(basename $<)\""
+  $(linted_CFLAGS_WARNINGS)
 
 if LINTED_DETERMINISTIC
 AM_CFLAGS+=-frandom-seed=$$(md5sum $< | sed -e 's/\(.*\) .*/\1/')
