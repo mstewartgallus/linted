@@ -19,6 +19,7 @@
 
 #include "linted/spawn.h"
 
+#include "linted/execveat.h"
 #include "linted/error.h"
 #include "linted/fifo.h"
 #include "linted/io.h"
@@ -37,16 +38,6 @@
 #include <stdlib.h>
 #include <syscall.h>
 #include <unistd.h>
-
-#ifndef __NR_execveat
-#if defined __amd64__
-#define __NR_execveat 322
-#elif defined __i386__
-#define __NR_execveat 358
-#else
-#error No execveat system call number is defined for this platform
-#endif
-#endif
 
 extern char **environ;
 
@@ -401,11 +392,11 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	if (LINTED_KO_CWD == dirko || '/' == binary[0U]) {
 		execve(binary, (char *const *)argv,
 		       (char *const *)envp);
+		err = errno;
 	} else {
-		syscall(__NR_execveat, dirko, binary,
-		        (char *const *)argv, (char *const *)envp, 0);
+		err = linted_execveat(dirko, binary, (char **)argv,
+		                      (char **)envp, 0);
 	}
-	err = errno;
 
 fail : {
 	linted_error xx = err;

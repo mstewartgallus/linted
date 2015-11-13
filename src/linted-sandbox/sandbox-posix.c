@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "linted/dir.h"
+#include "linted/execveat.h"
 #include "linted/error.h"
 #include "linted/file.h"
 #include "linted/fifo.h"
@@ -55,16 +56,6 @@
 #include <linux/audit.h>
 #include <linux/filter.h>
 #include <linux/seccomp.h>
-
-#ifndef __NR_execveat
-#if defined __amd64__
-#define __NR_execveat 322
-#elif defined __i386__
-#define __NR_execveat 358
-#else
-#error No execveat system call number is defined for this platform
-#endif
-#endif
 
 /**
  * @file
@@ -1178,9 +1169,9 @@ first_fork_routine(void *void_args)
 	{
 		char const *const arguments[] = {waiter_base, 0};
 		if (mount_args_size > 0U) {
-			syscall(__NR_execveat, (int)waiter_ko, "",
-			        (char *const *)arguments, environ,
-			        AT_EMPTY_PATH);
+			err = linted_execveat(waiter_ko, "",
+			                      (char **)arguments,
+			                      environ, AT_EMPTY_PATH);
 		} else {
 			execve(waiter, (char *const *)arguments,
 			       environ);

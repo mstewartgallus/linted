@@ -34,8 +34,6 @@ dnl Explicitly set this so that we always use the cross compilation
 dnl tests for the same build results from native and cross builds.
 [cross_compiling=yes]
 dnl
-AC_PROG_CC
-dnl
 [linted_posix_api_default=no]
 [linted_x11_api_default=no]
 [linted_windows_api_default=no]
@@ -51,12 +49,18 @@ dnl
 AS_IF([test "x${host_os}" = "xmingw32" ||
        test "x${host_os}" = "xmingw32msvc"], [[linted_windows_api_default=yes]])
 dnl
+AC_PROG_CC
+dnl
 AS_IF([test "x${CC}" = "xwinegcc"], [
         [linted_windows_api_default=yes]
         [linted_posix_api_default=no]
 ])
 dnl
 AM_PROG_AR
+AC_PROG_AWK
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MKDIR_P
 dnl
 dnl We only use static convenience libraries anyway
 LT_INIT([disable-shared])
@@ -270,23 +274,34 @@ dnl
         ])
 dnl
         AC_CHECK_FUNCS([[dup2]dnl
+                        [fchdir]dnl
+                        [gethostname]dnl
                         [memmove]dnl
                         [memset]dnl
                         [mkdir]dnl
+                        [munmap]dnl
+                        [realpath]dnl
+                        [setenv]dnl
+                        [setlocale]dnl
+                        [strchr]dnl
                         [strdup]dnl
+                        [strndup]dnl
                         [strrchr]dnl
                         [strstr]dnl
-                        [strtol]], [], [
+                        [strtol]dnl
+                        [tzset]], [], [
          AC_MSG_ERROR([Unable to find function ${ac_func}])
         ])
 dnl
         AC_CHECK_HEADERS([[sys/auxv.h]])
         AC_CHECK_FUNCS([[getauxval]])
 dnl
-        AC_CHECK_FUNCS([[pthread_setname_np]])
-dnl
         AC_CHECK_HEADERS([[sys/prctl.h]])
         AC_CHECK_FUNCS([[prctl]])
+dnl
+        AC_CHECK_FUNCS([[mkfifoat]dnl
+                        [syscall]dnl
+	                [pthread_setname_np]])
 ])
 dnl
 AM_CONDITIONAL([X11_API], [test "x${enable_x11_api}" = xyes])
@@ -322,11 +337,16 @@ AC_SYS_LARGEFILE
 AC_C_INLINE
 dnl
 AC_CHECK_HEADERS([[fcntl.h]dnl
-                  [locale.h]dnl
                   [limits.h]dnl
+                  [locale.h]dnl
+                  [mntent.h]dnl
                   [stddef.h]dnl
                   [stdint.h]dnl
                   [string.h]dnl
+                  [sys/mount.h]dnl
+                  [sys/socket.h]dnl
+                  [sys/time.h]dnl
+                  [syslog.h]dnl
                   [unistd.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])
@@ -342,9 +362,12 @@ AC_CHECK_HEADERS([[inttypes.h]], [], [
 dnl
 AC_TYPE_MODE_T
 dnl
-AC_TYPE_INT32_T
+AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
+dnl
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
 dnl
 AC_TYPE_OFF_T
 dnl

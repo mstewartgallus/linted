@@ -22,7 +22,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/resource.h>
 #include <sys/types.h>
 
 /**
@@ -79,11 +78,11 @@ struct linted_unit_service {
 	char const *fstab;
 	char const *chdir_path;
 
-	int priority;
+	int_least64_t limit_no_file;
+	int_least64_t limit_msgqueue;
+	int_least64_t limit_locks;
 
-	rlim_t limit_no_file;
-	rlim_t limit_msgqueue;
-	rlim_t limit_locks;
+	int priority;
 
 	_Bool has_priority : 1U;
 	_Bool has_limit_no_file : 1U;

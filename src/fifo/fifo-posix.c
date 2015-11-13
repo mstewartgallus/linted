@@ -31,6 +31,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#if !defined HAVE_MKFIFOAT && defined HAVE_SYSCALL
+#include <sys/syscall.h>
+#endif
+
+static linted_error my_mkfifoat(int dir, char const *pathname,
+                                mode_t mode);
+
 linted_error linted_fifo_pair(linted_fifo *readerp,
                               linted_fifo *writerp, unsigned long flags)
 {
@@ -72,9 +79,8 @@ linted_error linted_fifo_create(linted_fifo *kop, linted_ko dirko,
 			dirfd = dirko;
 		}
 
-		if (-1 == mkfifoat(dirfd, pathname, mode)) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
+		err = my_mkfifoat(dirfd, pathname, mode);
+		if (err != 0) {
 			if (EEXIST == err)
 				return 0;
 
@@ -149,8 +155,8 @@ linted_error linted_fifo_create(linted_fifo *kop, linted_ko dirko,
 	}
 
 make_fifo:
-	if (-1 == mkfifoat(realdir, pathnamebase, mode)) {
-		err = errno;
+	err = my_mkfifoat(realdir, pathnamebase, mode);
+	if (err != 0) {
 		LINTED_ASSUME(err != 0);
 
 		/* We can't simply turn this test into an error so we
@@ -197,3 +203,18 @@ free_pathnamedir:
 	*kop = fd;
 	return 0;
 }
+
+#if defined HAVE_MKFIFOAT
+static linted_error my_mkfifoat(int dir, char const *pathname,
+                                mode_t mode)
+{
+	if (-1 == mkfifoat(dir, pathname, mode)) {
+		linted_error err = errno;
+		LINTED_ASSUME(err != 0);
+		return err;
+	}
+	return 0;
+}
+#else
+#error no mkfifoat implementation for this platform
+#endif

@@ -17,6 +17,7 @@
 
 #include "config.h"
 
+#include "linted/execveat.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
@@ -34,16 +35,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#ifndef __NR_execveat
-#if defined __amd64__
-#define __NR_execveat 322
-#elif defined __i386__
-#define __NR_execveat 358
-#else
-#error No execveat system call number is defined for this platform
-#endif
-#endif
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-enter",
@@ -150,10 +141,10 @@ static unsigned char linted_start_main(char const *const process_name,
 	}
 
 	static const char *args[] = {"/bin/sh", 0};
-	syscall(__NR_execveat, (int)sh_ko, "", (char *const *)args,
-	        environ, AT_EMPTY_PATH);
+	err = linted_execveat(sh_ko, "", (char **)args, environ,
+	                      AT_EMPTY_PATH);
 
 	linted_log(LINTED_LOG_ERROR, "execve: %s",
-	           linted_error_string(errno));
+	           linted_error_string(err));
 	return EXIT_FAILURE;
 }

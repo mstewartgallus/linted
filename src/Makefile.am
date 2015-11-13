@@ -22,6 +22,7 @@ EXTRA_DIST+=\
   include/EGL/eglplatform.h\
   include/KHR/khrplatform.h\
   \
+  include/linted/execveat.h\
   include/linted/rpc.h\
   include/linted/prctl.h\
   include/linted/ptrace.h\
@@ -55,6 +56,11 @@ include %C%/conf/Makefile.am
 include %C%/gpu/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/unit/Makefile.am
+
+include %C%/admin/Makefile.am
+include %C%/controller/Makefile.am
+include %C%/updater/Makefile.am
+include %C%/window/Makefile.am
 endif
 
 include %C%/assets/Makefile.am
@@ -85,8 +91,3 @@ endif
 if X11_API
 include %C%/xcb/Makefile.am
 endif
-
-include %C%/admin/Makefile.am
-include %C%/controller/Makefile.am
-include %C%/updater/Makefile.am
-include %C%/window/Makefile.am
