@@ -823,27 +823,27 @@ static void run_task(struct linted_async_pool *pool,
 	switch (task->type) {
 	case LINTED_ASYNCH_TASK_IDLE:
 		linted_sched_do_idle(pool, task);
-		break;
+		return;
 
 	case LINTED_ASYNCH_TASK_POLL:
 		linted_io_do_poll(pool, task);
-		break;
+		return;
 
 	case LINTED_ASYNCH_TASK_READ:
 		linted_io_do_read(pool, task);
-		break;
+		return;
 
 	case LINTED_ASYNCH_TASK_WRITE:
 		linted_io_do_write(pool, task);
-		break;
+		return;
 
 	case LINTED_ASYNCH_TASK_SIGNAL_WAIT:
 		linted_signal_do_wait(pool, task);
-		break;
+		return;
 
 	case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
 		linted_sched_do_sleep_until(pool, task);
-		break;
+		return;
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -922,7 +922,6 @@ static linted_error wait_manager_create(
 		goto free_events;
 	}
 
-	/* We need an extra page for signals */
 	manager->stopped = false;
 	manager->waiters = waiters;
 	manager->epoll_ko = epoll_fd;
@@ -1045,32 +1044,36 @@ static void *master_poller_routine(void *arg)
 			size_t index = epoll_events[ii].data.u64;
 			uint32_t revents = epoll_events[ii].events;
 
-			if (index != 0U) {
-				LINTED_ASSERT(waiters[index - 1U] != 0);
-				err = do_task_for_event(
-				    async_pool, waiters[index - 1U],
-				    revents);
-				if (err != 0)
-					goto exit_mainloop;
-				int fd = waiters[index - 1U]->ko;
-				if (-1 == epoll_ctl(epoll_ko,
-				                    EPOLL_CTL_DEL, fd,
-				                    0)) {
-					err = errno;
-					LINTED_ASSUME(err != 0);
+			if (0U == index) {
+				err = recv_waiters(
+				    async_pool, self, epoll_ko, waiters,
+				    waiter_queue, max_tasks, revents);
+				if (ECANCELED == err) {
 					goto exit_mainloop;
 				}
-
-				waiters[index - 1U] = 0;
 				continue;
 			}
 
-			err = recv_waiters(async_pool, self, epoll_ko,
-			                   waiters, waiter_queue,
-			                   max_tasks, revents);
-			if (ECANCELED == err) {
+			struct linted_async_waiter **waiterp =
+			    &waiters[index - 1U];
+			struct linted_async_waiter *waiter = *waiterp;
+
+			LINTED_ASSERT(waiter != 0);
+
+			err = do_task_for_event(async_pool, waiter,
+			                        revents);
+			if (err != 0)
+				goto exit_mainloop;
+
+			int fd = waiter->ko;
+			if (-1 ==
+			    epoll_ctl(epoll_ko, EPOLL_CTL_DEL, fd, 0)) {
+				err = errno;
+				LINTED_ASSUME(err != 0);
 				goto exit_mainloop;
 			}
+
+			*waiterp = 0;
 		}
 
 	check_cancellers:
