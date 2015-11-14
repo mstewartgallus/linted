@@ -24,6 +24,7 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -246,18 +247,15 @@ free_line:
 linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
                                  size_t *lenp)
 {
-	linted_error err;
+	linted_error err = 0;
 
-	linted_ko children_ko;
+	linted_ko task_ko;
 	{
 		char path[sizeof "/proc/" - 1U +
 		          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
-		          sizeof "/task/" - 1U +
-		          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
-		          sizeof "/children" - 1U + 1U];
-		if (-1 == sprintf(path, "/proc/%" PRIuMAX
-		                        "/task/%" PRIuMAX "/children",
-		                  (uintmax_t)pid, (uintmax_t)pid)) {
+		          sizeof "/task" - 1U + 1U];
+		if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task",
+		                  (uintmax_t)pid)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
 			return err;
@@ -266,110 +264,173 @@ linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
 		linted_ko xx;
 		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
 		                     LINTED_KO_RDONLY);
-		if (ENOENT == err)
-			return ESRCH;
 		if (err != 0)
 			return err;
-		children_ko = xx;
+		task_ko = xx;
 	}
 
-	FILE *file = fdopen(children_ko, "r");
-	if (0 == file) {
+	DIR *task_dir = fdopendir(task_ko);
+	if (0 == task_dir) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 
-		linted_ko_close(children_ko);
+		linted_ko_close(task_ko);
 
 		return err;
 	}
 
-	/* Get the child all at once to avoid raciness. */
-	char *buf = 0;
-	bool eof = false;
-	ssize_t zz;
-	{
-		char *xx = buf;
-		size_t yy = 0U;
-
-		errno = 0;
-		zz = getline(&xx, &yy, file);
-		buf = xx;
-	}
-
-	if (-1 == zz) {
-		err = errno;
-		/* May be zero */
-		eof = true;
-	}
-
-	if (EOF == fclose(file)) {
-		if (0 == err) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-		}
-	}
-
-	if (err != 0) {
-		linted_mem_free(buf);
-		return err;
-	}
-
-	if (eof) {
-		linted_mem_free(buf);
-		buf = 0;
-	}
-
-	size_t ii = 0U;
-	char const *start = buf;
-	linted_pid *children = 0;
-
-	if (0 == buf)
-		goto finish;
-
+	size_t num_tasks = 0U;
+	FILE **tasks = 0;
 	for (;;) {
 		errno = 0;
-		linted_pid child = strtol(start, 0, 10);
-		err = errno;
-		if (err != 0)
-			goto free_buf;
+		struct dirent *entry = readdir(task_dir);
+		if (0 == entry) {
+			err = errno;
+			if (err != 0)
+				goto close_tasks;
+			break;
+		}
+
+		char const *name = entry->d_name;
+		if (0 == strcmp(".", name))
+			continue;
+		if (0 == strcmp("..", name))
+			continue;
 
 		{
 			void *xx;
 			err = linted_mem_realloc_array(
-			    &xx, children, ii + 1U,
-			    sizeof children[0U]);
+			    &xx, tasks, num_tasks + 1U,
+			    sizeof tasks[0U]);
 			if (err != 0)
-				goto free_buf;
-			children = xx;
+				goto close_tasks;
+			tasks = xx;
 		}
-		children[ii] = child;
-		++ii;
 
-		start = strchr(start, ' ');
-		if (0 == start)
-			break;
-		if ('\n' == *start)
-			break;
-		if ('\0' == *start)
-			break;
-		++start;
-		if ('\n' == *start)
-			break;
-		if ('\0' == *start)
-			break;
+		char path[LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		          sizeof "/children" - 1U + 1U];
+		if (-1 == sprintf(path, "%s/children", name)) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+			goto close_tasks;
+		}
+
+		linted_ko this_task;
+		{
+			linted_ko xx;
+			err = linted_ko_open(&xx, task_ko, path,
+			                     LINTED_KO_RDONLY);
+			if (ENOENT == err) {
+				err = ESRCH;
+				goto close_tasks;
+			}
+			if (err != 0)
+				goto close_tasks;
+			this_task = xx;
+		}
+
+		FILE *file = fdopen(this_task, "r");
+		if (0 == file) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+
+			linted_ko_close(task_ko);
+
+			goto close_tasks;
+		}
+
+		tasks[num_tasks] = file;
+
+		++num_tasks;
 	}
 
+	size_t num_children = 0U;
+	linted_pid *children = 0;
+
+	char *buf = 0;
+	size_t buf_size = 0U;
+	for (size_t ii = 0U; ii < num_tasks; ++ii) {
+		FILE *task = tasks[ii];
+
+		/* Get the child all at once to avoid raciness. */
+		bool eof = false;
+		ssize_t zz;
+		{
+			char *xx = buf;
+			size_t yy = buf_size;
+
+			errno = 0;
+			zz = getline(&xx, &yy, task);
+			buf = xx;
+			buf_size = yy;
+		}
+
+		if (-1 == zz) {
+			err = errno;
+			/* May be zero */
+			eof = true;
+		}
+
+		if (err != 0)
+			break;
+
+		if (eof)
+			continue;
+
+		char const *start = buf;
+
+		for (;;) {
+			errno = 0;
+			linted_pid child = strtol(start, 0, 10);
+			err = errno;
+			if (err != 0)
+				goto free_buf;
+
+			{
+				void *xx;
+				err = linted_mem_realloc_array(
+				    &xx, children, num_children + 1U,
+				    sizeof children[0U]);
+				if (err != 0)
+					goto free_buf;
+				children = xx;
+			}
+			children[num_children] = child;
+			++num_children;
+
+			start = strchr(start, ' ');
+			if (0 == start)
+				break;
+			if ('\n' == *start)
+				break;
+			if ('\0' == *start)
+				break;
+			++start;
+			if ('\n' == *start)
+				break;
+			if ('\0' == *start)
+				break;
+		}
+	}
 free_buf:
 	linted_mem_free(buf);
 
-	if (err != 0) {
-		linted_mem_free(children);
-		return err;
+	if (0 == err) {
+		*lenp = num_children;
+		*childrenp = children;
 	}
 
-finish:
-	*lenp = ii;
-	*childrenp = children;
+	if (err != 0) {
+		linted_mem_free(children);
+	}
+
+close_tasks:
+	for (size_t ii = 0U; ii < num_tasks; ++ii) {
+		fclose(tasks[ii]);
+	}
+	linted_mem_free(tasks);
+
+	closedir(task_dir);
 
 	return err;
 }

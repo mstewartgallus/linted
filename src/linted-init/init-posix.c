@@ -41,13 +41,7 @@ static void delegate_signal(int signo);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init",
-    .dont_init_signals = true,
-
-    /* The monitor only grabs tasks from the main thread using
-     * `linted_pid_children` so we can't get rid of the use of
-     * `dont_fork_thread` here yet.
-     */
-    .dont_fork_thread = true};
+    .dont_init_signals = true};
 
 static volatile sig_atomic_t monitor_pid = 0;
 
