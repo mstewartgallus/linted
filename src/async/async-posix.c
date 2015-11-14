@@ -1002,13 +1002,15 @@ static void *master_poller_routine(void *arg)
 	for (size_t ii = 0U; ii < max_tasks; ++ii)
 		waiters[ii] = 0;
 
+	linted_ko wait_ko = waiter_ko(waiter_queue);
+
 	linted_error err = 0;
 	{
 		struct epoll_event xx = {0};
 		xx.events = EPOLLIN;
 		xx.data.u64 = 0U;
-		if (-1 == epoll_ctl(epoll_ko, EPOLL_CTL_ADD,
-		                    waiter_ko(waiter_queue), &xx)) {
+		if (-1 ==
+		    epoll_ctl(epoll_ko, EPOLL_CTL_ADD, wait_ko, &xx)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
 			goto exit_mainloop;
@@ -1120,10 +1122,10 @@ static linted_error recv_waiters(struct linted_async_pool *async_pool,
 
 	LINTED_ASSERT(has_pollin);
 
+	linted_ko wait_ko = waiter_ko(waiter_queue);
 	for (;;) {
 		uint64_t xx;
-		if (-1 ==
-		    read(waiter_ko(waiter_queue), &xx, sizeof xx)) {
+		if (-1 == read(wait_ko, &xx, sizeof xx)) {
 			err = errno;
 			LINTED_ASSERT(err != 0);
 			if (EINTR == err)

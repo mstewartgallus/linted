@@ -22,6 +22,7 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/prctl.h"
 #include "linted/start.h"
 #include "linted/updater.h"
 #include "linted/util.h"
@@ -107,6 +108,14 @@ static unsigned char linted_start_main(char const *process_name,
 
 	if (argc < 4U)
 		return LINTED_ERROR_INVALID_PARAMETER;
+
+	err = linted_prctl_set_timerslack(1U);
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR,
+		           "linted-prctl_set_timerslack: %s",
+		           linted_error_string(err));
+		return EXIT_FAILURE;
+	}
 
 	char const *window_path = argv[1U];
 	char const *notifier_path = argv[2U];

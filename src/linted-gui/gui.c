@@ -24,6 +24,7 @@
 #include "linted/ko.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/prctl.h"
 #include "linted/start.h"
 #include "linted/util.h"
 #include "linted/window.h"
@@ -120,6 +121,14 @@ static unsigned char linted_start_main(char const *process_name,
 	if (argc < 4U) {
 		linted_log(LINTED_LOG_ERROR,
 		           "missing some of 3 file operands");
+		return EXIT_FAILURE;
+	}
+
+	err = linted_prctl_set_timerslack(1U);
+	if (err != 0) {
+		linted_log(LINTED_LOG_ERROR,
+		           "linted-prctl_set_timerslack: %s",
+		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}
 

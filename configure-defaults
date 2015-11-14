@@ -16,4 +16,5 @@ SRCDIR="$(cd "$(dirname "$0")" && pwd)"
 exec "${SRCDIR}/configure"\
   --build="$("${SRCDIR}/build-aux/config.guess")"\
   --host="$("${SRCDIR}/build-aux/config.guess")"\
+  --quiet\
   "$@"

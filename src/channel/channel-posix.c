@@ -125,26 +125,31 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 	LINTED_ASSERT_NOT_NULL(channel);
 	LINTED_ASSERT_NOT_NULL(node);
 
-	err = pthread_mutex_lock(&channel->lock);
+	pthread_mutex_t *lockp = &channel->lock;
+	pthread_cond_t *filledp = &channel->filled;
+	void ***waiterp = &channel->waiter;
+
+	err = pthread_mutex_lock(lockp);
 	if (err != 0) {
 		LINTED_ASSERT(err != EDEADLK);
 		LINTED_ASSERT(false);
 	}
 
-	void **waiter = channel->waiter;
+	void **waiter = *waiterp;
 	if (0 == waiter) {
 		err = LINTED_ERROR_AGAIN;
 		goto unlock_mutex;
 	}
 
+	*waiterp = 0;
+
 	*waiter = node;
-	channel->waiter = 0;
 
 	/* Not a cancellation point */
-	pthread_cond_signal(&channel->filled);
+	pthread_cond_signal(filledp);
 
 unlock_mutex : {
-	linted_error unlock_err = pthread_mutex_unlock(&channel->lock);
+	linted_error unlock_err = pthread_mutex_unlock(lockp);
 	if (unlock_err != 0) {
 		LINTED_ASSERT(unlock_err != EPERM);
 		LINTED_ASSERT(false);
@@ -162,27 +167,31 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 	LINTED_ASSERT_NOT_NULL(channel);
 	LINTED_ASSERT_NOT_NULL(nodep);
 
-	err = pthread_mutex_lock(&channel->lock);
+	*nodep = 0;
+
+	pthread_mutex_t *lockp = &channel->lock;
+	pthread_cond_t *filledp = &channel->filled;
+	void ***waiterp = &channel->waiter;
+
+	err = pthread_mutex_lock(lockp);
 	if (err != 0) {
 		LINTED_ASSERT(err != EDEADLK);
 		LINTED_ASSERT(false);
 	}
 
-	LINTED_ASSERT(0 == channel->waiter);
+	LINTED_ASSERT(0 == *waiterp);
 
-	*nodep = 0;
-	channel->waiter = nodep;
+	*waiterp = nodep;
 
 	do {
-		err =
-		    pthread_cond_wait(&channel->filled, &channel->lock);
+		err = pthread_cond_wait(filledp, lockp);
 		if (err != 0) {
 			LINTED_ASSERT(err != EINVAL);
 			LINTED_ASSERT(false);
 		}
 	} while (0 == *nodep);
 
-	err = pthread_mutex_unlock(&channel->lock);
+	err = pthread_mutex_unlock(lockp);
 	if (err != 0) {
 		LINTED_ASSERT(err != EPERM);
 		LINTED_ASSERT(false);

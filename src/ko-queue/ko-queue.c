@@ -108,17 +108,27 @@ void linted_ko_queue_send(struct linted_ko_queue *queue,
 	/* Guard against double insertions */
 	LINTED_ASSERT(0 == node->next);
 
-	spinlock_lock(&queue->lock);
+	linted_ko waiter_fd = queue->waiter_fd;
 
-	*queue->tailp = node;
+	struct linted_queue_node **node_nextp = &node->next;
 
-	queue->tailp = &node->next;
+	{
+		spinlock *lockp = &queue->lock;
+		struct linted_queue_node ***tailpp = &queue->tailp;
 
-	spinlock_unlock(&queue->lock);
+		spinlock_lock(lockp);
+
+		struct linted_queue_node **tailp = *tailpp;
+
+		*tailp = node;
+		*tailpp = node_nextp;
+
+		spinlock_unlock(lockp);
+	}
 
 	for (;;) {
 		uint64_t xx = 0xFF;
-		if (-1 == write(queue->waiter_fd, &xx, sizeof xx)) {
+		if (-1 == write(waiter_fd, &xx, sizeof xx)) {
 			err = errno;
 			LINTED_ASSERT(err != 0);
 			if (EINTR == err)

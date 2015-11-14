@@ -128,24 +128,31 @@ void linted_queue_destroy(struct linted_queue *queue)
 void linted_queue_send(struct linted_queue *queue,
                        struct linted_queue_node *node)
 {
+	pthread_mutex_t *lockp = &queue->lock;
+	pthread_cond_t *gains_memberp = &queue->gains_member;
+	struct linted_queue_node ***tailpp = &queue->tailp;
+
 	linted_error err;
 
 	/* Guard against double insertions */
 	LINTED_ASSERT(0 == node->next);
 
-	err = pthread_mutex_lock(&queue->lock);
+	struct linted_queue_node **node_nextp = &node->next;
+
+	err = pthread_mutex_lock(lockp);
 	if (err != 0) {
 		LINTED_ASSERT(err != EDEADLK);
 		LINTED_ASSERT(false);
 	}
 
-	*queue->tailp = node;
+	struct linted_queue_node **tailp = *tailpp;
 
-	queue->tailp = &node->next;
+	*tailp = node;
+	*tailpp = node_nextp;
 
-	pthread_cond_signal(&queue->gains_member);
+	pthread_cond_signal(gains_memberp);
 
-	err = pthread_mutex_unlock(&queue->lock);
+	err = pthread_mutex_unlock(lockp);
 	if (err != 0) {
 		LINTED_ASSERT(err != EPERM);
 		LINTED_ASSERT(false);
@@ -158,7 +165,12 @@ void linted_queue_recv(struct linted_queue *queue,
 {
 	linted_error err;
 
-	err = pthread_mutex_lock(&queue->lock);
+	pthread_mutex_t *lockp = &queue->lock;
+	pthread_cond_t *gains_memberp = &queue->gains_member;
+	struct linted_queue_node **headp = &queue->head;
+	struct linted_queue_node ***tailpp = &queue->tailp;
+
+	err = pthread_mutex_lock(lockp);
 	if (err != 0) {
 		LINTED_ASSERT(err != EDEADLK);
 		LINTED_ASSERT(false);
@@ -167,28 +179,29 @@ void linted_queue_recv(struct linted_queue *queue,
 	/* The nodes next to the tip are the head */
 	struct linted_queue_node *removed;
 	for (;;) {
-		removed = queue->head;
+		removed = *headp;
 		if (removed != 0)
 			break;
 
-		err = pthread_cond_wait(&queue->gains_member,
-		                        &queue->lock);
+		err = pthread_cond_wait(gains_memberp, lockp);
 		if (err != 0) {
 			LINTED_ASSERT(err != EINVAL);
 			LINTED_ASSERT(false);
 		}
 	}
 
-	struct linted_queue_node **tailp = queue->tailp;
-	struct linted_queue_node *head = removed->next;
+	struct linted_queue_node **nextp = &removed->next;
 
-	if (tailp == &removed->next)
-		tailp = &queue->head;
+	struct linted_queue_node **tailp = *tailpp;
+	if (tailp == nextp)
+		tailp = headp;
 
-	queue->head = head;
-	queue->tailp = tailp;
+	struct linted_queue_node *head = *nextp;
 
-	err = pthread_mutex_unlock(&queue->lock);
+	*headp = head;
+	*tailpp = tailp;
+
+	err = pthread_mutex_unlock(lockp);
 	if (err != 0) {
 		LINTED_ASSERT(err != EPERM);
 		LINTED_ASSERT(false);

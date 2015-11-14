@@ -399,14 +399,15 @@ linted_gpu_remove_window(struct linted_gpu_context *gpu_context)
 }
 
 void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
-                             struct linted_gpu_update const *glupdate)
+                             struct linted_gpu_update const *updatep)
 {
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
 
+	struct linted_gpu_update update = *updatep;
 	{
 		pthread_spin_lock(&command_queue->lock);
-		command_queue->update = *glupdate;
+		command_queue->update = update;
 		command_queue->update_pending = true;
 		++command_queue->skipped_updates_counter;
 		pthread_spin_unlock(&command_queue->lock);
