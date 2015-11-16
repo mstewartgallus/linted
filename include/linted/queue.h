@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #define LINTED_QUEUE_H
 
 #include "linted/error.h"
+#include "linted/node.h"
 
 /**
  * @file
@@ -27,12 +28,6 @@
  */
 struct linted_queue;
 
-struct linted_queue_node {
-	struct linted_queue_node *next;
-};
-
-void linted_queue_node(struct linted_queue_node *node);
-
 linted_error linted_queue_create(struct linted_queue **queuep);
 
 /**
@@ -42,12 +37,12 @@ linted_error linted_queue_create(struct linted_queue **queuep);
 void linted_queue_destroy(struct linted_queue *queue);
 
 void linted_queue_send(struct linted_queue *queue,
-                       struct linted_queue_node *node);
+                       struct linted_node *node);
 
 void linted_queue_recv(struct linted_queue *queue,
-                       struct linted_queue_node **node);
+                       struct linted_node **node);
 
 linted_error linted_queue_try_recv(struct linted_queue *queue,
-                                   struct linted_queue_node **node);
+                                   struct linted_node **node);
 
 #endif /* LINTED_QUEUE_H */

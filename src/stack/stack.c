@@ -21,6 +21,7 @@
 
 #include "linted/error.h"
 #include "linted/mem.h"
+#include "linted/node.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -42,8 +43,8 @@ static void trigger_set(struct trigger *trigger);
 static void trigger_wait(struct trigger *trigger);
 
 struct linted_stack {
-	struct linted_queue_node *inbox;
-	struct linted_queue_node *outbox;
+	struct linted_node *inbox;
+	struct linted_node *outbox;
 	struct trigger inbox_filled;
 };
 
@@ -55,7 +56,7 @@ static linted_error futex_wait(int const *uaddr, int val,
 static linted_error futex_wake(unsigned *restrict wokeupp,
                                int const *uaddr, int val);
 
-static void refresh_node(struct linted_queue_node *node)
+static void refresh_node(struct linted_node *node)
 {
 	node->next = 0;
 }
@@ -88,14 +89,15 @@ void linted_stack_destroy(struct linted_stack *stack)
 }
 
 void linted_stack_send(struct linted_stack *stack,
-                       struct linted_queue_node *node)
+                       struct linted_node *node)
 {
-	struct linted_queue_node *next;
+	refresh_node(node);
 
 	__atomic_thread_fence(__ATOMIC_RELEASE);
 
 	for (;;) {
-		next = __atomic_load_n(&stack->inbox, __ATOMIC_ACQUIRE);
+		struct linted_node *next =
+		    __atomic_load_n(&stack->inbox, __ATOMIC_ACQUIRE);
 
 		node->next = next;
 
@@ -111,7 +113,7 @@ void linted_stack_send(struct linted_stack *stack,
 
 /* Remove from the head */
 void linted_stack_recv(struct linted_stack *stack,
-                       struct linted_queue_node **nodep)
+                       struct linted_node **nodep)
 {
 	linted_error err = 0;
 
@@ -129,16 +131,16 @@ void linted_stack_recv(struct linted_stack *stack,
 }
 
 linted_error linted_stack_try_recv(struct linted_stack *stack,
-                                   struct linted_queue_node **nodep)
+                                   struct linted_node **nodep)
 {
 	for (;;) {
-		struct linted_queue_node *node;
+		struct linted_node *node;
 
 		node = __atomic_load_n(&stack->inbox, __ATOMIC_ACQUIRE);
 		if (0 == node)
 			break;
 
-		struct linted_queue_node *next =
+		struct linted_node *next =
 		    __atomic_load_n(&node->next, __ATOMIC_ACQUIRE);
 
 		if (__atomic_compare_exchange_n(
@@ -149,7 +151,7 @@ linted_error linted_stack_try_recv(struct linted_stack *stack,
 		}
 	}
 
-	struct linted_queue_node *node = stack->outbox;
+	struct linted_node *node = stack->outbox;
 	if (0 == node)
 		return EAGAIN;
 

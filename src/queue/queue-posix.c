@@ -21,6 +21,7 @@
 
 #include "linted/error.h"
 #include "linted/mem.h"
+#include "linted/node.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -36,11 +37,11 @@
 struct linted_queue {
 	pthread_mutex_t lock;
 	pthread_cond_t gains_member;
-	struct linted_queue_node *head;
-	struct linted_queue_node **tailp;
+	struct linted_node *head;
+	struct linted_node **tailp;
 };
 
-void linted_queue_node(struct linted_queue_node *node)
+static void refresh_node(struct linted_node *node)
 {
 	node->next = 0;
 }
@@ -126,18 +127,20 @@ void linted_queue_destroy(struct linted_queue *queue)
 
 /* Attach to the tail */
 void linted_queue_send(struct linted_queue *queue,
-                       struct linted_queue_node *node)
+                       struct linted_node *node)
 {
+	refresh_node(node);
+
 	pthread_mutex_t *lockp = &queue->lock;
 	pthread_cond_t *gains_memberp = &queue->gains_member;
-	struct linted_queue_node ***tailpp = &queue->tailp;
+	struct linted_node ***tailpp = &queue->tailp;
 
 	linted_error err;
 
 	/* Guard against double insertions */
 	LINTED_ASSERT(0 == node->next);
 
-	struct linted_queue_node **node_nextp = &node->next;
+	struct linted_node **node_nextp = &node->next;
 
 	err = pthread_mutex_lock(lockp);
 	if (err != 0) {
@@ -145,7 +148,7 @@ void linted_queue_send(struct linted_queue *queue,
 		LINTED_ASSERT(false);
 	}
 
-	struct linted_queue_node **tailp = *tailpp;
+	struct linted_node **tailp = *tailpp;
 
 	*tailp = node;
 	*tailpp = node_nextp;
@@ -161,14 +164,14 @@ void linted_queue_send(struct linted_queue *queue,
 
 /* Remove from the head */
 void linted_queue_recv(struct linted_queue *queue,
-                       struct linted_queue_node **nodep)
+                       struct linted_node **nodep)
 {
 	linted_error err;
 
 	pthread_mutex_t *lockp = &queue->lock;
 	pthread_cond_t *gains_memberp = &queue->gains_member;
-	struct linted_queue_node **headp = &queue->head;
-	struct linted_queue_node ***tailpp = &queue->tailp;
+	struct linted_node **headp = &queue->head;
+	struct linted_node ***tailpp = &queue->tailp;
 
 	err = pthread_mutex_lock(lockp);
 	if (err != 0) {
@@ -177,7 +180,7 @@ void linted_queue_recv(struct linted_queue *queue,
 	}
 
 	/* The nodes next to the tip are the head */
-	struct linted_queue_node *removed;
+	struct linted_node *removed;
 	for (;;) {
 		removed = *headp;
 		if (removed != 0)
@@ -190,13 +193,13 @@ void linted_queue_recv(struct linted_queue *queue,
 		}
 	}
 
-	struct linted_queue_node **nextp = &removed->next;
+	struct linted_node **nextp = &removed->next;
 
-	struct linted_queue_node **tailp = *tailpp;
+	struct linted_node **tailp = *tailpp;
 	if (tailp == nextp)
 		tailp = headp;
 
-	struct linted_queue_node *head = *nextp;
+	struct linted_node *head = *nextp;
 
 	*headp = head;
 	*tailpp = tailp;
@@ -208,13 +211,13 @@ void linted_queue_recv(struct linted_queue *queue,
 	}
 
 	/* Refresh the node for reuse later */
-	linted_queue_node(removed);
+	refresh_node(removed);
 
 	*nodep = removed;
 }
 
 linted_error linted_queue_try_recv(struct linted_queue *queue,
-                                   struct linted_queue_node **nodep)
+                                   struct linted_node **nodep)
 {
 	linted_error err;
 
@@ -227,7 +230,7 @@ linted_error linted_queue_try_recv(struct linted_queue *queue,
 	/* No cancellation points in the critical section */
 
 	/* The nodes next to the tip are the head */
-	struct linted_queue_node *removed = queue->head;
+	struct linted_node *removed = queue->head;
 	if (0 == removed) {
 		err = LINTED_ERROR_AGAIN;
 		goto unlock_mutex;
@@ -247,8 +250,7 @@ unlock_mutex : {
 }
 
 	if (0 == err) {
-		/* Refresh the node for reuse later */
-		linted_queue_node(removed);
+		refresh_node(removed);
 
 		*nodep = removed;
 	}

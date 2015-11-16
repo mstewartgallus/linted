@@ -25,6 +25,7 @@
 #include "linted/mem.h"
 #include "linted/channel.h"
 #include "linted/ko-stack.h"
+#include "linted/node.h"
 #include "linted/queue.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
@@ -150,7 +151,7 @@ struct linted_async_pool {
 };
 
 struct linted_async_task {
-	struct linted_queue_node parent;
+	struct linted_node parent;
 	struct canceller canceller;
 	void *data;
 	union linted_async_ck task_ck;
@@ -160,7 +161,7 @@ struct linted_async_task {
 };
 
 struct linted_async_waiter {
-	struct linted_queue_node parent;
+	struct linted_node parent;
 	struct linted_async_task *task;
 	linted_ko ko;
 	short flags;
@@ -375,7 +376,6 @@ linted_async_waiter_create(struct linted_async_waiter **waiterp)
 			return err;
 		waiter = xx;
 	}
-	linted_queue_node(&waiter->parent);
 
 	waiter->revents = 0;
 	waiter->thread_canceller = false;
@@ -413,7 +413,6 @@ linted_error linted_async_task_create(struct linted_async_task **taskp,
 			return err;
 		task = xx;
 	}
-	linted_queue_node(&task->parent);
 
 	canceller_init(&task->canceller);
 
@@ -646,7 +645,6 @@ destroy_threads:
 
 		for (;;) {
 			struct linted_async_task task;
-			linted_queue_node(&task.parent);
 			task.thread_canceller = true;
 
 			linted_error try_err =
@@ -693,7 +691,6 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 	{
 		struct linted_async_task task;
-		linted_queue_node(&task.parent);
 		task.thread_canceller = true;
 
 		job_submit(job_queue, &task);
@@ -748,7 +745,6 @@ static void *master_worker_routine(void *arg)
 		pthread_t thread = worker->thread;
 		for (;;) {
 			struct linted_async_task task;
-			linted_queue_node(&task.parent);
 			task.thread_canceller = true;
 
 			linted_error err =
@@ -967,7 +963,6 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 	{
 		struct linted_async_waiter waiter;
-		linted_queue_node(&waiter.parent);
 		waiter.thread_canceller = true;
 
 		waiter_submit(waiter_queue, &waiter);
@@ -1272,7 +1267,7 @@ static linted_error completion_recv(struct completion_queue *queue,
 	LINTED_ASSERT_NOT_NULL(queue);
 	LINTED_ASSERT_NOT_NULL(taskp);
 
-	struct linted_queue_node *node;
+	struct linted_node *node;
 
 	linted_stack_recv((void *)queue, &node);
 
@@ -1290,9 +1285,9 @@ completion_try_recv(struct completion_queue *queue,
 
 	linted_error err;
 
-	struct linted_queue_node *node;
+	struct linted_node *node;
 	{
-		struct linted_queue_node *xx;
+		struct linted_node *xx;
 		err = linted_stack_try_recv((void *)queue, &xx);
 		if (err != 0)
 			return err;
@@ -1341,9 +1336,9 @@ static linted_error job_recv(struct job_queue *queue,
 	LINTED_ASSERT_NOT_NULL(queue);
 	LINTED_ASSERT_NOT_NULL(taskp);
 
-	struct linted_queue_node *node;
+	struct linted_node *node;
 	{
-		struct linted_queue_node *xx;
+		struct linted_node *xx;
 		linted_stack_recv((void *)queue, &xx);
 		node = xx;
 	}
@@ -1459,7 +1454,7 @@ waiter_try_recv(struct waiter_queue *queue,
 
 	struct linted_async_waiter *waiter;
 	{
-		struct linted_queue_node *node;
+		struct linted_node *node;
 		err = linted_ko_stack_try_recv((void *)queue, &node);
 		if (err != 0)
 			return err;

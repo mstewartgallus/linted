@@ -21,6 +21,7 @@
 #include "linted/ko.h"
 #include "linted/ko-stack.h"
 #include "linted/mem.h"
+#include "linted/node.h"
 #include "linted/queue.h"
 #include "linted/util.h"
 
@@ -31,11 +32,11 @@
 #include <unistd.h>
 
 struct linted_ko_stack {
-	struct linted_queue_node *root;
+	struct linted_node *root;
 	int waiter_fd;
 };
 
-static void refresh_node(struct linted_queue_node *node)
+static void refresh_node(struct linted_node *node)
 {
 	node->next = 0;
 }
@@ -82,15 +83,14 @@ void linted_ko_stack_destroy(struct linted_ko_stack *queue)
 
 /* Attach to the tail */
 void linted_ko_stack_send(struct linted_ko_stack *queue,
-                          struct linted_queue_node *node)
+                          struct linted_node *node)
 {
 	linted_error err = 0;
 
-	/* Guard against double insertions */
-	LINTED_ASSERT(0 == node->next);
+	refresh_node(node);
 
 	linted_ko waiter_fd = queue->waiter_fd;
-	struct linted_queue_node *next;
+	struct linted_node *next;
 
 	__atomic_thread_fence(__ATOMIC_RELEASE);
 
@@ -121,15 +121,15 @@ void linted_ko_stack_send(struct linted_ko_stack *queue,
 }
 
 linted_error linted_ko_stack_try_recv(struct linted_ko_stack *queue,
-                                      struct linted_queue_node **nodep)
+                                      struct linted_node **nodep)
 {
-	struct linted_queue_node *node;
+	struct linted_node *node;
 	for (;;) {
 		node = __atomic_load_n(&queue->root, __ATOMIC_ACQUIRE);
 		if (0 == node)
 			return EAGAIN;
 
-		struct linted_queue_node *next =
+		struct linted_node *next =
 		    __atomic_load_n(&node->next, __ATOMIC_ACQUIRE);
 
 		if (__atomic_compare_exchange_n(

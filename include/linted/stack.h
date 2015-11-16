@@ -17,7 +17,7 @@
 #define LINTED_STACK_H
 
 #include "linted/error.h"
-#include "linted/queue.h"
+#include "linted/node.h"
 
 struct linted_stack;
 
@@ -25,12 +25,12 @@ linted_error linted_stack_create(struct linted_stack **stackp);
 void linted_stack_destroy(struct linted_stack *stack);
 
 void linted_stack_send(struct linted_stack *stack,
-                       struct linted_queue_node *node);
+                       struct linted_node *node);
 
 void linted_stack_recv(struct linted_stack *stack,
-                       struct linted_queue_node **node);
+                       struct linted_node **node);
 
 linted_error linted_stack_try_recv(struct linted_stack *stack,
-                                   struct linted_queue_node **node);
+                                   struct linted_node **node);
 
 #endif /* LINTED_STACK_H */

@@ -13,22 +13,11 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LINTED_KO_STACK_H
-#define LINTED_KO_STACK_H
+#ifndef LINTED_NODE_H
+#define LINTED_NODE_H
 
-#include "linted/ko.h"
-#include "linted/node.h"
+struct linted_node {
+	struct linted_node *next;
+};
 
-struct linted_ko_stack;
-
-linted_error linted_ko_stack_create(struct linted_ko_stack **queuep);
-void linted_ko_stack_destroy(struct linted_ko_stack *queue);
-
-void linted_ko_stack_send(struct linted_ko_stack *queue,
-                          struct linted_node *node);
-linted_error linted_ko_stack_try_recv(struct linted_ko_stack *queue,
-                                      struct linted_node **nodep);
-
-linted_ko linted_ko_stack_ko(struct linted_ko_stack *queue);
-
-#endif /* LINTED_KO_STACK_H */
+#endif /* LINTED_NODE_H */
