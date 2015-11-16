@@ -71,11 +71,6 @@ linted_error linted_stack_create(struct linted_stack **stackp)
 	*stackp = stack;
 
 	return 0;
-
-free_stack:
-	linted_mem_free(stack);
-
-	return err;
 }
 
 void linted_stack_destroy(struct linted_stack *stack)

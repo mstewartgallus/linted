@@ -51,7 +51,7 @@ include %C%/linted-waiter/Makefile.am
 
 include %C%/linted-enter/Makefile.am
 
-include %C%/ko-queue/Makefile.am
+include %C%/ko-stack/Makefile.am
 include %C%/conf/Makefile.am
 include %C%/gpu/Makefile.am
 include %C%/spawn/Makefile.am

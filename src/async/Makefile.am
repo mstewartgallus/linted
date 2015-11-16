@@ -26,7 +26,7 @@ noinst_LTLIBRARIES+=%D%/libasync.la
 
 if POSIX_API
 %C%_libasync_la_SOURCES+=%D%/async-posix.c
-%C%_libasync_la_LIBADD+=src/ko-queue/libkoqueue.la
+%C%_libasync_la_LIBADD+=src/ko-stack/libkostack.la
 endif
 
 if WINDOWS_API

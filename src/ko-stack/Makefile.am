@@ -15,5 +15,5 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-noinst_LTLIBRARIES+=%D%/libkoqueue.la
-%C%_libkoqueue_la_SOURCES=%D%/ko-queue.c include/linted/ko-queue.h
+noinst_LTLIBRARIES+=%D%/libkostack.la
+%C%_libkostack_la_SOURCES=%D%/ko-stack.c include/linted/ko-stack.h

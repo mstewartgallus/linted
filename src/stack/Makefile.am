@@ -17,4 +17,3 @@
 
 noinst_LTLIBRARIES+=%D%/libstack.la
 %C%_libstack_la_SOURCES=include/linted/stack.h %D%/stack.c
-%C%_libstack_la_CFLAGS=-std=c11

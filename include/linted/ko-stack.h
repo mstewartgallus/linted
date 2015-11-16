@@ -13,21 +13,22 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LINTED_KO_QUEUE_H
-#define LINTED_KO_QUEUE_H
+#ifndef LINTED_KO_STACK_H
+#define LINTED_KO_STACK_H
 
 #include "linted/ko.h"
 #include "linted/queue.h"
 
-struct linted_ko_queue;
+struct linted_ko_stack;
 
-linted_error linted_ko_queue_create(struct linted_ko_queue **queuep);
-void linted_ko_queue_destroy(struct linted_ko_queue *queue);
+linted_error linted_ko_stack_create(struct linted_ko_stack **queuep);
+void linted_ko_stack_destroy(struct linted_ko_stack *queue);
 
-linted_ko linted_ko_queue_ko(struct linted_ko_queue *queue);
-void linted_ko_queue_send(struct linted_ko_queue *queue,
+void linted_ko_stack_send(struct linted_ko_stack *queue,
                           struct linted_queue_node *node);
-linted_error linted_ko_queue_try_recv(struct linted_ko_queue *queue,
+linted_error linted_ko_stack_try_recv(struct linted_ko_stack *queue,
                                       struct linted_queue_node **nodep);
 
-#endif /* LINTED_KO_QUEUE_H */
+linted_ko linted_ko_stack_ko(struct linted_ko_stack *queue);
+
+#endif /* LINTED_KO_STACK_H */

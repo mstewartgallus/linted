@@ -24,7 +24,7 @@
 #include "linted/ko.h"
 #include "linted/mem.h"
 #include "linted/channel.h"
-#include "linted/ko-queue.h"
+#include "linted/ko-stack.h"
 #include "linted/queue.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
@@ -1419,8 +1419,8 @@ static linted_error waiter_queue_create(struct waiter_queue **queuep)
 
 	struct waiter_queue *queue;
 	{
-		struct linted_ko_queue *xx;
-		err = linted_ko_queue_create(&xx);
+		struct linted_ko_stack *xx;
+		err = linted_ko_stack_create(&xx);
 		if (err != 0)
 			return err;
 		queue = (void *)xx;
@@ -1431,12 +1431,12 @@ static linted_error waiter_queue_create(struct waiter_queue **queuep)
 
 static void waiter_queue_destroy(struct waiter_queue *queue)
 {
-	linted_ko_queue_destroy((void *)queue);
+	linted_ko_stack_destroy((void *)queue);
 }
 
 static linted_ko waiter_ko(struct waiter_queue *queue)
 {
-	return linted_ko_queue_ko((void *)queue);
+	return linted_ko_stack_ko((void *)queue);
 }
 
 static void waiter_submit(struct waiter_queue *queue,
@@ -1445,7 +1445,7 @@ static void waiter_submit(struct waiter_queue *queue,
 	LINTED_ASSERT_NOT_NULL(queue);
 	LINTED_ASSERT_NOT_NULL(waiter);
 
-	linted_ko_queue_send((void *)queue, UPCAST(waiter));
+	linted_ko_stack_send((void *)queue, UPCAST(waiter));
 }
 
 static linted_error
@@ -1460,7 +1460,7 @@ waiter_try_recv(struct waiter_queue *queue,
 	struct linted_async_waiter *waiter;
 	{
 		struct linted_queue_node *node;
-		err = linted_ko_queue_try_recv((void *)queue, &node);
+		err = linted_ko_stack_try_recv((void *)queue, &node);
 		if (err != 0)
 			return err;
 		waiter = (void *)node;
