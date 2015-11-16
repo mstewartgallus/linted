@@ -33,10 +33,18 @@
 #include <linux/futex.h>
 #include <immintrin.h>
 
+struct trigger {
+	int triggered;
+};
+
+static void trigger_init(struct trigger *trigger);
+static void trigger_set(struct trigger *trigger);
+static void trigger_wait(struct trigger *trigger);
+
 struct linted_stack {
 	struct linted_queue_node *inbox;
 	struct linted_queue_node *outbox;
-	int inbox_is_empty;
+	struct trigger inbox_filled;
 };
 
 static linted_error wait_until_different(int const *uaddr, int val);
@@ -66,7 +74,8 @@ linted_error linted_stack_create(struct linted_stack **stackp)
 
 	stack->inbox = 0;
 	stack->outbox = 0;
-	stack->inbox_is_empty = 0;
+
+	trigger_init(&stack->inbox_filled);
 
 	*stackp = stack;
 
@@ -97,8 +106,7 @@ void linted_stack_send(struct linted_stack *stack,
 		}
 	}
 
-	__atomic_store_n(&stack->inbox_is_empty, 0, __ATOMIC_RELEASE);
-	hint_wakeup(&stack->inbox_is_empty);
+	trigger_set(&stack->inbox_filled);
 }
 
 /* Remove from the head */
@@ -108,9 +116,6 @@ void linted_stack_recv(struct linted_stack *stack,
 	linted_error err = 0;
 
 	for (;;) {
-		__atomic_store_n(&stack->inbox_is_empty, 1,
-		                 __ATOMIC_RELEASE);
-
 		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {
 			err = linted_stack_try_recv(stack, nodep);
 			if (0 == err)
@@ -119,7 +124,7 @@ void linted_stack_recv(struct linted_stack *stack,
 			_mm_pause();
 		}
 
-		wait_until_different(&stack->inbox_is_empty, 1);
+		trigger_wait(&stack->inbox_filled);
 	}
 }
 
@@ -156,6 +161,24 @@ linted_error linted_stack_try_recv(struct linted_stack *stack,
 
 	*nodep = node;
 	return 0;
+}
+
+static void trigger_init(struct trigger *trigger)
+{
+	trigger->triggered = 0;
+}
+
+static void trigger_set(struct trigger *trigger)
+{
+	__atomic_store_n(&trigger->triggered, 0, __ATOMIC_RELEASE);
+	hint_wakeup(&trigger->triggered);
+}
+
+static void trigger_wait(struct trigger *trigger)
+{
+	wait_until_different(&trigger->triggered, 0);
+
+	__atomic_store_n(&trigger->triggered, 0, __ATOMIC_RELEASE);
 }
 
 static linted_error wait_until_different(int const *uaddr, int val)
