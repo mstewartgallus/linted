@@ -1244,10 +1244,10 @@ completion_queue_create(struct completion_queue **queuep)
 
 	linted_error err;
 
-	struct linted_queue *queue;
+	struct linted_stack *queue;
 	{
-		struct linted_queue *xx;
-		err = linted_queue_create(&xx);
+		struct linted_stack *xx;
+		err = linted_stack_create(&xx);
 		if (err != 0)
 			return err;
 		queue = xx;
@@ -1263,7 +1263,7 @@ static void complete_task(struct completion_queue *queue,
 	LINTED_ASSERT_NOT_NULL(queue);
 	LINTED_ASSERT_NOT_NULL(task);
 
-	linted_queue_send((struct linted_queue *)queue, UPCAST(task));
+	linted_stack_send((void *)queue, UPCAST(task));
 }
 
 static linted_error completion_recv(struct completion_queue *queue,
@@ -1274,7 +1274,7 @@ static linted_error completion_recv(struct completion_queue *queue,
 
 	struct linted_queue_node *node;
 
-	linted_queue_recv((struct linted_queue *)queue, &node);
+	linted_stack_recv((void *)queue, &node);
 
 	*taskp = DOWNCAST(struct linted_async_task, node);
 
@@ -1293,8 +1293,7 @@ completion_try_recv(struct completion_queue *queue,
 	struct linted_queue_node *node;
 	{
 		struct linted_queue_node *xx;
-		err = linted_queue_try_recv(
-		    (struct linted_queue *)queue, &xx);
+		err = linted_stack_try_recv((void *)queue, &xx);
 		if (err != 0)
 			return err;
 		node = xx;
@@ -1307,7 +1306,7 @@ completion_try_recv(struct completion_queue *queue,
 
 static void completion_queue_destroy(struct completion_queue *queue)
 {
-	linted_queue_destroy((struct linted_queue *)queue);
+	linted_stack_destroy((void *)queue);
 }
 
 /* struct job_queue is just a fake */
@@ -1755,7 +1754,7 @@ static size_t small_stack_size(void)
 #if defined HAVE_PTHREAD_SETNAME_NP
 static void set_thread_name(char const *name)
 {
-	//	pthread_setname_np(pthread_self(), name);
+	pthread_setname_np(pthread_self(), name);
 }
 #elif defined HAVE_SYS_PRCTL_H
 static void set_thread_name(char const *name)
