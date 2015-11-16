@@ -1,0 +1,30 @@
+#! /usr/bin/env sh
+# Copyright (C) 2015 Steven Stewart-Gallus
+#
+# Copying and distribution of this file, with or without modification,
+# are permitted in any medium without royalty provided the copyright
+# notice and this notice are preserved.
+
+set -e
+set -C
+set -u
+
+go() {
+	ldd "$@" | cut -f3 -d' ' | tail -n +2 | {
+		while read REPLY
+		do
+			if test -z "${REPLY}"
+			then
+				continue
+			fi
+
+			BUILDID="$(eu-readelf -n -- "${REPLY}" | grep -e '^    Build ID: ' | cut -f7 -d' ')"
+
+			DBGLIB="/usr/lib/debug/.build-id/$(echo "${BUILDID}" | head -c 2)/$(echo "${BUILDID}" | tail -c +3).debug"
+
+			apt-file search "${DBGLIB}"
+		done
+		}
+}
+
+go "$@"

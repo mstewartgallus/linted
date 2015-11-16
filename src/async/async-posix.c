@@ -28,6 +28,7 @@
 #include "linted/queue.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
+#include "linted/stack.h"
 #include "linted/util.h"
 
 #if !defined HAVE_PTHREAD_SETNAME_NP && defined HAVE_SYS_PRCTL_H
@@ -1316,23 +1317,23 @@ static linted_error job_queue_create(struct job_queue **queuep)
 
 	linted_error err;
 
-	struct linted_queue *queue;
+	struct linted_stack *stack;
 	{
-		struct linted_queue *xx;
-		err = linted_queue_create(&xx);
+		struct linted_stack *xx;
+		err = linted_stack_create(&xx);
 		if (err != 0)
 			return err;
-		queue = xx;
+		stack = xx;
 	}
 
-	*queuep = (struct job_queue *)queue;
+	*queuep = (struct job_queue *)stack;
 	return 0;
 }
 
 static void job_submit(struct job_queue *queue,
                        struct linted_async_task *task)
 {
-	linted_queue_send((struct linted_queue *)queue, UPCAST(task));
+	linted_stack_send((void *)queue, UPCAST(task));
 }
 
 static linted_error job_recv(struct job_queue *queue,
@@ -1342,10 +1343,9 @@ static linted_error job_recv(struct job_queue *queue,
 	LINTED_ASSERT_NOT_NULL(taskp);
 
 	struct linted_queue_node *node;
-
 	{
 		struct linted_queue_node *xx;
-		linted_queue_recv((struct linted_queue *)queue, &xx);
+		linted_stack_recv((void *)queue, &xx);
 		node = xx;
 	}
 
@@ -1356,7 +1356,7 @@ static linted_error job_recv(struct job_queue *queue,
 
 static void job_queue_destroy(struct job_queue *queue)
 {
-	linted_queue_destroy((struct linted_queue *)queue);
+	linted_stack_destroy((void *)queue);
 }
 
 /* struct worker_queue is just a fake */
@@ -1755,7 +1755,7 @@ static size_t small_stack_size(void)
 #if defined HAVE_PTHREAD_SETNAME_NP
 static void set_thread_name(char const *name)
 {
-	pthread_setname_np(pthread_self(), name);
+	//	pthread_setname_np(pthread_self(), name);
 }
 #elif defined HAVE_SYS_PRCTL_H
 static void set_thread_name(char const *name)
