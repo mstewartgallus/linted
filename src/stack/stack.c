@@ -13,8 +13,6 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _GNU_SOURCE
-
 #include "config.h"
 
 #include "linted/stack.h"
@@ -22,39 +20,19 @@
 #include "linted/error.h"
 #include "linted/mem.h"
 #include "linted/node.h"
-#include "linted/util.h"
+#include "linted/trigger.h"
 
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/syscall.h>
-#include <time.h>
-#include <unistd.h>
 
-#include <linux/futex.h>
-#include <immintrin.h>
-
-struct trigger {
-	int triggered;
-};
-
-static void trigger_init(struct trigger *trigger);
-static void trigger_set(struct trigger *trigger);
-static void trigger_wait(struct trigger *trigger);
+#include <emmintrin.h>
 
 struct linted_stack {
 	struct linted_node *inbox;
 	struct linted_node *outbox;
-	struct trigger inbox_filled;
+	struct linted_trigger inbox_filled;
 };
-
-static linted_error wait_until_different(int const *uaddr, int val);
-static linted_error hint_wakeup(int const *uaddr);
-
-static linted_error futex_wait(int const *uaddr, int val,
-                               struct timespec const *timeout);
-static linted_error futex_wake(unsigned *restrict wokeupp,
-                               int const *uaddr, int val);
 
 static void refresh_node(struct linted_node *node)
 {
@@ -76,7 +54,7 @@ linted_error linted_stack_create(struct linted_stack **stackp)
 	stack->inbox = 0;
 	stack->outbox = 0;
 
-	trigger_init(&stack->inbox_filled);
+	linted_trigger_create(&stack->inbox_filled);
 
 	*stackp = stack;
 
@@ -85,6 +63,8 @@ linted_error linted_stack_create(struct linted_stack **stackp)
 
 void linted_stack_destroy(struct linted_stack *stack)
 {
+	linted_trigger_destroy(&stack->inbox_filled);
+
 	linted_mem_free(stack);
 }
 
@@ -108,7 +88,7 @@ void linted_stack_send(struct linted_stack *stack,
 		}
 	}
 
-	trigger_set(&stack->inbox_filled);
+	linted_trigger_set(&stack->inbox_filled);
 }
 
 /* Remove from the head */
@@ -126,7 +106,7 @@ void linted_stack_recv(struct linted_stack *stack,
 			_mm_pause();
 		}
 
-		trigger_wait(&stack->inbox_filled);
+		linted_trigger_wait(&stack->inbox_filled);
 	}
 }
 
@@ -156,61 +136,5 @@ linted_error linted_stack_try_recv(struct linted_stack *stack,
 	refresh_node(node);
 
 	*nodep = node;
-	return 0;
-}
-
-static void trigger_init(struct trigger *trigger)
-{
-	trigger->triggered = 0;
-}
-
-static void trigger_set(struct trigger *trigger)
-{
-	__atomic_store_n(&trigger->triggered, 0, __ATOMIC_RELEASE);
-	hint_wakeup(&trigger->triggered);
-}
-
-static void trigger_wait(struct trigger *trigger)
-{
-	wait_until_different(&trigger->triggered, 0);
-
-	__atomic_store_n(&trigger->triggered, 0, __ATOMIC_RELEASE);
-}
-
-static linted_error wait_until_different(int const *uaddr, int val)
-{
-	return futex_wait(uaddr, val, NULL);
-}
-
-static linted_error hint_wakeup(int const *uaddr)
-{
-	return futex_wake(NULL, uaddr, 1);
-}
-
-static linted_error futex_wait(int const *uaddr, int val,
-                               struct timespec const *timeout)
-{
-	int xx =
-	    syscall(__NR_futex, (intptr_t)uaddr, (intptr_t)FUTEX_WAIT,
-	            (intptr_t)val, (intptr_t)timeout);
-	if (xx < 0) {
-		return errno;
-	}
-
-	return 0;
-}
-
-static linted_error futex_wake(unsigned *restrict wokeupp,
-                               int const *uaddr, int val)
-{
-	int xx = syscall(__NR_futex, (intptr_t)uaddr,
-	                 (intptr_t)FUTEX_WAKE, (intptr_t)val);
-	if (xx < 0) {
-		return errno;
-	}
-
-	if (wokeupp != NULL) {
-		*wokeupp = xx;
-	}
 	return 0;
 }

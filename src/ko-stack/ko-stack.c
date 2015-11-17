@@ -22,7 +22,6 @@
 #include "linted/ko-stack.h"
 #include "linted/mem.h"
 #include "linted/node.h"
-#include "linted/stack.h"
 #include "linted/util.h"
 
 #include <errno.h>

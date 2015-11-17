@@ -15,15 +15,5 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-noinst_LTLIBRARIES+=%D%/libstack.la
-%C%_libstack_la_SOURCES=include/linted/stack.h %D%/stack.c
-%C%_libstack_la_LIBADD=\
- src/trigger/libtrigger.la
-
-TESTS+=%D%/test_stack
-check_PROGRAMS+=%D%/test_stack
-%C%_test_stack_SOURCES=%D%/test_stack.c
-%C%_test_stack_LDADD=\
- src/stack/libstack.la\
- src/log/liblog.la\
- src/start/libstart.la
+noinst_LTLIBRARIES+=%D%/libtrigger.la
+%C%_libtrigger_la_SOURCES=include/linted/trigger.h %D%/trigger.c

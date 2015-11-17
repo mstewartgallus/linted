@@ -84,6 +84,7 @@ include %C%/signal/Makefile.am
 include %C%/stack/Makefile.am
 include %C%/start/Makefile.am
 include %C%/str/Makefile.am
+include %C%/trigger/Makefile.am
 
 if WINDOWS_API
 include %C%/utf/Makefile.am

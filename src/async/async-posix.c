@@ -26,7 +26,6 @@
 #include "linted/channel.h"
 #include "linted/ko-stack.h"
 #include "linted/node.h"
-#include "linted/queue.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
 #include "linted/stack.h"
