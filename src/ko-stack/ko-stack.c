@@ -93,13 +93,13 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 
 	linted_ko waiter_fd = stack->waiter_fd;
 
-	__atomic_thread_fence(__ATOMIC_RELEASE);
-
 	for (;;) {
 		struct linted_node *next =
 		    __atomic_load_n(&stack->inbox, __ATOMIC_ACQUIRE);
 
 		node->next = next;
+
+		__atomic_thread_fence(__ATOMIC_RELEASE);
 
 		if (__atomic_compare_exchange_n(
 		        &stack->inbox, &next, node, true,

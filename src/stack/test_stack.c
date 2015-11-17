@@ -40,8 +40,8 @@ static unsigned char linted_start_main(char const *process_name,
 		err = linted_stack_create(&xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-		           "linted_stack_create: %s",
-		           linted_error_string(err));
+			           "linted_stack_create: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 		stack = xx;
@@ -58,8 +58,8 @@ static unsigned char linted_start_main(char const *process_name,
 		err = linted_stack_try_recv(stack, &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
-		           "linted_stack_try_recv: %s",
-		           linted_error_string(err));
+			           "linted_stack_try_recv: %s",
+			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
