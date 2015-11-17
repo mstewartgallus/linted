@@ -102,7 +102,7 @@ void linted_stack_send(struct linted_stack *stack,
 		node->next = next;
 
 		if (__atomic_compare_exchange_n(
-		        &stack->inbox, &next, node, false,
+		        &stack->inbox, &next, node, true,
 		        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
 			break;
 		}
@@ -133,19 +133,25 @@ void linted_stack_recv(struct linted_stack *stack,
 linted_error linted_stack_try_recv(struct linted_stack *stack,
                                    struct linted_node **nodep)
 {
-	for (;;) {
+	{
 		struct linted_node *node;
+		for (;;) {
+			node = __atomic_load_n(&stack->inbox,
+			                       __ATOMIC_ACQUIRE);
+			if (0 == node)
+				break;
 
-		node = __atomic_load_n(&stack->inbox, __ATOMIC_ACQUIRE);
-		if (0 == node)
-			break;
+			if (__atomic_compare_exchange_n(
+			        &stack->inbox, &node, 0, true,
+			        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+				break;
+		}
 
-		struct linted_node *next =
-		    __atomic_load_n(&node->next, __ATOMIC_ACQUIRE);
+		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 
-		if (__atomic_compare_exchange_n(
-		        &stack->inbox, &node, next, false,
-		        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+		struct linted_node *next;
+		for (; node != 0; node = next) {
+			next = node->next;
 			node->next = stack->outbox;
 			stack->outbox = node;
 		}
@@ -154,8 +160,6 @@ linted_error linted_stack_try_recv(struct linted_stack *stack,
 	struct linted_node *node = stack->outbox;
 	if (0 == node)
 		return EAGAIN;
-
-	__atomic_thread_fence(__ATOMIC_ACQUIRE);
 
 	stack->outbox = node->next;
 

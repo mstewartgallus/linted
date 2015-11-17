@@ -22,7 +22,7 @@
 #include "linted/ko-stack.h"
 #include "linted/mem.h"
 #include "linted/node.h"
-#include "linted/queue.h"
+#include "linted/stack.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -32,7 +32,8 @@
 #include <unistd.h>
 
 struct linted_ko_stack {
-	struct linted_node *root;
+	struct linted_node *inbox;
+	struct linted_node *outbox;
 	int waiter_fd;
 };
 
@@ -41,66 +42,67 @@ static void refresh_node(struct linted_node *node)
 	node->next = 0;
 }
 
-linted_error linted_ko_stack_create(struct linted_ko_stack **queuep)
+linted_error linted_ko_stack_create(struct linted_ko_stack **stackp)
 {
 	linted_error err = 0;
 
-	struct linted_ko_stack *queue;
+	struct linted_ko_stack *stack;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *queue);
+		err = linted_mem_alloc(&xx, sizeof *stack);
 		if (err != 0)
 			return err;
-		queue = xx;
+		stack = xx;
 	}
 
-	queue->root = 0;
+	stack->inbox = 0;
+	stack->outbox = 0;
 
 	int waiter_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 	if (-1 == waiter_fd) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
-		goto free_queue;
+		goto free_stack;
 	}
-	queue->waiter_fd = waiter_fd;
+	stack->waiter_fd = waiter_fd;
 
-	*queuep = queue;
+	*stackp = stack;
 
 	return 0;
 
-free_queue:
-	linted_mem_free(queue);
+free_stack:
+	linted_mem_free(stack);
 
 	return err;
 }
 
-void linted_ko_stack_destroy(struct linted_ko_stack *queue)
+void linted_ko_stack_destroy(struct linted_ko_stack *stack)
 {
-	linted_ko_close(queue->waiter_fd);
+	linted_ko_close(stack->waiter_fd);
 
-	linted_mem_free(queue);
+	linted_mem_free(stack);
 }
 
 /* Attach to the tail */
-void linted_ko_stack_send(struct linted_ko_stack *queue,
+void linted_ko_stack_send(struct linted_ko_stack *stack,
                           struct linted_node *node)
 {
 	linted_error err = 0;
 
 	refresh_node(node);
 
-	linted_ko waiter_fd = queue->waiter_fd;
-	struct linted_node *next;
+	linted_ko waiter_fd = stack->waiter_fd;
 
 	__atomic_thread_fence(__ATOMIC_RELEASE);
 
 	for (;;) {
-		next = __atomic_load_n(&queue->root, __ATOMIC_ACQUIRE);
+		struct linted_node *next =
+		    __atomic_load_n(&stack->inbox, __ATOMIC_ACQUIRE);
 
 		node->next = next;
 
 		if (__atomic_compare_exchange_n(
-		        &queue->root, &next, node, false,
+		        &stack->inbox, &next, node, true,
 		        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
 			break;
 		}
@@ -120,26 +122,38 @@ void linted_ko_stack_send(struct linted_ko_stack *queue,
 	}
 }
 
-linted_error linted_ko_stack_try_recv(struct linted_ko_stack *queue,
+linted_error linted_ko_stack_try_recv(struct linted_ko_stack *stack,
                                       struct linted_node **nodep)
 {
-	struct linted_node *node;
-	for (;;) {
-		node = __atomic_load_n(&queue->root, __ATOMIC_ACQUIRE);
-		if (0 == node)
-			return EAGAIN;
+	{
+		struct linted_node *node;
+		for (;;) {
+			node = __atomic_load_n(&stack->inbox,
+			                       __ATOMIC_ACQUIRE);
+			if (0 == node)
+				break;
 
-		struct linted_node *next =
-		    __atomic_load_n(&node->next, __ATOMIC_ACQUIRE);
+			if (__atomic_compare_exchange_n(
+			        &stack->inbox, &node, 0, true,
+			        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+				break;
+		}
 
-		if (__atomic_compare_exchange_n(
-		        &queue->root, &node, next, false,
-		        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
-			break;
+		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+
+		struct linted_node *next;
+		for (; node != 0; node = next) {
+			next = node->next;
+			node->next = stack->outbox;
+			stack->outbox = node;
 		}
 	}
 
-	__atomic_thread_fence(__ATOMIC_ACQUIRE);
+	struct linted_node *node = stack->outbox;
+	if (0 == node)
+		return EAGAIN;
+
+	stack->outbox = node->next;
 
 	refresh_node(node);
 
@@ -148,7 +162,7 @@ linted_error linted_ko_stack_try_recv(struct linted_ko_stack *queue,
 	return 0;
 }
 
-linted_ko linted_ko_stack_ko(struct linted_ko_stack *queue)
+linted_ko linted_ko_stack_ko(struct linted_ko_stack *stack)
 {
-	return queue->waiter_fd;
+	return stack->waiter_fd;
 }
