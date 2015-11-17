@@ -17,3 +17,11 @@
 
 noinst_LTLIBRARIES+=%D%/libstack.la
 %C%_libstack_la_SOURCES=include/linted/stack.h %D%/stack.c
+
+TESTS+=%D%/test_stack
+check_PROGRAMS+=%D%/test_stack
+%C%_test_stack_SOURCES=%D%/test_stack.c
+%C%_test_stack_LDADD=\
+ src/stack/libstack.la\
+ src/log/liblog.la\
+ src/start/libstart.la
