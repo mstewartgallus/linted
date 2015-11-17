@@ -126,18 +126,8 @@ linted_error linted_ko_stack_try_recv(struct linted_ko_stack *stack,
                                       struct linted_node **nodep)
 {
 	{
-		struct linted_node *node;
-		for (;;) {
-			node = __atomic_load_n(&stack->inbox,
-			                       __ATOMIC_ACQUIRE);
-			if (0 == node)
-				break;
-
-			if (__atomic_compare_exchange_n(
-			        &stack->inbox, &node, 0, true,
-			        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
-				break;
-		}
+		struct linted_node *node = __atomic_exchange_n(
+		    &stack->inbox, 0, __ATOMIC_SEQ_CST);
 
 		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 
