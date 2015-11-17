@@ -25,7 +25,7 @@
 #if defined HAVE_POSIX_API
 typedef uintmax_t linted_pid;
 #else
-/* DWORDs are 32-bit unsigned integers */
+/* `DWORD`s are 32-bit unsigned integers */
 typedef uint_fast32_t linted_pid;
 #endif
 
@@ -89,6 +89,15 @@ struct linted_pid_stat {
 
 linted_error linted_pid_kill(linted_pid pid, int signo);
 linted_error linted_pid_terminate(linted_pid pid);
+
+/**
+ * @warning The `comm` field is attacker controllable. See
+ *          go-beyond.org/post/argv-for-no-fun-and-no-profit for
+ *          potential problems naive display of it can cause.  Not only
+ *          could a process be named UTF-8 hackery but it could also use
+ *          nondisplayable characters or even terminal control
+ * sequences.
+ */
 linted_error linted_pid_stat(linted_pid pid,
                              struct linted_pid_stat *buf);
 linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
