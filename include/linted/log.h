@@ -30,6 +30,15 @@ enum { LINTED_LOG_ERROR = 3,
 typedef unsigned char linted_log_level;
 
 void linted_log_open(char const *ident);
+
+/**
+ * @file
+ *
+ * @bug Does not sanitize strange UTF-8 or terminal control
+ *      characters.  If an attacker controlled string is inserted into
+ *      the system log they can gain privileges.  See also,
+ *      http://marc.info/?l=bugtraq&m=104612710031920&q=p3 .
+ */
 void linted_log(linted_log_level log_level, char const *format, ...)
     LINTED_FORMAT(__printf__, 2, 3);
 
