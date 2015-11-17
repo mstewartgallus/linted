@@ -728,14 +728,19 @@ static void *master_worker_routine(void *arg)
 		if (task->thread_canceller)
 			break;
 
-		for (size_t ii = 0U;; ii = (ii + 1U) % max_tasks) {
-			linted_error err =
-			    worker_try_submit(workers[ii].queue, task);
-			if (LINTED_ERROR_AGAIN == err)
-				continue;
-			LINTED_ASSERT(0 == err);
-			break;
+		for (;;) {
+			for (size_t ii = 0U; ii < max_tasks; ++ii) {
+				linted_error err = worker_try_submit(
+				    workers[ii].queue, task);
+				if (LINTED_ERROR_AGAIN == err)
+					continue;
+				if (0 == err)
+					goto exit_loop;
+			}
+			sched_yield();
 		}
+	exit_loop:
+		;
 	}
 
 	for (size_t ii = 0U; ii < max_tasks; ++ii) {

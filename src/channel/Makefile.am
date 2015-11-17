@@ -17,6 +17,7 @@
 
 noinst_LTLIBRARIES+=%D%/libchannel.la
 %C%_libchannel_la_SOURCES=include/linted/channel.h
+%C%_libchannel_la_LIBADD=src/trigger/libtrigger.la
 
 if POSIX_API
 %C%_libchannel_la_SOURCES+=%D%/channel-posix.c

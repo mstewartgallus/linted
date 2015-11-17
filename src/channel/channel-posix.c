@@ -13,30 +13,22 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
-
 #include "config.h"
 
 #include "linted/channel.h"
 
 #include "linted/error.h"
 #include "linted/mem.h"
+#include "linted/trigger.h"
 #include "linted/util.h"
 
 #include <errno.h>
-#include <pthread.h>
 #include <stdbool.h>
-
-#if defined NDEBUG
-#define ENABLE_ERRORCHECK 0
-#else
-#define ENABLE_ERRORCHECK 1
-#endif
+#include <stdint.h>
 
 struct linted_channel {
-	pthread_mutex_t lock;
-	pthread_cond_t filled;
-	void **waiter;
+	void *value;
+	struct linted_trigger filled;
 };
 
 linted_error linted_channel_create(struct linted_channel **channelp)
@@ -51,68 +43,17 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 		channel = xx;
 	}
 
-	channel->waiter = 0;
-
-	if (ENABLE_ERRORCHECK) {
-		pthread_mutexattr_t attr;
-
-		err = pthread_mutexattr_init(&attr);
-		if (err != 0)
-			goto free_channel;
-
-		err = pthread_mutexattr_settype(
-		    &attr, PTHREAD_MUTEX_ERRORCHECK);
-		LINTED_ASSERT(err != EINVAL);
-		if (err != 0)
-			goto destroy_attr;
-
-		err = pthread_mutex_init(&channel->lock, &attr);
-		LINTED_ASSERT(err != EINVAL);
-
-	destroy_attr:
-		;
-		linted_error dest_err =
-		    pthread_mutexattr_destroy(&attr);
-		if (0 == err)
-			err = dest_err;
-	} else {
-		err = pthread_mutex_init(&channel->lock, 0);
-		LINTED_ASSERT(err != EINVAL);
-	}
-	if (err != 0)
-		goto free_channel;
-
-	err = pthread_cond_init(&channel->filled, 0);
-	if (err != 0) {
-		LINTED_ASSERT(err != EINVAL);
-		LINTED_ASSERT(false);
-	}
+	channel->value = 0;
+	linted_trigger_create(&channel->filled);
 
 	*channelp = channel;
 
 	return 0;
-
-free_channel:
-	linted_mem_free(channel);
-
-	return err;
 }
 
 void linted_channel_destroy(struct linted_channel *channel)
 {
-	linted_error err;
-
-	err = pthread_cond_destroy(&channel->filled);
-	if (err != 0) {
-		LINTED_ASSERT(err != EBUSY);
-		LINTED_ASSERT(false);
-	}
-
-	err = pthread_mutex_destroy(&channel->lock);
-	if (err != 0) {
-		LINTED_ASSERT(err != EBUSY);
-		LINTED_ASSERT(false);
-	}
+	linted_trigger_destroy(&channel->filled);
 
 	linted_mem_free(channel);
 }
@@ -120,80 +61,41 @@ void linted_channel_destroy(struct linted_channel *channel)
 linted_error linted_channel_try_send(struct linted_channel *channel,
                                      void *node)
 {
-	linted_error err = 0;
-
 	LINTED_ASSERT_NOT_NULL(channel);
 	LINTED_ASSERT_NOT_NULL(node);
 
-	pthread_mutex_t *lockp = &channel->lock;
-	pthread_cond_t *filledp = &channel->filled;
-	void ***waiterp = &channel->waiter;
+	__atomic_thread_fence(__ATOMIC_RELEASE);
 
-	err = pthread_mutex_lock(lockp);
-	if (err != 0) {
-		LINTED_ASSERT(err != EDEADLK);
-		LINTED_ASSERT(false);
-	}
+	void *expected = 0;
+	if (!__atomic_compare_exchange_n(&channel->value, &expected,
+	                                 node, false, __ATOMIC_SEQ_CST,
+	                                 __ATOMIC_SEQ_CST))
+		return LINTED_ERROR_AGAIN;
 
-	void **waiter = *waiterp;
-	if (0 == waiter) {
-		err = LINTED_ERROR_AGAIN;
-		goto unlock_mutex;
-	}
+	linted_trigger_set(&channel->filled);
 
-	*waiterp = 0;
-
-	*waiter = node;
-
-	/* Not a cancellation point */
-	pthread_cond_signal(filledp);
-
-unlock_mutex : {
-	linted_error unlock_err = pthread_mutex_unlock(lockp);
-	if (unlock_err != 0) {
-		LINTED_ASSERT(unlock_err != EPERM);
-		LINTED_ASSERT(false);
-	}
-}
-
-	return err;
+	return 0;
 }
 
 /* Remove from the head */
 void linted_channel_recv(struct linted_channel *channel, void **nodep)
 {
-	linted_error err;
-
 	LINTED_ASSERT_NOT_NULL(channel);
 	LINTED_ASSERT_NOT_NULL(nodep);
 
-	*nodep = 0;
-
-	pthread_mutex_t *lockp = &channel->lock;
-	pthread_cond_t *filledp = &channel->filled;
-	void ***waiterp = &channel->waiter;
-
-	err = pthread_mutex_lock(lockp);
-	if (err != 0) {
-		LINTED_ASSERT(err != EDEADLK);
-		LINTED_ASSERT(false);
-	}
-
-	LINTED_ASSERT(0 == *waiterp);
-
-	*waiterp = nodep;
-
-	do {
-		err = pthread_cond_wait(filledp, lockp);
-		if (err != 0) {
-			LINTED_ASSERT(err != EINVAL);
-			LINTED_ASSERT(false);
+	void *node;
+	for (;;) {
+		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {
+			node = __atomic_exchange_n(&channel->value, 0,
+			                           __ATOMIC_SEQ_CST);
+			if (node != 0)
+				goto exit_loop;
 		}
-	} while (0 == *nodep);
 
-	err = pthread_mutex_unlock(lockp);
-	if (err != 0) {
-		LINTED_ASSERT(err != EPERM);
-		LINTED_ASSERT(false);
+		linted_trigger_wait(&channel->filled);
 	}
+exit_loop:
+	__atomic_thread_fence(__ATOMIC_ACQUIRE);
+
+	*nodep = node;
 }
