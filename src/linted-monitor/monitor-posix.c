@@ -1917,7 +1917,7 @@ linted_error socket_activate(struct linted_unit_socket *unit)
 
 	case LINTED_UNIT_SOCKET_TYPE_FILE:
 		err = linted_file_create(0, LINTED_KO_CWD, path, 0U,
-		                         S_IRWXU);
+		                         S_IRUSR | S_IWUSR);
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
@@ -1930,7 +1930,8 @@ linted_error socket_activate(struct linted_unit_socket *unit)
 				linted_ko xx;
 				err = linted_fifo_create(
 				    &xx, LINTED_KO_CWD, path,
-				    LINTED_FIFO_RDWR, S_IRWXU);
+				    LINTED_FIFO_RDWR,
+				    S_IRUSR | S_IWUSR);
 				if (err != 0)
 					return err;
 				fifo = xx;
@@ -1949,7 +1950,7 @@ linted_error socket_activate(struct linted_unit_socket *unit)
 #endif
 		{
 			err = linted_fifo_create(0, LINTED_KO_CWD, path,
-			                         0U, S_IRWXU);
+			                         0U, S_IRUSR | S_IWUSR);
 		}
 
 		break;
