@@ -99,7 +99,7 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 
 		if (__atomic_compare_exchange_n(
 		        &stack->inbox, &next, node, true,
-		        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+		        __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
 			break;
 		}
 	}
@@ -123,7 +123,7 @@ linted_error linted_ko_stack_try_recv(struct linted_ko_stack *stack,
 {
 	{
 		struct linted_node *node = __atomic_exchange_n(
-		    &stack->inbox, 0, __ATOMIC_SEQ_CST);
+		    &stack->inbox, 0, __ATOMIC_ACQ_REL);
 
 		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 

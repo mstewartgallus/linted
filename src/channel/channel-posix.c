@@ -68,8 +68,8 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 
 	void *expected = 0;
 	if (!__atomic_compare_exchange_n(&channel->value, &expected,
-	                                 node, false, __ATOMIC_SEQ_CST,
-	                                 __ATOMIC_SEQ_CST))
+	                                 node, false, __ATOMIC_ACQ_REL,
+	                                 __ATOMIC_ACQUIRE))
 		return LINTED_ERROR_AGAIN;
 
 	linted_trigger_set(&channel->filled);
@@ -87,7 +87,7 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 	for (;;) {
 		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {
 			node = __atomic_exchange_n(&channel->value, 0,
-			                           __ATOMIC_SEQ_CST);
+			                           __ATOMIC_ACQ_REL);
 			if (node != 0)
 				goto exit_loop;
 		}
