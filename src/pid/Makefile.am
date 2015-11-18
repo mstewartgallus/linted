@@ -17,8 +17,6 @@
 noinst_LTLIBRARIES+=%D%/libpid.la
 
 %C%_libpid_la_SOURCES=include/linted/pid.h
-%C%_libpid_la_LIBADD=\
-  src/async/libasync.la
 
 if POSIX_API
 %C%_libpid_la_SOURCES+=%D%/pid-posix.c

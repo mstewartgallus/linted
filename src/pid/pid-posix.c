@@ -13,7 +13,7 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE 1
 
 #include "config.h"
 
@@ -24,10 +24,15 @@
 #include "linted/mem.h"
 #include "linted/util.h"
 
+#if !defined HAVE_PTHREAD_SETNAME_NP && defined HAVE_SYS_PRCTL_H
+#include "linted/prctl.h"
+#endif
+
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -473,3 +478,20 @@ write_pid:
 	*pidp = pid;
 	return 0;
 }
+
+#if defined HAVE_PTHREAD_SETNAME_NP
+linted_error linted_pid_name(char const *name)
+{
+	return pthread_setname_np(pthread_self(), name);
+}
+#elif defined HAVE_SYS_PRCTL_H
+linted_error linted_pid_name(char const *name)
+{
+	return linted_prctl_set_name(name);
+}
+#else
+linted_error linted_pid_name(char const *name)
+{
+	return 0;
+}
+#endif

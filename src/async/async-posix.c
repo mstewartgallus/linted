@@ -26,14 +26,11 @@
 #include "linted/channel.h"
 #include "linted/ko-stack.h"
 #include "linted/node.h"
+#include "linted/pid.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
 #include "linted/stack.h"
 #include "linted/util.h"
-
-#if !defined HAVE_PTHREAD_SETNAME_NP && defined HAVE_SYS_PRCTL_H
-#include "linted/prctl.h"
-#endif
 
 #include <errno.h>
 #include <poll.h>
@@ -167,8 +164,6 @@ struct linted_async_waiter {
 	short revents;
 	bool thread_canceller : 1U;
 };
-
-static void set_thread_name(char const *name);
 
 linted_error linted_async_pool_create(struct linted_async_pool **poolp,
                                       unsigned max_tasks)
@@ -709,7 +704,7 @@ static void *master_worker_routine(void *arg)
 {
 	LINTED_ASSERT_NOT_NULL(arg);
 
-	set_thread_name("async-worker-master");
+	linted_pid_name("async-worker-master");
 
 	struct worker_pool *pool = arg;
 
@@ -778,7 +773,7 @@ static void *worker_routine(void *arg)
 {
 	LINTED_ASSERT_NOT_NULL(arg);
 
-	set_thread_name("async-worker");
+	linted_pid_name("async-worker");
 
 	struct worker *worker = arg;
 
@@ -988,7 +983,7 @@ static void *master_poller_routine(void *arg)
 
 	pthread_t self = pthread_self();
 
-	set_thread_name("async-poller-master");
+	linted_pid_name("async-poller");
 
 	struct wait_manager *pool = arg;
 
@@ -1749,20 +1744,3 @@ static size_t small_stack_size(void)
 
 	return stack_min_size + page_size;
 }
-
-#if defined HAVE_PTHREAD_SETNAME_NP
-static void set_thread_name(char const *name)
-{
-	pthread_setname_np(pthread_self(), name);
-}
-#elif defined HAVE_SYS_PRCTL_H
-static void set_thread_name(char const *name)
-{
-	linted_prctl_set_name(name);
-}
-#else
-static void set_thread_name(char const *name)
-{
-	/* Do nothing */
-}
-#endif

@@ -107,4 +107,6 @@ linted_pid linted_pid_get_pid(void);
 
 linted_error linted_pid_from_str(char const *str, linted_pid *pidp);
 
+linted_error linted_pid_name(char const *name);
+
 #endif /* LINTED_PID_H */

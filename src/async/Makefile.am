@@ -21,6 +21,7 @@ noinst_LTLIBRARIES+=%D%/libasync.la
 %C%_libasync_la_LIBADD=\
   src/ko/libko.la\
   src/channel/libchannel.la\
+  src/pid/libpid.la\
   src/stack/libstack.la
 
 if POSIX_API

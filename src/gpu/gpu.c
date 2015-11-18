@@ -22,6 +22,7 @@
 #include "linted/gpu.h"
 #include "linted/log.h"
 #include "linted/mem.h"
+#include "linted/pid.h"
 #include "linted/sched.h"
 #include "linted/util.h"
 
@@ -70,6 +71,7 @@ struct privates {
 	PFNGLINVALIDATEFRAMEBUFFERPROC glInvalidateFramebuffer;
 	PFNGLCLEARPROC glClear;
 	PFNGLHINTPROC glHint;
+	PFNGLDISABLEPROC glDisable;
 	PFNGLENABLEPROC glEnable;
 	PFNGLCREATEPROGRAMPROC glCreateProgram;
 	PFNGLCREATESHADERPROC glCreateShader;
@@ -457,6 +459,8 @@ static struct timespec timespec_subtract(struct timespec x,
 static void *gpu_routine(void *arg)
 {
 	linted_error err = 0;
+
+	linted_pid_name("gpu-renderer");
 
 	struct linted_gpu_context *gpu_context = arg;
 	struct command_queue *command_queue =
@@ -957,6 +961,8 @@ static linted_error setup_gl(struct privates *privates)
 	privates->glHint = (PFNGLHINTPROC)eglGetProcAddress("glHint");
 	privates->glEnable =
 	    (PFNGLENABLEPROC)eglGetProcAddress("glEnable");
+	privates->glDisable =
+	    (PFNGLDISABLEPROC)eglGetProcAddress("glDisable");
 	privates->glCreateProgram =
 	    (PFNGLCREATEPROGRAMPROC)eglGetProcAddress(
 	        "glCreateProgram");
@@ -1028,8 +1034,9 @@ static linted_error setup_gl(struct privates *privates)
 	privates->glDrawElements =
 	    (PFNGLDRAWELEMENTSPROC)eglGetProcAddress("glDrawElements");
 
-	privates->glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
-	privates->glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
+	privates->glHint(GL_GENERATE_MIPMAP_HINT, GL_FASTEST);
+	privates->glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT,
+	                 GL_FASTEST);
 
 	privates->glEnable(GL_DEPTH_TEST);
 	privates->glEnable(GL_CULL_FACE);
