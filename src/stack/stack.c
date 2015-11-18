@@ -41,7 +41,8 @@ static void refresh_node(struct linted_node *node)
 
 linted_error linted_stack_create(struct linted_stack **stackp)
 {
-	linted_error err;
+	linted_error err = 0;
+
 	struct linted_stack *stack;
 	{
 		void *xx;
@@ -71,8 +72,6 @@ void linted_stack_destroy(struct linted_stack *stack)
 void linted_stack_send(struct linted_stack *stack,
                        struct linted_node *node)
 {
-	refresh_node(node);
-
 	for (;;) {
 		struct linted_node *next =
 		    __atomic_load_n(&stack->inbox, __ATOMIC_ACQUIRE);
@@ -91,7 +90,6 @@ void linted_stack_send(struct linted_stack *stack,
 	linted_trigger_set(&stack->inbox_filled);
 }
 
-/* Remove from the head */
 void linted_stack_recv(struct linted_stack *stack,
                        struct linted_node **nodep)
 {
@@ -119,11 +117,16 @@ linted_error linted_stack_try_recv(struct linted_stack *stack,
 
 		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 
-		struct linted_node *next;
-		for (; node != 0; node = next) {
-			next = node->next;
+		for (;;) {
+			if (0 == node)
+				break;
+
+			struct linted_node *next = node->next;
+
 			node->next = stack->outbox;
 			stack->outbox = node;
+
+			node = next;
 		}
 	}
 

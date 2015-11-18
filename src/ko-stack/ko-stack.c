@@ -82,13 +82,10 @@ void linted_ko_stack_destroy(struct linted_ko_stack *stack)
 	linted_mem_free(stack);
 }
 
-/* Attach to the tail */
 void linted_ko_stack_send(struct linted_ko_stack *stack,
                           struct linted_node *node)
 {
 	linted_error err = 0;
-
-	refresh_node(node);
 
 	linted_ko waiter_fd = stack->waiter_fd;
 
@@ -130,11 +127,16 @@ linted_error linted_ko_stack_try_recv(struct linted_ko_stack *stack,
 
 		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 
-		struct linted_node *next;
-		for (; node != 0; node = next) {
-			next = node->next;
+		for (;;) {
+			if (0 == node)
+				break;
+
+			struct linted_node *next = node->next;
+
 			node->next = stack->outbox;
 			stack->outbox = node;
+
+			node = next;
 		}
 	}
 

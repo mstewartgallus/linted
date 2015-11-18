@@ -47,7 +47,7 @@ void linted_trigger_destroy(struct linted_trigger *trigger)
 
 void linted_trigger_set(struct linted_trigger *trigger)
 {
-	__atomic_store_n(&trigger->_triggered, 0, __ATOMIC_RELEASE);
+	__atomic_store_n(&trigger->_triggered, 1, __ATOMIC_RELEASE);
 	hint_wakeup(&trigger->_triggered);
 }
 
