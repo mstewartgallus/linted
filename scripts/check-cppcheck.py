@@ -79,7 +79,9 @@ def go():
                      '--std=posix',
                      '--template={file}:{line}: ({id}) {message}',
                      '--quiet',
-                     '--library=' + os.path.dirname(__file__) + '/cppcheck.cfg'
+                     '--library=' + os.path.dirname(__file__) + '/cppcheck.cfg',
+                     '--inconclusive',
+                     '--relative-paths=' + os.path.dirname(__file__) + '/..'
                      ]
 
         checkers = ['--enable=warning',
@@ -100,8 +102,12 @@ def go():
                     '--suppress=nonreentrantFunctionsstrtok',
                     '--suppress=nonreentrantFunctionstempnam',
                     '--suppress=nonreentrantFunctionsttyname',
+                    '--suppress=nonreentrantFunctionsgetrpcbynumber',
+                    '--suppress=nonreentrantFunctionsgetrpcbyname',
+                    '--suppress=nonreentrantFunctionsgetrpcent',
                     '--suppress=duplicateExpression',
                     '--suppress=unmatchedSuppression',
+                    '--suppress=variableHidingTypedef',
                     '--suppress=obseleteFunctionsvfork']
 
         arguments.extend(checkers)

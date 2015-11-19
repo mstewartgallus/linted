@@ -30,6 +30,8 @@
 #include <sys/eventfd.h>
 #include <unistd.h>
 
+#include <x86intrin.h>
+
 struct linted_ko_stack {
 	struct linted_node *inbox;
 	struct linted_node *outbox;
@@ -102,6 +104,7 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 		        __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
 			break;
 		}
+		__pause();
 	}
 
 	for (;;) {

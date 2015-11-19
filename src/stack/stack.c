@@ -26,7 +26,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <emmintrin.h>
+#include <x86intrin.h>
 
 struct linted_stack {
 	struct linted_node *inbox;
@@ -85,6 +85,8 @@ void linted_stack_send(struct linted_stack *stack,
 		        __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
 			break;
 		}
+
+		__pause();
 	}
 
 	linted_trigger_set(&stack->inbox_filled);
@@ -101,7 +103,7 @@ void linted_stack_recv(struct linted_stack *stack,
 			if (0 == err)
 				return;
 
-			_mm_pause();
+			__pause();
 		}
 
 		linted_trigger_wait(&stack->inbox_filled);

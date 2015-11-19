@@ -20,7 +20,7 @@ def output():
     old_directory = os.getcwd()
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     try:
-        fragment_shader = encode_shader(load_shader("shaders/fragment.glsl"))
+        fragment_shader = encode_shader(load_shader("shaders/fragment.glslf"))
     finally:
         os.chdir(old_directory)
 

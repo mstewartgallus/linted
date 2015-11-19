@@ -26,6 +26,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <x86intrin.h>
+
 struct linted_channel {
 	void *value;
 	struct linted_trigger filled;
@@ -90,6 +92,7 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 			                           __ATOMIC_ACQ_REL);
 			if (node != 0)
 				goto exit_loop;
+			__pause();
 		}
 
 		linted_trigger_wait(&channel->filled);
