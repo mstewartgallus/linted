@@ -25,7 +25,6 @@ in vec3 linted_varying_normal;
 
 out vec4 linted_fragment_color;
 
-
 const vec3 light_location = vec3(0.0, 0.0, 8.0);
 const vec3 light_colour = 0.5 * vec3(0.94, 0.9, 1.0);
 
@@ -34,54 +33,23 @@ const vec3 ambient_light = 0.5 * vec3(0.95, 1.0, 0.9);
 
 const vec2 foggy_air = vec2(0.0001, 0.00001);
 
-const float s = 0.25;
-const float t = 0.9;
-
-const mat3x3 dark_stone[3] = mat3x3[3](
-        mat3x3(0.8, 0.0, 0.0,
-               0.0, 0.5, 0.0,
-               0.0, 0.0, 3.0 * s),
-
-        mat3x3(0.1, 0.0, 0.0,
-               0.0, 0.1, 0.0,
-               0.0, 0.0, -6.0 * s + 3.0 * t),
-
-        mat3x3(0.0, 0.0, 0.0,
-               0.0, 0.1, 0.0,
-               0.0, 0.0, 3.0 * s - 3.0 * t + 1.0)
-);
+const vec3 dark_stone = vec3(1.0, 0.8, 0.1);
+const float r = 0.4;
+const float shininess = 9.0;
 
 float compute_decay_factor(vec3 aa, vec3 bb);
 
 void main()
 {
-    /*
-     * The dark_stone matrices are factors in a taylor series that
-     * approximiates the intensity of light after reflecting off a surface.
-     *
-     * So far, these matrices do not reflect light back shifted in hue.
-     *
-     * The total energy of the light should never add up to more light
-     * energy than is received.
-     */
-
     vec3 light = light_colour;
 
     float impact_angle = max(0.0, dot(normalize(linted_varying_normal),
                                       normalize(light_location)));
+    float specular = r * pow(max(0.0, dot(normalize(reflect(normalize(light_location), normalize(linted_varying_normal))), normalize(eye_vertex - linted_varying_vertex))), shininess);
 
-    vec3 impact = impact_angle * light + ambient_light;
+    vec3 impact = ambient_light + (impact_angle + specular) * light;
 
-    /*
-     * There can be no reflected back light when there is no input light
-     * (unless the object glows or something.)  Also, if an object could take in light
-     * and reflect it back shifted in hue is not modeled.
-     */
-
-    vec3 sqr = impact * impact;
-    vec3 intensity = dark_stone[0] * impact + dark_stone[1] * sqr + dark_stone[2] * (impact * sqr);
-
-    vec3 value = intensity / compute_decay_factor(eye_vertex, -linted_varying_vertex);
+    vec3 value = impact / compute_decay_factor(eye_vertex, -linted_varying_vertex);
 
     vec3 gamma_correct_value = pow(value, vec3(2.2));
 
