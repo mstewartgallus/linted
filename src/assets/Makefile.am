@@ -27,8 +27,8 @@ EXTRA_DIST+=\
   %D%/assets/fragment_shader.py\
   %D%/assets/vertex_shader.py\
   %D%/assets/scene.blend\
-  %D%/assets/shaders/fragment.glslf\
-  %D%/assets/shaders/vertex.glslv\
+  %D%/assets/shaders/fragment.frag\
+  %D%/assets/shaders/vertex.vert\
   \
   %D%/assets_generator/linted_assets_generator\
   %D%/assets_generator/linted_assets_generator.py
@@ -57,7 +57,7 @@ MOSTLYCLEANFILES+=%D%/assets.c
 MOSTLYCLEANFILES+=%D%/fragment_shader.c
 %D%/fragment_shader.c:\
   %D%/assets/fragment_shader.py\
-  %D%/assets/shaders/fragment.glslf\
+  %D%/assets/shaders/fragment.frag\
   \
   %D%/assets_generator/linted_assets_generator.py
 	$(linted_V_PYTHON3) PYTHONDONTWRITEBYTECODE=1 $(PYTHON3) $(srcdir)/%D%/assets_generator/linted_assets_generator.py --\
@@ -67,7 +67,7 @@ MOSTLYCLEANFILES+=%D%/fragment_shader.c
 MOSTLYCLEANFILES+=%D%/vertex_shader.c
 %D%/vertex_shader.c:\
   %D%/assets/vertex_shader.py\
-  %D%/assets/shaders/vertex.glslv\
+  %D%/assets/shaders/vertex.vert\
   \
   %D%/assets_generator/linted_assets_generator.py
 	$(linted_V_PYTHON3) PYTHONDONTWRITEBYTECODE=1 $(PYTHON3) $(srcdir)/%D%/assets_generator/linted_assets_generator.py --\

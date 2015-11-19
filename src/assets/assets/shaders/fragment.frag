@@ -1,3 +1,4 @@
+#version 300 es
 /*
  * Copyright 2014, 2015 Steven Stewart-Gallus
  *
@@ -13,7 +14,6 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#version 300 es
 
 precision highp float;
 
@@ -34,7 +34,22 @@ const vec3 ambient_light = 0.5 * vec3(0.95, 1.0, 0.9);
 
 const vec2 foggy_air = vec2(0.0001, 0.00001);
 
-const float e = 2.71828182846;
+const float s = 0.25;
+const float t = 0.9;
+
+const mat3x3 dark_stone[3] = mat3x3[3](
+        mat3x3(0.8, 0.0, 0.0,
+               0.0, 0.5, 0.0,
+               0.0, 0.0, 3.0 * s),
+
+        mat3x3(0.1, 0.0, 0.0,
+               0.0, 0.1, 0.0,
+               0.0, 0.0, -6.0 * s + 3.0 * t),
+
+        mat3x3(0.0, 0.0, 0.0,
+               0.0, 0.1, 0.0,
+               0.0, 0.0, 3.0 * s - 3.0 * t + 1.0)
+);
 
 float compute_decay_factor(vec3 aa, vec3 bb);
 
@@ -49,20 +64,6 @@ void main()
      * The total energy of the light should never add up to more light
      * energy than is received.
      */
-
-    const mat3x3 dark_stone[3] = mat3x3[3](
-            mat3x3(0.8, 0.0, 0.0,
-                   0.0, 0.5, 0.0,
-                   0.0, 0.0, 0.0),
-
-            mat3x3(0.1, 0.0, 0.0,
-                   0.0, 0.1, 0.0,
-                   0.0, 0.0, 3.0),
-
-            mat3x3(0.0, 0.0, 0.0,
-                   0.0, 0.1, 0.0,
-                   0.0, 0.0, -2.0)
-    );
 
     vec3 light = light_colour;
 

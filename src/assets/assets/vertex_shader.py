@@ -20,7 +20,7 @@ def output():
     old_directory = os.getcwd()
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
     try:
-        vertex_shader = encode_shader(load_shader("shaders/vertex.glslv"))
+        vertex_shader = encode_shader(load_shader("shaders/vertex.vert"))
     finally:
         os.chdir(old_directory)
 
