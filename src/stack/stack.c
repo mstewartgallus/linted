@@ -86,7 +86,7 @@ void linted_stack_send(struct linted_stack *stack,
 			break;
 		}
 
-		__pause();
+		_mm_pause();
 	}
 
 	linted_trigger_set(&stack->inbox_filled);
@@ -103,7 +103,7 @@ void linted_stack_recv(struct linted_stack *stack,
 			if (0 == err)
 				return;
 
-			__pause();
+			_mm_pause();
 		}
 
 		linted_trigger_wait(&stack->inbox_filled);

@@ -92,7 +92,7 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 			                           __ATOMIC_ACQ_REL);
 			if (node != 0)
 				goto exit_loop;
-			__pause();
+			_mm_pause();
 		}
 
 		linted_trigger_wait(&channel->filled);

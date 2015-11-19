@@ -104,7 +104,7 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 		        __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
 			break;
 		}
-		__pause();
+		_mm_pause();
 	}
 
 	for (;;) {
