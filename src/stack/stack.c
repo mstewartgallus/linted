@@ -97,17 +97,48 @@ void linted_stack_recv(struct linted_stack *stack,
 {
 	linted_error err = 0;
 
+	struct linted_node *ret;
 	for (;;) {
 		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {
-			err = linted_stack_try_recv(stack, nodep);
-			if (0 == err)
-				return;
+			{
+				struct linted_node *node =
+				    __atomic_exchange_n(
+				        &stack->inbox, 0,
+				        __ATOMIC_ACQ_REL);
+
+				__atomic_thread_fence(__ATOMIC_ACQUIRE);
+
+				for (;;) {
+					if (0 == node)
+						break;
+
+					struct linted_node *next =
+					    node->next;
+
+					node->next = stack->outbox;
+					stack->outbox = node;
+
+					node = next;
+				}
+			}
+
+			struct linted_node *node = stack->outbox;
+			if (node != 0) {
+				stack->outbox = node->next;
+				ret = node;
+				goto give_node;
+			}
 
 			_mm_pause();
 		}
 
 		linted_trigger_wait(&stack->inbox_filled);
 	}
+
+give_node:
+	refresh_node(ret);
+
+	*nodep = ret;
 }
 
 linted_error linted_stack_try_recv(struct linted_stack *stack,
