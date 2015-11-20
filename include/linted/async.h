@@ -92,8 +92,9 @@ linted_error linted_async_task_create(struct linted_async_task **taskp,
 void linted_async_task_destroy(struct linted_async_task *task);
 
 void linted_async_task_cancel(struct linted_async_task *task);
-void linted_async_task_prepare(struct linted_async_task *task,
-                               union linted_async_ck task_ck);
+struct linted_async_task *
+linted_async_task_prepare(struct linted_async_task *task,
+                          union linted_async_ck task_ck);
 union linted_async_ck
 linted_async_task_ck(struct linted_async_task *task);
 linted_error linted_async_task_err(struct linted_async_task *task);

@@ -160,10 +160,11 @@ int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
 	return task->signo;
 }
 
-void linted_signal_task_wait_prepare(
-    struct linted_signal_task_wait *task, union linted_async_ck task_ck)
+struct linted_async_task *
+linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
+                                union linted_async_ck task_ck)
 {
-	linted_async_task_prepare(task->parent, task_ck);
+	return linted_async_task_prepare(task->parent, task_ck);
 }
 
 struct linted_async_task *

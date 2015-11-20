@@ -561,27 +561,23 @@ get_hostname_succeeded:
 	if (err != 0)
 		goto destroy_window;
 
-	linted_window_task_notify_prepare(
-	    drawer_notice_task,
-	    (union linted_async_ck){.u64 = ON_SENT_NOTICE},
-	    drawer_notifier);
 	linted_async_pool_submit(
-	    pool,
-	    linted_window_task_notify_to_async(drawer_notice_task));
+	    pool, linted_window_task_notify_prepare(
+	              drawer_notice_task,
+	              (union linted_async_ck){.u64 = ON_SENT_NOTICE},
+	              drawer_notifier));
 
-	linted_window_task_notify_prepare(
-	    gui_notice_task,
-	    (union linted_async_ck){.u64 = ON_SENT_NOTICE},
-	    gui_notifier);
 	linted_async_pool_submit(
-	    pool, linted_window_task_notify_to_async(gui_notice_task));
+	    pool, linted_window_task_notify_prepare(
+	              gui_notice_task,
+	              (union linted_async_ck){.u64 = ON_SENT_NOTICE},
+	              gui_notifier));
 
-	linted_io_task_poll_prepare(
-	    poll_conn_task,
-	    (union linted_async_ck){.u64 = ON_POLL_CONN},
-	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_async_pool_submit(
-	    pool, linted_io_task_poll_to_async(poll_conn_task));
+	    pool, linted_io_task_poll_prepare(
+	              poll_conn_task,
+	              (union linted_async_ck){.u64 = ON_POLL_CONN},
+	              xcb_get_file_descriptor(connection), POLLIN));
 
 	window->time_to_quit = false;
 	window->pool = pool;
@@ -764,11 +760,11 @@ static linted_error window_on_conn_ready(struct window *window,
 			return 0;
 	}
 
-	linted_io_task_poll_prepare(
-	    poll_conn_task,
-	    (union linted_async_ck){.u64 = ON_POLL_CONN},
-	    xcb_get_file_descriptor(connection), POLLIN);
-	linted_async_pool_submit(pool, task);
+	linted_async_pool_submit(
+	    pool, linted_io_task_poll_prepare(
+	              poll_conn_task,
+	              (union linted_async_ck){.u64 = ON_POLL_CONN},
+	              xcb_get_file_descriptor(connection), POLLIN));
 
 	return 0;
 }

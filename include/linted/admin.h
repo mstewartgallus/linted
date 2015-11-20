@@ -141,7 +141,7 @@ void linted_admin_request_free(struct linted_admin_request *outp);
 
 void *
 linted_admin_in_task_recv_data(struct linted_admin_in_task_recv *task);
-void linted_admin_in_task_recv_prepare(
+struct linted_async_task *linted_admin_in_task_recv_prepare(
     struct linted_admin_in_task_recv *task,
     union linted_async_ck task_ck, linted_ko ko);
 struct linted_async_task *linted_admin_in_task_recv_to_async(
@@ -154,7 +154,7 @@ linted_error linted_admin_out_task_send_create(
 void linted_admin_out_task_send_destroy(
     struct linted_admin_out_task_send *task);
 
-void linted_admin_out_task_send_prepare(
+struct linted_async_task *linted_admin_out_task_send_prepare(
     struct linted_admin_out_task_send *task,
     union linted_async_ck task_ck, linted_ko ko,
     struct linted_admin_reply const *reply);

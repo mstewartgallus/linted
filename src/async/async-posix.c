@@ -431,11 +431,13 @@ void linted_async_task_cancel(struct linted_async_task *task)
 	canceller_cancel(&task->canceller);
 }
 
-void linted_async_task_prepare(struct linted_async_task *task,
-                               union linted_async_ck task_ck)
+struct linted_async_task *
+linted_async_task_prepare(struct linted_async_task *task,
+                          union linted_async_ck task_ck)
 {
 	LINTED_ASSERT_NOT_NULL(task);
 	task->task_ck = task_ck;
+	return task;
 }
 
 union linted_async_ck

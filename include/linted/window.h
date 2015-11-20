@@ -47,9 +47,10 @@ linted_window_task_watch_create(struct linted_window_task_watch **taskp,
 void linted_window_task_watch_destroy(
     struct linted_window_task_watch *task);
 
-void linted_window_task_watch_prepare(
-    struct linted_window_task_watch *task,
-    union linted_async_ck task_ck, linted_ko notifier);
+struct linted_async_task *
+linted_window_task_watch_prepare(struct linted_window_task_watch *task,
+                                 union linted_async_ck task_ck,
+                                 linted_ko notifier);
 struct linted_window_task_watch *
 linted_window_task_watch_from_async(struct linted_async_task *task);
 struct linted_async_task *linted_window_task_watch_to_async(
@@ -62,7 +63,7 @@ linted_error linted_window_task_notify_create(
 void linted_window_task_notify_destroy(
     struct linted_window_task_notify *task);
 
-void linted_window_task_notify_prepare(
+struct linted_async_task *linted_window_task_notify_prepare(
     struct linted_window_task_notify *task,
     union linted_async_ck task_ck, linted_ko notifier);
 struct linted_window_task_notify *

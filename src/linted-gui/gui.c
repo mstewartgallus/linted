@@ -360,19 +360,17 @@ static linted_error gui_init(struct gui *gui,
 	gui->window = 0;
 	gui->window_ko = window_ko;
 
-	linted_window_task_watch_prepare(
-	    notice_task,
-	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
-	    notifier);
 	linted_async_pool_submit(
-	    pool, linted_window_task_watch_to_async(notice_task));
+	    pool, linted_window_task_watch_prepare(
+	              notice_task,
+	              (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
+	              notifier));
 
-	linted_io_task_poll_prepare(
-	    poll_conn_task,
-	    (union linted_async_ck){.u64 = ON_POLL_CONN},
-	    xcb_get_file_descriptor(connection), POLLIN);
 	linted_async_pool_submit(
-	    pool, linted_io_task_poll_to_async(poll_conn_task));
+	    pool, linted_io_task_poll_prepare(
+	              poll_conn_task,
+	              (union linted_async_ck){.u64 = ON_POLL_CONN},
+	              xcb_get_file_descriptor(connection), POLLIN));
 
 	err = refresh_gui_window(gui);
 	if (err != 0)
@@ -706,12 +704,11 @@ static linted_error gui_on_window_change(struct gui *gui,
 	linted_ko notifier = gui->notifier;
 	struct linted_async_pool *pool = gui->pool;
 
-	linted_window_task_watch_prepare(
-	    notice_task,
-	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
-	    notifier);
 	linted_async_pool_submit(
-	    pool, linted_window_task_watch_to_async(notice_task));
+	    pool, linted_window_task_watch_prepare(
+	              notice_task,
+	              (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
+	              notifier));
 
 	return refresh_gui_window(gui);
 }
@@ -746,14 +743,11 @@ static void maybe_update_controller(struct gui *gui)
 	if (gui->update_in_progress)
 		return;
 
-	linted_controller_task_send_prepare(
-	    controller_task,
-	    (union linted_async_ck){.u64 = ON_SENT_CONTROL}, controller,
-	    &gui->update);
-
 	linted_async_pool_submit(
-	    pool,
-	    linted_controller_task_send_to_async(controller_task));
+	    pool, linted_controller_task_send_prepare(
+	              controller_task,
+	              (union linted_async_ck){.u64 = ON_SENT_CONTROL},
+	              controller, &gui->update));
 
 	gui->update_pending = false;
 	gui->update_in_progress = true;

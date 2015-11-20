@@ -37,7 +37,7 @@ struct linted_updater_task_send {
 	             LINTED_RPC_UINT32_SIZE];
 };
 
-struct linted_update_task_recv {
+struct linted_updater_task_recv {
 	struct linted_io_task_read *parent;
 	void *data;
 	char message[LINTED_RPC_INT32_SIZE + LINTED_RPC_INT32_SIZE +
@@ -46,11 +46,11 @@ struct linted_update_task_recv {
 };
 
 linted_error
-linted_update_task_recv_create(struct linted_update_task_recv **taskp,
-                               void *data)
+linted_updater_task_recv_create(struct linted_updater_task_recv **taskp,
+                                void *data)
 {
 	linted_error err;
-	struct linted_update_task_recv *task;
+	struct linted_updater_task_recv *task;
 	{
 		void *xx;
 		err = linted_mem_alloc(&xx, sizeof *task);
@@ -76,36 +76,38 @@ free_task:
 	return err;
 }
 
-void linted_update_task_recv_destroy(
-    struct linted_update_task_recv *task)
+void linted_updater_task_recv_destroy(
+    struct linted_updater_task_recv *task)
 {
 	linted_io_task_read_destroy(task->parent);
 	linted_mem_free(task);
 }
 
-void linted_update_task_recv_prepare(
-    struct linted_update_task_recv *task, union linted_async_ck task_ck,
-    linted_ko updater)
+struct linted_async_task *
+linted_updater_task_recv_prepare(struct linted_updater_task_recv *task,
+                                 union linted_async_ck task_ck,
+                                 linted_ko updater)
 {
-	linted_io_task_read_prepare(task->parent, task_ck, updater,
-	                            task->message,
-	                            sizeof task->message);
+	return linted_io_task_read_prepare(task->parent, task_ck,
+	                                   updater, task->message,
+	                                   sizeof task->message);
 }
 
-struct linted_update_task_recv *
-linted_update_task_recv_from_async(struct linted_async_task *task)
+struct linted_updater_task_recv *
+linted_updater_task_recv_from_async(struct linted_async_task *task)
 {
 	return linted_io_task_read_data(
 	    linted_io_task_read_from_async(task));
 }
 
 struct linted_async_task *
-linted_update_task_recv_to_async(struct linted_update_task_recv *task)
+linted_updater_task_recv_to_async(struct linted_updater_task_recv *task)
 {
 	return linted_io_task_read_to_async(task->parent);
 }
 
-void *linted_update_task_recv_data(struct linted_update_task_recv *task)
+void *
+linted_updater_task_recv_data(struct linted_updater_task_recv *task)
 {
 	return task->data;
 }
@@ -147,15 +149,11 @@ void linted_updater_task_send_destroy(
 	linted_mem_free(task);
 }
 
-void linted_updater_task_send_prepare(
+struct linted_async_task *linted_updater_task_send_prepare(
     struct linted_updater_task_send *task,
     union linted_async_ck task_ck, linted_ko updater,
     struct linted_updater_update const *update)
 {
-	linted_io_task_write_prepare(task->parent, task_ck, updater,
-	                             task->message,
-	                             sizeof task->message);
-
 	XDR xdr = {0};
 	xdrmem_create(&xdr, task->message, sizeof task->message,
 	              XDR_ENCODE);
@@ -173,6 +171,10 @@ void linted_updater_task_send_prepare(
 		LINTED_ASSERT(0);
 
 	xdr_destroy(&xdr);
+
+	return linted_io_task_write_prepare(task->parent, task_ck,
+	                                    updater, task->message,
+	                                    sizeof task->message);
 }
 
 struct linted_updater_task_send *
@@ -194,7 +196,7 @@ linted_updater_task_send_data(struct linted_updater_task_send *task)
 	return task->data;
 }
 
-void linted_updater_decode(struct linted_update_task_recv const *task,
+void linted_updater_decode(struct linted_updater_task_recv const *task,
                            struct linted_updater_update *update)
 {
 	XDR xdr = {0};

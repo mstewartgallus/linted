@@ -98,7 +98,7 @@ void *linted_controller_task_send_data(
 	return task->data;
 }
 
-void linted_controller_task_send_prepare(
+struct linted_async_task *linted_controller_task_send_prepare(
     struct linted_controller_task_send *task,
     union linted_async_ck task_ck, linted_controller controller,
     struct linted_controller_message const *message)
@@ -125,9 +125,9 @@ void linted_controller_task_send_prepare(
 		xdr_destroy(&xdr);
 	}
 
-	linted_io_task_write_prepare(task->parent, task_ck, controller,
-	                             task->message,
-	                             sizeof task->message);
+	return linted_io_task_write_prepare(task->parent, task_ck,
+	                                    controller, task->message,
+	                                    sizeof task->message);
 }
 
 linted_error linted_controller_task_recv_create(
@@ -185,13 +185,13 @@ void *linted_controller_task_recv_data(
 	return task->data;
 }
 
-void linted_controller_task_recv_prepare(
+struct linted_async_task *linted_controller_task_recv_prepare(
     struct linted_controller_task_recv *task,
     union linted_async_ck task_ck, linted_controller controller)
 {
-	linted_io_task_read_prepare(task->parent, task_ck, controller,
-	                            task->message,
-	                            sizeof task->message);
+	return linted_io_task_read_prepare(task->parent, task_ck,
+	                                   controller, task->message,
+	                                   sizeof task->message);
 }
 
 linted_error

@@ -588,26 +588,24 @@ static linted_error monitor_start(struct monitor *monitor)
 
 	linted_signal_listen_to_sigchld();
 
-	linted_signal_task_wait_prepare(
-	    signal_wait_task,
-	    (union linted_async_ck){.u64 = SIGNAL_WAIT});
 	linted_async_pool_submit(
-	    pool, linted_signal_task_wait_to_async(signal_wait_task));
+	    pool, linted_signal_task_wait_prepare(
+	              signal_wait_task,
+	              (union linted_async_ck){.u64 = SIGNAL_WAIT}));
 
-	linted_admin_in_task_recv_prepare(
-	    admin_in_read_task,
-	    (union linted_async_ck){.u64 = ADMIN_IN_READ}, admin_in);
 	linted_async_pool_submit(
-	    pool,
-	    linted_admin_in_task_recv_to_async(admin_in_read_task));
+	    pool, linted_admin_in_task_recv_prepare(
+	              admin_in_read_task,
+	              (union linted_async_ck){.u64 = ADMIN_IN_READ},
+	              admin_in));
 
 	static char dummy;
 
-	linted_io_task_read_prepare(
-	    kill_read_task, (union linted_async_ck){.u64 = KILL_READ},
-	    kill_fifo, &dummy, sizeof dummy);
 	linted_async_pool_submit(
-	    pool, linted_io_task_read_to_async(kill_read_task));
+	    pool, linted_io_task_read_prepare(
+	              kill_read_task,
+	              (union linted_async_ck){.u64 = KILL_READ},
+	              kill_fifo, &dummy, sizeof dummy));
 
 	linted_signal_listen_to_sighup();
 	linted_signal_listen_to_sigint();
@@ -805,13 +803,14 @@ monitor_on_admin_in_read(struct monitor *monitor,
 
 	{
 		struct linted_admin_reply xx = reply;
-		linted_admin_out_task_send_prepare(
-		    write_task,
-		    (union linted_async_ck){.u64 = ADMIN_OUT_WRITE},
-		    admin_out, &xx);
+
+		linted_async_pool_submit(
+		    pool,
+		    linted_admin_out_task_send_prepare(
+		        write_task,
+		        (union linted_async_ck){.u64 = ADMIN_OUT_WRITE},
+		        admin_out, &xx));
 	}
-	linted_async_pool_submit(
-	    pool, linted_admin_out_task_send_to_async(write_task));
 
 	return err;
 }
@@ -829,11 +828,11 @@ monitor_on_admin_out_write(struct monitor *monitor,
 	if (err != 0)
 		return 0;
 
-	linted_admin_in_task_recv_prepare(
-	    read_task, (union linted_async_ck){.u64 = ADMIN_IN_READ},
-	    admin_in);
 	linted_async_pool_submit(
-	    pool, linted_admin_in_task_recv_to_async(read_task));
+	    pool, linted_admin_in_task_recv_prepare(
+	              read_task,
+	              (union linted_async_ck){.u64 = ADMIN_IN_READ},
+	              admin_in));
 
 	return 0;
 }

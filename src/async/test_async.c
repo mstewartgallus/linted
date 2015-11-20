@@ -157,7 +157,9 @@ static void on_idle(struct linted_async_task *task)
 	if (0U == count)
 		return;
 	idle_data->idle_count = count - 1U;
-	linted_sched_task_idle_prepare(
-	    idle_task, (union linted_async_ck){.u64 = ON_IDLE});
-	linted_async_pool_submit(idle_data->pool, task);
+
+	linted_async_pool_submit(
+	    idle_data->pool,
+	    linted_sched_task_idle_prepare(
+	        idle_task, (union linted_async_ck){.u64 = ON_IDLE}));
 }

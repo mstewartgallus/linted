@@ -307,21 +307,20 @@ static linted_error sim_init(struct sim *sim,
 		if (err != 0)
 			goto destroy_updater_task;
 
-		linted_sched_task_sleep_until_prepare(
-		    tick_task,
-		    (union linted_async_ck){.u64 = ON_READ_TIMER},
-		    &now);
+		linted_async_pool_submit(
+		    pool,
+		    linted_sched_task_sleep_until_prepare(
+		        tick_task,
+		        (union linted_async_ck){.u64 = ON_READ_TIMER},
+		        &now));
 	}
-	linted_async_pool_submit(
-	    pool, linted_sched_task_sleep_until_to_async(tick_task));
 
-	linted_controller_task_recv_prepare(
-	    controller_task,
-	    (union linted_async_ck){.u64 = ON_RECEIVE_CONTROLLER_EVENT},
-	    controller);
 	linted_async_pool_submit(
-	    pool,
-	    linted_controller_task_recv_to_async(controller_task));
+	    pool, linted_controller_task_recv_prepare(
+	              controller_task,
+	              (union linted_async_ck){
+	                  .u64 = ON_RECEIVE_CONTROLLER_EVENT},
+	              controller));
 
 	return 0;
 
@@ -447,11 +446,14 @@ static linted_error sim_on_tick(struct sim *sim,
 
 	{
 		struct timespec xx = next_tick_time;
-		linted_sched_task_sleep_until_prepare(
-		    timer_task,
-		    (union linted_async_ck){.u64 = ON_READ_TIMER}, &xx);
+
+		linted_async_pool_submit(
+		    pool,
+		    linted_sched_task_sleep_until_prepare(
+		        timer_task,
+		        (union linted_async_ck){.u64 = ON_READ_TIMER},
+		        &xx));
 	}
-	linted_async_pool_submit(pool, task);
 
 	simulate_tick(state, intent);
 
@@ -560,14 +562,14 @@ static void maybe_update(struct sim *sim, linted_updater updater,
 
 	{
 		struct linted_updater_update xx = update;
-		linted_updater_task_send_prepare(
-		    updater_task,
-		    (union linted_async_ck){.u64 =
-		                                ON_SENT_UPDATER_EVENT},
-		    updater, &xx);
+
+		linted_async_pool_submit(
+		    pool, linted_updater_task_send_prepare(
+		              updater_task,
+		              (union linted_async_ck){
+		                  .u64 = ON_SENT_UPDATER_EVENT},
+		              updater, &xx));
 	}
-	linted_async_pool_submit(
-	    pool, linted_updater_task_send_to_async(updater_task));
 
 	state->update_pending = false;
 	state->write_in_progress = true;
