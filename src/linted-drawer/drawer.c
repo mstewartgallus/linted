@@ -564,12 +564,11 @@ drawer_on_notice_recved(struct drawer *drawer,
 	if (err != 0)
 		return err;
 
-	linted_window_task_watch_prepare(
-	    notice_task,
-	    (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
-	    notifier);
 	linted_async_pool_submit(
-	    pool, linted_window_task_watch_to_async(notice_task));
+	    pool, linted_window_task_watch_prepare(
+	              notice_task,
+	              (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
+	              notifier));
 
 	return drawer_update_window(drawer);
 }
