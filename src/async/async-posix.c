@@ -341,19 +341,33 @@ void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
 	waiter_submit(pool->waiter_queue, waiter);
 }
 
-linted_error
-linted_async_pool_wait(struct linted_async_pool *pool,
-                       struct linted_async_task **completionp)
+linted_error linted_async_pool_wait(struct linted_async_pool *pool,
+                                    struct linted_async_result *resultp)
 {
-	return completion_recv(pool->completion_queue, completionp);
+	struct linted_async_task *task;
+	linted_error err =
+	    completion_recv(pool->completion_queue, &task);
+	if (0 == err) {
+		resultp->task_ck = task->task_ck;
+		resultp->err = task->err;
+		resultp->task = task;
+	}
+	return err;
 }
 
-linted_error
-linted_async_pool_poll(struct linted_async_pool *pool,
-                       struct linted_async_task **completionp)
+linted_error linted_async_pool_poll(struct linted_async_pool *pool,
+                                    struct linted_async_result *resultp)
 {
 	LINTED_ASSERT_NOT_NULL(pool);
-	return completion_try_recv(pool->completion_queue, completionp);
+	struct linted_async_task *task;
+	linted_error err =
+	    completion_try_recv(pool->completion_queue, &task);
+	if (0 == err) {
+		resultp->task_ck = task->task_ck;
+		resultp->err = task->err;
+		resultp->task = task;
+	}
+	return err;
 }
 
 linted_error
@@ -438,19 +452,6 @@ linted_async_task_prepare(struct linted_async_task *task,
 	LINTED_ASSERT_NOT_NULL(task);
 	task->task_ck = task_ck;
 	return task;
-}
-
-union linted_async_ck
-linted_async_task_ck(struct linted_async_task *task)
-{
-	LINTED_ASSERT_NOT_NULL(task);
-	return task->task_ck;
-}
-
-linted_error linted_async_task_err(struct linted_async_task *task)
-{
-	LINTED_ASSERT_NOT_NULL(task);
-	return task->err;
 }
 
 void *linted_async_task_data(struct linted_async_task *task)

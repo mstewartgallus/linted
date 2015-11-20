@@ -34,8 +34,9 @@ struct idle_data {
 	unsigned long idle_count;
 };
 
-static void dispatch(struct linted_async_task *task);
-static void on_idle(struct linted_async_task *task);
+static void dispatch(union linted_async_ck task_ck,
+                     struct linted_async_task *task, linted_error err);
+static void on_idle(struct linted_async_task *task, linted_error err);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-async-test"};
@@ -89,9 +90,9 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 
 	for (;;) {
-		struct linted_async_task *completed_task;
+		struct linted_async_result result;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			err = linted_async_pool_wait(pool, &xx);
 			if (err != 0) {
 				linted_log(LINTED_LOG_ERROR,
@@ -100,10 +101,10 @@ static unsigned char linted_start_main(char const *process_name,
 				           linted_error_string(err));
 				return EXIT_FAILURE;
 			}
-			completed_task = xx;
+			result = xx;
 		}
 
-		dispatch(completed_task);
+		dispatch(result.task_ck, result.task, result.err);
 		for (size_t ii = 0U; ii < MAX_TASKS; ++ii) {
 			if (idle_data[ii].idle_count > 0U)
 				goto continue_loop;
@@ -125,11 +126,12 @@ exit_loop:
 	return EXIT_SUCCESS;
 }
 
-static void dispatch(struct linted_async_task *task)
+static void dispatch(union linted_async_ck task_ck,
+                     struct linted_async_task *task, linted_error err)
 {
-	switch (linted_async_task_ck(task).u64) {
+	switch (task_ck.u64) {
 	case ON_IDLE:
-		on_idle(task);
+		on_idle(task, err);
 		break;
 
 	default:
@@ -137,11 +139,8 @@ static void dispatch(struct linted_async_task *task)
 	}
 }
 
-static void on_idle(struct linted_async_task *task)
+static void on_idle(struct linted_async_task *task, linted_error err)
 {
-	linted_error err;
-
-	err = linted_async_task_err(task);
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR, "linted_sched_idle: %s",
 		           linted_error_string(err));

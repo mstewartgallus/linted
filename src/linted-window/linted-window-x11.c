@@ -55,13 +55,15 @@ static linted_error window_destroy(struct window *window);
 static linted_error window_stop(struct window *window);
 
 static linted_error dispatch(struct window *window,
-                             struct linted_async_task *task);
-static linted_error
-window_on_conn_ready(struct window *window,
-                     struct linted_async_task *task);
+                             union linted_async_ck task_ck,
+                             struct linted_async_task *task,
+                             linted_error err);
+static linted_error window_on_conn_ready(struct window *window,
+                                         struct linted_async_task *task,
+                                         linted_error err);
 static linted_error
 window_on_notice_sent(struct window *window,
-                      struct linted_async_task *task);
+                      struct linted_async_task *task, linted_error err);
 
 struct window {
 	xcb_connection_t *connection;
@@ -151,18 +153,18 @@ static unsigned char linted_start_main(char const *process_name,
 		goto destroy_pool;
 
 	for (;;) {
-
-		struct linted_async_task *completed_task;
+		struct linted_async_result result;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			err = linted_async_pool_wait(pool, &xx);
 			if (err != 0)
 				goto stop_pool;
-			completed_task = xx;
+			result = xx;
 		}
 
 		window_obj.time_to_quit = false;
-		err = dispatch(&window_obj, completed_task);
+		err = dispatch(&window_obj, result.task_ck, result.task,
+		               result.err);
 		if (err != 0)
 			goto stop_pool;
 		if (window_obj.time_to_quit)
@@ -173,18 +175,17 @@ stop_pool:
 	window_stop(&window_obj);
 
 	for (;;) {
-		struct linted_async_task *completed_task;
+		struct linted_async_result result;
 		linted_error poll_err;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			poll_err = linted_async_pool_poll(pool, &xx);
 			if (LINTED_ERROR_AGAIN == poll_err)
 				break;
-			completed_task = xx;
+			result = xx;
 		}
 
-		linted_error dispatch_err =
-		    linted_async_task_err(completed_task);
+		linted_error dispatch_err = result.err;
 		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
 			err = dispatch_err;
 	}
@@ -706,14 +707,16 @@ static linted_error window_stop(struct window *window)
 }
 
 static linted_error dispatch(struct window *window,
-                             struct linted_async_task *task)
+                             union linted_async_ck task_ck,
+                             struct linted_async_task *task,
+                             linted_error err)
 {
-	switch (linted_async_task_ck(task).u64) {
+	switch (task_ck.u64) {
 	case ON_POLL_CONN:
-		return window_on_conn_ready(window, task);
+		return window_on_conn_ready(window, task, err);
 
 	case ON_SENT_NOTICE:
-		return window_on_notice_sent(window, task);
+		return window_on_notice_sent(window, task, err);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -721,16 +724,15 @@ static linted_error dispatch(struct window *window,
 }
 
 static linted_error window_on_conn_ready(struct window *window,
-                                         struct linted_async_task *task)
+                                         struct linted_async_task *task,
+                                         linted_error err)
 {
-	linted_error err;
 
 	xcb_connection_t *connection = window->connection;
 	struct linted_async_pool *pool = window->pool;
 	struct linted_io_task_poll *poll_conn_task =
 	    window->poll_conn_task;
 
-	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 
@@ -771,11 +773,9 @@ static linted_error window_on_conn_ready(struct window *window,
 
 static linted_error
 window_on_notice_sent(struct window *window,
-                      struct linted_async_task *task)
+                      struct linted_async_task *task, linted_error err)
 {
-	linted_error err;
 
-	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 

@@ -65,16 +65,20 @@ static linted_error drawer_stop(struct drawer *drawer);
 static linted_error drawer_destroy(struct drawer *drawer);
 
 static linted_error dispatch(struct drawer *drawer,
-                             struct linted_async_task *task);
-static linted_error
-drawer_on_conn_ready(struct drawer *drawer,
-                     struct linted_async_task *task);
+                             union linted_async_ck task_ck,
+                             struct linted_async_task *task,
+                             linted_error err);
+static linted_error drawer_on_conn_ready(struct drawer *drawer,
+                                         struct linted_async_task *task,
+                                         linted_error err);
 static linted_error
 drawer_on_update_recved(struct drawer *drawer,
-                        struct linted_async_task *task);
+                        struct linted_async_task *task,
+                        linted_error err);
 static linted_error
 drawer_on_notice_recved(struct drawer *drawer,
-                        struct linted_async_task *task);
+                        struct linted_async_task *task,
+                        linted_error err);
 static linted_error drawer_update_window(struct drawer *drawer);
 
 struct drawer {
@@ -142,14 +146,15 @@ static unsigned char linted_start_main(char const *process_name,
 		goto destroy_drawer;
 
 	for (;;) {
-		struct linted_async_task *completed_task;
+		struct linted_async_result result;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			linted_async_pool_wait(pool, &xx);
-			completed_task = xx;
+			result = xx;
 		}
 
-		err = dispatch(&drawer, completed_task);
+		err = dispatch(&drawer, result.task_ck, result.task,
+		               result.err);
 		if (err != 0)
 			goto stop_drawer;
 	}
@@ -157,18 +162,17 @@ stop_drawer:
 	drawer_stop(&drawer);
 
 	for (;;) {
-		struct linted_async_task *completed_task;
+		struct linted_async_result result;
 		linted_error poll_err;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			poll_err = linted_async_pool_poll(pool, &xx);
 			if (LINTED_ERROR_AGAIN == poll_err)
 				break;
-			completed_task = xx;
+			result = xx;
 		}
 
-		linted_error dispatch_err =
-		    linted_async_task_err(completed_task);
+		linted_error dispatch_err = result.err;
 		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
 			err = dispatch_err;
 	}
@@ -401,17 +405,19 @@ static linted_error drawer_stop(struct drawer *drawer)
 }
 
 static linted_error dispatch(struct drawer *drawer,
-                             struct linted_async_task *task)
+                             union linted_async_ck task_ck,
+                             struct linted_async_task *task,
+                             linted_error err)
 {
-	switch (linted_async_task_ck(task).u64) {
+	switch (task_ck.u64) {
 	case ON_RECEIVE_UPDATE:
-		return drawer_on_update_recved(drawer, task);
+		return drawer_on_update_recved(drawer, task, err);
 
 	case ON_POLL_CONN:
-		return drawer_on_conn_ready(drawer, task);
+		return drawer_on_conn_ready(drawer, task, err);
 
 	case ON_RECEIVE_NOTICE:
-		return drawer_on_notice_recved(drawer, task);
+		return drawer_on_notice_recved(drawer, task, err);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -419,15 +425,13 @@ static linted_error dispatch(struct drawer *drawer,
 }
 
 static linted_error drawer_on_conn_ready(struct drawer *drawer,
-                                         struct linted_async_task *task)
+                                         struct linted_async_task *task,
+                                         linted_error err)
 {
 	xcb_connection_t *connection = drawer->connection;
 	struct linted_async_pool *pool = drawer->pool;
 	struct linted_gpu_context *gpu_context = drawer->gpu_context;
 
-	linted_error err;
-
-	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 
@@ -491,14 +495,12 @@ static linted_error drawer_on_conn_ready(struct drawer *drawer,
 
 static linted_error
 drawer_on_update_recved(struct drawer *drawer,
-                        struct linted_async_task *task)
+                        struct linted_async_task *task,
+                        linted_error err)
 {
 	struct linted_gpu_context *gpu_context = drawer->gpu_context;
 	struct linted_async_pool *pool = drawer->pool;
 
-	linted_error err;
-
-	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 
@@ -551,16 +553,14 @@ drawer_on_update_recved(struct drawer *drawer,
 
 static linted_error
 drawer_on_notice_recved(struct drawer *drawer,
-                        struct linted_async_task *task)
+                        struct linted_async_task *task,
+                        linted_error err)
 {
 	struct linted_async_pool *pool = drawer->pool;
 	struct linted_window_task_watch *notice_task =
 	    drawer->notice_task;
 	linted_ko notifier = drawer->notifier;
 
-	linted_error err = 0;
-
-	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 

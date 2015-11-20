@@ -106,19 +106,24 @@ static linted_error monitor_start(struct monitor *monitor);
 static linted_error monitor_stop(struct monitor *monitor);
 
 static linted_error dispatch(struct monitor *monitor,
-                             struct linted_async_task *completed_task);
+                             union linted_async_ck task_ck,
+                             struct linted_async_task *task,
+                             linted_error err);
 
 static linted_error monitor_on_signal(struct monitor *monitor,
-                                      struct linted_async_task *task);
+                                      struct linted_async_task *task,
+                                      linted_error err);
 static linted_error
 monitor_on_admin_in_read(struct monitor *monitor,
-                         struct linted_async_task *task);
+                         struct linted_async_task *task,
+                         linted_error err);
 static linted_error
 monitor_on_admin_out_write(struct monitor *monitor,
-                           struct linted_async_task *task);
-static linted_error
-monitor_on_kill_read(struct monitor *monitor,
-                     struct linted_async_task *task);
+                           struct linted_async_task *task,
+                           linted_error err);
+static linted_error monitor_on_kill_read(struct monitor *monitor,
+                                         struct linted_async_task *task,
+                                         linted_error err);
 
 static linted_error on_sigchld(struct monitor *monitor);
 static linted_error on_death_sig(struct monitor *monitor, int signo);
@@ -420,14 +425,15 @@ static unsigned char linted_start_main(char const *process_name,
 		goto destroy_monitor;
 
 	for (;;) {
-		struct linted_async_task *completed_task;
+		struct linted_async_result result;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			linted_async_pool_wait(pool, &xx);
-			completed_task = xx;
+			result = xx;
 		}
 
-		err = dispatch(&monitor, completed_task);
+		err = dispatch(&monitor, result.task_ck, result.task,
+		               result.err);
 		if (err != 0)
 			goto cancel_tasks;
 	}
@@ -439,17 +445,17 @@ cancel_tasks:
 	monitor_stop(&monitor);
 
 	for (;;) {
-		struct linted_async_task *completed_task;
+		struct linted_async_result result;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			if (LINTED_ERROR_AGAIN ==
 			    linted_async_pool_poll(pool, &xx))
 				break;
-			completed_task = xx;
+			result = xx;
 		}
 
-		linted_error dispatch_error =
-		    dispatch(&monitor, completed_task);
+		linted_error dispatch_error = dispatch(
+		    &monitor, result.task_ck, result.task, result.err);
 		if (0 == err)
 			err = dispatch_error;
 	}
@@ -663,20 +669,22 @@ static linted_error monitor_stop(struct monitor *monitor)
 }
 
 static linted_error dispatch(struct monitor *monitor,
-                             struct linted_async_task *task)
+                             union linted_async_ck task_ck,
+                             struct linted_async_task *task,
+                             linted_error err)
 {
-	switch (linted_async_task_ck(task).u64) {
+	switch (task_ck.u64) {
 	case SIGNAL_WAIT:
-		return monitor_on_signal(monitor, task);
+		return monitor_on_signal(monitor, task, err);
 
 	case ADMIN_IN_READ:
-		return monitor_on_admin_in_read(monitor, task);
+		return monitor_on_admin_in_read(monitor, task, err);
 
 	case ADMIN_OUT_WRITE:
-		return monitor_on_admin_out_write(monitor, task);
+		return monitor_on_admin_out_write(monitor, task, err);
 
 	case KILL_READ:
-		return monitor_on_kill_read(monitor, task);
+		return monitor_on_kill_read(monitor, task, err);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -684,13 +692,11 @@ static linted_error dispatch(struct monitor *monitor,
 }
 
 static linted_error monitor_on_signal(struct monitor *monitor,
-                                      struct linted_async_task *task)
+                                      struct linted_async_task *task,
+                                      linted_error err)
 {
 	struct linted_async_pool *pool = monitor->pool;
 
-	linted_error err = 0;
-
-	err = linted_async_task_err(task);
 	if (LINTED_ERROR_CANCELLED == err)
 		return 0;
 	if (err != 0)
@@ -725,17 +731,15 @@ static linted_error monitor_on_signal(struct monitor *monitor,
 
 static linted_error
 monitor_on_admin_in_read(struct monitor *monitor,
-                         struct linted_async_task *task)
+                         struct linted_async_task *task,
+                         linted_error err)
 {
-	linted_error err = 0;
 
 	struct linted_async_pool *pool = monitor->pool;
 	struct linted_admin_out_task_send *write_task =
 	    monitor->write_task;
 	linted_pid manager_pid = monitor->manager_pid;
 	linted_ko admin_out = monitor->admin_out;
-
-	err = linted_async_task_err(task);
 
 	/* Assume the other end did something bad and don't exit with
 	 * an error. */
@@ -817,14 +821,14 @@ monitor_on_admin_in_read(struct monitor *monitor,
 
 static linted_error
 monitor_on_admin_out_write(struct monitor *monitor,
-                           struct linted_async_task *task)
+                           struct linted_async_task *task,
+                           linted_error err)
 {
 	struct linted_async_pool *pool = monitor->pool;
 	struct linted_admin_in_task_recv *read_task =
 	    monitor->read_task;
 	linted_admin_in admin_in = monitor->admin_in;
 
-	linted_error err = linted_async_task_err(task);
 	if (err != 0)
 		return 0;
 
@@ -838,15 +842,13 @@ monitor_on_admin_out_write(struct monitor *monitor,
 }
 
 static linted_error monitor_on_kill_read(struct monitor *monitor,
-                                         struct linted_async_task *task)
+                                         struct linted_async_task *task,
+                                         linted_error err)
 {
-	linted_error err = 0;
-
 	struct linted_async_pool *pool = monitor->pool;
 	struct linted_unit_db *unit_db = monitor->unit_db;
 	linted_pid manager_pid = monitor->manager_pid;
 
-	err = linted_async_task_err(task);
 	if (LINTED_ERROR_CANCELLED == err)
 		return 0;
 	if (err != 0)

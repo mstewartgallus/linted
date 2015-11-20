@@ -111,15 +111,18 @@ static linted_error sim_init(struct sim *sim,
 static linted_error sim_stop(struct sim *sim);
 static linted_error sim_destroy(struct sim *sim);
 
-static linted_error dispatch(struct sim *sim,
-                             struct linted_async_task *task);
+static linted_error dispatch(struct sim *sim, union linted_async_ck ck,
+                             struct linted_async_task *task,
+                             linted_error err);
 static linted_error sim_on_tick(struct sim *sim,
-                                struct linted_async_task *task);
+                                struct linted_async_task *task,
+                                linted_error err);
 static linted_error
-sim_on_controller_event(struct sim *sim,
-                        struct linted_async_task *task);
+sim_on_controller_event(struct sim *sim, struct linted_async_task *task,
+                        linted_error err);
 static linted_error sim_on_update(struct sim *sim,
-                                  struct linted_async_task *task);
+                                  struct linted_async_task *task,
+                                  linted_error err);
 
 static void maybe_update(struct sim *sim, linted_updater updater,
                          struct state *state,
@@ -182,14 +185,15 @@ static unsigned char linted_start_main(char const *const process_name,
 		goto destroy_pool;
 
 	for (;;) {
-		struct linted_async_task *completed_task;
+		struct linted_async_result result;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			linted_async_pool_wait(pool, &xx);
-			completed_task = xx;
+			result = xx;
 		}
 
-		err = dispatch(&sim, completed_task);
+		err = dispatch(&sim, result.task_ck, result.task,
+		               result.err);
 		if (err != 0)
 			goto stop_simulator;
 	}
@@ -197,17 +201,17 @@ stop_simulator:
 	sim_stop(&sim);
 
 	for (;;) {
-		struct linted_async_task *task;
+		struct linted_async_result result;
 		linted_error poll_err;
 		{
-			struct linted_async_task *xx;
+			struct linted_async_result xx;
 			poll_err = linted_async_pool_poll(pool, &xx);
 			if (LINTED_ERROR_AGAIN == poll_err)
 				break;
-			task = xx;
+			result = xx;
 		}
 
-		linted_error dispatch_err = linted_async_task_err(task);
+		linted_error dispatch_err = result.err;
 		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
 			err = dispatch_err;
 	}
@@ -387,17 +391,19 @@ static linted_error sim_destroy(struct sim *sim)
 }
 
 static linted_error dispatch(struct sim *sim,
-                             struct linted_async_task *task)
+                             union linted_async_ck task_ck,
+                             struct linted_async_task *task,
+                             linted_error err)
 {
-	switch (linted_async_task_ck(task).u64) {
+	switch (task_ck.u64) {
 	case ON_READ_TIMER:
-		return sim_on_tick(sim, task);
+		return sim_on_tick(sim, task, err);
 
 	case ON_RECEIVE_CONTROLLER_EVENT:
-		return sim_on_controller_event(sim, task);
+		return sim_on_controller_event(sim, task, err);
 
 	case ON_SENT_UPDATER_EVENT:
-		return sim_on_update(sim, task);
+		return sim_on_update(sim, task, err);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
@@ -405,7 +411,8 @@ static linted_error dispatch(struct sim *sim,
 }
 
 static linted_error sim_on_tick(struct sim *sim,
-                                struct linted_async_task *task)
+                                struct linted_async_task *task,
+                                linted_error err)
 {
 	struct linted_async_pool *pool = sim->pool;
 	linted_ko updater = sim->updater;
@@ -414,9 +421,6 @@ static linted_error sim_on_tick(struct sim *sim,
 	struct intent const *intent = &sim->intent;
 	struct state *state = &sim->state;
 
-	linted_error err;
-
-	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 
@@ -463,16 +467,14 @@ static linted_error sim_on_tick(struct sim *sim,
 }
 
 static linted_error
-sim_on_controller_event(struct sim *sim, struct linted_async_task *task)
+sim_on_controller_event(struct sim *sim, struct linted_async_task *task,
+                        linted_error err)
 {
 	struct linted_async_pool *pool = sim->pool;
 	struct intent *intent = &sim->intent;
 	struct linted_controller_task_recv *controller_task =
 	    sim->controller_task;
 
-	linted_error err;
-
-	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 
@@ -503,7 +505,8 @@ sim_on_controller_event(struct sim *sim, struct linted_async_task *task)
 }
 
 static linted_error sim_on_update(struct sim *sim,
-                                  struct linted_async_task *task)
+                                  struct linted_async_task *task,
+                                  linted_error err)
 {
 	struct linted_async_pool *pool = sim->pool;
 	linted_ko updater = sim->updater;
@@ -511,9 +514,6 @@ static linted_error sim_on_update(struct sim *sim,
 	struct linted_updater_task_send *updater_task =
 	    sim->updater_task;
 
-	linted_error err;
-
-	err = linted_async_task_err(task);
 	if (err != 0)
 		return err;
 

@@ -56,6 +56,12 @@ union linted_async_ck {
 	unsigned long long u64;
 };
 
+struct linted_async_result {
+	union linted_async_ck task_ck;
+	struct linted_async_task *task;
+	linted_error err;
+};
+
 linted_error linted_async_pool_create(struct linted_async_pool **poolp,
                                       unsigned max_tasks);
 linted_error linted_async_pool_destroy(struct linted_async_pool *pool);
@@ -75,11 +81,11 @@ void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
 
 linted_error
 linted_async_pool_wait(struct linted_async_pool *pool,
-                       struct linted_async_task **completionp);
+                       struct linted_async_result *resultp);
 
 linted_error
 linted_async_pool_poll(struct linted_async_pool *pool,
-                       struct linted_async_task **completionp);
+                       struct linted_async_result *resultp);
 
 linted_error
 linted_async_waiter_create(struct linted_async_waiter **waiterp);
@@ -95,9 +101,6 @@ void linted_async_task_cancel(struct linted_async_task *task);
 struct linted_async_task *
 linted_async_task_prepare(struct linted_async_task *task,
                           union linted_async_ck task_ck);
-union linted_async_ck
-linted_async_task_ck(struct linted_async_task *task);
-linted_error linted_async_task_err(struct linted_async_task *task);
 
 void *linted_async_task_data(struct linted_async_task *task);
 
