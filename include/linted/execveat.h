@@ -37,6 +37,8 @@ static inline linted_error linted_execveat(linted_ko fd,
 #define __NR_execveat 358
 #elif defined __powerpc__
 #define __NR_execveat 362
+#elif defined __arm__
+#define __NR_execveat (__NR_SYSCALL_BASE + 387)
 #endif
 #endif
 

@@ -22,6 +22,7 @@
 #include "linted/ko-stack.h"
 #include "linted/mem.h"
 #include "linted/node.h"
+#include "linted/sched.h"
 #include "linted/util.h"
 
 #include <errno.h>
@@ -29,8 +30,6 @@
 #include <stdint.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
-
-#include <x86intrin.h>
 
 struct linted_ko_stack {
 	struct linted_node *inbox;
@@ -104,7 +103,7 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 		        __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
 			break;
 		}
-		_mm_pause();
+		linted_sched_light_yield();
 	}
 
 	for (;;) {

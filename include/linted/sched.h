@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Steven Stewart-Gallus
+ * Copyright 2014, 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,10 @@
 
 #include "linted/async.h"
 #include "linted/error.h"
+
+#if defined _i386__ || defined __amd64__
+#include <x86intrin.h>
+#endif
 
 /**
  * @file
@@ -74,4 +78,18 @@ void linted_sched_do_idle(struct linted_async_pool *pool,
                           struct linted_async_task *task);
 void linted_sched_do_sleep_until(struct linted_async_pool *pool,
                                  struct linted_async_task *task);
+
+static inline void linted_sched_light_yield(void);
+
+#if defined _i386__ || defined __amd64__
+static inline void linted_sched_light_yield(void)
+{
+	_mm_pause();
+}
+#elif defined __arm__
+static inline void linted_sched_light_yield(void)
+{
+}
+#endif
+
 #endif /* LINTED_SCHED_H */

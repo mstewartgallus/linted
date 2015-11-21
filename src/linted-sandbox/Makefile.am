@@ -16,9 +16,7 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-sandbox
 
-%C%_linted_sandbox_SOURCES=
-EXTRA_%C%_linted_sandbox_SOURCES=\
-  %D%/sandbox-i386.c %D%/sandbox-amd64.c
+%C%_linted_sandbox_SOURCES=%D%/sandbox.h
 %C%_linted_sandbox_LDADD=\
   src/async/libasync.la\
   src/dir/libdir.la\
@@ -34,8 +32,13 @@ EXTRA_%C%_linted_sandbox_SOURCES=\
   src/str/libstr.la
 
 if POSIX_API
-%C%_linted_sandbox_SOURCES+=%D%/sandbox-posix.c
+%C%_linted_sandbox_SOURCES+=%D%/sandbox-posix.c %D%/filter.c
 %C%_linted_sandbox_LDADD+=$(CAP_LIBS)
+
+%C%_linted_sandbox_EXTRA_SOURCES=\
+  %D%/sandbox-arm.c\
+  %D%/sandbox-i386.c\
+  %D%/sandbox-amd64.c
 endif
 
 if WINDOWS_API

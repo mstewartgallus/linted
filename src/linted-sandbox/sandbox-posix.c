@@ -17,6 +17,8 @@
 
 #include "config.h"
 
+#include "sandbox.h"
+
 #include "linted/dir.h"
 #include "linted/execveat.h"
 #include "linted/error.h"
@@ -54,8 +56,6 @@
 #include <syscall.h>
 #include <unistd.h>
 
-#include <linux/audit.h>
-#include <linux/filter.h>
 #include <linux/seccomp.h>
 
 /**
@@ -103,8 +103,6 @@ struct mount_args {
 	bool touch_flag : 1U;
 	bool nomount_flag : 1U;
 };
-
-static struct sock_fprog const default_filter;
 
 static char const *const argstrs[] = {
         /**/[STOP_OPTIONS] = "--",
@@ -1245,7 +1243,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	if (use_seccomp) {
 		if (-1 == prctl(PR_SET_SECCOMP,
 		                (unsigned long)SECCOMP_MODE_FILTER,
-		                &default_filter, 0UL, 0UL)) {
+		                linted_sandbox_filter, 0UL, 0UL)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);
 
@@ -1760,11 +1758,3 @@ static linted_error do_help(linted_ko ko, char const *process_name,
 
 	return 0;
 }
-
-#if defined __amd64__
-#include "sandbox-amd64.c"
-#elif defined __i386__
-#include "sandbox-i386.c"
-#else
-#error No default seccomp filter has been defined for this architecture
-#endif

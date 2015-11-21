@@ -19,14 +19,13 @@
 
 #include "linted/error.h"
 #include "linted/mem.h"
+#include "linted/sched.h"
 #include "linted/trigger.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#include <x86intrin.h>
 
 struct linted_channel {
 	void *value;
@@ -92,7 +91,7 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 			                           __ATOMIC_ACQ_REL);
 			if (node != 0)
 				goto exit_loop;
-			_mm_pause();
+			linted_sched_light_yield();
 		}
 
 		linted_trigger_wait(&channel->filled);

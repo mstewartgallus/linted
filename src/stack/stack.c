@@ -20,13 +20,12 @@
 #include "linted/error.h"
 #include "linted/mem.h"
 #include "linted/node.h"
+#include "linted/sched.h"
 #include "linted/trigger.h"
 
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#include <x86intrin.h>
 
 struct linted_stack {
 	struct linted_node *inbox;
@@ -86,7 +85,7 @@ void linted_stack_send(struct linted_stack *stack,
 			break;
 		}
 
-		_mm_pause();
+		linted_sched_light_yield();
 	}
 
 	linted_trigger_set(&stack->inbox_filled);
@@ -129,7 +128,7 @@ void linted_stack_recv(struct linted_stack *stack,
 				goto give_node;
 			}
 
-			_mm_pause();
+			linted_sched_light_yield();
 		}
 
 		linted_trigger_wait(&stack->inbox_filled);
