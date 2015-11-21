@@ -176,18 +176,11 @@ void linted_window_task_watch_destroy(
 struct linted_async_task *
 linted_window_task_watch_prepare(struct linted_window_task_watch *task,
                                  union linted_async_ck task_ck,
-                                 linted_ko notifier)
+                                 void *userstate, linted_ko notifier)
 {
-	return linted_io_task_read_prepare(task->parent, task_ck,
-	                                   notifier, task->dummy,
-	                                   sizeof task->dummy);
-}
-
-struct linted_window_task_watch *
-linted_window_task_watch_from_async(struct linted_async_task *task)
-{
-	return linted_io_task_read_data(
-	    linted_io_task_read_from_async(task));
+	return linted_io_task_read_prepare(
+	    task->parent, task_ck, userstate, notifier, task->dummy,
+	    sizeof task->dummy);
 }
 
 struct linted_async_task *
@@ -240,17 +233,11 @@ void linted_window_task_notify_destroy(
 
 struct linted_async_task *linted_window_task_notify_prepare(
     struct linted_window_task_notify *task,
-    union linted_async_ck task_ck, linted_ko notifier)
+    union linted_async_ck task_ck, void *userstate, linted_ko notifier)
 {
-	return linted_io_task_write_prepare(
-	    task->parent, task_ck, notifier, dummy, sizeof dummy);
-}
-
-struct linted_window_task_notify *
-linted_window_task_notify_from_async(struct linted_async_task *task)
-{
-	return linted_io_task_write_data(
-	    linted_io_task_write_from_async(task));
+	return linted_io_task_write_prepare(task->parent, task_ck,
+	                                    userstate, notifier, dummy,
+	                                    sizeof dummy);
 }
 
 struct linted_async_task *linted_window_task_notify_to_async(

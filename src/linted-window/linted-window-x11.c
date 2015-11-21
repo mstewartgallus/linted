@@ -56,14 +56,15 @@ static linted_error window_stop(struct window *window);
 
 static linted_error dispatch(struct window *window,
                              union linted_async_ck task_ck,
-                             struct linted_async_task *task,
-                             linted_error err);
-static linted_error window_on_conn_ready(struct window *window,
-                                         struct linted_async_task *task,
-                                         linted_error err);
+                             void *userstate, linted_error err);
+static linted_error
+window_on_conn_ready(struct window *window,
+                     struct linted_io_task_poll *poll_conn_task,
+                     linted_error err);
 static linted_error
 window_on_notice_sent(struct window *window,
-                      struct linted_async_task *task, linted_error err);
+                      struct linted_window_task_notify *notice_task,
+                      linted_error err);
 
 struct window {
 	xcb_connection_t *connection;
@@ -163,8 +164,8 @@ static unsigned char linted_start_main(char const *process_name,
 		}
 
 		window_obj.time_to_quit = false;
-		err = dispatch(&window_obj, result.task_ck, result.task,
-		               result.err);
+		err = dispatch(&window_obj, result.task_ck,
+		               result.userstate, result.err);
 		if (err != 0)
 			goto stop_pool;
 		if (window_obj.time_to_quit)
@@ -566,18 +567,19 @@ get_hostname_succeeded:
 	    pool, linted_window_task_notify_prepare(
 	              drawer_notice_task,
 	              (union linted_async_ck){.u64 = ON_SENT_NOTICE},
-	              drawer_notifier));
+	              drawer_notice_task, drawer_notifier));
 
 	linted_async_pool_submit(
 	    pool, linted_window_task_notify_prepare(
 	              gui_notice_task,
 	              (union linted_async_ck){.u64 = ON_SENT_NOTICE},
-	              gui_notifier));
+	              gui_notice_task, gui_notifier));
 
 	linted_async_pool_submit(
 	    pool, linted_io_task_poll_prepare(
 	              poll_conn_task,
 	              (union linted_async_ck){.u64 = ON_POLL_CONN},
+	              poll_conn_task,
 	              xcb_get_file_descriptor(connection), POLLIN));
 
 	window->time_to_quit = false;
@@ -708,30 +710,28 @@ static linted_error window_stop(struct window *window)
 
 static linted_error dispatch(struct window *window,
                              union linted_async_ck task_ck,
-                             struct linted_async_task *task,
-                             linted_error err)
+                             void *userstate, linted_error err)
 {
 	switch (task_ck.u64) {
 	case ON_POLL_CONN:
-		return window_on_conn_ready(window, task, err);
+		return window_on_conn_ready(window, userstate, err);
 
 	case ON_SENT_NOTICE:
-		return window_on_notice_sent(window, task, err);
+		return window_on_notice_sent(window, userstate, err);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error window_on_conn_ready(struct window *window,
-                                         struct linted_async_task *task,
-                                         linted_error err)
+static linted_error
+window_on_conn_ready(struct window *window,
+                     struct linted_io_task_poll *poll_conn_task,
+                     linted_error err)
 {
 
 	xcb_connection_t *connection = window->connection;
 	struct linted_async_pool *pool = window->pool;
-	struct linted_io_task_poll *poll_conn_task =
-	    window->poll_conn_task;
 
 	if (err != 0)
 		return err;
@@ -766,6 +766,7 @@ static linted_error window_on_conn_ready(struct window *window,
 	    pool, linted_io_task_poll_prepare(
 	              poll_conn_task,
 	              (union linted_async_ck){.u64 = ON_POLL_CONN},
+	              poll_conn_task,
 	              xcb_get_file_descriptor(connection), POLLIN));
 
 	return 0;
@@ -773,7 +774,8 @@ static linted_error window_on_conn_ready(struct window *window,
 
 static linted_error
 window_on_notice_sent(struct window *window,
-                      struct linted_async_task *task, linted_error err)
+                      struct linted_window_task_notify *notice_task,
+                      linted_error err)
 {
 
 	if (err != 0)

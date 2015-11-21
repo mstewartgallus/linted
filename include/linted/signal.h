@@ -42,15 +42,14 @@ void linted_signal_task_wait_destroy(
 
 struct linted_async_task *
 linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
-                                union linted_async_ck task_ck);
+                                union linted_async_ck task_ck,
+                                void *userstate);
 
 void *
 linted_signal_task_wait_data(struct linted_signal_task_wait *task);
 int linted_signal_task_wait_signo(struct linted_signal_task_wait *task);
 struct linted_async_task *
 linted_signal_task_wait_to_async(struct linted_signal_task_wait *task);
-struct linted_signal_task_wait *
-linted_signal_task_wait_from_async(struct linted_async_task *task);
 
 void linted_signal_do_wait(struct linted_async_pool *pool,
                            struct linted_async_task *task);

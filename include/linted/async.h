@@ -58,7 +58,7 @@ union linted_async_ck {
 
 struct linted_async_result {
 	union linted_async_ck task_ck;
-	struct linted_async_task *task;
+	void *userstate;
 	linted_error err;
 };
 
@@ -100,7 +100,8 @@ void linted_async_task_destroy(struct linted_async_task *task);
 void linted_async_task_cancel(struct linted_async_task *task);
 struct linted_async_task *
 linted_async_task_prepare(struct linted_async_task *task,
-                          union linted_async_ck task_ck);
+                          union linted_async_ck task_ck,
+                          void *userstate);
 
 void *linted_async_task_data(struct linted_async_task *task);
 

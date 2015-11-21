@@ -362,12 +362,6 @@ void linted_io_task_poll_prepare(struct linted_io_task_poll *task,
 	task->events = flags;
 }
 
-struct linted_io_task_poll *
-linted_io_task_poll_from_async(struct linted_async_task *task)
-{
-	return linted_async_task_data(task);
-}
-
 struct linted_async_task *
 linted_io_task_poll_to_async(struct linted_io_task_poll *task)
 {
@@ -438,12 +432,6 @@ void linted_io_task_read_prepare(struct linted_io_task_read *task,
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
-}
-
-struct linted_io_task_read *
-linted_io_task_read_from_async(struct linted_async_task *task)
-{
-	return linted_async_task_data(task);
 }
 
 struct linted_async_task *
@@ -528,12 +516,6 @@ void linted_io_task_write_prepare(struct linted_io_task_write *task,
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
-}
-
-struct linted_io_task_write *
-linted_io_task_write_from_async(struct linted_async_task *task)
-{
-	return linted_async_task_data(task);
 }
 
 struct linted_async_task *

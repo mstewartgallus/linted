@@ -110,14 +110,12 @@ linted_io_task_poll_create(struct linted_io_task_poll **taskp,
                            void *data);
 void linted_io_task_poll_destroy(struct linted_io_task_poll *task);
 
-struct linted_io_task_poll *
-linted_io_task_poll_from_async(struct linted_async_task *task);
 struct linted_async_task *
 linted_io_task_poll_to_async(struct linted_io_task_poll *);
 struct linted_async_task *
 linted_io_task_poll_prepare(struct linted_io_task_poll *task,
-                            union linted_async_ck task_ck, linted_ko ko,
-                            int flags);
+                            union linted_async_ck task_ck,
+                            void *userstate, linted_ko ko, int flags);
 void *linted_io_task_poll_data(struct linted_io_task_poll *task);
 
 linted_error
@@ -125,14 +123,11 @@ linted_io_task_read_create(struct linted_io_task_read **taskp,
                            void *data);
 void linted_io_task_read_destroy(struct linted_io_task_read *task);
 
-struct linted_io_task_read *
-linted_io_task_read_from_async(struct linted_async_task *task);
 struct linted_async_task *
 linted_io_task_read_to_async(struct linted_io_task_read *);
-struct linted_async_task *
-linted_io_task_read_prepare(struct linted_io_task_read *task,
-                            union linted_async_ck task_ck, linted_ko ko,
-                            char *buf, size_t size);
+struct linted_async_task *linted_io_task_read_prepare(
+    struct linted_io_task_read *task, union linted_async_ck task_ck,
+    void *userstate, linted_ko ko, char *buf, size_t size);
 void *linted_io_task_read_data(struct linted_io_task_read *task);
 linted_ko linted_io_task_read_ko(struct linted_io_task_read *task);
 size_t linted_io_task_read_bytes_read(struct linted_io_task_read *task);
@@ -142,13 +137,11 @@ linted_io_task_write_create(struct linted_io_task_write **taskp,
                             void *data);
 void linted_io_task_write_destroy(struct linted_io_task_write *task);
 
-struct linted_io_task_write *
-linted_io_task_write_from_async(struct linted_async_task *task);
 struct linted_async_task *
 linted_io_task_write_to_async(struct linted_io_task_write *);
 struct linted_async_task *linted_io_task_write_prepare(
     struct linted_io_task_write *task, union linted_async_ck task_ck,
-    linted_ko ko, char const *buf, size_t size);
+    void *userstate, linted_ko ko, char const *buf, size_t size);
 void *linted_io_task_write_data(struct linted_io_task_write *task);
 
 void linted_io_do_poll(struct linted_async_pool *pool,

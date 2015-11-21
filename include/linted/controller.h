@@ -52,13 +52,12 @@ void linted_controller_task_send_destroy(
 
 struct linted_async_task *linted_controller_task_send_to_async(
     struct linted_controller_task_send *task);
-struct linted_controller_task_send *
-linted_controller_task_send_from_async(struct linted_async_task *task);
 void *linted_controller_task_send_data(
     struct linted_controller_task_send *task);
 struct linted_async_task *linted_controller_task_send_prepare(
     struct linted_controller_task_send *task,
-    union linted_async_ck task_ck, linted_controller controller,
+    union linted_async_ck task_ck, void *userstate,
+    linted_controller controller,
     struct linted_controller_message const *message);
 
 linted_error linted_controller_task_recv_create(
@@ -68,13 +67,12 @@ void linted_controller_task_recv_destroy(
 
 struct linted_async_task *linted_controller_task_recv_to_async(
     struct linted_controller_task_recv *task);
-struct linted_controller_task_recv *
-linted_controller_task_recv_from_async(struct linted_async_task *task);
 void *linted_controller_task_recv_data(
     struct linted_controller_task_recv *task);
 struct linted_async_task *linted_controller_task_recv_prepare(
     struct linted_controller_task_recv *task,
-    union linted_async_ck task_ck, linted_controller controller);
+    union linted_async_ck task_ck, void *userstate,
+    linted_controller controller);
 
 linted_error
 linted_controller_decode(struct linted_controller_task_recv const *task,

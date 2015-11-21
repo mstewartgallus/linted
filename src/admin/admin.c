@@ -173,10 +173,10 @@ linted_admin_in_send(linted_admin_in admin,
 
 struct linted_async_task *linted_admin_in_task_recv_prepare(
     struct linted_admin_in_task_recv *task,
-    union linted_async_ck task_ck, linted_ko ko)
+    union linted_async_ck task_ck, void *userstate, linted_ko ko)
 {
-	return linted_io_task_read_prepare(task->parent, task_ck, ko,
-	                                   task->request,
+	return linted_io_task_read_prepare(task->parent, task_ck,
+	                                   userstate, ko, task->request,
 	                                   sizeof task->request);
 }
 
@@ -184,13 +184,6 @@ struct linted_async_task *linted_admin_in_task_recv_to_async(
     struct linted_admin_in_task_recv *task)
 {
 	return linted_io_task_read_to_async(task->parent);
-}
-
-struct linted_admin_in_task_recv *
-linted_admin_in_task_recv_from_async(struct linted_async_task *task)
-{
-	return linted_io_task_read_data(
-	    linted_io_task_read_from_async(task));
 }
 
 linted_error linted_admin_out_task_send_create(
@@ -240,7 +233,7 @@ linted_admin_out_task_send_data(struct linted_admin_out_task_send *task)
 
 struct linted_async_task *linted_admin_out_task_send_prepare(
     struct linted_admin_out_task_send *task,
-    union linted_async_ck task_ck, linted_ko ko,
+    union linted_async_ck task_ck, void *userstate, linted_ko ko,
     struct linted_admin_reply const *reply)
 {
 	char *tip = task->reply;
@@ -254,21 +247,15 @@ struct linted_async_task *linted_admin_out_task_send_prepare(
 
 	xdr_destroy(&xdr);
 
-	return linted_io_task_write_prepare(
-	    task->parent, task_ck, ko, task->reply, sizeof task->reply);
+	return linted_io_task_write_prepare(task->parent, task_ck,
+	                                    userstate, ko, task->reply,
+	                                    sizeof task->reply);
 }
 
 struct linted_async_task *linted_admin_out_task_send_to_async(
     struct linted_admin_out_task_send *task)
 {
 	return linted_io_task_write_to_async(task->parent);
-}
-
-struct linted_admin_out_task_send *
-linted_admin_out_task_send_from_async(struct linted_async_task *task)
-{
-	return linted_io_task_write_data(
-	    linted_io_task_write_from_async(task));
 }
 
 linted_error linted_admin_out_recv(linted_admin_out admin,

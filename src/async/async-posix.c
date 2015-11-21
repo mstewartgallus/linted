@@ -150,6 +150,7 @@ struct linted_async_task {
 	struct linted_node parent;
 	struct canceller canceller;
 	void *data;
+	void *userstate;
 	union linted_async_ck task_ck;
 	linted_error err;
 	linted_async_type type;
@@ -350,7 +351,7 @@ linted_error linted_async_pool_wait(struct linted_async_pool *pool,
 	if (0 == err) {
 		resultp->task_ck = task->task_ck;
 		resultp->err = task->err;
-		resultp->task = task;
+		resultp->userstate = task->userstate;
 	}
 	return err;
 }
@@ -365,7 +366,7 @@ linted_error linted_async_pool_poll(struct linted_async_pool *pool,
 	if (0 == err) {
 		resultp->task_ck = task->task_ck;
 		resultp->err = task->err;
-		resultp->task = task;
+		resultp->userstate = task->userstate;
 	}
 	return err;
 }
@@ -447,10 +448,12 @@ void linted_async_task_cancel(struct linted_async_task *task)
 
 struct linted_async_task *
 linted_async_task_prepare(struct linted_async_task *task,
-                          union linted_async_ck task_ck)
+                          union linted_async_ck task_ck,
+                          void *userstate)
 {
 	LINTED_ASSERT_NOT_NULL(task);
 	task->task_ck = task_ck;
+	task->userstate = userstate;
 	return task;
 }
 

@@ -85,13 +85,6 @@ struct linted_async_task *linted_controller_task_send_to_async(
 	return linted_io_task_write_to_async(task->parent);
 }
 
-struct linted_controller_task_send *
-linted_controller_task_send_from_async(struct linted_async_task *task)
-{
-	return linted_io_task_write_data(
-	    linted_io_task_write_from_async(task));
-}
-
 void *linted_controller_task_send_data(
     struct linted_controller_task_send *task)
 {
@@ -100,7 +93,8 @@ void *linted_controller_task_send_data(
 
 struct linted_async_task *linted_controller_task_send_prepare(
     struct linted_controller_task_send *task,
-    union linted_async_ck task_ck, linted_controller controller,
+    union linted_async_ck task_ck, void *userstate,
+    linted_controller controller,
     struct linted_controller_message const *message)
 {
 	{
@@ -125,9 +119,9 @@ struct linted_async_task *linted_controller_task_send_prepare(
 		xdr_destroy(&xdr);
 	}
 
-	return linted_io_task_write_prepare(task->parent, task_ck,
-	                                    controller, task->message,
-	                                    sizeof task->message);
+	return linted_io_task_write_prepare(
+	    task->parent, task_ck, userstate, controller, task->message,
+	    sizeof task->message);
 }
 
 linted_error linted_controller_task_recv_create(
@@ -172,13 +166,6 @@ struct linted_async_task *linted_controller_task_recv_to_async(
 	return linted_io_task_read_to_async(task->parent);
 }
 
-struct linted_controller_task_recv *
-linted_controller_task_recv_from_async(struct linted_async_task *task)
-{
-	return linted_io_task_read_data(
-	    linted_io_task_read_from_async(task));
-}
-
 void *linted_controller_task_recv_data(
     struct linted_controller_task_recv *task)
 {
@@ -187,11 +174,12 @@ void *linted_controller_task_recv_data(
 
 struct linted_async_task *linted_controller_task_recv_prepare(
     struct linted_controller_task_recv *task,
-    union linted_async_ck task_ck, linted_controller controller)
+    union linted_async_ck task_ck, void *userstate,
+    linted_controller controller)
 {
-	return linted_io_task_read_prepare(task->parent, task_ck,
-	                                   controller, task->message,
-	                                   sizeof task->message);
+	return linted_io_task_read_prepare(
+	    task->parent, task_ck, userstate, controller, task->message,
+	    sizeof task->message);
 }
 
 linted_error

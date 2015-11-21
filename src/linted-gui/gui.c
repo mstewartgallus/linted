@@ -91,16 +91,19 @@ static linted_error gui_destroy(struct gui *gui);
 
 static linted_error dispatch(struct gui *gui,
                              union linted_async_ck task_ck,
-                             struct linted_async_task *task,
-                             linted_error err);
-static linted_error gui_on_conn_ready(struct gui *gui,
-                                      struct linted_async_task *task,
-                                      linted_error err);
-static linted_error gui_on_window_change(struct gui *gui,
-                                         struct linted_async_task *task,
-                                         linted_error err);
+                             void *userstate, linted_error err);
+static linted_error
+gui_on_conn_ready(struct gui *gui,
+                  struct linted_io_task_poll *poll_conn_task,
+                  linted_error err);
+static linted_error
+gui_on_window_change(struct gui *gui,
+                     struct linted_window_task_watch *notice_task,
+                     linted_error err);
 static linted_error gui_on_sent_controller_state(
-    struct gui *gui, struct linted_async_task *task, linted_error err);
+    struct gui *gui,
+    struct linted_controller_task_send *controller_task,
+    linted_error err);
 
 static linted_error refresh_gui_window(struct gui *gui);
 static void maybe_update_controller(struct gui *gui);
@@ -168,7 +171,7 @@ static unsigned char linted_start_main(char const *process_name,
 			result = xx;
 		}
 
-		err = dispatch(&gui, result.task_ck, result.task,
+		err = dispatch(&gui, result.task_ck, result.userstate,
 		               result.err);
 		if (err != 0)
 			goto stop_pool;
@@ -368,12 +371,13 @@ static linted_error gui_init(struct gui *gui,
 	    pool, linted_window_task_watch_prepare(
 	              notice_task,
 	              (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
-	              notifier));
+	              notice_task, notifier));
 
 	linted_async_pool_submit(
 	    pool, linted_io_task_poll_prepare(
 	              poll_conn_task,
 	              (union linted_async_ck){.u64 = ON_POLL_CONN},
+	              poll_conn_task,
 	              xcb_get_file_descriptor(connection), POLLIN));
 
 	err = refresh_gui_window(gui);
@@ -475,27 +479,28 @@ static linted_error gui_destroy(struct gui *gui)
 
 static linted_error dispatch(struct gui *gui,
                              union linted_async_ck task_ck,
-                             struct linted_async_task *task,
-                             linted_error err)
+                             void *userstate, linted_error err)
 {
 	switch (task_ck.u64) {
 	case ON_POLL_CONN:
-		return gui_on_conn_ready(gui, task, err);
+		return gui_on_conn_ready(gui, userstate, err);
 
 	case ON_RECEIVE_NOTICE:
-		return gui_on_window_change(gui, task, err);
+		return gui_on_window_change(gui, userstate, err);
 
 	case ON_SENT_CONTROL:
-		return gui_on_sent_controller_state(gui, task, err);
+		return gui_on_sent_controller_state(gui, userstate,
+		                                    err);
 
 	default:
 		LINTED_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error gui_on_conn_ready(struct gui *gui,
-                                      struct linted_async_task *task,
-                                      linted_error err)
+static linted_error
+gui_on_conn_ready(struct gui *gui,
+                  struct linted_io_task_poll *poll_conn_task,
+                  linted_error err)
 {
 
 	if (err != 0)
@@ -674,7 +679,12 @@ static linted_error gui_on_conn_ready(struct gui *gui,
 	}
 
 	/* All X11 processing should be done by this point */
-	linted_async_pool_submit(pool, task);
+	linted_async_pool_submit(
+	    pool, linted_io_task_poll_prepare(
+	              poll_conn_task,
+	              (union linted_async_ck){.u64 = ON_POLL_CONN},
+	              poll_conn_task,
+	              xcb_get_file_descriptor(connection), POLLIN));
 
 clear:
 	if (clear_controls) {
@@ -696,15 +706,15 @@ clear:
 	return 0;
 }
 
-static linted_error gui_on_window_change(struct gui *gui,
-                                         struct linted_async_task *task,
-                                         linted_error err)
+static linted_error
+gui_on_window_change(struct gui *gui,
+                     struct linted_window_task_watch *notice_task,
+                     linted_error err)
 {
 
 	if (err != 0)
 		return err;
 
-	struct linted_window_task_watch *notice_task = gui->notice_task;
 	linted_ko notifier = gui->notifier;
 	struct linted_async_pool *pool = gui->pool;
 
@@ -712,13 +722,15 @@ static linted_error gui_on_window_change(struct gui *gui,
 	    pool, linted_window_task_watch_prepare(
 	              notice_task,
 	              (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
-	              notifier));
+	              notice_task, notifier));
 
 	return refresh_gui_window(gui);
 }
 
 static linted_error gui_on_sent_controller_state(
-    struct gui *gui, struct linted_async_task *task, linted_error err)
+    struct gui *gui,
+    struct linted_controller_task_send *controller_task,
+    linted_error err)
 {
 	if (err != 0)
 		return err;
@@ -747,7 +759,7 @@ static void maybe_update_controller(struct gui *gui)
 	    pool, linted_controller_task_send_prepare(
 	              controller_task,
 	              (union linted_async_ck){.u64 = ON_SENT_CONTROL},
-	              controller, &gui->update));
+	              controller_task, controller, &gui->update));
 
 	gui->update_pending = false;
 	gui->update_in_progress = true;
