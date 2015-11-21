@@ -41,6 +41,19 @@
 
 extern char **environ;
 
+enum { LINTED_SIGNAL_HUP,
+       LINTED_SIGNAL_CHLD,
+       LINTED_SIGNAL_INT,
+       LINTED_SIGNAL_TERM,
+       LINTED_SIGNAL_QUIT,
+       NUM_SIGS };
+
+static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
+                                      [LINTED_SIGNAL_CHLD] = SIGCHLD,
+                                      [LINTED_SIGNAL_INT] = SIGINT,
+                                      [LINTED_SIGNAL_QUIT] = SIGQUIT,
+                                      [LINTED_SIGNAL_TERM] = SIGTERM};
+
 struct linted_spawn_file_actions {
 	linted_ko new_stdin;
 	linted_ko new_stdout;
@@ -339,6 +352,18 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	err = pthread_sigmask(SIG_SETMASK, sigset, 0);
 	if (err != 0)
 		goto fail;
+	{
+		sigset_t set;
+		sigemptyset(&set);
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(signals);
+		     ++ii) {
+			sigaddset(&set, signals[ii]);
+		}
+
+		err = pthread_sigmask(SIG_UNBLOCK, &set, 0);
+		if (err != 0)
+			goto fail;
+	}
 
 	linted_ko new_stdin;
 	linted_ko new_stdout;

@@ -23,11 +23,13 @@
 #include "linted/error.h"
 #include "linted/fifo.h"
 #include "linted/ko.h"
+#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
 #include <errno.h>
 #include <poll.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -78,6 +80,8 @@ static void (*const sighandlers[NUM_SIGS])(
             [LINTED_SIGNAL_QUIT] = report_sigquit,
             [LINTED_SIGNAL_TERM] = report_sigterm};
 
+static void *signal_routine(void *arg);
+
 linted_error linted_signal_init(void)
 {
 	linted_error err = 0;
@@ -97,7 +101,31 @@ linted_error linted_signal_init(void)
 	sigpipe_reader = reader;
 	sigpipe_writer = writer;
 
+	{
+		sigset_t set;
+		sigemptyset(&set);
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(signals);
+		     ++ii) {
+			sigaddset(&set, signals[ii]);
+		}
+
+		err = pthread_sigmask(SIG_BLOCK, &set, 0);
+		if (err != 0)
+			goto close_fifos;
+	}
+
+	pthread_t xx;
+	err = pthread_create(&xx, 0, signal_routine, 0);
+	if (err != 0)
+		goto close_fifos;
+
 	return 0;
+
+close_fifos:
+	linted_ko_close(reader);
+	linted_ko_close(writer);
+
+	return err;
 }
 
 linted_error
@@ -300,6 +328,25 @@ void linted_signal_listen_to_sigterm(void)
 	listen_to_signal(LINTED_SIGNAL_TERM);
 }
 
+static void *signal_routine(void *arg)
+{
+	{
+		sigset_t set;
+		sigemptyset(&set);
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(signals);
+		     ++ii) {
+			sigaddset(&set, signals[ii]);
+		}
+
+		linted_error err =
+		    pthread_sigmask(SIG_UNBLOCK, &set, 0);
+		LINTED_ASSERT(0 == err);
+	}
+
+	for (;;)
+		pause();
+}
+
 static void listen_to_signal(size_t ii)
 {
 	linted_error err;
@@ -318,6 +365,10 @@ static void listen_to_signal(size_t ii)
 	sigemptyset(&action.sa_mask);
 	/* Block SIGPIPEs to get EPIPEs */
 	sigaddset(&action.sa_mask, SIGPIPE);
+	/* Block the other kill signals for less unpredictability */
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(signals); ++ii) {
+		sigaddset(&action.sa_mask, signals[ii]);
+	}
 
 	if (-1 == sigaction(signo, &action, 0)) {
 		err = errno;
