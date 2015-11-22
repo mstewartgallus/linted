@@ -1741,6 +1741,14 @@ spawn_service:
 	bool drop_caps = true;
 
 	char *limit_no_file_str = 0;
+	char *limit_msgqueue_str = 0;
+	char *limit_locks_str = 0;
+
+	char *timer_slack_str = 0;
+	char *prio_str = 0;
+	char *chrootdir = 0;
+	char *sandbox_base = 0;
+
 	if (has_limit_no_file) {
 		char *xx;
 		err = linted_str_format(&xx, "%" PRIiMAX,
@@ -1750,66 +1758,55 @@ spawn_service:
 		limit_no_file_str = xx;
 	}
 
-	char *limit_msgqueue_str = 0;
 	if (has_limit_msgqueue) {
 		char *xx;
 		err = linted_str_format(&xx, "%" PRIiMAX,
 		                        (intmax_t)limit_msgqueue);
 		if (err != 0)
-			goto free_no_file_str;
+			goto free_strs;
 		limit_msgqueue_str = xx;
 	}
 
-	char *limit_locks_str = 0;
 	if (has_limit_locks) {
 		char *xx;
 		err = linted_str_format(&xx, "%" PRIiMAX,
 		                        (intmax_t)limit_locks);
 		if (err != 0)
-			goto free_limit_msgqueue_str;
+			goto free_strs;
 		limit_locks_str = xx;
 	}
 
-	/* Favor other processes over this process hierarchy.  Only
-	 * superuser may lower priorities so this is not
-	 * stoppable. This also makes the process hierarchy nicer for
-	 * the OOM killer.
-	 */
-	char *timer_slack_str = 0;
 	if (has_timer_slack_nsec) {
 		char *xx;
 		err = linted_str_format(&xx, "%" PRIiMAX,
 		                        (intmax_t)timer_slack_nsec);
 		if (err != 0)
-			goto free_limit_locks_str;
+			goto free_strs;
 		timer_slack_str = xx;
 	}
 
-	char *prio_str = 0;
 	if (has_priority) {
 		char *xx;
 		err = linted_str_format(&xx, "%" PRIiMAX,
 		                        (intmax_t)priority);
 		if (err != 0)
-			goto free_timer_slack_str;
+			goto free_strs;
 		prio_str = xx;
 	}
 
-	char *chrootdir;
 	{
 		char *xx;
 		err = linted_str_format(&xx, "%s/chroot", unit_name);
 		if (err != 0)
-			goto free_prio_str;
+			goto free_strs;
 		chrootdir = xx;
 	}
 
-	char *sandbox_base;
 	{
 		char *xx;
 		err = linted_path_base(&xx, sandbox);
 		if (err != 0)
-			goto free_chrootdir;
+			goto free_strs;
 		sandbox_base = xx;
 	}
 
@@ -1865,7 +1862,7 @@ spawn_service:
 			err = linted_mem_alloc_array(
 			    &xx, args_size + 1U, sizeof command[0U]);
 			if (err != 0)
-				goto free_sandbox_dup;
+				goto free_strs;
 			args = xx;
 		}
 		args[0U] = sandbox_base;
@@ -1911,25 +1908,13 @@ spawn_service:
 free_args:
 	linted_mem_free(args);
 
-free_sandbox_dup:
+free_strs:
 	linted_mem_free(sandbox_base);
-
-free_chrootdir:
 	linted_mem_free(chrootdir);
-
-free_prio_str:
 	linted_mem_free(prio_str);
-
-free_timer_slack_str:
 	linted_mem_free(timer_slack_str);
-
-free_limit_locks_str:
 	linted_mem_free(limit_locks_str);
-
-free_limit_msgqueue_str:
 	linted_mem_free(limit_msgqueue_str);
-
-free_no_file_str:
 	linted_mem_free(limit_no_file_str);
 
 	return err;

@@ -780,6 +780,22 @@ service_create(struct system_conf const *system_conf,
 		chdir_path = xx;
 	}
 
+	int timer_slack_nsec;
+	bool have_timer_slack_nsec;
+	{
+		int xx = -1;
+		err = linted_conf_find_int(conf, "Service",
+		                           "TimerSlackNSec", &xx);
+		if (0 == err) {
+			have_timer_slack_nsec = true;
+		} else if (ENOENT == err) {
+			have_timer_slack_nsec = false;
+		} else {
+			return err;
+		}
+		timer_slack_nsec = xx;
+	}
+
 	int priority;
 	bool have_priority;
 	{
@@ -899,6 +915,9 @@ envvar_allocate_succeeded:
 
 	service->priority = priority;
 	service->has_priority = have_priority;
+
+	service->timer_slack_nsec = timer_slack_nsec;
+	service->has_timer_slack_nsec = have_timer_slack_nsec;
 
 	service->clone_newuser = clone_newuser;
 	service->clone_newpid = clone_newpid;

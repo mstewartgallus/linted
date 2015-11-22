@@ -30,6 +30,7 @@
 #include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/path.h"
+#include "linted/prctl.h"
 #include "linted/start.h"
 #include "linted/str.h"
 #include "linted/util.h"
@@ -81,6 +82,7 @@ enum { STOP_OPTIONS,
        LIMIT_MSGQUEUE,
        CHDIR,
        PRIORITY,
+       TIMER_SLACK,
        CHROOTDIR,
        FSTAB,
        WAITER,
@@ -118,6 +120,7 @@ static char const *const argstrs[] = {
         /**/ [LIMIT_MSGQUEUE] = "--limit-msgqueue",
         /**/ [CHDIR] = "--chdir",
         /**/ [PRIORITY] = "--priority",
+        /**/ [TIMER_SLACK] = "--timer-slack",
         /**/ [CHROOTDIR] = "--chrootdir",
         /**/ [FSTAB] = "--fstab",
         /**/ [WAITER] = "--waiter",
@@ -211,6 +214,7 @@ static unsigned char linted_start_main(char const *const process_name,
 	bool clone_newuts = false;
 
 	char const *chdir_path = 0;
+	char const *timer_slack = 0;
 	char const *priority = 0;
 	char const *limit_no_file = 0;
 	char const *limit_locks = 0;
@@ -300,6 +304,13 @@ static unsigned char linted_start_main(char const *const process_name,
 			if (ii >= arguments_length)
 				goto exit_loop;
 			priority = argv[ii];
+			break;
+
+		case TIMER_SLACK:
+			++ii;
+			if (ii >= arguments_length)
+				goto exit_loop;
+			timer_slack = argv[ii];
 			break;
 
 		case CHROOTDIR:
@@ -460,6 +471,18 @@ exit_loop:
 			return EXIT_FAILURE;
 		}
 		prio_val = xx;
+	}
+
+	int timer_slack_val;
+	if (timer_slack != 0) {
+		int xx;
+		err = parse_int(timer_slack, &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		timer_slack_val = xx;
 	}
 
 	int limit_no_file_val = -1;
@@ -818,6 +841,14 @@ exit_loop:
 	}
 
 	/* Only start actually dropping privileges now */
+	if (timer_slack != 0) {
+		err = linted_prctl_set_timerslack(timer_slack_val);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "prctl: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+	}
 
 	if (priority != 0) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, prio_val)) {
