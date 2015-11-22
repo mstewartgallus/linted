@@ -313,9 +313,8 @@ void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
 	waiter_submit(pool->waiter_queue, waiter);
 }
 
-linted_error
-linted_async_pool_wait(struct linted_async_pool *pool,
-                       struct linted_async_result *resultp)
+linted_error linted_async_pool_wait(struct linted_async_pool *pool,
+                                    struct linted_async_result *resultp)
 {
 	LINTED_ASSERT_NOT_NULL(pool);
 	struct linted_async_task *task;
@@ -329,9 +328,8 @@ linted_async_pool_wait(struct linted_async_pool *pool,
 	return err;
 }
 
-linted_error
-linted_async_pool_poll(struct linted_async_pool *pool,
-                       struct linted_async_result *resultp)
+linted_error linted_async_pool_poll(struct linted_async_pool *pool,
+                                    struct linted_async_result *resultp)
 {
 	LINTED_ASSERT_NOT_NULL(pool);
 	struct linted_async_task *task;
@@ -413,8 +411,10 @@ void linted_async_task_cancel(struct linted_async_task *task)
 	canceller_cancel(&task->canceller);
 }
 
-struct linted_async_task *linted_async_task_prepare(struct linted_async_task *task,
-                               union linted_async_ck task_ck, void *userstate)
+struct linted_async_task *
+linted_async_task_prepare(struct linted_async_task *task,
+                          union linted_async_ck task_ck,
+                          void *userstate)
 {
 	task->task_ck = task_ck;
 	task->userstate = userstate;

@@ -72,13 +72,13 @@ static char const *const default_envvars[] = {
     "XDG_SEAT", "TERM", "LD_WARN", "LD_VERBOSE", "LD_DEBUG",
     "LD_DEBUG_OUTPUT", 0};
 
-static linted_error conf_db_from_path(struct linted_conf_db **dbp,
-                                      linted_ko cwd,
-                                      char const *system_conf_path,
-                                      char const *path);
-static linted_error read_system_conf(struct linted_conf_db *db,
+static linted_error populate_conf_db(struct linted_conf_db *conf_db,
                                      linted_ko cwd,
-                                     char const *dir_name);
+                                     char const *system_conf_path,
+                                     char const *unit_path);
+static linted_error populate_system_conf(struct linted_conf_db *db,
+                                         linted_ko cwd,
+                                         char const *file_name);
 static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
                                        linted_ko cwd,
                                        char const *dir_name);
@@ -253,12 +253,16 @@ static linted_error startup_start(struct startup *startup)
 	struct linted_conf_db *conf_db;
 	{
 		struct linted_conf_db *xx;
-		err = conf_db_from_path(&xx, LINTED_KO_CWD,
-		                        system_conf_path, unit_path);
+		err = linted_conf_db_create(&xx);
 		if (err != 0)
 			return err;
 		conf_db = xx;
 	}
+
+	err = populate_conf_db(conf_db, LINTED_KO_CWD, system_conf_path,
+	                       unit_path);
+	if (err != 0)
+		goto destroy_conf_db;
 
 	size_t size = linted_conf_db_size(conf_db);
 	struct linted_conf *system_conf = 0;
@@ -283,7 +287,7 @@ static linted_error startup_start(struct startup *startup)
 		                     "DefaultLimitLOCKS"),
 		    &xx);
 		if (err != 0)
-			return err;
+			goto destroy_conf_db;
 		limit_locks = xx;
 	}
 
@@ -295,7 +299,7 @@ static linted_error startup_start(struct startup *startup)
 		struct linted_unit_db *xx;
 		err = linted_unit_db_create(&xx);
 		if (err != 0)
-			return err;
+			goto destroy_conf_db;
 		unit_db = xx;
 	}
 
@@ -390,6 +394,10 @@ static linted_error startup_start(struct startup *startup)
 
 destroy_unit_db:
 	linted_unit_db_destroy(unit_db);
+
+destroy_conf_db:
+	linted_conf_db_destroy(conf_db);
+
 	return err;
 }
 
@@ -398,52 +406,43 @@ static linted_error startup_stop(struct startup *startup)
 	return 0;
 }
 
-static linted_error conf_db_from_path(struct linted_conf_db **dbp,
-                                      linted_ko cwd,
-                                      char const *system_conf_path,
-                                      char const *unit_path)
+static linted_error populate_conf_db(struct linted_conf_db *db,
+                                     linted_ko cwd,
+                                     char const *system_conf_path,
+                                     char const *unit_path)
 {
 	linted_error err = 0;
 
-	struct linted_conf_db *db;
-	{
-		struct linted_conf_db *xx;
-		err = linted_conf_db_create(&xx);
-		if (err != 0)
-			return err;
-		db = xx;
-	}
-
-	for (char const *dirstart = system_conf_path;;) {
-		char const *dirend = strchr(dirstart, ':');
+	for (char const *start = system_conf_path;;) {
+		char const *end = strchr(start, ':');
 
 		size_t len;
-		if (0 == dirend) {
-			len = strlen(dirstart);
+		if (0 == end) {
+			len = strlen(start);
 		} else {
-			len = dirend - dirstart;
+			len = end - start;
 		}
 
-		char *dir_name;
+		char *file_name;
 		{
 			char *xx;
-			err = linted_str_dup_len(&xx, dirstart, len);
+			err = linted_str_dup_len(&xx, file_name, len);
 			if (err != 0)
-				goto free_units;
-			dir_name = xx;
+				return err;
+			file_name = xx;
 		}
 
-		err = read_system_conf(db, cwd, dir_name);
+		err = populate_system_conf(db, cwd, file_name);
 
-		linted_mem_free(dir_name);
+		linted_mem_free(file_name);
 
 		if (err != 0)
-			goto free_units;
+			return err;
 
-		if (0 == dirend)
+		if (0 == end)
 			break;
 
-		dirstart = dirend + 1U;
+		start = end + 1U;
 	}
 
 	for (char const *dirstart = unit_path;;) {
@@ -461,7 +460,7 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 			char *xx;
 			err = linted_str_dup_len(&xx, dirstart, len);
 			if (err != 0)
-				goto free_units;
+				return err;
 			dir_name = xx;
 		}
 
@@ -470,7 +469,7 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 		linted_mem_free(dir_name);
 
 		if (err != 0)
-			goto free_units;
+			return err;
 
 		if (0 == dirend)
 			break;
@@ -478,21 +477,12 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 		dirstart = dirend + 1U;
 	}
 
-free_units:
-	if (err != 0) {
-		linted_conf_db_destroy(db);
-
-		return err;
-	}
-
-	*dbp = db;
-
 	return 0;
 }
 
-static linted_error read_system_conf(struct linted_conf_db *db,
-                                     linted_ko cwd,
-                                     char const *filename)
+static linted_error populate_system_conf(struct linted_conf_db *db,
+                                         linted_ko cwd,
+                                         char const *filename)
 {
 	linted_error err;
 

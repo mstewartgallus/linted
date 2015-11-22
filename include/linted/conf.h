@@ -48,26 +48,26 @@ size_t linted_conf_db_size(struct linted_conf_db *db);
 struct linted_conf *linted_conf_db_get_conf(struct linted_conf_db *db,
                                             size_t ii);
 
-linted_error linted_conf_create(struct linted_conf **unitp,
+linted_error linted_conf_create(struct linted_conf **confp,
                                 char *file_name);
 
 linted_error linted_conf_parse_file(struct linted_conf *conf,
                                     linted_ko dir_ko,
                                     char const *file_name);
 
-void linted_conf_put(struct linted_conf *unit);
+void linted_conf_put(struct linted_conf *conf);
 
-char const *linted_conf_peek_name(struct linted_conf *unit);
+char const *linted_conf_peek_name(struct linted_conf *conf);
 
-char const *const *linted_conf_find(struct linted_conf *unit,
+char const *const *linted_conf_find(struct linted_conf *conf,
                                     char const *section,
                                     char const *field);
 
-linted_error linted_conf_add_section(struct linted_conf *unit,
+linted_error linted_conf_add_section(struct linted_conf *conf,
                                      linted_conf_section *sectionp,
                                      char *section_name);
 
-linted_error linted_conf_add_setting(struct linted_conf *unit,
+linted_error linted_conf_add_setting(struct linted_conf *conf,
                                      linted_conf_section section,
                                      char *field,
                                      char const *const *value);

@@ -47,22 +47,22 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 	linted_conf_section current_section;
 	bool has_current_section = false;
 
-	linted_ko unit_fd;
+	linted_ko conf_fd;
 	{
 		linted_ko xx;
 		err = linted_ko_open(&xx, dir_ko, file_name,
 		                     LINTED_KO_RDONLY);
 		if (err != 0)
 			return err;
-		unit_fd = xx;
+		conf_fd = xx;
 	}
 
-	FILE *conf_file = fdopen(unit_fd, "r");
+	FILE *conf_file = fdopen(conf_fd, "r");
 	if (0 == conf_file) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
 
-		linted_ko_close(unit_fd);
+		linted_ko_close(conf_fd);
 
 		return err;
 	}
@@ -289,33 +289,6 @@ struct linted_conf_db {
 
 static size_t string_hash(char const *str);
 
-linted_error linted_conf_db_add_conf(struct linted_conf_db *db,
-                                     struct linted_conf *conf)
-{
-	struct linted_conf **units = db->confs;
-	size_t units_size = db->size;
-
-	size_t new_units_size = units_size + 1U;
-	struct linted_conf **new_units;
-	{
-		void *xx;
-		linted_error err = linted_mem_realloc_array(
-		    &xx, units, new_units_size, sizeof units[0U]);
-		if (err != 0)
-			return err;
-		new_units = xx;
-	}
-	new_units[units_size] = conf;
-
-	units = new_units;
-	units_size = new_units_size;
-
-	db->confs = units;
-	db->size = units_size;
-
-	return 0;
-}
-
 linted_error linted_conf_db_create(struct linted_conf_db **dbp)
 {
 	struct linted_conf_db *db;
@@ -345,6 +318,33 @@ void linted_conf_db_destroy(struct linted_conf_db *db)
 	linted_mem_free(confs);
 
 	linted_mem_free(db);
+}
+
+linted_error linted_conf_db_add_conf(struct linted_conf_db *db,
+                                     struct linted_conf *conf)
+{
+	struct linted_conf **confs = db->confs;
+	size_t confs_size = db->size;
+
+	size_t new_confs_size = confs_size + 1U;
+	struct linted_conf **new_confs;
+	{
+		void *xx;
+		linted_error err = linted_mem_realloc_array(
+		    &xx, confs, new_confs_size, sizeof confs[0U]);
+		if (err != 0)
+			return err;
+		new_confs = xx;
+	}
+	new_confs[confs_size] = conf;
+
+	confs = new_confs;
+	confs_size = new_confs_size;
+
+	db->confs = confs;
+	db->size = confs_size;
+
+	return 0;
 }
 
 size_t linted_conf_db_size(struct linted_conf_db *db)
