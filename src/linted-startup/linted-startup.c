@@ -51,7 +51,7 @@ struct startup {
 };
 
 struct system_conf {
-	int limit_locks;
+	int_least64_t limit_locks;
 };
 
 static linted_error startup_init(struct startup *startup,
@@ -83,19 +83,14 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
                                        linted_ko cwd,
                                        char const *dir_name);
 
-static linted_error
-service_create(struct system_conf const *system_conf,
-               struct linted_unit *unit, struct linted_conf *conf);
-static linted_error socket_create(struct linted_unit *unit,
-                                  struct linted_conf *conf);
-
-static linted_error socket_activate(struct linted_unit *unit,
+static linted_error socket_activate(struct linted_conf *conf,
                                     linted_ko admin_in,
                                     linted_ko admin_out);
 
-static linted_error service_activate(struct linted_unit *unit,
-                                     linted_ko admin_in,
-                                     linted_ko admin_out);
+static linted_error
+service_activate(struct system_conf const *system_conf,
+                 struct linted_conf *conf, linted_ko admin_in,
+                 linted_ko admin_out);
 
 static size_t null_list_size(char const *const *list);
 
@@ -288,17 +283,7 @@ static linted_error startup_start(struct startup *startup)
 	struct system_conf system_conf_struct = {.limit_locks =
 	                                             limit_locks};
 
-	struct linted_unit_db *unit_db;
-	{
-		struct linted_unit_db *xx;
-		err = linted_unit_db_create(&xx);
-		if (err != 0)
-			goto destroy_conf_db;
-		unit_db = xx;
-	}
-
 	for (size_t ii = 0U; ii < size; ++ii) {
-
 		struct linted_conf *conf =
 		    linted_conf_db_get_conf(conf_db, ii);
 
@@ -308,87 +293,33 @@ static linted_error startup_start(struct startup *startup)
 
 		char const *suffix = dot + 1U;
 
-		linted_unit_type unit_type;
-		if (0 == strcmp(suffix, "socket")) {
-			unit_type = LINTED_UNIT_TYPE_SOCKET;
-		} else if (0 == strcmp(suffix, "service")) {
-			unit_type = LINTED_UNIT_TYPE_SERVICE;
-		} else if (0 == strcmp(suffix, "conf")) {
+		if (strcmp(suffix, "socket") != 0)
 			continue;
-		} else {
-			err = LINTED_ERROR_INVALID_PARAMETER;
-			goto destroy_unit_db;
-		}
 
-		char *unit_name;
-		{
-			char *xx;
-			err = linted_str_dup_len(&xx, file_name,
-			                         dot - file_name);
-			if (err != 0)
-				goto destroy_unit_db;
-			unit_name = xx;
-		}
-
-		struct linted_unit *unit;
-		{
-			struct linted_unit *xx;
-			err = linted_unit_db_add_unit(unit_db, &xx);
-			if (err != 0)
-				goto destroy_unit_db;
-			unit = xx;
-		}
-
-		unit->type = unit_type;
-		unit->name = unit_name;
-
-		switch (unit_type) {
-		case LINTED_UNIT_TYPE_SERVICE:
-			err = service_create(&system_conf_struct, unit,
-			                     conf);
-			break;
-
-		case LINTED_UNIT_TYPE_SOCKET:
-			err = socket_create(unit, conf);
-			break;
-
-		default:
-			LINTED_ASSUME_UNREACHABLE();
-		}
+		err = socket_activate(conf, admin_in, admin_out);
 		if (err != 0)
-			goto destroy_unit_db;
+			goto destroy_conf_db;
 	}
+	for (size_t ii = 0U; ii < size; ++ii) {
+		struct linted_conf *conf =
+		    linted_conf_db_get_conf(conf_db, ii);
 
-	size_t db_size = linted_unit_db_size(unit_db);
+		char const *file_name = linted_conf_peek_name(conf);
 
-	for (size_t ii = 0U; ii < db_size; ++ii) {
-		struct linted_unit *unit =
-		    linted_unit_db_get_unit(unit_db, ii);
+		char const *dot = strchr(file_name, '.');
 
-		if (unit->type != LINTED_UNIT_TYPE_SOCKET)
+		char const *suffix = dot + 1U;
+
+		if (strcmp(suffix, "service") != 0)
 			continue;
 
-		err = socket_activate(unit, admin_in, admin_out);
+		err = service_activate(&system_conf_struct, conf,
+		                       admin_in, admin_out);
 		if (err != 0)
-			goto destroy_unit_db;
-	}
-
-	for (size_t ii = 0U; ii < db_size; ++ii) {
-		struct linted_unit *unit =
-		    linted_unit_db_get_unit(unit_db, ii);
-
-		if (unit->type != LINTED_UNIT_TYPE_SERVICE)
-			continue;
-
-		err = service_activate(unit, admin_in, admin_out);
-		if (err != 0)
-			goto destroy_unit_db;
+			goto destroy_conf_db;
 	}
 
 	return 0;
-
-destroy_unit_db:
-	linted_unit_db_destroy(unit_db);
 
 destroy_conf_db:
 	linted_conf_db_destroy(conf_db);
@@ -723,15 +654,153 @@ free_file_names:
 	return err;
 }
 
-static linted_error
-service_create(struct system_conf const *system_conf,
-               struct linted_unit *unit, struct linted_conf *conf)
+static linted_error socket_activate(struct linted_conf *conf,
+                                    linted_ko admin_in,
+                                    linted_ko admin_out)
 {
-	linted_error err;
+	linted_error err = 0;
 
-	char const *unit_name = unit->name;
-	struct linted_unit_service *service =
-	    &unit->linted_unit_u.service;
+	char const *file_name = linted_conf_peek_name(conf);
+
+	char const *dot = strchr(file_name, '.');
+
+	char *unit_name;
+	{
+		char *xx;
+		err =
+		    linted_str_dup_len(&xx, file_name, dot - file_name);
+		if (err != 0)
+			return err;
+		unit_name = xx;
+	}
+
+	char const *listen_dir;
+	{
+		char const *xx = 0;
+		err = linted_conf_find_str(conf, "Socket",
+		                           "ListenDirectory", &xx);
+		if (err != 0 && err != ENOENT)
+			goto free_unit_name;
+		listen_dir = xx;
+	}
+
+	char const *listen_file;
+	{
+		char const *xx = 0;
+		err = linted_conf_find_str(conf, "Socket", "ListenFile",
+		                           &xx);
+		if (err != 0 && err != ENOENT)
+			goto free_unit_name;
+		listen_file = xx;
+	}
+
+	char const *listen_fifo;
+	{
+		char const *xx = 0;
+		err = linted_conf_find_str(conf, "Socket", "ListenFIFO",
+		                           &xx);
+		if (err != 0 && err != ENOENT)
+			goto free_unit_name;
+		listen_fifo = xx;
+	}
+
+	int fifo_size;
+	bool have_fifo_size;
+	{
+		int xx = -1;
+		err = linted_conf_find_int(conf, "Socket", "PipeSize",
+		                           &xx);
+		if (0 == err) {
+			have_fifo_size = true;
+		} else if (ENOENT == err) {
+			have_fifo_size = false;
+		} else {
+			goto free_unit_name;
+		}
+		fifo_size = xx;
+	}
+
+	linted_unit_socket_type socket_type;
+	char const *path = 0;
+
+	if (listen_dir != 0) {
+		socket_type = LINTED_UNIT_SOCKET_TYPE_DIR;
+		path = listen_dir;
+	}
+
+	if (listen_file != 0) {
+		if (path != 0)
+			return LINTED_ERROR_INVALID_PARAMETER;
+		socket_type = LINTED_UNIT_SOCKET_TYPE_FILE;
+		path = listen_file;
+	}
+
+	if (listen_fifo != 0) {
+		if (path != 0)
+			return LINTED_ERROR_INVALID_PARAMETER;
+		socket_type = LINTED_UNIT_SOCKET_TYPE_FIFO;
+		path = listen_fifo;
+	}
+
+	if (0 == path)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	if (have_fifo_size) {
+		if (0 == listen_fifo)
+			return LINTED_ERROR_INVALID_PARAMETER;
+	}
+
+	{
+		struct linted_admin_request request = {0};
+
+		request.type = LINTED_ADMIN_ADD_SOCKET;
+
+		struct linted_admin_request_add_socket *xx =
+		    &request.linted_admin_request_u.add_socket;
+
+		xx->name = (char *)unit_name;
+		xx->path = (char *)path;
+		xx->fifo_size = fifo_size;
+		xx->sock_type = socket_type;
+
+		err = linted_admin_in_send(admin_in, &request);
+	}
+	if (err != 0)
+		goto free_unit_name;
+
+	{
+		struct linted_admin_reply xx;
+		err = linted_admin_out_recv(admin_out, &xx);
+		if (err != 0)
+			goto free_unit_name;
+	}
+
+free_unit_name:
+	linted_mem_free(unit_name);
+
+	return err;
+}
+
+static linted_error
+service_activate(struct system_conf const *system_conf,
+                 struct linted_conf *conf, linted_ko admin_in,
+                 linted_ko admin_out)
+{
+	linted_error err = 0;
+
+	char const *file_name = linted_conf_peek_name(conf);
+
+	char const *dot = strchr(file_name, '.');
+
+	char *unit_name;
+	{
+		char *xx;
+		err =
+		    linted_str_dup_len(&xx, file_name, dot - file_name);
+		if (err != 0)
+			return err;
+		unit_name = xx;
+	}
 
 	char const *const *command =
 	    linted_conf_find(conf, "Service", "ExecStart");
@@ -746,7 +815,7 @@ service_create(struct system_conf const *system_conf,
 		err =
 		    linted_conf_find_str(conf, "Service", "Type", &xx);
 		if (err != 0 && err != ENOENT)
-			return err;
+			goto free_unit_name;
 		type = xx;
 	}
 
@@ -756,7 +825,7 @@ service_create(struct system_conf const *system_conf,
 		err = linted_conf_find_bool(conf, "Service",
 		                            "NoNewPrivileges", &xx);
 		if (err != 0 && err != ENOENT)
-			return err;
+			goto free_unit_name;
 		no_new_privs = xx;
 	}
 
@@ -766,7 +835,7 @@ service_create(struct system_conf const *system_conf,
 		err = linted_conf_find_str(conf, "Service",
 		                           "X-LintedFstab", &xx);
 		if (err != 0 && err != ENOENT)
-			return err;
+			goto free_unit_name;
 		fstab = xx;
 	}
 
@@ -776,38 +845,38 @@ service_create(struct system_conf const *system_conf,
 		err = linted_conf_find_str(conf, "Service",
 		                           "WorkingDirectory", &xx);
 		if (err != 0 && err != ENOENT)
-			return err;
+			goto free_unit_name;
 		chdir_path = xx;
 	}
 
-	int timer_slack_nsec;
-	bool have_timer_slack_nsec;
+	int_least64_t timer_slack_nsec;
+	bool has_timer_slack_nsec;
 	{
 		int xx = -1;
 		err = linted_conf_find_int(conf, "Service",
 		                           "TimerSlackNSec", &xx);
 		if (0 == err) {
-			have_timer_slack_nsec = true;
+			has_timer_slack_nsec = true;
 		} else if (ENOENT == err) {
-			have_timer_slack_nsec = false;
+			has_timer_slack_nsec = false;
 		} else {
-			return err;
+			goto free_unit_name;
 		}
 		timer_slack_nsec = xx;
 	}
 
-	int priority;
-	bool have_priority;
+	int_least64_t priority;
+	bool has_priority;
 	{
 		int xx = -1;
 		err = linted_conf_find_int(conf, "Service", "Priority",
 		                           &xx);
 		if (0 == err) {
-			have_priority = true;
+			has_priority = true;
 		} else if (ENOENT == err) {
-			have_priority = false;
+			has_priority = false;
 		} else {
-			return err;
+			goto free_unit_name;
 		}
 		priority = xx;
 	}
@@ -815,11 +884,14 @@ service_create(struct system_conf const *system_conf,
 	if (0 == type || 0 == strcmp("simple", type)) {
 		/* simple type of service */
 	} else {
-		return LINTED_ERROR_INVALID_PARAMETER;
+		err = LINTED_ERROR_INVALID_PARAMETER;
+		goto free_unit_name;
 	}
 
-	if (0 == command)
-		return LINTED_ERROR_INVALID_PARAMETER;
+	if (0 == command) {
+		err = LINTED_ERROR_INVALID_PARAMETER;
+		goto free_unit_name;
+	}
 
 	bool clone_newuser = false;
 	bool clone_newpid = false;
@@ -861,7 +933,7 @@ service_create(struct system_conf const *system_conf,
 		char **xx;
 		err = filter_envvars(&xx, env_whitelist);
 		if (err != 0)
-			return err;
+			goto free_unit_name;
 		envvars = xx;
 	}
 
@@ -897,221 +969,16 @@ envvar_allocate_succeeded:
 	envvars[envvars_size] = service_name_setting;
 	envvars[envvars_size + 1U] = 0;
 
-	service->command = command;
-	service->no_new_privs = no_new_privs;
+	int_least64_t limit_no_file = 15;
+	bool has_limit_no_file = no_new_privs;
 
-	service->limit_no_file = system_conf->limit_locks;
-	service->has_limit_no_file = no_new_privs;
+	int_least64_t limit_msgqueue = 0;
+	bool has_limit_msgqueue = no_new_privs;
 
-	service->limit_msgqueue = 0;
-	service->has_limit_msgqueue = no_new_privs;
+	int_least64_t limit_locks = system_conf->limit_locks;
+	bool has_limit_locks = no_new_privs;
 
-	service->limit_locks = 0;
-	service->has_limit_locks = no_new_privs;
-
-	service->fstab = fstab;
-	service->chdir_path = chdir_path;
-	service->environment = (char const *const *)envvars;
-
-	service->priority = priority;
-	service->has_priority = have_priority;
-
-	service->timer_slack_nsec = timer_slack_nsec;
-	service->has_timer_slack_nsec = have_timer_slack_nsec;
-
-	service->clone_newuser = clone_newuser;
-	service->clone_newpid = clone_newpid;
-	service->clone_newipc = clone_newipc;
-	service->clone_newnet = clone_newnet;
-	service->clone_newns = clone_newns;
-	service->clone_newuts = clone_newuts;
-
-	return 0;
-
-free_envvars:
-	for (size_t ii = 0U; ii < envvars_size; ++ii) {
-		linted_mem_free(envvars[ii]);
-	}
-	linted_mem_free(envvars);
-	return err;
-}
-
-static linted_error socket_create(struct linted_unit *unit,
-                                  struct linted_conf *conf)
-{
-	linted_error err;
-
-	struct linted_unit_socket *socket = &unit->linted_unit_u.socket;
-
-	char const *listen_dir;
-	{
-		char const *xx = 0;
-		err = linted_conf_find_str(conf, "Socket",
-		                           "ListenDirectory", &xx);
-		if (err != 0 && err != ENOENT)
-			return err;
-		listen_dir = xx;
-	}
-
-	char const *listen_file;
-	{
-		char const *xx = 0;
-		err = linted_conf_find_str(conf, "Socket", "ListenFile",
-		                           &xx);
-		if (err != 0 && err != ENOENT)
-			return err;
-		listen_file = xx;
-	}
-
-	char const *listen_fifo;
-	{
-		char const *xx = 0;
-		err = linted_conf_find_str(conf, "Socket", "ListenFIFO",
-		                           &xx);
-		if (err != 0 && err != ENOENT)
-			return err;
-		listen_fifo = xx;
-	}
-
-	int fifo_size;
-	bool have_fifo_size;
-	{
-		int xx = -1;
-		err = linted_conf_find_int(conf, "Socket", "PipeSize",
-		                           &xx);
-		if (0 == err) {
-			have_fifo_size = true;
-		} else if (ENOENT == err) {
-			have_fifo_size = false;
-		} else {
-			return err;
-		}
-		fifo_size = xx;
-	}
-
-	linted_unit_socket_type socket_type;
-	char const *path = 0;
-
-	if (listen_dir != 0) {
-		socket_type = LINTED_UNIT_SOCKET_TYPE_DIR;
-		path = listen_dir;
-	}
-
-	if (listen_file != 0) {
-		if (path != 0)
-			return LINTED_ERROR_INVALID_PARAMETER;
-		socket_type = LINTED_UNIT_SOCKET_TYPE_FILE;
-		path = listen_file;
-	}
-
-	if (listen_fifo != 0) {
-		if (path != 0)
-			return LINTED_ERROR_INVALID_PARAMETER;
-		socket_type = LINTED_UNIT_SOCKET_TYPE_FIFO;
-		path = listen_fifo;
-	}
-
-	if (0 == path)
-		return LINTED_ERROR_INVALID_PARAMETER;
-
-	if (have_fifo_size) {
-		if (0 == listen_fifo)
-			return LINTED_ERROR_INVALID_PARAMETER;
-	}
-
-	switch (socket_type) {
-	case LINTED_UNIT_SOCKET_TYPE_DIR:
-	case LINTED_UNIT_SOCKET_TYPE_FILE:
-		break;
-
-	case LINTED_UNIT_SOCKET_TYPE_FIFO:
-		break;
-	}
-
-	socket->fifo_size = fifo_size;
-	socket->type = socket_type;
-	socket->path = path;
-
-	return 0;
-}
-
-static linted_error socket_activate(struct linted_unit *unit,
-                                    linted_ko admin_in,
-                                    linted_ko admin_out)
-{
-	linted_error err = 0;
-
-	struct linted_unit_socket *unit_socket =
-	    &unit->linted_unit_u.socket;
-
-	char const *name = unit->name;
-	char const *path = unit_socket->path;
-	int fifo_size = unit_socket->fifo_size;
-	linted_unit_socket_type sock_type = unit_socket->type;
-
-	{
-		struct linted_admin_request request = {0};
-
-		request.type = LINTED_ADMIN_ADD_SOCKET;
-
-		struct linted_admin_request_add_socket *xx =
-		    &request.linted_admin_request_u.add_socket;
-
-		xx->name = (char *)name;
-		xx->path = (char *)path;
-		xx->fifo_size = fifo_size;
-		xx->sock_type = sock_type;
-
-		err = linted_admin_in_send(admin_in, &request);
-	}
-	if (err != 0)
-		return err;
-
-	{
-		struct linted_admin_reply xx;
-		err = linted_admin_out_recv(admin_out, &xx);
-		if (err != 0)
-			return err;
-	}
-
-	return 0;
-}
-
-static linted_error service_activate(struct linted_unit *unit,
-                                     linted_ko admin_in,
-                                     linted_ko admin_out)
-{
-	linted_error err = 0;
-
-	struct linted_unit_service *unit_service =
-	    &unit->linted_unit_u.service;
-
-	char const *name = unit->name;
-	char const *fstab = unit_service->fstab;
-	char const *chdir_path = unit_service->chdir_path;
-	char const *const *command = unit_service->command;
-	char const *const *environment = unit_service->environment;
-
-	int_least64_t timer_slack_nsec = unit_service->timer_slack_nsec;
-	int_least64_t priority = unit_service->priority;
-	int_least64_t limit_no_file = unit_service->limit_no_file;
-	int_least64_t limit_msgqueue = unit_service->limit_msgqueue;
-	int_least64_t limit_locks = unit_service->limit_locks;
-
-	bool has_timer_slack_nsec = unit_service->has_timer_slack_nsec;
-	bool has_priority = unit_service->has_priority;
-	bool has_limit_no_file = unit_service->has_limit_no_file;
-	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
-	bool has_limit_locks = unit_service->has_limit_locks;
-
-	bool clone_newuser = unit_service->clone_newuser;
-	bool clone_newpid = unit_service->clone_newpid;
-	bool clone_newipc = unit_service->clone_newipc;
-	bool clone_newnet = unit_service->clone_newnet;
-	bool clone_newns = unit_service->clone_newns;
-	bool clone_newuts = unit_service->clone_newuts;
-
-	bool no_new_privs = unit_service->no_new_privs;
+	char const *const *environment = (char const *const *)envvars;
 
 	if (0 == fstab)
 		fstab = "";
@@ -1145,7 +1012,7 @@ static linted_error service_activate(struct linted_unit *unit,
 
 		xx->no_new_privs = no_new_privs;
 
-		xx->name = (char *)name;
+		xx->name = (char *)unit_name;
 		xx->fstab = (char *)fstab;
 		xx->chdir_path = (char *)chdir_path;
 
@@ -1159,16 +1026,25 @@ static linted_error service_activate(struct linted_unit *unit,
 		err = linted_admin_in_send(admin_in, &request);
 	}
 	if (err != 0)
-		return err;
+		goto free_envvars;
 
 	{
 		struct linted_admin_reply xx;
 		err = linted_admin_out_recv(admin_out, &xx);
 		if (err != 0)
-			return err;
+			goto free_envvars;
 	}
 
-	return 0;
+free_envvars:
+	for (size_t ii = 0U; ii < envvars_size; ++ii) {
+		linted_mem_free(envvars[ii]);
+	}
+	linted_mem_free(envvars);
+
+free_unit_name:
+	linted_mem_free(unit_name);
+
+	return err;
 }
 
 static size_t null_list_size(char const *const *list)

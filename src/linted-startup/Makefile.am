@@ -27,5 +27,4 @@ pkglibexec_PROGRAMS+=%D%/linted-startup
   src/io/libio.la\
   src/ko/libko.la\
   src/log/liblog.la\
-  src/str/libstr.la\
-  src/unit/libunit.la
+  src/str/libstr.la
