@@ -59,6 +59,7 @@ struct linted_admin_request_add_unit {
 		char **environment_val;
 	} environment;
 
+	int_least64_t *timer_slack_nsec;
 	int_least64_t *priority;
 	int_least64_t *limit_no_file;
 	int_least64_t *limit_msgqueue;

@@ -78,12 +78,15 @@ struct linted_unit_service {
 	char const *fstab;
 	char const *chdir_path;
 
+	int_least64_t timer_slack_nsec;
+
 	int_least64_t limit_no_file;
 	int_least64_t limit_msgqueue;
 	int_least64_t limit_locks;
 
 	int priority;
 
+	_Bool has_timer_slack_nsec : 1U;
 	_Bool has_priority : 1U;
 	_Bool has_limit_no_file : 1U;
 	_Bool has_limit_msgqueue : 1U;

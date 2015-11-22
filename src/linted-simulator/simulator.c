@@ -24,7 +24,6 @@
 #include "linted/error.h"
 #include "linted/ko.h"
 #include "linted/log.h"
-#include "linted/prctl.h"
 #include "linted/sched.h"
 #include "linted/start.h"
 #include "linted/updater.h"
@@ -159,14 +158,6 @@ static unsigned char linted_start_main(char const *const process_name,
 
 	char const *controller_path = argv[1U];
 	char const *updater_path = argv[2U];
-
-	err = linted_prctl_set_timerslack(1U);
-	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR,
-		           "linted_prctl_set_timerslack: %s",
-		           linted_error_string(err));
-		return EXIT_FAILURE;
-	}
 
 	struct linted_async_pool *pool;
 	{

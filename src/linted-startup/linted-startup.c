@@ -1073,11 +1073,13 @@ static linted_error service_activate(struct linted_unit *unit,
 	char const *const *command = unit_service->command;
 	char const *const *environment = unit_service->environment;
 
+	int_least64_t timer_slack_nsec = unit_service->timer_slack_nsec;
 	int_least64_t priority = unit_service->priority;
 	int_least64_t limit_no_file = unit_service->limit_no_file;
 	int_least64_t limit_msgqueue = unit_service->limit_msgqueue;
 	int_least64_t limit_locks = unit_service->limit_locks;
 
+	bool has_timer_slack_nsec = unit_service->has_timer_slack_nsec;
 	bool has_priority = unit_service->has_priority;
 	bool has_limit_no_file = unit_service->has_limit_no_file;
 	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
@@ -1106,6 +1108,8 @@ static linted_error service_activate(struct linted_unit *unit,
 		struct linted_admin_request_add_unit *xx =
 		    &request.linted_admin_request_u.add_unit;
 
+		xx->timer_slack_nsec =
+		    has_timer_slack_nsec ? &timer_slack_nsec : 0;
 		xx->priority = has_priority ? &priority : 0;
 		xx->limit_no_file =
 		    has_limit_no_file ? &limit_no_file : 0;

@@ -20,6 +20,8 @@ Documentation='man:linted-simulator(6)'
 
 ExecStart="${LINTED_SIMULATOR}" "/run/controller" "/run/updater"
 
+TimerSlackNSec=1
+
 NoNewPrivileges=true
 X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NEWNS
 

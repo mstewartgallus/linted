@@ -1272,11 +1272,13 @@ on_add_unit(struct monitor *monitor,
 	size_t environment_size = request->environment.environment_len;
 	char **unit_environment = request->environment.environment_val;
 
+	int_least64_t *timer_slack_nsec = request->timer_slack_nsec;
 	int_least64_t *priority = request->priority;
 	int_least64_t *limit_no_file = request->limit_no_file;
 	int_least64_t *limit_msgqueue = request->limit_msgqueue;
 	int_least64_t *limit_locks = request->limit_locks;
 
+	bool has_timer_slack_nsec = timer_slack_nsec != 0;
 	bool has_priority = priority != 0;
 	bool has_limit_no_file = limit_no_file != 0;
 	bool has_limit_msgqueue = limit_msgqueue != 0;
@@ -1379,6 +1381,9 @@ on_add_unit(struct monitor *monitor,
 	unit_service->fstab = fstab;
 	unit_service->chdir_path = chdir_path;
 	unit_service->environment = (char const *const *)environment;
+
+	if (has_timer_slack_nsec)
+		unit_service->timer_slack_nsec = *timer_slack_nsec;
 
 	if (has_priority)
 		unit_service->priority = *priority;
@@ -1677,6 +1682,7 @@ spawn_service:
 	char const *fstab = unit_service->fstab;
 	char const *chdir_path = unit_service->chdir_path;
 
+	bool has_timer_slack_nsec = unit_service->has_timer_slack_nsec;
 	bool has_priority = unit_service->has_priority;
 	bool has_limit_no_file = unit_service->has_limit_no_file;
 	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
@@ -1688,6 +1694,10 @@ spawn_service:
 	bool clone_newnet = unit_service->clone_newnet;
 	bool clone_newns = unit_service->clone_newns;
 	bool clone_newuts = unit_service->clone_newuts;
+
+	int timer_slack_nsec;
+	if (has_timer_slack_nsec)
+		timer_slack_nsec = unit_service->timer_slack_nsec;
 
 	linted_sched_priority priority;
 	if (has_priority)
@@ -1765,13 +1775,23 @@ spawn_service:
 	 * stoppable. This also makes the process hierarchy nicer for
 	 * the OOM killer.
 	 */
+	char *timer_slack_str = 0;
+	if (has_timer_slack_nsec) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)timer_slack_nsec);
+		if (err != 0)
+			goto free_limit_locks_str;
+		timer_slack_str = xx;
+	}
+
 	char *prio_str = 0;
 	if (has_priority) {
 		char *xx;
 		err = linted_str_format(&xx, "%" PRIiMAX,
 		                        (intmax_t)priority);
 		if (err != 0)
-			goto free_limit_locks_str;
+			goto free_timer_slack_str;
 		prio_str = xx;
 	}
 
@@ -1813,6 +1833,8 @@ spawn_service:
 		    {"--limit-locks", limit_locks_str, has_limit_locks},
 		    {"--dropcaps", 0, drop_caps},
 		    {"--chdir", chdir_path, chdir_path != 0},
+		    {"--timer-slack", timer_slack_str,
+		     has_timer_slack_nsec},
 		    {"--priority", prio_str, has_priority},
 		    {"--clone-newuser", 0, clone_newuser},
 		    {"--clone-newpid", 0, clone_newpid},
@@ -1897,6 +1919,9 @@ free_chrootdir:
 
 free_prio_str:
 	linted_mem_free(prio_str);
+
+free_timer_slack_str:
+	linted_mem_free(timer_slack_str);
 
 free_limit_locks_str:
 	linted_mem_free(limit_locks_str);

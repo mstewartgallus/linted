@@ -30,6 +30,7 @@ struct linted_admin_proto_request_add_unit {
 	linted_admin_proto_string command<>;
 	linted_admin_proto_string environment<>;
 
+	hyper *timer_slack_nsec;
 	hyper *priority;
 	hyper *limit_no_file;
 	hyper *limit_msgqueue;
