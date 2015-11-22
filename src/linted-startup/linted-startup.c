@@ -89,11 +89,6 @@ service_create(struct system_conf const *system_conf,
 static linted_error socket_create(struct linted_unit *unit,
                                   struct linted_conf *conf);
 
-static linted_error int_from_strs(char const *const *strs, int *valuep);
-static linted_error str_from_strs(char const *const *strs,
-                                  char const **strp);
-static linted_error bool_from_cstring(char const *str, bool *boolp);
-
 static linted_error socket_activate(struct linted_unit *unit,
                                     linted_ko admin_in,
                                     linted_ko admin_out);
@@ -277,15 +272,13 @@ static linted_error startup_start(struct startup *startup)
 			break;
 		}
 	}
-	LINTED_ASSERT(0 == system_conf);
+	if (0 == system_conf)
+		return LINTED_ERROR_FILE_NOT_FOUND;
 
 	int limit_locks;
 	{
 		int xx;
-		err = int_from_strs(
-		    linted_conf_find(system_conf, "Manager",
-		                     "DefaultLimitLOCKS"),
-		    &xx);
+		err = linted_conf_find_int(system_conf, "Manager", "DefaultLimitLOCKS", &xx);
 		if (err != 0)
 			goto destroy_conf_db;
 		limit_locks = xx;
@@ -304,14 +297,6 @@ static linted_error startup_start(struct startup *startup)
 	}
 
 	for (size_t ii = 0U; ii < size; ++ii) {
-		struct linted_unit *unit;
-		{
-			struct linted_unit *xx;
-			err = linted_unit_db_add_unit(unit_db, &xx);
-			if (err != 0)
-				goto destroy_unit_db;
-			unit = xx;
-		}
 
 		struct linted_conf *conf =
 		    linted_conf_db_get_conf(conf_db, ii);
@@ -342,6 +327,15 @@ static linted_error startup_start(struct startup *startup)
 			if (err != 0)
 				goto destroy_unit_db;
 			unit_name = xx;
+		}
+
+		struct linted_unit *unit;
+		{
+			struct linted_unit *xx;
+			err = linted_unit_db_add_unit(unit_db, &xx);
+			if (err != 0)
+				goto destroy_unit_db;
+			unit = xx;
 		}
 
 		unit->type = unit_type;
@@ -423,18 +417,18 @@ static linted_error populate_conf_db(struct linted_conf_db *db,
 			len = end - start;
 		}
 
-		char *file_name;
+		char *file_name_dup;
 		{
 			char *xx;
-			err = linted_str_dup_len(&xx, file_name, len);
+			err = linted_str_dup_len(&xx, start, len);
 			if (err != 0)
 				return err;
-			file_name = xx;
+			file_name_dup = xx;
 		}
 
-		err = populate_system_conf(db, cwd, file_name);
+		err = populate_system_conf(db, cwd, file_name_dup);
 
-		linted_mem_free(file_name);
+		linted_mem_free(file_name_dup);
 
 		if (err != 0)
 			return err;
@@ -738,70 +732,66 @@ service_create(struct system_conf const *system_conf,
 	struct linted_unit_service *service =
 	    &unit->linted_unit_u.service;
 
-	char const *const *types =
-	    linted_conf_find(conf, "Service", "Type");
 	char const *const *command =
 	    linted_conf_find(conf, "Service", "ExecStart");
-	char const *const *no_new_privss =
-	    linted_conf_find(conf, "Service", "NoNewPrivileges");
-	char const *const *chdir_paths =
-	    linted_conf_find(conf, "Service", "WorkingDirectory");
-	char const *const *fstabs =
-	    linted_conf_find(conf, "Service", "X-LintedFstab");
 	char const *const *env_whitelist = linted_conf_find(
 	    conf, "Service", "X-LintedEnvironmentWhitelist");
 	char const *const *clone_flags =
 	    linted_conf_find(conf, "Service", "X-LintedCloneFlags");
-	char const *const *priority_strs =
-	    linted_conf_find(conf, "Service", "Priority");
 
 	char const *type;
 	{
-		char const *xx;
-		err = str_from_strs(types, &xx);
-		if (err != 0)
+		char const *xx = 0;
+		err = linted_conf_find_str(conf, "Service", "Type", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		type = xx;
 	}
 
-	if (0 == command)
-		return LINTED_ERROR_INVALID_PARAMETER;
-
-	char const *no_new_privs;
+	bool no_new_privs;
 	{
-		char const *xx;
-		err = str_from_strs(no_new_privss, &xx);
-		if (err != 0)
+		bool xx = false;
+	 	err = linted_conf_find_bool(conf, "Service", "NoNewPrivileges", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		no_new_privs = xx;
 	}
 
 	char const *fstab;
 	{
-		char const *xx;
-		err = str_from_strs(fstabs, &xx);
-		if (err != 0)
+		char const *xx = 0;
+	 	err = linted_conf_find_str(conf, "Service", "X-LintedFstab", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		fstab = xx;
 	}
 
 	char const *chdir_path;
 	{
-		char const *xx;
-		err = str_from_strs(chdir_paths, &xx);
-		if (err != 0)
+		char const *xx = 0;
+	 	err = linted_conf_find_str(conf, "Service", "WorkingDirectory", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		chdir_path = xx;
 	}
 
 	char const *priority_str;
 	{
-		char const *xx;
-		err = str_from_strs(priority_strs, &xx);
-		if (err != 0)
+		char const *xx = 0;
+	 	err = linted_conf_find_str(conf, "Service", "Priority", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		priority_str = xx;
 	}
+
+	if (0 == type || 0 == strcmp("simple", type)) {
+		/* simple type of service */
+	} else {
+		return LINTED_ERROR_INVALID_PARAMETER;
+	}
+
+	if (0 == command)
+		return LINTED_ERROR_INVALID_PARAMETER;
 
 	bool clone_newuser = false;
 	bool clone_newpid = false;
@@ -838,14 +828,6 @@ service_create(struct system_conf const *system_conf,
 		return LINTED_ERROR_INVALID_PARAMETER;
 	}
 
-	bool no_new_privs_value = false;
-	if (no_new_privs != 0) {
-		bool xx;
-		err = bool_from_cstring(no_new_privs, &xx);
-		if (err != 0)
-			return err;
-		no_new_privs_value = xx;
-	}
 
 	int priority_value = -1;
 	if (priority_str != 0) {
@@ -894,16 +876,16 @@ envvar_allocate_succeeded:
 	envvars[envvars_size + 1U] = 0;
 
 	service->command = command;
-	service->no_new_privs = no_new_privs_value;
+	service->no_new_privs = no_new_privs;
 
 	service->limit_no_file = system_conf->limit_locks;
-	service->has_limit_no_file = no_new_privs_value;
+	service->has_limit_no_file = no_new_privs;
 
 	service->limit_msgqueue = 0;
-	service->has_limit_msgqueue = no_new_privs_value;
+	service->has_limit_msgqueue = no_new_privs;
 
 	service->limit_locks = 0;
-	service->has_limit_locks = no_new_privs_value;
+	service->has_limit_locks = no_new_privs;
 
 	service->fstab = fstab;
 	service->chdir_path = chdir_path;
@@ -936,50 +918,38 @@ static linted_error socket_create(struct linted_unit *unit,
 
 	struct linted_unit_socket *socket = &unit->linted_unit_u.socket;
 
-	char const *const *listen_dirs =
-	    linted_conf_find(conf, "Socket", "ListenDirectory");
-
-	char const *const *listen_files =
-	    linted_conf_find(conf, "Socket", "ListenFile");
-
-	char const *const *listen_fifos =
-	    linted_conf_find(conf, "Socket", "ListenFIFO");
-
-	char const *const *fifo_sizes =
-	    linted_conf_find(conf, "Socket", "PipeSize");
-
 	char const *listen_dir;
 	{
-		char const *xx;
-		err = str_from_strs(listen_dirs, &xx);
-		if (err != 0)
+		char const *xx = 0;
+		err = linted_conf_find_str(conf, "Socket", "ListenDirectory", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		listen_dir = xx;
 	}
 
 	char const *listen_file;
 	{
-		char const *xx;
-		err = str_from_strs(listen_files, &xx);
-		if (err != 0)
+		char const *xx = 0;
+		err = linted_conf_find_str(conf, "Socket", "ListenFile", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		listen_file = xx;
 	}
 
 	char const *listen_fifo;
 	{
-		char const *xx;
-		err = str_from_strs(listen_fifos, &xx);
-		if (err != 0)
+		char const *xx = 0;
+		err = linted_conf_find_str(conf, "Socket", "ListenFIFO", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		listen_fifo = xx;
 	}
 
 	char const *fifo_size;
 	{
-		char const *xx;
-		err = str_from_strs(fifo_sizes, &xx);
-		if (err != 0)
+		char const *xx = 0;
+		err = linted_conf_find_str(conf, "Socket", "PipeSize", &xx);
+		if (err != 0 && err != ENOENT)
 			return err;
 		fifo_size = xx;
 	}
@@ -1029,75 +999,6 @@ static linted_error socket_create(struct linted_unit *unit,
 	socket->type = socket_type;
 	socket->path = path;
 
-	return 0;
-}
-
-static linted_error str_from_strs(char const *const *strs,
-                                  char const **strp)
-{
-	char const *str;
-	if (0 == strs) {
-		str = 0;
-	} else {
-		str = strs[0U];
-
-		if (strs[1U] != 0)
-			return LINTED_ERROR_INVALID_PARAMETER;
-	}
-
-	*strp = str;
-	return 0;
-}
-
-static linted_error int_from_strs(char const *const *strs, int *valuep)
-{
-	linted_error err = 0;
-
-	char const *str;
-	{
-		char const *xx;
-		err = str_from_strs(strs, &xx);
-		if (err != 0)
-			return err;
-		str = xx;
-	}
-	if (0 == str)
-		return LINTED_ERROR_INVALID_PARAMETER;
-
-	*valuep = atoi(str);
-	return 0;
-}
-
-static linted_error bool_from_cstring(char const *str, bool *boolp)
-{
-	static char const *const yes_strs[] = {"1", "yes", "true",
-	                                       "on"};
-	static char const *const no_strs[] = {"0", "no", "false",
-	                                      "off"};
-
-	bool result;
-
-	if (0 == str)
-		return LINTED_ERROR_INVALID_PARAMETER;
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
-		if (0 == strcmp(str, yes_strs[ii])) {
-			result = true;
-			goto return_result;
-		}
-	}
-
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(no_strs); ++ii) {
-		if (0 == strcmp(str, no_strs[ii])) {
-			result = false;
-			goto return_result;
-		}
-	}
-
-	return LINTED_ERROR_INVALID_PARAMETER;
-
-return_result:
-	*boolp = result;
 	return 0;
 }
 

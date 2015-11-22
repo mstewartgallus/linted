@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -623,6 +624,89 @@ char const *const *linted_conf_find(struct linted_conf *conf,
 		return 0;
 
 	return (char const *const *)settings[setting_index].value;
+}
+
+linted_error linted_conf_find_str(struct linted_conf *conf,
+                                    char const *section,
+                                    char const *field,
+					char const **strp)
+{
+	char const *const *strs = linted_conf_find(conf, section, field);
+	if (0 == strs)
+		return ENOENT;
+
+	char const *str = strs[0U];
+	if (0 == str)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	if (strs[1U] != 0)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	*strp = str;
+	return 0;
+}
+
+linted_error linted_conf_find_int(struct linted_conf *conf,
+                                    char const *section,
+                                    char const *field,
+					int *intp)
+{
+		char const *const *strs = linted_conf_find(conf, section, field);
+	if (0 == strs)
+		return ENOENT;
+
+	char const *str = strs[0U];
+	if (0 == str)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	if (strs[1U] != 0)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	*intp = atoi(str);
+	return 0;
+}
+
+linted_error linted_conf_find_bool(struct linted_conf *conf,
+                                    char const *section,
+                                    char const *field,
+					_Bool *boolp)
+{
+	char const *const *strs = linted_conf_find(conf, section, field);
+	if (0 == strs)
+		return ENOENT;
+
+	char const *str = strs[0U];
+	if (0 == str)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	if (strs[1U] != 0)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+		static char const *const yes_strs[] = {"1", "yes", "true",
+	                                       "on"};
+	static char const *const no_strs[] = {"0", "no", "false",
+	                                      "off"};
+
+	bool result;
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
+		if (0 == strcmp(str, yes_strs[ii])) {
+			result = true;
+			goto return_result;
+		}
+	}
+
+	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(no_strs); ++ii) {
+		if (0 == strcmp(str, no_strs[ii])) {
+			result = false;
+			goto return_result;
+		}
+	}
+
+	return LINTED_ERROR_INVALID_PARAMETER;
+
+return_result:
+	*boolp = result;
+	return 0;
 }
 
 linted_error
