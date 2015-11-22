@@ -35,7 +35,7 @@ if POSIX_API
 %C%_linted_sandbox_SOURCES+=%D%/sandbox-posix.c %D%/filter.c
 %C%_linted_sandbox_LDADD+=$(CAP_LIBS)
 
-%C%_linted_sandbox_EXTRA_SOURCES=\
+EXTRA_%C%_linted_sandbox_SOURCES=\
   %D%/sandbox-arm.c\
   %D%/sandbox-i386.c\
   %D%/sandbox-amd64.c

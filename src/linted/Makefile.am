@@ -14,6 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
+dist_pkgdefaultconf_DATA+=%D%/system.conf
+
 bin_PROGRAMS+=%D%/linted
 
 %C%_linted_DEPS=$(builddir)/%D%/settings.h
@@ -45,6 +47,7 @@ EXTRA_DIST+=%D%/settings.h.in
 MOSTLYCLEANFILES+=%D%/settings.h
 %D%/settings.h: %D%/settings.h.in Makefile
 	$(linted_V_SED) sed \
+	  -e 's|[@]LINTED_SYSTEM_CONF_PATH[@]|$(pkgconfdir)/system.conf:$(pkgdefaultconfdir)/system.conf|g'\
 	  -e 's|[@]LINTED_UNIT_PATH[@]|$(pkgunitsdir):$(pkgdefaultunitsdir)|g'\
 	  -e 's|[@]LINTED_INIT[@]|$(pkglibexecdir)/linted-init$(EXEEXT)|g'\
 	  -e 's|[@]LINTED_MONITOR[@]|$(pkglibexecdir)/linted-monitor$(EXEEXT)|g'\

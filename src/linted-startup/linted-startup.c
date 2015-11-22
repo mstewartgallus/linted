@@ -37,15 +37,27 @@
 #include <stdlib.h>
 #include <string.h>
 
+enum { LINTED_SYSTEM_CONF_PATH, LINTED_UNIT_PATH };
+
+static char const *const required_envs[] =
+    {[LINTED_SYSTEM_CONF_PATH] = "LINTED_SYSTEM_CONF_PATH",
+     [LINTED_UNIT_PATH] = "LINTED_UNIT_PATH"};
+
 struct startup {
+	char const *system_conf_path;
 	char const *unit_path;
 	linted_ko admin_in;
 	linted_ko admin_out;
 };
 
+struct system_conf {
+	int limit_locks;
+};
+
 static linted_error startup_init(struct startup *startup,
                                  char const *controller_path,
                                  char const *updater_path,
+                                 char const *system_conf_path,
                                  char const *unit_path);
 
 static linted_error startup_destroy(struct startup *startup);
@@ -61,16 +73,23 @@ static char const *const default_envvars[] = {
     "LD_DEBUG_OUTPUT", 0};
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
-                                      linted_ko cwd, char const *path);
+                                      linted_ko cwd,
+                                      char const *system_conf_path,
+                                      char const *path);
+static linted_error read_system_conf(struct linted_conf_db *db,
+                                     linted_ko cwd,
+                                     char const *dir_name);
 static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
                                        linted_ko cwd,
                                        char const *dir_name);
 
-static linted_error service_create(struct linted_unit *unit,
-                                   struct linted_conf *conf);
+static linted_error
+service_create(struct system_conf const *system_conf,
+               struct linted_unit *unit, struct linted_conf *conf);
 static linted_error socket_create(struct linted_unit *unit,
                                   struct linted_conf *conf);
 
+static linted_error int_from_strs(char const *const *strs, int *valuep);
 static linted_error str_from_strs(char const *const *strs,
                                   char const **strp);
 static linted_error bool_from_cstring(char const *str, bool *boolp);
@@ -103,30 +122,45 @@ static unsigned char linted_start_main(char const *const process_name,
 		return EXIT_FAILURE;
 	}
 
+	char const *system_conf_path;
 	char const *unit_path;
 	{
-		char *xx;
-		err = linted_env_get("LINTED_UNIT_PATH", &xx);
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_get: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
+		char *envs[LINTED_ARRAY_SIZE(required_envs)];
+		for (size_t ii = 0U;
+		     ii < LINTED_ARRAY_SIZE(required_envs); ++ii) {
+			char const *req = required_envs[ii];
+			char *value;
+			{
+				char *xx;
+				err = linted_env_get(req, &xx);
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "linted_env_get: %s",
+					    linted_error_string(err));
+					return EXIT_FAILURE;
+				}
+				value = xx;
+			}
+			if (0 == value) {
+				linted_log(LINTED_LOG_ERROR,
+				           "%s is a required "
+				           "environment variable",
+				           req);
+				return EXIT_FAILURE;
+			}
+			envs[ii] = value;
 		}
-		unit_path = xx;
-	}
-	if (0 == unit_path) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "LINTED_UNIT_PATH");
-		return EXIT_FAILURE;
+		system_conf_path = envs[LINTED_SYSTEM_CONF_PATH];
+		unit_path = envs[LINTED_UNIT_PATH];
 	}
 
 	char const *admin_in = argv[1U];
 	char const *admin_out = argv[2U];
 
 	static struct startup startup = {0};
-	err = startup_init(&startup, admin_in, admin_out, unit_path);
+	err = startup_init(&startup, admin_in, admin_out,
+	                   system_conf_path, unit_path);
 	if (err != 0)
 		goto log_error;
 
@@ -157,6 +191,7 @@ log_error:
 static linted_error startup_init(struct startup *startup,
                                  char const *admin_in_path,
                                  char const *admin_out_path,
+                                 char const *system_conf_path,
                                  char const *unit_path)
 {
 	linted_error err = 0;
@@ -183,6 +218,7 @@ static linted_error startup_init(struct startup *startup,
 
 	startup->admin_in = admin_in;
 	startup->admin_out = admin_out;
+	startup->system_conf_path = system_conf_path;
 	startup->unit_path = unit_path;
 
 	return 0;
@@ -207,6 +243,7 @@ static linted_error startup_destroy(struct startup *startup)
 
 static linted_error startup_start(struct startup *startup)
 {
+	char const *system_conf_path = startup->system_conf_path;
 	char const *unit_path = startup->unit_path;
 	linted_ko admin_in = startup->admin_in;
 	linted_ko admin_out = startup->admin_out;
@@ -216,11 +253,42 @@ static linted_error startup_start(struct startup *startup)
 	struct linted_conf_db *conf_db;
 	{
 		struct linted_conf_db *xx;
-		err = conf_db_from_path(&xx, LINTED_KO_CWD, unit_path);
+		err = conf_db_from_path(&xx, LINTED_KO_CWD,
+		                        system_conf_path, unit_path);
 		if (err != 0)
 			return err;
 		conf_db = xx;
 	}
+
+	size_t size = linted_conf_db_size(conf_db);
+	struct linted_conf *system_conf = 0;
+	for (size_t ii = 0U; ii < size; ++ii) {
+		struct linted_conf *conf =
+		    linted_conf_db_get_conf(conf_db, ii);
+
+		char const *file_name = linted_conf_peek_name(conf);
+
+		if (0 == strcmp("system.conf", file_name)) {
+			system_conf = conf;
+			break;
+		}
+	}
+	LINTED_ASSERT(0 == system_conf);
+
+	int limit_locks;
+	{
+		int xx;
+		err = int_from_strs(
+		    linted_conf_find(system_conf, "Manager",
+		                     "DefaultLimitLOCKS"),
+		    &xx);
+		if (err != 0)
+			return err;
+		limit_locks = xx;
+	}
+
+	struct system_conf system_conf_struct = {.limit_locks =
+	                                             limit_locks};
 
 	struct linted_unit_db *unit_db;
 	{
@@ -231,7 +299,6 @@ static linted_error startup_start(struct startup *startup)
 		unit_db = xx;
 	}
 
-	size_t size = linted_conf_db_size(conf_db);
 	for (size_t ii = 0U; ii < size; ++ii) {
 		struct linted_unit *unit;
 		{
@@ -256,6 +323,8 @@ static linted_error startup_start(struct startup *startup)
 			unit_type = LINTED_UNIT_TYPE_SOCKET;
 		} else if (0 == strcmp(suffix, "service")) {
 			unit_type = LINTED_UNIT_TYPE_SERVICE;
+		} else if (0 == strcmp(suffix, "conf")) {
+			continue;
 		} else {
 			err = LINTED_ERROR_INVALID_PARAMETER;
 			goto destroy_unit_db;
@@ -276,7 +345,8 @@ static linted_error startup_start(struct startup *startup)
 
 		switch (unit_type) {
 		case LINTED_UNIT_TYPE_SERVICE:
-			err = service_create(unit, conf);
+			err = service_create(&system_conf_struct, unit,
+			                     conf);
 			break;
 
 		case LINTED_UNIT_TYPE_SOCKET:
@@ -329,7 +399,9 @@ static linted_error startup_stop(struct startup *startup)
 }
 
 static linted_error conf_db_from_path(struct linted_conf_db **dbp,
-                                      linted_ko cwd, char const *path)
+                                      linted_ko cwd,
+                                      char const *system_conf_path,
+                                      char const *unit_path)
 {
 	linted_error err = 0;
 
@@ -342,8 +414,39 @@ static linted_error conf_db_from_path(struct linted_conf_db **dbp,
 		db = xx;
 	}
 
-	char const *dirstart = path;
-	for (;;) {
+	for (char const *dirstart = system_conf_path;;) {
+		char const *dirend = strchr(dirstart, ':');
+
+		size_t len;
+		if (0 == dirend) {
+			len = strlen(dirstart);
+		} else {
+			len = dirend - dirstart;
+		}
+
+		char *dir_name;
+		{
+			char *xx;
+			err = linted_str_dup_len(&xx, dirstart, len);
+			if (err != 0)
+				goto free_units;
+			dir_name = xx;
+		}
+
+		err = read_system_conf(db, cwd, dir_name);
+
+		linted_mem_free(dir_name);
+
+		if (err != 0)
+			goto free_units;
+
+		if (0 == dirend)
+			break;
+
+		dirstart = dirend + 1U;
+	}
+
+	for (char const *dirstart = unit_path;;) {
 		char const *dirend = strchr(dirstart, ':');
 
 		size_t len;
@@ -385,6 +488,61 @@ free_units:
 	*dbp = db;
 
 	return 0;
+}
+
+static linted_error read_system_conf(struct linted_conf_db *db,
+                                     linted_ko cwd,
+                                     char const *filename)
+{
+	linted_error err;
+
+	linted_ko conf_ko;
+	{
+		linted_ko xx;
+		err = linted_ko_open(&xx, cwd, filename,
+		                     LINTED_KO_RDONLY);
+		/* Just treat as an empty file */
+		if (LINTED_ERROR_FILE_NOT_FOUND == err)
+			return 0;
+		if (err != 0)
+			return err;
+		conf_ko = xx;
+	}
+
+	char *filename_dup;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, "system.conf");
+		if (err != 0)
+			goto close_ko;
+		filename_dup = xx;
+	}
+
+	struct linted_conf *conf = 0;
+	{
+		struct linted_conf *xx;
+		err = linted_conf_create(&xx, filename_dup);
+		if (err != 0) {
+			linted_mem_free(filename_dup);
+			goto close_ko;
+		}
+		conf = xx;
+	}
+
+	err = linted_conf_parse_file(conf, conf_ko, filename);
+	if (err != 0)
+		goto free_conf;
+
+	err = linted_conf_db_add_conf(db, conf);
+
+free_conf:
+	if (err != 0)
+		linted_conf_put(conf);
+
+close_ko:
+	linted_ko_close(conf_ko);
+
+	return err;
 }
 
 static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
@@ -580,8 +738,9 @@ free_file_names:
 	return err;
 }
 
-static linted_error service_create(struct linted_unit *unit,
-                                   struct linted_conf *conf)
+static linted_error
+service_create(struct system_conf const *system_conf,
+               struct linted_unit *unit, struct linted_conf *conf)
 {
 	linted_error err;
 
@@ -747,7 +906,7 @@ envvar_allocate_succeeded:
 	service->command = command;
 	service->no_new_privs = no_new_privs_value;
 
-	service->limit_no_file = 15;
+	service->limit_no_file = system_conf->limit_locks;
 	service->has_limit_no_file = no_new_privs_value;
 
 	service->limit_msgqueue = 0;
@@ -897,6 +1056,25 @@ static linted_error str_from_strs(char const *const *strs,
 	}
 
 	*strp = str;
+	return 0;
+}
+
+static linted_error int_from_strs(char const *const *strs, int *valuep)
+{
+	linted_error err = 0;
+
+	char const *str;
+	{
+		char const *xx;
+		err = str_from_strs(strs, &xx);
+		if (err != 0)
+			return err;
+		str = xx;
+	}
+	if (0 == str)
+		return LINTED_ERROR_INVALID_PARAMETER;
+
+	*valuep = atoi(str);
 	return 0;
 }
 

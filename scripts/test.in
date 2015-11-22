@@ -20,6 +20,7 @@ EXEEXT="@EXEEXT@"
 ROOT="$(realpath "$(dirname "$0")")"
 BUILDDIR="$(realpath "${ROOT}/..")"
 
+: ${LINTED_SYSTEM_CONF_PATH:="${SRCDIR}/src/linted/system.conf"}
 : ${LINTED_UNIT_PATH:="\
 ${SRCDIR}/src/controller/units\
 :${SRCDIR}/src/updater/units\
@@ -51,6 +52,7 @@ ${SRCDIR}/src/controller/units\
 : ${LINTED_WINDOW_FSTAB:="${SRCDIR}/src/linted-window/window.fstab"}
 : ${LINTED_WINDOW:="${BUILDDIR}/src/linted-window/linted-window${EXEEXT}"}
 
+export LINTED_SYSTEM_CONF_PATH
 export LINTED_UNIT_PATH
 export LINTED_INIT
 export LINTED_MONITOR

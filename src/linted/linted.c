@@ -83,6 +83,7 @@ static struct linted_start_config const linted_start_config = {
 
 static struct envvar const default_envvars[] = {
     {"LINTED_PROCESS_NAME", "linted"},
+    {"LINTED_SYSTEM_CONF_PATH", LINTED_SYSTEM_CONF_PATH},
     {"LINTED_UNIT_PATH", LINTED_UNIT_PATH},
     {"LINTED_INIT", LINTED_INIT},
     {"LINTED_MONITOR", LINTED_MONITOR},
