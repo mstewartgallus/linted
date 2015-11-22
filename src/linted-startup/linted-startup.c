@@ -52,6 +52,12 @@ struct startup {
 
 struct system_conf {
 	int_least64_t limit_locks;
+	int_least64_t limit_msgqueue;
+	int_least64_t limit_no_file;
+
+	bool has_limit_locks : 1U;
+	bool has_limit_msgqueue : 1U;
+	bool has_limit_no_file : 1U;
 };
 
 static linted_error startup_init(struct startup *startup,
@@ -270,18 +276,53 @@ static linted_error startup_start(struct startup *startup)
 	if (0 == system_conf)
 		return LINTED_ERROR_FILE_NOT_FOUND;
 
-	int limit_locks;
+	struct system_conf system_conf_struct = {0};
+
 	{
 		int xx;
+		bool yy;
 		err = linted_conf_find_int(system_conf, "Manager",
 		                           "DefaultLimitLOCKS", &xx);
-		if (err != 0)
+		if (0 == err) {
+			yy = true;
+		} else if (ENOENT == err) {
+			yy = false;
+		} else {
 			goto destroy_conf_db;
-		limit_locks = xx;
+		}
+		system_conf_struct.limit_locks = xx;
+		system_conf_struct.has_limit_locks = yy;
 	}
-
-	struct system_conf system_conf_struct = {.limit_locks =
-	                                             limit_locks};
+	{
+		int xx;
+		bool yy;
+		err = linted_conf_find_int(system_conf, "Manager",
+		                           "DefaultLimitMSGQUEUE", &xx);
+		if (0 == err) {
+			yy = true;
+		} else if (ENOENT == err) {
+			yy = false;
+		} else {
+			goto destroy_conf_db;
+		}
+		system_conf_struct.limit_msgqueue = xx;
+		system_conf_struct.has_limit_msgqueue = yy;
+	}
+	{
+		int xx;
+		bool yy;
+		err = linted_conf_find_int(system_conf, "Manager",
+		                           "DefaultLimitNOFILE", &xx);
+		if (0 == err) {
+			yy = true;
+		} else if (ENOENT == err) {
+			yy = false;
+		} else {
+			goto destroy_conf_db;
+		}
+		system_conf_struct.limit_no_file = xx;
+		system_conf_struct.has_limit_no_file = yy;
+	}
 
 	for (size_t ii = 0U; ii < size; ++ii) {
 		struct linted_conf *conf =
@@ -969,14 +1010,14 @@ envvar_allocate_succeeded:
 	envvars[envvars_size] = service_name_setting;
 	envvars[envvars_size + 1U] = 0;
 
-	int_least64_t limit_no_file = 15;
-	bool has_limit_no_file = no_new_privs;
+	int_least64_t limit_no_file = system_conf->limit_no_file;
+	bool has_limit_no_file = system_conf->has_limit_no_file;
 
-	int_least64_t limit_msgqueue = 0;
-	bool has_limit_msgqueue = no_new_privs;
+	int_least64_t limit_msgqueue = system_conf->limit_msgqueue;
+	bool has_limit_msgqueue = system_conf->has_limit_msgqueue;
 
 	int_least64_t limit_locks = system_conf->limit_locks;
-	bool has_limit_locks = no_new_privs;
+	bool has_limit_locks = system_conf->has_limit_locks;
 
 	char const *const *environment = (char const *const *)envvars;
 

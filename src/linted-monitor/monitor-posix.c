@@ -1399,6 +1399,7 @@ on_add_unit(struct monitor *monitor,
 
 	/* These aren't fully implemented yet */
 	unit_service->has_priority = has_priority;
+	unit_service->has_timer_slack_nsec = has_timer_slack_nsec;
 	unit_service->has_limit_no_file = has_limit_no_file;
 	unit_service->has_limit_locks = has_limit_locks;
 	unit_service->has_limit_msgqueue = has_limit_msgqueue;
@@ -1695,7 +1696,7 @@ spawn_service:
 	bool clone_newns = unit_service->clone_newns;
 	bool clone_newuts = unit_service->clone_newuts;
 
-	int timer_slack_nsec;
+	int_least64_t timer_slack_nsec;
 	if (has_timer_slack_nsec)
 		timer_slack_nsec = unit_service->timer_slack_nsec;
 
@@ -1703,15 +1704,15 @@ spawn_service:
 	if (has_priority)
 		priority = unit_service->priority;
 
-	int limit_no_file;
+	int_least64_t limit_no_file;
 	if (has_limit_no_file)
 		limit_no_file = unit_service->limit_no_file;
 
-	int limit_msgqueue;
+	int_least64_t limit_msgqueue;
 	if (has_limit_msgqueue)
 		limit_msgqueue = unit_service->limit_msgqueue;
 
-	int limit_locks;
+	int_least64_t limit_locks;
 	if (has_limit_locks)
 		limit_locks = unit_service->limit_locks;
 
