@@ -149,7 +149,7 @@ static unsigned char linted_start_main(char const *const process_name,
                                        size_t argc,
                                        char const *const argv[])
 {
-	linted_error err;
+	linted_error err = 0;
 
 	if (argc < 3U) {
 		linted_log(LINTED_LOG_ERROR,
@@ -163,7 +163,7 @@ static unsigned char linted_start_main(char const *const process_name,
 	err = linted_prctl_set_timerslack(1U);
 	if (err != 0) {
 		linted_log(LINTED_LOG_ERROR,
-		           "linted-prctl_set_timerslack: %s",
+		           "linted_prctl_set_timerslack: %s",
 		           linted_error_string(err));
 		return EXIT_FAILURE;
 	}

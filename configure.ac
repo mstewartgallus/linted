@@ -339,14 +339,10 @@ dnl
 AC_CHECK_HEADERS([[fcntl.h]dnl
                   [limits.h]dnl
                   [locale.h]dnl
-                  [mntent.h]dnl
                   [stddef.h]dnl
                   [stdint.h]dnl
                   [string.h]dnl
-                  [sys/mount.h]dnl
-                  [sys/socket.h]dnl
                   [sys/time.h]dnl
-                  [syslog.h]dnl
                   [unistd.h]], [], [
   AC_MSG_ERROR([Unable to find header ${ac_header}])
 ], [])

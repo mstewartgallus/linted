@@ -39,11 +39,11 @@
 struct linted_queue {
 	CRITICAL_SECTION lock;
 	CONDITION_VARIABLE gains_member;
-	struct linted_queue_node *head;
-	struct linted_queue_node **tailp;
+	struct linted_node *head;
+	struct linted_node **tailp;
 };
 
-void linted_queue_node(struct linted_queue_node *node)
+static void linted_queue_node(struct linted_node *node)
 {
 	node->next = 0;
 }
@@ -79,7 +79,7 @@ void linted_queue_destroy(struct linted_queue *queue)
 }
 
 void linted_queue_send(struct linted_queue *queue,
-                       struct linted_queue_node *node)
+                       struct linted_node *node)
 {
 	/* Guard against double insertions */
 	LINTED_ASSERT(0 == node->next);
@@ -96,9 +96,9 @@ void linted_queue_send(struct linted_queue *queue,
 }
 
 void linted_queue_recv(struct linted_queue *queue,
-                       struct linted_queue_node **nodep)
+                       struct linted_node **nodep)
 {
-	struct linted_queue_node *removed;
+	struct linted_node *removed;
 
 	CRITICAL_SECTION *lock = &queue->lock;
 	CONDITION_VARIABLE *gains_member = &queue->gains_member;
@@ -134,10 +134,10 @@ got_node:
 }
 
 linted_error linted_queue_try_recv(struct linted_queue *queue,
-                                   struct linted_queue_node **nodep)
+                                   struct linted_node **nodep)
 {
 	linted_error err = 0;
-	struct linted_queue_node *removed;
+	struct linted_node *removed;
 
 	CRITICAL_SECTION *lock = &queue->lock;
 
