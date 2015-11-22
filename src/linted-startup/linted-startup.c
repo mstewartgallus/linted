@@ -278,7 +278,8 @@ static linted_error startup_start(struct startup *startup)
 	int limit_locks;
 	{
 		int xx;
-		err = linted_conf_find_int(system_conf, "Manager", "DefaultLimitLOCKS", &xx);
+		err = linted_conf_find_int(system_conf, "Manager",
+		                           "DefaultLimitLOCKS", &xx);
 		if (err != 0)
 			goto destroy_conf_db;
 		limit_locks = xx;
@@ -742,7 +743,8 @@ service_create(struct system_conf const *system_conf,
 	char const *type;
 	{
 		char const *xx = 0;
-		err = linted_conf_find_str(conf, "Service", "Type", &xx);
+		err =
+		    linted_conf_find_str(conf, "Service", "Type", &xx);
 		if (err != 0 && err != ENOENT)
 			return err;
 		type = xx;
@@ -751,7 +753,8 @@ service_create(struct system_conf const *system_conf,
 	bool no_new_privs;
 	{
 		bool xx = false;
-	 	err = linted_conf_find_bool(conf, "Service", "NoNewPrivileges", &xx);
+		err = linted_conf_find_bool(conf, "Service",
+		                            "NoNewPrivileges", &xx);
 		if (err != 0 && err != ENOENT)
 			return err;
 		no_new_privs = xx;
@@ -760,7 +763,8 @@ service_create(struct system_conf const *system_conf,
 	char const *fstab;
 	{
 		char const *xx = 0;
-	 	err = linted_conf_find_str(conf, "Service", "X-LintedFstab", &xx);
+		err = linted_conf_find_str(conf, "Service",
+		                           "X-LintedFstab", &xx);
 		if (err != 0 && err != ENOENT)
 			return err;
 		fstab = xx;
@@ -769,19 +773,27 @@ service_create(struct system_conf const *system_conf,
 	char const *chdir_path;
 	{
 		char const *xx = 0;
-	 	err = linted_conf_find_str(conf, "Service", "WorkingDirectory", &xx);
+		err = linted_conf_find_str(conf, "Service",
+		                           "WorkingDirectory", &xx);
 		if (err != 0 && err != ENOENT)
 			return err;
 		chdir_path = xx;
 	}
 
-	char const *priority_str;
+	int priority;
+	bool have_priority;
 	{
-		char const *xx = 0;
-	 	err = linted_conf_find_str(conf, "Service", "Priority", &xx);
-		if (err != 0 && err != ENOENT)
+		int xx = -1;
+		err = linted_conf_find_int(conf, "Service", "Priority",
+		                           &xx);
+		if (0 == err) {
+			have_priority = true;
+		} else if (ENOENT == err) {
+			have_priority = false;
+		} else {
 			return err;
-		priority_str = xx;
+		}
+		priority = xx;
 	}
 
 	if (0 == type || 0 == strcmp("simple", type)) {
@@ -826,12 +838,6 @@ service_create(struct system_conf const *system_conf,
 		/* simple type of service */
 	} else {
 		return LINTED_ERROR_INVALID_PARAMETER;
-	}
-
-
-	int priority_value = -1;
-	if (priority_str != 0) {
-		priority_value = atoi(priority_str);
 	}
 
 	char **envvars;
@@ -891,8 +897,8 @@ envvar_allocate_succeeded:
 	service->chdir_path = chdir_path;
 	service->environment = (char const *const *)envvars;
 
-	service->priority = priority_value;
-	service->has_priority = priority_str != 0;
+	service->priority = priority;
+	service->has_priority = have_priority;
 
 	service->clone_newuser = clone_newuser;
 	service->clone_newpid = clone_newpid;
@@ -921,7 +927,8 @@ static linted_error socket_create(struct linted_unit *unit,
 	char const *listen_dir;
 	{
 		char const *xx = 0;
-		err = linted_conf_find_str(conf, "Socket", "ListenDirectory", &xx);
+		err = linted_conf_find_str(conf, "Socket",
+		                           "ListenDirectory", &xx);
 		if (err != 0 && err != ENOENT)
 			return err;
 		listen_dir = xx;
@@ -930,7 +937,8 @@ static linted_error socket_create(struct linted_unit *unit,
 	char const *listen_file;
 	{
 		char const *xx = 0;
-		err = linted_conf_find_str(conf, "Socket", "ListenFile", &xx);
+		err = linted_conf_find_str(conf, "Socket", "ListenFile",
+		                           &xx);
 		if (err != 0 && err != ENOENT)
 			return err;
 		listen_file = xx;
@@ -939,18 +947,26 @@ static linted_error socket_create(struct linted_unit *unit,
 	char const *listen_fifo;
 	{
 		char const *xx = 0;
-		err = linted_conf_find_str(conf, "Socket", "ListenFIFO", &xx);
+		err = linted_conf_find_str(conf, "Socket", "ListenFIFO",
+		                           &xx);
 		if (err != 0 && err != ENOENT)
 			return err;
 		listen_fifo = xx;
 	}
 
-	char const *fifo_size;
+	int fifo_size;
+	bool have_fifo_size;
 	{
-		char const *xx = 0;
-		err = linted_conf_find_str(conf, "Socket", "PipeSize", &xx);
-		if (err != 0 && err != ENOENT)
+		int xx = -1;
+		err = linted_conf_find_int(conf, "Socket", "PipeSize",
+		                           &xx);
+		if (0 == err) {
+			have_fifo_size = true;
+		} else if (ENOENT == err) {
+			have_fifo_size = false;
+		} else {
 			return err;
+		}
 		fifo_size = xx;
 	}
 
@@ -979,11 +995,9 @@ static linted_error socket_create(struct linted_unit *unit,
 	if (0 == path)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
-	int fifo_size_value = -1;
-	if (fifo_size != 0) {
+	if (have_fifo_size) {
 		if (0 == listen_fifo)
 			return LINTED_ERROR_INVALID_PARAMETER;
-		fifo_size_value = atoi(fifo_size);
 	}
 
 	switch (socket_type) {
@@ -995,7 +1009,7 @@ static linted_error socket_create(struct linted_unit *unit,
 		break;
 	}
 
-	socket->fifo_size = fifo_size_value;
+	socket->fifo_size = fifo_size;
 	socket->type = socket_type;
 	socket->path = path;
 

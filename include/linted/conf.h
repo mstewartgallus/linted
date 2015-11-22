@@ -64,19 +64,16 @@ char const *const *linted_conf_find(struct linted_conf *conf,
                                     char const *field);
 
 linted_error linted_conf_find_str(struct linted_conf *conf,
-                                    char const *section,
-                                    char const *field,
-					char const **strp);
+                                  char const *section,
+                                  char const *field, char const **strp);
 
 linted_error linted_conf_find_int(struct linted_conf *conf,
-                                    char const *section,
-                                    char const *field,
-					int *intp);
+                                  char const *section,
+                                  char const *field, int *intp);
 
 linted_error linted_conf_find_bool(struct linted_conf *conf,
-                                    char const *section,
-                                    char const *field,
-					_Bool *boolp);
+                                   char const *section,
+                                   char const *field, _Bool *boolp);
 
 linted_error linted_conf_add_section(struct linted_conf *conf,
                                      linted_conf_section *sectionp,

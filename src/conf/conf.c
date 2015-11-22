@@ -627,11 +627,11 @@ char const *const *linted_conf_find(struct linted_conf *conf,
 }
 
 linted_error linted_conf_find_str(struct linted_conf *conf,
-                                    char const *section,
-                                    char const *field,
-					char const **strp)
+                                  char const *section,
+                                  char const *field, char const **strp)
 {
-	char const *const *strs = linted_conf_find(conf, section, field);
+	char const *const *strs =
+	    linted_conf_find(conf, section, field);
 	if (0 == strs)
 		return ENOENT;
 
@@ -647,11 +647,11 @@ linted_error linted_conf_find_str(struct linted_conf *conf,
 }
 
 linted_error linted_conf_find_int(struct linted_conf *conf,
-                                    char const *section,
-                                    char const *field,
-					int *intp)
+                                  char const *section,
+                                  char const *field, int *intp)
 {
-		char const *const *strs = linted_conf_find(conf, section, field);
+	char const *const *strs =
+	    linted_conf_find(conf, section, field);
 	if (0 == strs)
 		return ENOENT;
 
@@ -667,11 +667,11 @@ linted_error linted_conf_find_int(struct linted_conf *conf,
 }
 
 linted_error linted_conf_find_bool(struct linted_conf *conf,
-                                    char const *section,
-                                    char const *field,
-					_Bool *boolp)
+                                   char const *section,
+                                   char const *field, _Bool *boolp)
 {
-	char const *const *strs = linted_conf_find(conf, section, field);
+	char const *const *strs =
+	    linted_conf_find(conf, section, field);
 	if (0 == strs)
 		return ENOENT;
 
@@ -682,7 +682,7 @@ linted_error linted_conf_find_bool(struct linted_conf *conf,
 	if (strs[1U] != 0)
 		return LINTED_ERROR_INVALID_PARAMETER;
 
-		static char const *const yes_strs[] = {"1", "yes", "true",
+	static char const *const yes_strs[] = {"1", "yes", "true",
 	                                       "on"};
 	static char const *const no_strs[] = {"0", "no", "false",
 	                                      "off"};
