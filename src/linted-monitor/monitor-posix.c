@@ -173,6 +173,8 @@ static linted_error service_children_terminate(linted_pid pid);
 
 static linted_error pid_is_child_of(linted_pid parent, linted_pid child,
                                     bool *isp);
+static linted_error dup_array(char const *const *strs, size_t strs_size,
+                              char ***strsp);
 
 static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor"};
@@ -1326,41 +1328,23 @@ on_add_unit(struct monitor *monitor,
 
 	char **command;
 	{
-		void *xx;
-		err = linted_mem_alloc_array(&xx, command_size + 1U,
-		                             sizeof command[0U]);
+		char **xx;
+		err = dup_array((char const *const *)unit_command,
+		                command_size, &xx);
 		if (err != 0)
 			goto free_chdir_path;
 		command = xx;
 	}
 
-	size_t command_alloced = 0U;
-	for (; command_alloced < command_size; ++command_alloced) {
-		err = linted_str_dup(&command[command_alloced],
-		                     unit_command[command_alloced]);
-		if (err != 0)
-			goto free_command;
-	}
-	command[command_size] = 0;
-
 	char **environment;
 	{
-		void *xx;
-		err = linted_mem_alloc_array(&xx, environment_size + 1U,
-		                             sizeof environment[0U]);
+		char **xx;
+		err = dup_array((char const *const *)unit_environment,
+		                environment_size, &xx);
 		if (err != 0)
 			goto free_command;
 		environment = xx;
 	}
-
-	size_t ii = 0U;
-	for (; ii < environment_size; ++ii) {
-		err = linted_str_dup(&environment[ii],
-		                     unit_environment[ii]);
-		if (err != 0)
-			goto free_environment;
-	}
-	environment[environment_size] = 0;
 
 	struct linted_unit *unit;
 	{
@@ -1418,13 +1402,13 @@ on_add_unit(struct monitor *monitor,
 	return err;
 
 free_environment:
-	for (size_t jj = 0U; jj < ii; ++jj)
-		linted_mem_free(environment[jj]);
+	for (size_t ii = 0U; ii < environment_size; ++ii)
+		linted_mem_free(environment[ii]);
 	linted_mem_free(environment);
 
 free_command:
-	for (size_t jj = 0U; jj < command_alloced; ++jj)
-		linted_mem_free(command[jj]);
+	for (size_t ii = 0U; ii < command_size; ++ii)
+		linted_mem_free(command[ii]);
 	linted_mem_free(command);
 
 free_chdir_path:
@@ -1975,6 +1959,46 @@ linted_error socket_activate(struct linted_unit_socket *unit)
 		break;
 	}
 	}
+
+	return err;
+}
+
+static linted_error dup_array(char const *const *strs, size_t strs_size,
+                              char ***strsp)
+{
+	linted_error err = 0;
+
+	if (0 == strs) {
+		*strsp = 0;
+		return 0;
+	}
+
+	char **new_strs;
+	{
+		void *xx;
+		err = linted_mem_alloc_array(&xx, strs_size + 1U,
+		                             sizeof new_strs[0U]);
+		if (err != 0)
+			return err;
+		new_strs = xx;
+	}
+
+	size_t ii = 0U;
+	for (; ii < strs_size; ++ii) {
+		err = linted_str_dup(&new_strs[ii], strs[ii]);
+		if (err != 0)
+			goto free_new;
+	}
+	new_strs[ii] = 0;
+
+	*strsp = new_strs;
+
+	return 0;
+
+free_new:
+	for (size_t jj = 0U; jj < ii; ++jj)
+		linted_mem_free(new_strs[jj]);
+	linted_mem_free(new_strs);
 
 	return err;
 }
