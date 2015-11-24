@@ -17,8 +17,7 @@
 
 noinst_LTLIBRARIES+=%D%/libstack.la
 %C%_libstack_la_SOURCES=include/linted/stack.h %D%/stack.c
-%C%_libstack_la_LIBADD=\
- src/trigger/libtrigger.la
+%C%_libstack_la_LIBADD=src/trigger/libtrigger.la
 
 TESTS+=%D%/test_stack
 check_PROGRAMS+=%D%/test_stack

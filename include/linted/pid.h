@@ -89,6 +89,7 @@ struct linted_pid_stat {
 
 linted_error linted_pid_kill(linted_pid pid, int signo);
 linted_error linted_pid_terminate(linted_pid pid);
+linted_error linted_pid_continue(linted_pid pid);
 
 /**
  * @warning The `comm` field is attacker controllable. See

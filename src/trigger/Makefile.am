@@ -16,4 +16,12 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libtrigger.la
-%C%_libtrigger_la_SOURCES=include/linted/trigger.h %D%/trigger.c
+%C%_libtrigger_la_SOURCES=include/linted/trigger.h
+
+if WINDOWS_API
+%C%_libtrigger_la_SOURCES+=%D%/trigger-windows.c
+endif
+
+if POSIX_API
+%C%_libtrigger_la_SOURCES+=%D%/trigger-linux.c
+endif

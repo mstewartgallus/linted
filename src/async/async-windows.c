@@ -31,9 +31,9 @@
 #include "linted/mem.h"
 #include "linted/pid.h"
 #include "linted/channel.h"
-#include "linted/queue.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
+#include "linted/stack.h"
 #include "linted/util.h"
 
 #include <signal.h>
@@ -1085,10 +1085,10 @@ completion_queue_create(struct completion_queue **queuep)
 {
 	linted_error err;
 
-	struct linted_queue *queue;
+	struct linted_stack *queue;
 	{
-		struct linted_queue *xx;
-		err = linted_queue_create(&xx);
+		struct linted_stack *xx;
+		err = linted_stack_create(&xx);
 		if (err != 0)
 			return err;
 		queue = xx;
@@ -1101,7 +1101,7 @@ completion_queue_create(struct completion_queue **queuep)
 static void complete_task(struct completion_queue *queue,
                           struct linted_async_task *task)
 {
-	linted_queue_send((struct linted_queue *)queue, UPCAST(task));
+	linted_stack_send((struct linted_stack *)queue, UPCAST(task));
 }
 
 static linted_error completion_recv(struct completion_queue *queue,
@@ -1109,7 +1109,7 @@ static linted_error completion_recv(struct completion_queue *queue,
 {
 	struct linted_node *node;
 
-	linted_queue_recv((struct linted_queue *)queue, &node);
+	linted_stack_recv((struct linted_stack *)queue, &node);
 
 	*taskp = DOWNCAST(struct linted_async_task, node);
 
@@ -1125,8 +1125,8 @@ completion_try_recv(struct completion_queue *queue,
 	struct linted_node *node;
 	{
 		struct linted_node *xx;
-		err = linted_queue_try_recv(
-		    (struct linted_queue *)queue, &xx);
+		err = linted_stack_try_recv(
+		    (struct linted_stack *)queue, &xx);
 		if (err != 0)
 			return err;
 		node = xx;
@@ -1139,7 +1139,7 @@ completion_try_recv(struct completion_queue *queue,
 
 static void completion_queue_destroy(struct completion_queue *queue)
 {
-	linted_queue_destroy((struct linted_queue *)queue);
+	linted_stack_destroy((struct linted_stack *)queue);
 }
 
 /* struct job_queue is just a fake */
@@ -1147,10 +1147,10 @@ static linted_error job_queue_create(struct job_queue **queuep)
 {
 	linted_error err;
 
-	struct linted_queue *queue;
+	struct linted_stack *queue;
 	{
-		struct linted_queue *xx;
-		err = linted_queue_create(&xx);
+		struct linted_stack *xx;
+		err = linted_stack_create(&xx);
 		if (err != 0)
 			return err;
 		queue = xx;
@@ -1163,7 +1163,7 @@ static linted_error job_queue_create(struct job_queue **queuep)
 static void job_submit(struct job_queue *queue,
                        struct linted_async_task *task)
 {
-	linted_queue_send((struct linted_queue *)queue, UPCAST(task));
+	linted_stack_send((struct linted_stack *)queue, UPCAST(task));
 }
 
 static linted_error job_recv(struct job_queue *queue,
@@ -1173,7 +1173,7 @@ static linted_error job_recv(struct job_queue *queue,
 
 	{
 		struct linted_node *xx;
-		linted_queue_recv((struct linted_queue *)queue, &xx);
+		linted_stack_recv((struct linted_stack *)queue, &xx);
 		node = xx;
 	}
 
@@ -1184,7 +1184,7 @@ static linted_error job_recv(struct job_queue *queue,
 
 static void job_queue_destroy(struct job_queue *queue)
 {
-	linted_queue_destroy((struct linted_queue *)queue);
+	linted_stack_destroy((struct linted_stack *)queue);
 }
 
 /* struct worker_queue is just a fake */
@@ -1243,10 +1243,10 @@ static linted_error waiter_queue_create(struct waiter_queue **queuep)
 {
 	linted_error err;
 
-	struct linted_queue *raw_queue;
+	struct linted_stack *raw_queue;
 	{
-		struct linted_queue *xx;
-		err = linted_queue_create(&xx);
+		struct linted_stack *xx;
+		err = linted_stack_create(&xx);
 		if (err != 0)
 			return err;
 		raw_queue = xx;
@@ -1257,7 +1257,7 @@ static linted_error waiter_queue_create(struct waiter_queue **queuep)
 
 static void waiter_queue_destroy(struct waiter_queue *queue)
 {
-	linted_queue_destroy((struct linted_queue *)queue);
+	linted_stack_destroy((struct linted_stack *)queue);
 }
 
 static void waiter_submit(struct waiter_queue *queue,
@@ -1266,7 +1266,7 @@ static void waiter_submit(struct waiter_queue *queue,
 	LINTED_ASSERT(queue != 0);
 	LINTED_ASSERT(waiter != 0);
 
-	linted_queue_send((struct linted_queue *)queue, UPCAST(waiter));
+	linted_stack_send((struct linted_stack *)queue, UPCAST(waiter));
 }
 
 static linted_error waiter_recv(struct waiter_queue *queue,
@@ -1278,7 +1278,7 @@ static linted_error waiter_recv(struct waiter_queue *queue,
 	struct linted_node *node;
 	{
 		struct linted_node *xx;
-		linted_queue_recv((struct linted_queue *)queue, &xx);
+		linted_stack_recv((struct linted_stack *)queue, &xx);
 		node = xx;
 	}
 

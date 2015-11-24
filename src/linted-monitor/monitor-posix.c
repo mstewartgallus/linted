@@ -48,10 +48,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ptrace.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
+
 #include <time.h>
+
+#if defined HAVE_POSIX_API
+#include <sys/ptrace.h>
+#include <sys/wait.h>
+#endif
 
 #ifndef PTRACE_EVENT_STOP
 #define PTRACE_EVENT_STOP 128
@@ -1049,7 +1053,7 @@ static linted_error on_child_stopped(char const *process_name,
 	if (0 == err)
 		err = seize_err;
 
-	linted_error kill_err = linted_pid_kill(pid, SIGCONT);
+	linted_error kill_err = linted_pid_continue(pid);
 	if (0 == err)
 		err = kill_err;
 
@@ -1924,7 +1928,7 @@ linted_error socket_activate(struct linted_unit_socket *unit)
 		break;
 
 	case LINTED_UNIT_SOCKET_TYPE_FIFO: {
-		int fifo_size = unit->fifo_size;
+		int_least32_t fifo_size = unit->fifo_size;
 
 #if defined F_SETPIPE_SZ
 		if (fifo_size >= 0) {

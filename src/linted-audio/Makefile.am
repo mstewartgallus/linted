@@ -16,22 +16,32 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-audio
 
-%C%_linted_audio_SOURCES=%D%/audio.c
+%C%_linted_audio_SOURCES=
+%C%_linted_audio_CPPFLAGS=
 %C%_linted_audio_LDADD=\
   src/start/libstart.la\
-  \
   src/error/liberror.la\
-  src/io/libio.la\
-  src/ko/libko.la\
-  src/log/liblog.la\
-  \
+  src/log/liblog.la
+
+if POSIX_API
+%C%_linted_audio_SOURCES+=%D%/audio-pulse.c
+%C%_linted_audio_CPPFLAGS+=$(PULSE_FLAGS)
+%C%_linted_audio_LDADD+=\
   -lm\
   $(PULSE_LIBS)
+endif
 
-%C%_linted_audio_CPPFLAGS=\
-  $(PULSE_FLAGS)\
-  $(AM_CPPFLAGS)
+if WINDOWS_API
+%C%_linted_audio_SOURCES+=%D%/resources.rc %D%/audio.manifest
+%C%_linted_audio_SOURCES+=%D%/audio-windows.c
+%C%_linted_audio_LDADD+=\
+  %D%/resources.$(OBJEXT)\
+  $(USER_LIBS)
 
+%D%/resources.$(OBJEXT): %D%/audio.manifest
+endif
+
+%C%_linted_audio_CPPFLAGS+=$(AM_CPPFLAGS)
 
 dist_pkgdefaultconf_DATA+=%D%/audio.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-audio.service

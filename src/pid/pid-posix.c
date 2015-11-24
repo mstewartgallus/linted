@@ -67,16 +67,12 @@ linted_error linted_pid_kill(linted_pid pid, int signo)
 
 linted_error linted_pid_terminate(linted_pid pid)
 {
-	if (pid < 1)
-		return LINTED_ERROR_INVALID_PARAMETER;
+	return linted_pid_kill(pid, SIGKILL);
+}
 
-	if (-1 == kill(pid, SIGKILL)) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
+linted_error linted_pid_continue(linted_pid pid)
+{
+	return linted_pid_kill(pid, SIGCONT);
 }
 
 linted_error linted_pid_stat(linted_pid pid,

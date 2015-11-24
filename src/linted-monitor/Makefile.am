@@ -46,6 +46,7 @@ if POSIX_API
 endif
 
 if WINDOWS_API
+%C%_linted_monitor_SOURCES+=%D%/resources.rc %D%/monitor.manifest
 %C%_linted_monitor_SOURCES+=%D%/monitor-windows.c
 %C%_linted_monitor_LDADD+=\
   src/utf/libutf.la\

@@ -21,17 +21,19 @@ noinst_LTLIBRARIES+=%D%/libasync.la
 %C%_libasync_la_LIBADD=\
   src/ko/libko.la\
   src/channel/libchannel.la\
-  src/pid/libpid.la\
-  src/stack/libstack.la
+  src/stack/libstack.la\
+  src/pid/libpid.la
 
 if POSIX_API
 %C%_libasync_la_SOURCES+=%D%/async-posix.c
-%C%_libasync_la_LIBADD+=src/ko-stack/libkostack.la
+%C%_libasync_la_LIBADD+=\
+  src/ko-stack/libkostack.la
 endif
 
 if WINDOWS_API
 %C%_libasync_la_SOURCES+=%D%/async-windows.c
-%C%_libasync_la_LIBADD+=$(WS2_32_LIBS)
+%C%_libasync_la_LIBADD+=\
+  $(WS2_32_LIBS)
 endif
 
 TESTS+=%D%/test_async

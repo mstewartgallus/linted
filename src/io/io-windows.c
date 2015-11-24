@@ -532,7 +532,7 @@ void *linted_io_task_write_data(struct linted_io_task_write *task)
 	return task->data;
 }
 
-void linted_ko_do_poll(struct linted_async_pool *pool,
+void linted_io_do_poll(struct linted_async_pool *pool,
                        struct linted_async_task *task)
 {
 	struct linted_io_task_poll *task_poll =
@@ -553,7 +553,7 @@ void linted_ko_do_poll(struct linted_async_pool *pool,
 	linted_async_pool_complete(pool, task, 0);
 }
 
-void linted_ko_do_read(struct linted_async_pool *pool,
+void linted_io_do_read(struct linted_async_pool *pool,
                        struct linted_async_task *task)
 {
 	struct linted_io_task_read *task_read =
@@ -616,7 +616,7 @@ wait_on_poll:
 	linted_async_pool_wait_on_poll(pool, waiter, task, ko, POLLIN);
 }
 
-void linted_ko_do_write(struct linted_async_pool *pool,
+void linted_io_do_write(struct linted_async_pool *pool,
                         struct linted_async_task *task)
 {
 	struct linted_io_task_write *task_write =

@@ -35,21 +35,22 @@ include %C%/linted-monitor/Makefile.am
 
 include %C%/linted-sandbox/Makefile.am
 
-include %C%/linted-control/Makefile.am
-
-include %C%/linted-simulator/Makefile.am
 include %C%/linted-window/Makefile.am
+include %C%/linted-audio/Makefile.am
+
+include %C%/window/Makefile.am
 
 if WINDOWS_API
 else
-include %C%/linted-audio/Makefile.am
 include %C%/linted-drawer/Makefile.am
+include %C%/linted-simulator/Makefile.am
 include %C%/linted-gui/Makefile.am
 
 include %C%/linted-startup/Makefile.am
 include %C%/linted-waiter/Makefile.am
 
 include %C%/linted-enter/Makefile.am
+include %C%/linted-control/Makefile.am
 
 include %C%/ko-stack/Makefile.am
 include %C%/conf/Makefile.am
@@ -60,7 +61,6 @@ include %C%/unit/Makefile.am
 include %C%/admin/Makefile.am
 include %C%/controller/Makefile.am
 include %C%/updater/Makefile.am
-include %C%/window/Makefile.am
 endif
 
 include %C%/assets/Makefile.am
@@ -78,13 +78,12 @@ include %C%/log/Makefile.am
 include %C%/mem/Makefile.am
 include %C%/path/Makefile.am
 include %C%/pid/Makefile.am
-include %C%/queue/Makefile.am
 include %C%/sched/Makefile.am
 include %C%/signal/Makefile.am
 include %C%/stack/Makefile.am
 include %C%/start/Makefile.am
-include %C%/str/Makefile.am
 include %C%/trigger/Makefile.am
+include %C%/str/Makefile.am
 
 if WINDOWS_API
 include %C%/utf/Makefile.am

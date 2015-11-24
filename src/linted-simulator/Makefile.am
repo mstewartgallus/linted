@@ -45,6 +45,7 @@ check_PROGRAMS+=%D%/test_simulator_angle
   src/start/libstart.la
 
 if WINDOWS_API
+%C%_linted_simulator_SOURCES+=%D%/resources.rc %D%/simulator.manifest
 %C%_linted_simulator_LDADD+=%D%/resources.$(OBJEXT)
 %D%/resources.$(OBJEXT): %D%/simulator.manifest
 endif

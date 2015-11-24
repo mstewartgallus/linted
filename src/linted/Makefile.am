@@ -33,6 +33,7 @@ bin_PROGRAMS+=%D%/linted
   src/start/libstart.la
 
 if WINDOWS_API
+%C%_linted_SOURCES+=%D%/resources.rc %D%/linted.manifest
 %C%_linted_LDADD+=\
   src/utf/libutf.la\
   \

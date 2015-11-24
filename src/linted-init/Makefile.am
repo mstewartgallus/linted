@@ -35,6 +35,7 @@ if POSIX_API
 endif
 
 if WINDOWS_API
+%C%_linted_init_SOURCES+=%D%/resources.rc %D%/init.manifest
 %C%_linted_init_SOURCES+=%D%/init-windows.c
 %C%_linted_init_LDADD+=\
   src/utf/libutf.la\

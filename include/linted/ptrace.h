@@ -22,8 +22,11 @@
 
 #include <signal.h>
 #include <stdint.h>
-#include <sys/ptrace.h>
 #include <sys/types.h>
+
+#if defined HAVE_POSIX_API
+#include <sys/ptrace.h>
+#endif
 
 static inline linted_error linted_ptrace_detach(linted_pid pid,
                                                 int signo);
@@ -32,7 +35,7 @@ static inline linted_error linted_ptrace_setoptions(linted_pid pid,
 static inline linted_error
 linted_ptrace_geteventmsg(linted_pid pid, unsigned long *msg);
 static inline linted_error linted_ptrace_getsiginfo(linted_pid pid,
-                                                    siginfo_t *infop);
+                                                    void *infop);
 static inline linted_error linted_ptrace_seize(linted_pid pid,
                                                uint_fast32_t options);
 static inline linted_error linted_ptrace_cont(linted_pid pid,
@@ -53,8 +56,6 @@ static inline linted_error linted_ptrace_detach(linted_pid pid,
 
 	return 0;
 }
-#else
-#error foo
 #endif
 
 #ifdef PT_SETOPTIONS
@@ -93,7 +94,7 @@ static inline linted_error linted_ptrace_geteventmsg(linted_pid pid,
 
 #ifdef PT_GETSIGINFO
 static inline linted_error linted_ptrace_getsiginfo(linted_pid pid,
-                                                    siginfo_t *infop)
+                                                    void *infop)
 {
 	linted_error err;
 
