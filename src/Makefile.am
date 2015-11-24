@@ -38,7 +38,6 @@ include %C%/linted-sandbox/Makefile.am
 include %C%/linted-window/Makefile.am
 include %C%/linted-audio/Makefile.am
 
-include %C%/window/Makefile.am
 
 if WINDOWS_API
 else
@@ -84,6 +83,7 @@ include %C%/stack/Makefile.am
 include %C%/start/Makefile.am
 include %C%/trigger/Makefile.am
 include %C%/str/Makefile.am
+include %C%/window/Makefile.am
 
 if WINDOWS_API
 include %C%/utf/Makefile.am
