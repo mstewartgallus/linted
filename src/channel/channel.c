@@ -23,7 +23,6 @@
 #include "linted/trigger.h"
 #include "linted/util.h"
 
-#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 

@@ -19,10 +19,6 @@
 #include "linted/async.h"
 #include "linted/error.h"
 
-#if defined _i386__ || defined __amd64__
-#include <x86intrin.h>
-#endif
-
 /**
  * @file
  *
@@ -81,14 +77,15 @@ void linted_sched_do_sleep_until(struct linted_async_pool *pool,
 
 static inline void linted_sched_light_yield(void);
 
-#if defined _i386__ || defined __amd64__
+#if defined __i386__ || defined __amd64__
 static inline void linted_sched_light_yield(void)
 {
-	_mm_pause();
+	__asm__ __volatile__("pause");
 }
-#elif defined __arm__
+#elif defined __arm__ || defined __aarch64__
 static inline void linted_sched_light_yield(void)
 {
+	__asm__ __volatile__("yield");
 }
 #endif
 

@@ -1106,8 +1106,9 @@ static linted_error filter_envvars(char ***result_envvarsp,
 	linted_error err;
 
 	if (0 == allowed_envvars) {
-		size_t size =
-		    null_list_size((char const *const *)environ);
+		char const *const *envs = (char const *const *)environ;
+
+		size_t size = null_list_size(envs);
 
 		{
 			void *xx;
@@ -1120,7 +1121,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 		for (size_t ii = 0U; ii < size; ++ii) {
 			err = linted_str_dup(&result_envvars[ii],
-			                     environ[ii]);
+			                     envs[ii]);
 			if (err != 0) {
 				for (size_t jj = 0; jj <= ii; ++jj) {
 					linted_mem_free(

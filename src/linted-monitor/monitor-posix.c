@@ -1972,11 +1972,6 @@ static linted_error dup_array(char const *const *strs, size_t strs_size,
 {
 	linted_error err = 0;
 
-	if (0 == strs) {
-		*strsp = 0;
-		return 0;
-	}
-
 	char **new_strs;
 	{
 		void *xx;

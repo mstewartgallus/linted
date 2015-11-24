@@ -23,7 +23,6 @@
 #include "linted/error.h"
 #include "linted/fifo.h"
 #include "linted/ko.h"
-#include "linted/log.h"
 #include "linted/mem.h"
 #include "linted/util.h"
 
