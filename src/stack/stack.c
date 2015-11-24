@@ -24,11 +24,11 @@
 #include "linted/trigger.h"
 
 #include <errno.h>
-#include <stdbool.h>
+#include <stdatomic.h>
 #include <stdint.h>
 
 struct linted_stack {
-	struct linted_node *inbox;
+	_Atomic(struct linted_node *) inbox;
 	struct linted_node *outbox;
 	struct linted_trigger inbox_filled;
 };
@@ -51,7 +51,7 @@ linted_error linted_stack_create(struct linted_stack **stackp)
 		stack = xx;
 	}
 
-	stack->inbox = 0;
+	stack->inbox = ATOMIC_VAR_INIT((void *)0);
 	stack->outbox = 0;
 
 	linted_trigger_create(&stack->inbox_filled);
@@ -72,16 +72,16 @@ void linted_stack_send(struct linted_stack *stack,
                        struct linted_node *node)
 {
 	for (;;) {
-		struct linted_node *next =
-		    __atomic_load_n(&stack->inbox, __ATOMIC_ACQUIRE);
+		struct linted_node *next = atomic_load_explicit(
+		    &stack->inbox, memory_order_acquire);
 
 		node->next = next;
 
-		__atomic_thread_fence(__ATOMIC_RELEASE);
+		atomic_thread_fence(memory_order_release);
 
-		if (__atomic_compare_exchange_n(
-		        &stack->inbox, &next, node, true,
-		        __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+		if (atomic_compare_exchange_weak_explicit(
+		        &stack->inbox, &next, node,
+		        memory_order_acq_rel, memory_order_acquire)) {
 			break;
 		}
 
@@ -99,11 +99,12 @@ void linted_stack_recv(struct linted_stack *stack,
 		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {
 			{
 				struct linted_node *node =
-				    __atomic_exchange_n(
+				    atomic_exchange_explicit(
 				        &stack->inbox, 0,
-				        __ATOMIC_ACQ_REL);
+				        memory_order_acq_rel);
 
-				__atomic_thread_fence(__ATOMIC_ACQUIRE);
+				atomic_thread_fence(
+				    memory_order_acquire);
 
 				for (;;) {
 					if (0 == node)
@@ -142,10 +143,10 @@ linted_error linted_stack_try_recv(struct linted_stack *stack,
                                    struct linted_node **nodep)
 {
 	{
-		struct linted_node *node = __atomic_exchange_n(
-		    &stack->inbox, 0, __ATOMIC_ACQ_REL);
+		struct linted_node *node = atomic_exchange_explicit(
+		    &stack->inbox, 0, memory_order_acq_rel);
 
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+		atomic_thread_fence(memory_order_acquire);
 
 		for (;;) {
 			if (0 == node)

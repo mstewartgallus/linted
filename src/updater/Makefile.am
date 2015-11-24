@@ -19,16 +19,22 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
 %C%_libupdater_la_SOURCES=\
   %D%/updater.c\
   include/linted/updater.h
-nodist_%C%_libupdater_la_SOURCES=\
-  %D%/updater_xdr.c\
-  %D%/updater.h
+
 %C%_libupdater_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libupdater_la_LIBADD=\
+  %D%/librpc.la\
   src/io/libio.la\
   src/ko/libko.la\
   \
   $(MATH_LIBS)
 dist_pkgdefaultunits_DATA+=%D%/units/updater.socket
+
+noinst_LTLIBRARIES+=%D%/librpc.la
+nodist_%C%_librpc_la_SOURCES=\
+  %D%/updater_xdr.c\
+  %D%/updater.h
+
+%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAG_NO_WARN)
 
 EXTRA_DIST+=%D%/updater.x
 

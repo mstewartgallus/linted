@@ -17,7 +17,7 @@
 #define LINTED_TRIGGER_H
 
 struct linted_trigger {
-	int _triggered;
+	_Atomic int _triggered;
 };
 
 void linted_trigger_create(struct linted_trigger *trigger);

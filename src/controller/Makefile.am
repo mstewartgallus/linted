@@ -19,14 +19,18 @@ noinst_LTLIBRARIES+=%D%/libcontroller.la
 %C%_libcontroller_la_SOURCES=\
   %D%/controller.c\
   include/linted/controller.h
-nodist_%C%_libcontroller_la_SOURCES=\
-  %D%/controller_xdr.c\
-  %D%/controller.h
 %C%_libcontroller_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libcontroller_la_LIBADD=\
+  %D%/librpc.la\
   src/io/libio.la\
   src/ko/libko.la
 dist_pkgdefaultunits_DATA+=%D%/units/controller.socket
+
+noinst_LTLIBRARIES+=%D%/librpc.la
+nodist_%C%_librpc_la_SOURCES=\
+  %D%/controller_xdr.c\
+  %D%/controller.h
+%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAG_NO_WARN)
 
 EXTRA_DIST+=%D%/controller.x
 

@@ -43,4 +43,4 @@ source_files() {
     -machdep x86_64\
     -warn-signed-downcast\
     -warn-decimal-float none\
-    -cpp-extra-args='-C'
+    -cpp-command='clang-3.6 -C -E -I.'

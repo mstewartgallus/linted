@@ -39,9 +39,7 @@ dnl
 dnl
         [-Woverflow]dnl
         [-Wformat=2]dnl
-        [-Wunused] [-Wno-unused-parameter]dnl
         [-Wshadow]dnl
-        [-Wunreachable-code]dnl
         [-Wstrict-prototypes]dnl
         [-Wmissing-prototypes]dnl
         [-Wmissing-declarations]dnl
@@ -52,6 +50,12 @@ dnl
         [-Wtrampolines]dnl We force a nonexecutable stack so for most
                        dnl targets would generate broken code if we
                        dnl used trampolines.
+dnl
+        [-Wunused]dnl
+        [-Wno-unused-parameter]dnl
+dnl
+dnl     Make certain optimized implementations not cause warnings
+        [-Wno-array-bounds]dnl
 dnl
 dnl     Make the = { 0 } idiom not cause warnings
         [-Wno-missing-field-initializers]dnl
@@ -69,5 +73,7 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_WARNINGS],[
 ])
 AC_SUBST([linted_LDFLAGS_WARNINGS])
 dnl
+LINTED_CHECK_CFLAG([linted_CFLAG_NO_WARN],[-Wno-everything])
+AC_SUBST([linted_CFLAG_NO_WARN])
 ])
 ])

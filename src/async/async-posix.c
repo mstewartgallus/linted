@@ -55,7 +55,6 @@ typedef pthread_mutex_t spinlock;
 #endif
 
 static inline void spinlock_init(spinlock *lock);
-static inline void spinlock_destroy(spinlock *lock);
 static inline linted_error spinlock_lock(spinlock *lock);
 static inline linted_error spinlock_unlock(spinlock *lock);
 
@@ -1707,11 +1706,6 @@ static inline void spinlock_init(spinlock *lock)
 	pthread_spin_init(lock, false);
 }
 
-static inline void spinlock_destroy(spinlock *lock)
-{
-	pthread_spin_destroy(lock);
-}
-
 static inline linted_error spinlock_lock(spinlock *lock)
 {
 	return pthread_spin_lock(lock);
@@ -1725,11 +1719,6 @@ static inline linted_error spinlock_unlock(spinlock *lock)
 static inline void spinlock_init(spinlock *lock)
 {
 	pthread_mutex_init(lock, 0);
-}
-
-static inline void spinlock_destroy(spinlock *lock)
-{
-	pthread_mutex_destroy(lock);
 }
 
 static inline linted_error spinlock_lock(spinlock *lock)

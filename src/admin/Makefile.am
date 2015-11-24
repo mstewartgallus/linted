@@ -19,14 +19,20 @@ noinst_LTLIBRARIES+=%D%/libadmin.la
 %C%_libadmin_la_SOURCES=\
   %D%/admin.c\
   include/linted/admin.h
-nodist_%C%_libadmin_la_SOURCES=\
-  %D%/admin_xdr.c\
-  %D%/admin.h
+
 %C%_libadmin_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libadmin_la_LIBADD=\
+  %D%/librpc.la\
   src/async/libasync.la\
   src/io/libio.la\
   src/ko/libko.la
+
+noinst_LTLIBRARIES+=%D%/librpc.la
+nodist_%C%_librpc_la_SOURCES=\
+  %D%/admin_xdr.c\
+  %D%/admin.h
+
+%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAG_NO_WARN)
 
 EXTRA_DIST+=%D%/admin.x
 
