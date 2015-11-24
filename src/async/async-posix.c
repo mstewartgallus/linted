@@ -345,30 +345,40 @@ void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
 linted_error linted_async_pool_wait(struct linted_async_pool *pool,
                                     struct linted_async_result *resultp)
 {
+	linted_error err = 0;
+
 	struct linted_async_task *task;
-	linted_error err =
-	    completion_recv(pool->completion_queue, &task);
-	if (0 == err) {
-		resultp->task_ck = task->task_ck;
-		resultp->err = task->err;
-		resultp->userstate = task->userstate;
+	{
+		struct linted_async_task *xx;
+		err = completion_recv(pool->completion_queue, &xx);
+		if (err != 0)
+			return err;
+		task = xx;
 	}
-	return err;
+	resultp->task_ck = task->task_ck;
+	resultp->err = task->err;
+	resultp->userstate = task->userstate;
+	return 0;
 }
 
 linted_error linted_async_pool_poll(struct linted_async_pool *pool,
                                     struct linted_async_result *resultp)
 {
 	LINTED_ASSERT_NOT_NULL(pool);
+
+	linted_error err = 0;
 	struct linted_async_task *task;
-	linted_error err =
-	    completion_try_recv(pool->completion_queue, &task);
-	if (0 == err) {
-		resultp->task_ck = task->task_ck;
-		resultp->err = task->err;
-		resultp->userstate = task->userstate;
+	{
+		struct linted_async_task *xx;
+		err = completion_try_recv(pool->completion_queue, &xx);
+		if (err != 0)
+			return err;
+		task = xx;
 	}
-	return err;
+	resultp->task_ck = task->task_ck;
+	resultp->err = task->err;
+	resultp->userstate = task->userstate;
+	return 0;
 }
 
 linted_error
@@ -971,7 +981,6 @@ static void wait_manager_destroy(struct wait_manager *manager)
 		waiter.thread_canceller = true;
 
 		waiter_submit(waiter_queue, &waiter);
-
 		pthread_join(master_thread, 0);
 	}
 

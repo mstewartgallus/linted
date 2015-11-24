@@ -285,12 +285,12 @@ static linted_error startup_start(struct startup *startup)
 		                           "DefaultLimitLOCKS", &xx);
 		if (0 == err) {
 			yy = true;
+			system_conf_struct.limit_locks = xx;
 		} else if (ENOENT == err) {
 			yy = false;
 		} else {
 			goto destroy_conf_db;
 		}
-		system_conf_struct.limit_locks = xx;
 		system_conf_struct.has_limit_locks = yy;
 	}
 	{
@@ -300,12 +300,12 @@ static linted_error startup_start(struct startup *startup)
 		                           "DefaultLimitMSGQUEUE", &xx);
 		if (0 == err) {
 			yy = true;
+			system_conf_struct.limit_msgqueue = xx;
 		} else if (ENOENT == err) {
 			yy = false;
 		} else {
 			goto destroy_conf_db;
 		}
-		system_conf_struct.limit_msgqueue = xx;
 		system_conf_struct.has_limit_msgqueue = yy;
 	}
 	{
@@ -315,12 +315,12 @@ static linted_error startup_start(struct startup *startup)
 		                           "DefaultLimitNOFILE", &xx);
 		if (0 == err) {
 			yy = true;
+			system_conf_struct.limit_no_file = xx;
 		} else if (ENOENT == err) {
 			yy = false;
 		} else {
 			goto destroy_conf_db;
 		}
-		system_conf_struct.limit_no_file = xx;
 		system_conf_struct.has_limit_no_file = yy;
 	}
 

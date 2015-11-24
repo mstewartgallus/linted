@@ -94,8 +94,6 @@ void linted_stack_send(struct linted_stack *stack,
 void linted_stack_recv(struct linted_stack *stack,
                        struct linted_node **nodep)
 {
-	linted_error err = 0;
-
 	struct linted_node *ret;
 	for (;;) {
 		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {

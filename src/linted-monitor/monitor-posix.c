@@ -637,16 +637,13 @@ static linted_error monitor_start(struct monitor *monitor)
 
 	linted_spawn_attr_set_die_on_parent_death(attr);
 
-	linted_pid startup_pid;
 	{
-		linted_pid xx;
 		char const *const arguments[] = {startup, "admin-in",
 		                                 "admin-out", 0};
-		err = linted_spawn(&xx, cwd, startup, 0, attr,
-		                   arguments, 0);
+		err = linted_spawn(0, cwd, startup, 0, attr, arguments,
+		                   0);
 		if (err != 0)
 			return err;
-		startup_pid = xx;
 	}
 	linted_spawn_attr_destroy(attr);
 

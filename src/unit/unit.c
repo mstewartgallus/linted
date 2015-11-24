@@ -246,11 +246,10 @@ linted_error linted_unit_pid(linted_pid *pidp, linted_pid manager_pid,
 	if (0U == len)
 		return ESRCH;
 
-	linted_pid pid;
+	linted_pid child;
 	bool found_child = false;
-
 	for (size_t ii = 0U; ii < len; ++ii) {
-		linted_pid child = children[ii];
+		child = children[ii];
 
 		char other_name[LINTED_UNIT_NAME_MAX + 1U];
 		err = linted_unit_name(child, other_name);
@@ -263,7 +262,6 @@ linted_error linted_unit_pid(linted_pid *pidp, linted_pid manager_pid,
 
 		if (0 == strcmp(name, other_name)) {
 			found_child = true;
-			pid = child;
 			break;
 		}
 	}
@@ -278,7 +276,7 @@ free_buf:
 		return ESRCH;
 
 	if (pidp != 0)
-		*pidp = pid;
+		*pidp = child;
 
 	return 0;
 }

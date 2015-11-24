@@ -346,11 +346,11 @@ static void *signal_routine(void *arg)
 		pause();
 }
 
-static void listen_to_signal(size_t ii)
+static void listen_to_signal(size_t n)
 {
 	linted_error err;
-	int signo = signals[ii];
-	void (*handler)(int) = sighandlers[ii];
+	int signo = signals[n];
+	void (*handler)(int) = sighandlers[n];
 
 	struct sigaction action = {0};
 
