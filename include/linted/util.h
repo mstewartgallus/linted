@@ -25,40 +25,6 @@
  * Various utility macroes and functions.
  */
 
-#if defined NDEBUG
-#define LINTED_ASSERT(...)                                             \
-	do {                                                           \
-	} while (0)
-#else
-/**
- * We need our own `LINTED_ASSERT` because the real `assert` uses
- * `__FILE__`
- * which is nondeterministic.
- */
-#define LINTED_ASSERT(...)                                             \
-	do {                                                           \
-		extern void abort(void);                               \
-		if (!(__VA_ARGS__))                                    \
-			abort();                                       \
-	} while (0)
-#endif
-
-#if defined NDEBUG
-#define LINTED_ASSERT_NOT_NULL(...)                                    \
-	do {                                                           \
-	} while (0)
-#else
-/*
- * This is needed because other uses of null can be optimized
- * dangerously or because deep array accesses can index into mapped
- * memory.
- */
-#define LINTED_ASSERT_NOT_NULL(...)                                    \
-	do {                                                           \
-		*((char const volatile *)(__VA_ARGS__));               \
-	} while (0)
-#endif
-
 #if defined __GNUC__ && !defined __clang__ && !defined __CHECKER__
 #define LINTED__IS_GCC 1
 #else
@@ -77,7 +43,7 @@
 #define LINTED_UTIL_HAS_BUILTIN(X) 0
 #endif
 
-#define LINTED_FIELD_SIZEOF(type, member) (sizeof((type){0}).member)
+#define LINTED_FIELD_SIZEOF(TYPE, MEMBER) (sizeof((TYPE){0}).MEMBER)
 
 #define LINTED_ARRAY_SIZE(...)                                         \
 	((sizeof __VA_ARGS__) / sizeof __VA_ARGS__[0])
@@ -85,16 +51,50 @@
 #define LINTED_NUMBER_TYPE_STRING_SIZE(T)                              \
 	((CHAR_BIT * sizeof(T) - 1U) / 3U + 2U)
 
-#ifndef NDEBUG
-
-#define LINTED_ASSUME_UNREACHABLE()                                    \
+#if LINTED_UTIL_HAS_BUILTIN(__builtin_trap) || LINTED__IS_GCC
+#define LINTED_CRASH_FAST() __builtin_trap()
+#else
+#define LINTED_CRASH_FAST()                                            \
 	do {                                                           \
 		extern void abort(void);                               \
 		abort();                                               \
 	} while (0)
-#define LINTED_ASSUME(X) LINTED_ASSERT(X)
+#endif
 
+/**
+ * We need our own `LINTED_ASSERT` because the real `assert` uses
+ * `__FILE__`
+ * which is nondeterministic.
+ */
+#if defined NDEBUG
+#define LINTED_ASSERT(...)                                             \
+	do {                                                           \
+	} while (0)
 #else
+#define LINTED_ASSERT(...)                                             \
+	do {                                                           \
+		if (!(__VA_ARGS__))                                    \
+			LINTED_CRASH_FAST();                           \
+	} while (0)
+#endif
+
+/*
+ * This is needed because other uses of null can be optimized
+ * dangerously or because deep array accesses can index into mapped
+ * memory.
+ */
+#if defined NDEBUG
+#define LINTED_ASSERT_NOT_NULL(...)                                    \
+	do {                                                           \
+	} while (0)
+#else
+#define LINTED_ASSERT_NOT_NULL(...)                                    \
+	do {                                                           \
+		*((char const volatile *)(__VA_ARGS__));               \
+	} while (0)
+#endif
+
+#if defined NDEBUG
 
 #if LINTED_UTIL_HAS_BUILTIN(__builtin_unreachable) || LINTED__IS_GCC
 #define LINTED_ASSUME_UNREACHABLE() __builtin_unreachable()
@@ -104,19 +104,36 @@
 	} while (0)
 #endif
 
-#if LINTED_UTIL_HAS_BUILTIN(__builtin_assume)
-#define LINTED_ASSUME(X) __builtin_assume(X)
-#elif LINTED__IS_GCC
-#define LINTED_ASSUME(X)                                               \
+#else
+
+#define LINTED_ASSUME_UNREACHABLE()                                    \
 	do {                                                           \
-		if (!(X))                                              \
+		LINTED_CRASH_FAST();                                   \
+	} while (0)
+
+#endif
+
+#if defined NDEBUG
+
+#if LINTED_UTIL_HAS_BUILTIN(__builtin_assume)
+#define LINTED_ASSUME(...) __builtin_assume((__VA_ARGS__))
+#elif LINTED__IS_GCC
+#define LINTED_ASSUME(...)                                             \
+	do {                                                           \
+		if (!(__VA_ARGS__))                                    \
 			LINTED_ASSUME_UNREACHABLE();                   \
 	} while (0)
+
 #else
 #define LINTED_ASSUME(X)                                               \
 	do {                                                           \
 	} while (0)
+
 #endif
+
+#else
+
+#define LINTED_ASSUME(X) LINTED_ASSERT(X)
 
 #endif
 
