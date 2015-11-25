@@ -405,6 +405,15 @@ exit_loop:
 		}
 	}
 
+	{
+		err = linted_prctl_set_tsc(true);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "prctl: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+	}
+
 	char const *const *command = argv + 1U + command_start;
 	size_t command_size = argc - (1U + command_start);
 	char **command_dup;
