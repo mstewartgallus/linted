@@ -129,7 +129,6 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 				current_section = xx;
 			}
 			has_current_section = true;
-			break;
 
 		free_section_name:
 			linted_mem_free(section_name);
@@ -259,8 +258,7 @@ linted_error linted_conf_parse_file(struct linted_conf *conf,
 			wordfree(&expr);
 
 		free_field:
-			if (err != 0)
-				linted_mem_free(field);
+			linted_mem_free(field);
 
 			if (err != 0)
 				break;
@@ -490,7 +488,7 @@ static void free_sections(struct conf_section *sections,
 
 linted_error linted_conf_add_section(struct linted_conf *conf,
                                      linted_conf_section *sectionp,
-                                     char *section_name)
+                                     char const *section_name)
 {
 	linted_error err;
 
@@ -518,11 +516,19 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 		}
 
 		if (have_found_field) {
-			linted_mem_free(section_name);
 			*sectionp = section_id_create(section_hash,
 			                              found_field);
 			return 0;
 		}
+	}
+
+	char *section_name_dup;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, section_name);
+		if (err != 0)
+			return err;
+		section_name_dup = xx;
 	}
 
 	size_t new_sections_size = sections_size + 1U;
@@ -533,13 +539,13 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 		                               new_sections_size,
 		                               sizeof sections[0U]);
 		if (err != 0)
-			return err;
+			goto free_section_name;
 		new_sections = xx;
 	}
 
 	struct conf_section *new_section = &new_sections[sections_size];
 
-	new_section->name = section_name;
+	new_section->name = section_name_dup;
 
 	for (size_t ii = 0U; ii < SETTING_BUCKETS_SIZE; ++ii) {
 		new_section->buckets[ii].settings_size = 0U;
@@ -551,6 +557,10 @@ linted_error linted_conf_add_section(struct linted_conf *conf,
 
 	*sectionp = section_id_create(section_hash, sections_size);
 	return 0;
+
+free_section_name:
+	linted_mem_free(section_name_dup);
+	return err;
 }
 
 struct conf_setting {
@@ -711,7 +721,7 @@ return_result:
 
 linted_error
 linted_conf_add_setting(struct linted_conf *conf,
-                        linted_conf_section section, char *field,
+                        linted_conf_section section, char const *field,
                         char const *const *additional_values)
 {
 	linted_error err;
@@ -749,8 +759,6 @@ linted_conf_add_setting(struct linted_conf *conf,
 		char **setting_values = setting->value;
 
 		if (0U == additional_values_len) {
-			linted_mem_free(field);
-
 			linted_mem_free(setting_field);
 
 			for (size_t ii = 0U; setting_values[ii] != 0;
@@ -812,16 +820,24 @@ linted_conf_add_setting(struct linted_conf *conf,
 
 			new_value[new_value_len] = 0;
 
-			linted_mem_free(setting_field);
 			linted_mem_free(setting_values);
 
-			setting->field = field;
+			setting->field = setting_field;
 			setting->value = new_value;
 		}
 		return 0;
 	}
 have_not_found_field:
 	;
+	char *field_dup;
+	{
+		char *xx;
+		err = linted_str_dup(&xx, field);
+		if (err != 0)
+			return err;
+		field_dup = xx;
+	}
+
 	char **value_copy;
 	{
 		void *xx;
@@ -829,24 +845,21 @@ have_not_found_field:
 		    &xx, additional_values_len + 1U,
 		    sizeof additional_values[0U]);
 		if (err != 0)
-			return err;
+			goto free_field_dup;
 		value_copy = xx;
 	}
-	for (size_t ii = 0U; ii < additional_values_len; ++ii) {
+	size_t values = 0U;
+	for (; values < additional_values_len; ++values) {
 		char *copy;
 		{
 			char *xx;
-			err =
-			    linted_str_dup(&xx, additional_values[ii]);
-			if (err != 0) {
-				for (size_t jj = 0U; jj < ii; ++jj)
-					linted_mem_free(value_copy[jj]);
-				linted_mem_free(value_copy);
-				return err;
-			}
+			err = linted_str_dup(&xx,
+			                     additional_values[values]);
+			if (err != 0)
+				goto free_value_copy;
 			copy = xx;
 		}
-		value_copy[ii] = copy;
+		value_copy[values] = copy;
 	}
 	value_copy[additional_values_len] = 0;
 
@@ -866,13 +879,22 @@ have_not_found_field:
 		}
 		new_settings = xx;
 	}
-	new_settings[settings_size].field = field;
+	new_settings[settings_size].field = field_dup;
 	new_settings[settings_size].value = value_copy;
 
 	bucket->settings_size = new_settings_size;
 	bucket->settings = new_settings;
 
 	return 0;
+
+free_value_copy:
+	for (size_t jj = 0U; jj < values; ++jj)
+		linted_mem_free(value_copy[jj]);
+	linted_mem_free(value_copy);
+
+free_field_dup:
+	linted_mem_free(field_dup);
+	return err;
 }
 
 static size_t string_list_size(char const *const *list)

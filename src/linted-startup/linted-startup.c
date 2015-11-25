@@ -31,9 +31,11 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,13 +53,9 @@ struct startup {
 };
 
 struct system_conf {
-	int_least64_t limit_locks;
-	int_least64_t limit_msgqueue;
-	int_least64_t limit_no_file;
-
-	bool has_limit_locks : 1U;
-	bool has_limit_msgqueue : 1U;
-	bool has_limit_no_file : 1U;
+	int_least64_t *limit_locks;
+	int_least64_t *limit_msgqueue;
+	int_least64_t *limit_no_file;
 };
 
 static linted_error startup_init(struct startup *startup,
@@ -78,16 +76,17 @@ static char const *const default_envvars[] = {
     "XDG_SEAT", "TERM", "LD_WARN", "LD_VERBOSE", "LD_DEBUG",
     "LD_DEBUG_OUTPUT", 0};
 
-static linted_error populate_conf_db(struct linted_conf_db *conf_db,
-                                     linted_ko cwd,
-                                     char const *system_conf_path,
-                                     char const *unit_path);
+static linted_error
+populate_conf_db(struct linted_conf_db *conf_db,
+                 struct system_conf const *system_conf, linted_ko cwd,
+                 char const *unit_path);
 static linted_error populate_system_conf(struct linted_conf_db *db,
                                          linted_ko cwd,
                                          char const *file_name);
-static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
-                                       linted_ko cwd,
-                                       char const *dir_name);
+static linted_error
+add_unit_dir_to_db(struct linted_conf_db *db,
+                   struct system_conf const *system_conf, linted_ko cwd,
+                   char const *dir_name);
 
 static linted_error socket_activate(struct linted_conf *conf,
                                     linted_ko admin_in,
@@ -255,14 +254,42 @@ static linted_error startup_start(struct startup *startup)
 		conf_db = xx;
 	}
 
-	err = populate_conf_db(conf_db, LINTED_KO_CWD, system_conf_path,
-	                       unit_path);
-	if (err != 0)
-		goto destroy_conf_db;
+	for (char const *start = system_conf_path;;) {
+		char const *end = strchr(start, ':');
 
-	size_t size = linted_conf_db_size(conf_db);
+		size_t len;
+		if (0 == end) {
+			len = strlen(start);
+		} else {
+			len = end - start;
+		}
+
+		char *file_name_dup;
+		{
+			char *xx;
+			err = linted_str_dup_len(&xx, start, len);
+			if (err != 0)
+				return err;
+			file_name_dup = xx;
+		}
+
+		err = populate_system_conf(conf_db, LINTED_KO_CWD,
+		                           file_name_dup);
+
+		linted_mem_free(file_name_dup);
+
+		if (err != 0)
+			return err;
+
+		if (0 == end)
+			break;
+
+		start = end + 1U;
+	}
+
 	struct linted_conf *system_conf = 0;
-	for (size_t ii = 0U; ii < size; ++ii) {
+	for (size_t ii = 0U, size = linted_conf_db_size(conf_db);
+	     ii < size; ++ii) {
 		struct linted_conf *conf =
 		    linted_conf_db_get_conf(conf_db, ii);
 
@@ -278,52 +305,54 @@ static linted_error startup_start(struct startup *startup)
 
 	struct system_conf system_conf_struct = {0};
 
+	int_least64_t limit_locks;
+	int_least64_t limit_msgqueue;
+	int_least64_t limit_no_file;
 	{
 		int xx;
-		bool yy;
 		err = linted_conf_find_int(system_conf, "Manager",
 		                           "DefaultLimitLOCKS", &xx);
 		if (0 == err) {
-			yy = true;
-			system_conf_struct.limit_locks = xx;
+			limit_locks = xx;
+			system_conf_struct.limit_locks = &limit_locks;
 		} else if (ENOENT == err) {
-			yy = false;
 		} else {
 			goto destroy_conf_db;
 		}
-		system_conf_struct.has_limit_locks = yy;
 	}
 	{
 		int xx;
-		bool yy;
 		err = linted_conf_find_int(system_conf, "Manager",
 		                           "DefaultLimitMSGQUEUE", &xx);
 		if (0 == err) {
-			yy = true;
-			system_conf_struct.limit_msgqueue = xx;
+			limit_msgqueue = xx;
+			system_conf_struct.limit_msgqueue =
+			    &limit_msgqueue;
 		} else if (ENOENT == err) {
-			yy = false;
 		} else {
 			goto destroy_conf_db;
 		}
-		system_conf_struct.has_limit_msgqueue = yy;
 	}
 	{
 		int xx;
-		bool yy;
 		err = linted_conf_find_int(system_conf, "Manager",
 		                           "DefaultLimitNOFILE", &xx);
 		if (0 == err) {
-			yy = true;
-			system_conf_struct.limit_no_file = xx;
+			limit_no_file = xx;
+			system_conf_struct.limit_no_file =
+			    &limit_no_file;
 		} else if (ENOENT == err) {
-			yy = false;
 		} else {
 			goto destroy_conf_db;
 		}
-		system_conf_struct.has_limit_no_file = yy;
 	}
 
+	err = populate_conf_db(conf_db, &system_conf_struct,
+	                       LINTED_KO_CWD, unit_path);
+	if (err != 0)
+		goto destroy_conf_db;
+
+	size_t size = linted_conf_db_size(conf_db);
 	for (size_t ii = 0U; ii < size; ++ii) {
 		struct linted_conf *conf =
 		    linted_conf_db_get_conf(conf_db, ii);
@@ -373,44 +402,12 @@ static linted_error startup_stop(struct startup *startup)
 	return 0;
 }
 
-static linted_error populate_conf_db(struct linted_conf_db *db,
-                                     linted_ko cwd,
-                                     char const *system_conf_path,
-                                     char const *unit_path)
+static linted_error
+populate_conf_db(struct linted_conf_db *db,
+                 struct system_conf const *system_conf, linted_ko cwd,
+                 char const *unit_path)
 {
 	linted_error err = 0;
-
-	for (char const *start = system_conf_path;;) {
-		char const *end = strchr(start, ':');
-
-		size_t len;
-		if (0 == end) {
-			len = strlen(start);
-		} else {
-			len = end - start;
-		}
-
-		char *file_name_dup;
-		{
-			char *xx;
-			err = linted_str_dup_len(&xx, start, len);
-			if (err != 0)
-				return err;
-			file_name_dup = xx;
-		}
-
-		err = populate_system_conf(db, cwd, file_name_dup);
-
-		linted_mem_free(file_name_dup);
-
-		if (err != 0)
-			return err;
-
-		if (0 == end)
-			break;
-
-		start = end + 1U;
-	}
 
 	for (char const *dirstart = unit_path;;) {
 		char const *dirend = strchr(dirstart, ':');
@@ -431,7 +428,8 @@ static linted_error populate_conf_db(struct linted_conf_db *db,
 			dir_name = xx;
 		}
 
-		err = add_unit_dir_to_db(db, cwd, dir_name);
+		err =
+		    add_unit_dir_to_db(db, system_conf, cwd, dir_name);
 
 		linted_mem_free(dir_name);
 
@@ -502,9 +500,10 @@ close_ko:
 	return err;
 }
 
-static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
-                                       linted_ko cwd,
-                                       char const *dir_name)
+static linted_error
+add_unit_dir_to_db(struct linted_conf_db *db,
+                   struct system_conf const *system_conf, linted_ko cwd,
+                   char const *dir_name)
 {
 	linted_error err;
 
@@ -623,46 +622,65 @@ static linted_error add_unit_dir_to_db(struct linted_conf_db *db,
 			break;
 
 		case LINTED_UNIT_TYPE_SERVICE: {
-			char *section_name;
-			{
-				char *xx;
-				err = linted_str_dup(&xx, "Service");
-				if (err != 0)
-					goto close_unit_file;
-				section_name = xx;
-			}
-
-			char *env_whitelist;
-			{
-				char *xx;
-				err = linted_str_dup(
-				    &xx,
-				    "X-LintedEnvironmentWhitelist");
-				if (err != 0) {
-					linted_mem_free(section_name);
-					goto close_unit_file;
-				}
-				env_whitelist = xx;
-			}
-
 			linted_conf_section service;
 			{
 				linted_conf_section xx;
 				err = linted_conf_add_section(
-				    conf, &xx, section_name);
-				if (err != 0) {
-					linted_mem_free(env_whitelist);
-					linted_mem_free(section_name);
+				    conf, &xx, "Service");
+				if (err != 0)
 					goto close_unit_file;
-				}
 				service = xx;
 			}
 
-			err = linted_conf_add_setting(conf, service,
-			                              env_whitelist,
-			                              default_envvars);
+			err = linted_conf_add_setting(
+			    conf, service,
+			    "X-LintedEnvironmentWhitelist",
+			    default_envvars);
 			if (err != 0)
 				goto close_unit_file;
+
+			if (system_conf->limit_no_file != 0) {
+				char limits
+				    [LINTED_NUMBER_TYPE_STRING_SIZE(
+				        INT64_MAX)];
+				sprintf(limits, "%" PRId64,
+				        *system_conf->limit_no_file);
+
+				char const *const expr[] = {limits, 0};
+				err = linted_conf_add_setting(
+				    conf, service, "LimitNOFILE", expr);
+				if (err != 0)
+					goto close_unit_file;
+			}
+
+			if (system_conf->limit_locks != 0) {
+				char limits
+				    [LINTED_NUMBER_TYPE_STRING_SIZE(
+				        INT64_MAX)];
+				sprintf(limits, "%" PRId64,
+				        *system_conf->limit_locks);
+
+				char const *const expr[] = {limits, 0};
+				err = linted_conf_add_setting(
+				    conf, service, "LimitLOCKS", expr);
+				if (err != 0)
+					goto close_unit_file;
+			}
+
+			if (system_conf->limit_msgqueue != 0) {
+				char limits
+				    [LINTED_NUMBER_TYPE_STRING_SIZE(
+				        INT64_MAX)];
+				sprintf(limits, "%" PRId64,
+				        *system_conf->limit_msgqueue);
+
+				char const *const expr[] = {limits, 0};
+				err = linted_conf_add_setting(
+				    conf, service, "LimitMSGQUEUE",
+				    expr);
+				if (err != 0)
+					goto close_unit_file;
+			}
 			break;
 		}
 		}
@@ -922,6 +940,54 @@ service_activate(struct system_conf const *system_conf,
 		priority = xx;
 	}
 
+	int_least64_t limit_no_file;
+	bool has_limit_no_file;
+	{
+		int xx = -1;
+		err = linted_conf_find_int(conf, "Service",
+		                           "LimitNOFILE", &xx);
+		if (0 == err) {
+			has_limit_no_file = true;
+		} else if (ENOENT == err) {
+			has_limit_no_file = false;
+		} else {
+			goto free_unit_name;
+		}
+		limit_no_file = xx;
+	}
+
+	int_least64_t limit_msgqueue;
+	bool has_limit_msgqueue;
+	{
+		int xx = -1;
+		err = linted_conf_find_int(conf, "Service",
+		                           "LimitMSGQUEUE", &xx);
+		if (0 == err) {
+			has_limit_msgqueue = true;
+		} else if (ENOENT == err) {
+			has_limit_msgqueue = false;
+		} else {
+			goto free_unit_name;
+		}
+		limit_msgqueue = xx;
+	}
+
+	int_least64_t limit_locks;
+	bool has_limit_locks;
+	{
+		int xx = -1;
+		err = linted_conf_find_int(conf, "Service",
+		                           "LimitLOCKS", &xx);
+		if (0 == err) {
+			has_limit_locks = true;
+		} else if (ENOENT == err) {
+			has_limit_locks = false;
+		} else {
+			goto free_unit_name;
+		}
+		limit_locks = xx;
+	}
+
 	if (0 == type || 0 == strcmp("simple", type)) {
 		/* simple type of service */
 	} else {
@@ -1009,15 +1075,6 @@ envvar_allocate_failed:
 envvar_allocate_succeeded:
 	envvars[envvars_size] = service_name_setting;
 	envvars[envvars_size + 1U] = 0;
-
-	int_least64_t limit_no_file = system_conf->limit_no_file;
-	bool has_limit_no_file = system_conf->has_limit_no_file;
-
-	int_least64_t limit_msgqueue = system_conf->limit_msgqueue;
-	bool has_limit_msgqueue = system_conf->has_limit_msgqueue;
-
-	int_least64_t limit_locks = system_conf->limit_locks;
-	bool has_limit_locks = system_conf->has_limit_locks;
 
 	char const *const *environment = (char const *const *)envvars;
 

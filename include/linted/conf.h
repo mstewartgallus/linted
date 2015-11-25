@@ -77,11 +77,11 @@ linted_error linted_conf_find_bool(struct linted_conf *conf,
 
 linted_error linted_conf_add_section(struct linted_conf *conf,
                                      linted_conf_section *sectionp,
-                                     char *section_name);
+                                     char const *section_name);
 
 linted_error linted_conf_add_setting(struct linted_conf *conf,
                                      linted_conf_section section,
-                                     char *field,
+                                     char const *field,
                                      char const *const *value);
 
 #endif /* LINTED_CONF_H */
