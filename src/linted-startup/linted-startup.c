@@ -645,7 +645,6 @@ add_unit_dir_to_db(struct linted_conf_db *db,
 				        INT64_MAX)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_no_file);
-
 				char const *const expr[] = {limits, 0};
 				err = linted_conf_add_setting(
 				    conf, service, "LimitNOFILE", expr);

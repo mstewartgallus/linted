@@ -20,6 +20,9 @@ Documentation='man:linted-simulator(6)'
 
 ExecStart="${LINTED_SIMULATOR}" "/run/controller" "/run/updater"
 
+LimitNOFILE=
+LimitNOFILE=10
+
 TimerSlackNSec=1
 
 NoNewPrivileges=true

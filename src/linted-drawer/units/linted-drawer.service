@@ -20,6 +20,9 @@ Documentation='man:linted-drawer(6)'
 
 ExecStart="${LINTED_DRAWER}" "/run/window" "/run/window-notifier-drawer" "/run/updater"
 
+LimitNOFILE=
+LimitNOFILE=14
+
 TimerSlackNSec=1
 
 NoNewPrivileges=true
