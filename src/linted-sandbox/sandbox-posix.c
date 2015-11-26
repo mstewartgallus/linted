@@ -1117,6 +1117,11 @@ first_fork_routine(void *void_args)
 	}
 
 	/*
+	 * Don't create stuff usable by other processes by default
+	 */
+	umask(0777);
+
+	/*
 	 * This isn't needed if CLONE_NEWPID was used but it doesn't
 	 * hurt,
 	 */

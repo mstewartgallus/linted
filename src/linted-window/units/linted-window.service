@@ -30,9 +30,9 @@ X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NE
 X-LintedFstab="${LINTED_WINDOW_FSTAB}"
 WorkingDirectory=/var
 
-Priority=1
+Nice=1
 
-X-LintedEnvironmentWhitelist=LINTED_WINDOW
+PassEnvironment=LINTED_WINDOW
 
-X-LintedEnvironmentWhitelist=DISPLAY
-X-LintedEnvironmentWhitelist=XAUTHORITY
+PassEnvironment=DISPLAY
+PassEnvironment=XAUTHORITY

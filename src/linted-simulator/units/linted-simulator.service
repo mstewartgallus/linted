@@ -31,4 +31,4 @@ X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NE
 X-LintedFstab="${LINTED_SIMULATOR_FSTAB}"
 WorkingDirectory=/var
 
-X-LintedEnvironmentWhitelist=LINTED_SIMULATOR
+PassEnvironment=LINTED_SIMULATOR

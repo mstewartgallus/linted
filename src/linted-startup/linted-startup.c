@@ -632,10 +632,9 @@ add_unit_dir_to_db(struct linted_conf_db *db,
 				service = xx;
 			}
 
-			err = linted_conf_add_setting(
-			    conf, service,
-			    "X-LintedEnvironmentWhitelist",
-			    default_envvars);
+			err = linted_conf_add_setting(conf, service,
+			                              "PassEnvironment",
+			                              default_envvars);
 			if (err != 0)
 				goto close_unit_file;
 
@@ -862,8 +861,8 @@ service_activate(struct system_conf const *system_conf,
 
 	char const *const *command =
 	    linted_conf_find(conf, "Service", "ExecStart");
-	char const *const *env_whitelist = linted_conf_find(
-	    conf, "Service", "X-LintedEnvironmentWhitelist");
+	char const *const *env_whitelist =
+	    linted_conf_find(conf, "Service", "PassEnvironment");
 	char const *const *clone_flags =
 	    linted_conf_find(conf, "Service", "X-LintedCloneFlags");
 
@@ -927,8 +926,8 @@ service_activate(struct system_conf const *system_conf,
 	bool has_priority;
 	{
 		int xx = -1;
-		err = linted_conf_find_int(conf, "Service", "Priority",
-		                           &xx);
+		err =
+		    linted_conf_find_int(conf, "Service", "Nice", &xx);
 		if (0 == err) {
 			has_priority = true;
 		} else if (ENOENT == err) {

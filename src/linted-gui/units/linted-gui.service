@@ -31,15 +31,15 @@ X-LintedCloneFlags=CLONE_NEWUSER CLONE_NEWPID CLONE_NEWIPC CLONE_NEWNET CLONE_NE
 X-LintedFstab="${LINTED_GUI_FSTAB}"
 WorkingDirectory=/var
 
-X-LintedEnvironmentWhitelist=LINTED_GUI
+PassEnvironment=LINTED_GUI
 
-X-LintedEnvironmentWhitelist=DISPLAY
-X-LintedEnvironmentWhitelist=XAUTHORITY
+PassEnvironment=DISPLAY
+PassEnvironment=XAUTHORITY
 
-X-LintedEnvironmentWhitelist=XKB_LOG_LEVEL
-X-LintedEnvironmentWhitelist=XKB_LOG_VERBOSITY
-X-LintedEnvironmentWhitelist=XKB_DEFAULT_RULES
-X-LintedEnvironmentWhitelist=XKB_DEFAULT_MODEL
-X-LintedEnvironmentWhitelist=XKB_DEFAULT_LAYOUT
-X-LintedEnvironmentWhitelist=XKB_DEFAULT_VARIANT
-X-LintedEnvironmentWhitelist=XKB_DEFAULT_OPTIONS
+PassEnvironment=XKB_LOG_LEVEL
+PassEnvironment=XKB_LOG_VERBOSITY
+PassEnvironment=XKB_DEFAULT_RULES
+PassEnvironment=XKB_DEFAULT_MODEL
+PassEnvironment=XKB_DEFAULT_LAYOUT
+PassEnvironment=XKB_DEFAULT_VARIANT
+PassEnvironment=XKB_DEFAULT_OPTIONS
