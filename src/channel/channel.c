@@ -26,8 +26,10 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
+typedef _Atomic(void *) atomic_voidptr;
+
 struct linted_channel {
-	_Atomic(void *) value;
+	atomic_voidptr value;
 	struct linted_trigger filled;
 };
 
@@ -43,7 +45,8 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 		channel = xx;
 	}
 
-	channel->value = ATOMIC_VAR_INIT((void *)0);
+	atomic_voidptr ptr = ATOMIC_VAR_INIT((void *)0);
+	channel->value = ptr;
 	linted_trigger_create(&channel->filled);
 
 	*channelp = channel;

@@ -27,8 +27,10 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
+typedef _Atomic(struct linted_node *) atomic_node;
+
 struct linted_stack {
-	_Atomic(struct linted_node *) inbox;
+	atomic_node inbox;
 	struct linted_node *outbox;
 	struct linted_trigger inbox_filled;
 };
@@ -51,7 +53,8 @@ linted_error linted_stack_create(struct linted_stack **stackp)
 		stack = xx;
 	}
 
-	stack->inbox = ATOMIC_VAR_INIT((void *)0);
+	atomic_node ptr = ATOMIC_VAR_INIT((void *)0);
+	stack->inbox = ptr;
 	stack->outbox = 0;
 
 	linted_trigger_create(&stack->inbox_filled);

@@ -31,6 +31,7 @@
 #include "linted/mem.h"
 #include "linted/pid.h"
 #include "linted/channel.h"
+#include "linted/node.h"
 #include "linted/sched.h"
 #include "linted/signal.h"
 #include "linted/stack.h"

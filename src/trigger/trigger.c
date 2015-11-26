@@ -20,27 +20,27 @@
 #include "linted/trigger.h"
 
 #include "linted/error.h"
+#include "linted/sched.h"
 
 #include <errno.h>
 #include <stdatomic.h>
-#include <syscall.h>
 #include <time.h>
 #include <unistd.h>
 
+#if defined HAVE_POSIX_API
+#include <syscall.h>
+
 #include <linux/futex.h>
+#endif
 
-static linted_error wait_until_different(_Atomic int const *uaddr,
+static linted_error wait_until_different(atomic_int const *uaddr,
                                          int val);
-static linted_error hint_wakeup(_Atomic int const *uaddr);
-
-static linted_error futex_wait(_Atomic int const *uaddr, int val,
-                               struct timespec const *timeout);
-static linted_error futex_wake(unsigned *restrict wokeupp,
-                               _Atomic int const *uaddr, int val);
+static linted_error hint_wakeup(atomic_int const *uaddr);
 
 void linted_trigger_create(struct linted_trigger *trigger)
 {
-	trigger->_triggered = 0;
+	atomic_int zero = ATOMIC_VAR_INIT(0);
+	trigger->_triggered = zero;
 }
 
 void linted_trigger_destroy(struct linted_trigger *trigger)
@@ -62,18 +62,42 @@ void linted_trigger_wait(struct linted_trigger *trigger)
 	                      memory_order_release);
 }
 
-static linted_error wait_until_different(_Atomic int const *uaddr,
+#if defined HAVE_POSIX_API
+static linted_error futex_wait(atomic_int const *uaddr, int val,
+                               struct timespec const *timeout);
+static linted_error futex_wake(unsigned *restrict wokeupp,
+                               atomic_int const *uaddr, int val);
+
+static linted_error wait_until_different(atomic_int const *uaddr,
                                          int val)
 {
 	return futex_wait(uaddr, val, NULL);
 }
 
-static linted_error hint_wakeup(_Atomic int const *uaddr)
+static linted_error hint_wakeup(atomic_int const *uaddr)
 {
 	return futex_wake(NULL, uaddr, 1);
 }
+#else
+static linted_error wait_until_different(atomic_int const *uaddr,
+                                         int val)
+{
+	for (;;) {
+		if (atomic_load_explicit(uaddr, memory_order_acquire) !=
+		    val)
+			return 0;
+		linted_sched_light_yield();
+	}
+}
 
-static linted_error futex_wait(_Atomic int const *uaddr, int val,
+static linted_error hint_wakeup(atomic_int const *uaddr)
+{
+	return 0;
+}
+#endif
+
+#if defined HAVE_POSIX_API
+static linted_error futex_wait(atomic_int const *uaddr, int val,
                                struct timespec const *timeout)
 {
 	int xx =
@@ -87,7 +111,7 @@ static linted_error futex_wait(_Atomic int const *uaddr, int val,
 }
 
 static linted_error futex_wake(unsigned *restrict wokeupp,
-                               _Atomic int const *uaddr, int val)
+                               atomic_int const *uaddr, int val)
 {
 	int xx = syscall(__NR_futex, (intptr_t)uaddr,
 	                 (intptr_t)FUTEX_WAKE, (intptr_t)val);
@@ -100,3 +124,4 @@ static linted_error futex_wake(unsigned *restrict wokeupp,
 	}
 	return 0;
 }
+#endif

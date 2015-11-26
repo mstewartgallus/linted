@@ -16,8 +16,10 @@
 #ifndef LINTED_TRIGGER_H
 #define LINTED_TRIGGER_H
 
+#include <stdatomic.h>
+
 struct linted_trigger {
-	_Atomic int _triggered;
+	atomic_int _triggered;
 };
 
 void linted_trigger_create(struct linted_trigger *trigger);
