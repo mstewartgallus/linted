@@ -16,7 +16,6 @@
 #ifndef LINTED_SCHED_H
 #define LINTED_SCHED_H
 
-#include "linted/async.h"
 #include "linted/error.h"
 
 /**
@@ -24,6 +23,10 @@
  *
  * Task scheduling.
  */
+
+struct linted_async_pool;
+struct linted_async_task;
+union linted_async_ck;
 
 typedef int linted_sched_priority;
 

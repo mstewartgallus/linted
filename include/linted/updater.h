@@ -16,7 +16,6 @@
 #ifndef LINTED_UPDATER_H
 #define LINTED_UPDATER_H
 
-#include "linted/async.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 
@@ -28,6 +27,10 @@
  * Exposes a protocol for updating a GUI on the progress of a
  * simulator.
  */
+
+struct linted_async_pool;
+struct linted_async_task;
+union linted_async_ck;
 
 /**
  * A handle to access the updater. Is safe to share between processes.

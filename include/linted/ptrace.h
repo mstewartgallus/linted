@@ -20,9 +20,7 @@
 #include "linted/pid.h"
 #include "linted/util.h"
 
-#include <signal.h>
 #include <stdint.h>
-#include <sys/types.h>
 
 #if defined HAVE_POSIX_API
 #include <sys/ptrace.h>

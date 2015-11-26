@@ -16,11 +16,10 @@
 #ifndef LINTED_PID_H
 #define LINTED_PID_H
 
-#include "linted/async.h"
 #include "linted/error.h"
 
+#include <stddef.h>
 #include <stdint.h>
-#include <sys/types.h>
 
 #if defined HAVE_POSIX_API
 typedef uintmax_t linted_pid;
@@ -36,9 +35,6 @@ typedef uint_fast32_t linted_pid;
  */
 
 #define LINTED_PID_COMM_MAX 16U
-
-struct linted_async_pool;
-struct linted_async_task;
 
 struct linted_pid_stat {
 	linted_pid pid;

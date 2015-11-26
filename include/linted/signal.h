@@ -16,10 +16,7 @@
 #ifndef LINTED_SIGNAL_H
 #define LINTED_SIGNAL_H
 
-#include "linted/async.h"
 #include "linted/error.h"
-
-#include <stddef.h>
 
 /**
  * @file
@@ -29,6 +26,7 @@
 
 struct linted_async_pool;
 struct linted_async_task;
+union linted_async_ck;
 
 struct linted_signal_task_wait;
 

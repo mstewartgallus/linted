@@ -18,7 +18,6 @@
 #include "linted/error.h"
 #include "linted/log.h"
 #include "linted/node.h"
-#include "linted/sched.h"
 #include "linted/stack.h"
 #include "linted/start.h"
 #include "linted/util.h"

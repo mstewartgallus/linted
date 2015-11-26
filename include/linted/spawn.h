@@ -20,8 +20,6 @@
 #include "linted/ko.h"
 #include "linted/pid.h"
 
-#include <sys/types.h>
-
 /**
  * @file
  *

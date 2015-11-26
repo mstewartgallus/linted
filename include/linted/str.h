@@ -20,7 +20,6 @@
 #include "linted/util.h"
 
 #include <stddef.h>
-#include <stdint.h>
 
 /**
  * @file

@@ -18,7 +18,6 @@
 
 #include "linted/error.h"
 #include "linted/ko.h"
-#include "linted/unit.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -29,11 +28,12 @@
  * Monitor, probe and control an init process.
  */
 
-typedef int_least32_t linted_admin_bool;
-typedef int_least32_t linted_admin_enum;
-
 struct linted_async_pool;
 struct linted_async_task;
+union linted_async_ck;
+
+typedef int_least32_t linted_admin_bool;
+typedef int_least32_t linted_admin_enum;
 
 typedef linted_ko linted_admin_in;
 typedef linted_ko linted_admin_out;

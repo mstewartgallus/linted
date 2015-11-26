@@ -16,7 +16,6 @@
 #ifndef LINTED_CONTROLLER_H
 #define LINTED_CONTROLLER_H
 
-#include "linted/async.h"
 #include "linted/error.h"
 #include "linted/ko.h"
 
@@ -27,6 +26,10 @@
  *
  * Communicates user input to another process.
  */
+
+struct linted_async_pool;
+struct linted_async_task;
+union linted_async_ck;
 
 typedef linted_ko linted_controller;
 

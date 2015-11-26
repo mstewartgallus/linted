@@ -17,7 +17,8 @@
 #define LINTED_KO_STACK_H
 
 #include "linted/ko.h"
-#include "linted/node.h"
+
+struct linted_node;
 
 struct linted_ko_stack;
 

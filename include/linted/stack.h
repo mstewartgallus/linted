@@ -17,7 +17,8 @@
 #define LINTED_STACK_H
 
 #include "linted/error.h"
-#include "linted/node.h"
+
+struct linted_node;
 
 struct linted_stack;
 
