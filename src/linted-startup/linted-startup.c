@@ -656,7 +656,7 @@ add_unit_dir_to_db(struct linted_conf_db *db,
 			if (system_conf->limit_no_file != 0) {
 				char limits
 				    [LINTED_NUMBER_TYPE_STRING_SIZE(
-				        INT64_MAX)];
+				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_no_file);
 				char const *const expr[] = {limits, 0};
@@ -669,7 +669,7 @@ add_unit_dir_to_db(struct linted_conf_db *db,
 			if (system_conf->limit_locks != 0) {
 				char limits
 				    [LINTED_NUMBER_TYPE_STRING_SIZE(
-				        INT64_MAX)];
+				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_locks);
 
@@ -683,7 +683,7 @@ add_unit_dir_to_db(struct linted_conf_db *db,
 			if (system_conf->limit_msgqueue != 0) {
 				char limits
 				    [LINTED_NUMBER_TYPE_STRING_SIZE(
-				        INT64_MAX)];
+				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_msgqueue);
 
@@ -698,7 +698,7 @@ add_unit_dir_to_db(struct linted_conf_db *db,
 			if (system_conf->limit_memlock != 0) {
 				char limits
 				    [LINTED_NUMBER_TYPE_STRING_SIZE(
-				        INT64_MAX)];
+				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_memlock);
 
