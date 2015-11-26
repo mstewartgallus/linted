@@ -26,7 +26,7 @@ static inline linted_error linted_prctl_set_death_sig(int signum);
 static inline linted_error linted_prctl_set_name(char const *name);
 static inline linted_error linted_prctl_set_child_subreaper(_Bool v);
 static inline linted_error linted_prctl_set_timerslack(unsigned long v);
-static inline linted_error linted_prctl_set_tsc(int v);
+static inline linted_error linted_prctl_set_no_new_privs(_Bool v);
 
 #ifdef PR_SET_PDEATHSIG
 static inline linted_error linted_prctl_set_death_sig(int signum)
@@ -87,6 +87,23 @@ static inline linted_error linted_prctl_set_timerslack(unsigned long v)
 	    prctl(PR_SET_TIMERSLACK, (unsigned long)v, 0UL, 0UL, 0UL)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
+		return err;
+	}
+
+	return 0;
+}
+#endif
+
+#ifdef PR_SET_NO_NEW_PRIVS
+static linted_error linted_prctl_set_no_new_privs(_Bool b)
+{
+	linted_error err;
+
+	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)b, 0UL, 0UL,
+	                0UL)) {
+		err = errno;
+		LINTED_ASSUME(err != 0);
+		LINTED_ASSERT(err != EINVAL);
 		return err;
 	}
 

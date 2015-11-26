@@ -64,6 +64,7 @@ struct linted_admin_request_add_unit {
 	int_least64_t *limit_no_file;
 	int_least64_t *limit_msgqueue;
 	int_least64_t *limit_locks;
+	int_least64_t *limit_memlock;
 
 	linted_admin_bool clone_newuser;
 	linted_admin_bool clone_newpid;

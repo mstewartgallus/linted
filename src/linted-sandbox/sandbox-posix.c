@@ -80,6 +80,7 @@ enum { STOP_OPTIONS,
        LIMIT_NO_FILE,
        LIMIT_LOCKS,
        LIMIT_MSGQUEUE,
+       LIMIT_MEMLOCK,
        CHDIR,
        PRIORITY,
        TIMER_SLACK,
@@ -118,6 +119,7 @@ static char const *const argstrs[NUM_OPTIONS] = {
         /**/ [LIMIT_NO_FILE] = "--limit-no-file",
         /**/ [LIMIT_LOCKS] = "--limit-locks",
         /**/ [LIMIT_MSGQUEUE] = "--limit-msgqueue",
+        /**/ [LIMIT_MEMLOCK] = "--limit-memlock",
         /**/ [CHDIR] = "--chdir",
         /**/ [PRIORITY] = "--priority",
         /**/ [TIMER_SLACK] = "--timer-slack",
@@ -150,6 +152,7 @@ static uint_least8_t opt_types[NUM_OPTIONS] = {
         /**/ [LIMIT_NO_FILE] = OPT_TYPE_STRING,
         /**/ [LIMIT_LOCKS] = OPT_TYPE_STRING,
         /**/ [LIMIT_MSGQUEUE] = OPT_TYPE_STRING,
+        /**/ [LIMIT_MEMLOCK] = OPT_TYPE_STRING,
         /**/ [CHDIR] = OPT_TYPE_STRING,
         /**/ [PRIORITY] = OPT_TYPE_STRING,
         /**/ [TIMER_SLACK] = OPT_TYPE_STRING,
@@ -209,7 +212,6 @@ static linted_error
 mount_directories(struct mount_args const *mount_args, size_t size);
 
 static linted_error set_child_subreaper(bool v);
-static linted_error set_no_new_privs(bool b);
 
 static linted_error parse_int(char const *str, int *resultp);
 
@@ -253,6 +255,8 @@ static unsigned char linted_start_main(char const *const process_name,
 	char const *limit_no_file_str;
 	char const *limit_locks_str;
 	char const *limit_msgqueue_str;
+	char const *limit_memlock_str;
+
 	char const *chdir_str;
 	char const *priority_str;
 	char const *timer_slack_str;
@@ -321,6 +325,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		limit_no_file_str = opt_values[RLIMIT_NOFILE].string;
 		limit_locks_str = opt_values[LIMIT_LOCKS].string;
 		limit_msgqueue_str = opt_values[LIMIT_MSGQUEUE].string;
+		limit_memlock_str = opt_values[LIMIT_MEMLOCK].string;
 		chdir_str = opt_values[CHDIR].string;
 		priority_str = opt_values[PRIORITY].string;
 		timer_slack_str = opt_values[TIMER_SLACK].string;
@@ -488,6 +493,18 @@ static unsigned char linted_start_main(char const *const process_name,
 			return EXIT_FAILURE;
 		}
 		limit_msgqueue_val = xx;
+	}
+
+	int limit_memlock_val = -1;
+	if (limit_memlock_str != 0) {
+		int xx;
+		err = parse_int(limit_memlock_str, &xx);
+		if (err != 0) {
+			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
+			           linted_error_string(err));
+			return EXIT_FAILURE;
+		}
+		limit_memlock_val = xx;
 	}
 
 	size_t mount_args_size = 0U;
@@ -830,7 +847,7 @@ static unsigned char linted_start_main(char const *const process_name,
 
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
-		err = set_no_new_privs(true);
+		err = linted_prctl_set_no_new_privs(true);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "prctl: %s",
 			           linted_error_string(err));
@@ -904,6 +921,19 @@ static unsigned char linted_start_main(char const *const process_name,
 		};
 
 		if (-1 == setrlimit(RLIMIT_MSGQUEUE, &lim)) {
+			linted_log(LINTED_LOG_ERROR, "setrlimit: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (limit_memlock_val >= 0) {
+		struct rlimit const lim = {
+		    .rlim_cur = limit_memlock_val,
+		    .rlim_max = limit_memlock_val,
+		};
+
+		if (-1 == setrlimit(RLIMIT_MEMLOCK, &lim)) {
 			linted_log(LINTED_LOG_ERROR, "setrlimit: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -1590,21 +1620,6 @@ set_child_subreaper(bool v)
 	                0UL, 0UL)) {
 		err = errno;
 		LINTED_ASSUME(err != 0);
-		return err;
-	}
-
-	return 0;
-}
-
-static linted_error set_no_new_privs(bool b)
-{
-	linted_error err;
-
-	if (-1 == prctl(PR_SET_NO_NEW_PRIVS, (unsigned long)b, 0UL, 0UL,
-	                0UL)) {
-		err = errno;
-		LINTED_ASSUME(err != 0);
-		LINTED_ASSERT(err != EINVAL);
 		return err;
 	}
 

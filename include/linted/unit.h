@@ -83,6 +83,7 @@ struct linted_unit_service {
 	int_least64_t limit_no_file;
 	int_least64_t limit_msgqueue;
 	int_least64_t limit_locks;
+	int_least64_t limit_memlock;
 
 	int priority;
 
@@ -91,6 +92,7 @@ struct linted_unit_service {
 	_Bool has_limit_no_file : 1U;
 	_Bool has_limit_msgqueue : 1U;
 	_Bool has_limit_locks : 1U;
+	_Bool has_limit_memlock : 1U;
 
 	_Bool clone_newuser : 1U;
 	_Bool clone_newpid : 1U;

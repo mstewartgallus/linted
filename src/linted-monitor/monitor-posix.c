@@ -1280,12 +1280,14 @@ on_add_unit(struct monitor *monitor,
 	int_least64_t *limit_no_file = request->limit_no_file;
 	int_least64_t *limit_msgqueue = request->limit_msgqueue;
 	int_least64_t *limit_locks = request->limit_locks;
+	int_least64_t *limit_memlock = request->limit_memlock;
 
 	bool has_timer_slack_nsec = timer_slack_nsec != 0;
 	bool has_priority = priority != 0;
 	bool has_limit_no_file = limit_no_file != 0;
 	bool has_limit_msgqueue = limit_msgqueue != 0;
 	bool has_limit_locks = limit_locks != 0;
+	bool has_limit_memlock = limit_memlock != 0;
 
 	bool clone_newuser = request->clone_newuser;
 	bool clone_newpid = request->clone_newpid;
@@ -1382,12 +1384,16 @@ on_add_unit(struct monitor *monitor,
 	if (has_limit_locks)
 		unit_service->limit_locks = *limit_locks;
 
+	if (has_limit_memlock)
+		unit_service->limit_memlock = *limit_memlock;
+
 	/* These aren't fully implemented yet */
 	unit_service->has_priority = has_priority;
 	unit_service->has_timer_slack_nsec = has_timer_slack_nsec;
 	unit_service->has_limit_no_file = has_limit_no_file;
 	unit_service->has_limit_locks = has_limit_locks;
 	unit_service->has_limit_msgqueue = has_limit_msgqueue;
+	unit_service->has_limit_memlock = has_limit_memlock;
 
 	unit_service->clone_newuser = clone_newuser;
 	unit_service->clone_newpid = clone_newpid;
@@ -1673,6 +1679,7 @@ spawn_service:
 	bool has_limit_no_file = unit_service->has_limit_no_file;
 	bool has_limit_msgqueue = unit_service->has_limit_msgqueue;
 	bool has_limit_locks = unit_service->has_limit_locks;
+	bool has_limit_memlock = unit_service->has_limit_memlock;
 
 	bool clone_newuser = unit_service->clone_newuser;
 	bool clone_newpid = unit_service->clone_newpid;
@@ -1700,6 +1707,10 @@ spawn_service:
 	int_least64_t limit_locks;
 	if (has_limit_locks)
 		limit_locks = unit_service->limit_locks;
+
+	int_least64_t limit_memlock;
+	if (has_limit_memlock)
+		limit_memlock = unit_service->limit_memlock;
 
 	if (fstab != 0) {
 		linted_ko name_dir;
@@ -1729,6 +1740,7 @@ spawn_service:
 	char *limit_no_file_str = 0;
 	char *limit_msgqueue_str = 0;
 	char *limit_locks_str = 0;
+	char *limit_memlock_str = 0;
 
 	char *timer_slack_str = 0;
 	char *prio_str = 0;
@@ -1760,6 +1772,15 @@ spawn_service:
 		if (err != 0)
 			goto free_strs;
 		limit_locks_str = xx;
+	}
+
+	if (has_limit_memlock) {
+		char *xx;
+		err = linted_str_format(&xx, "%" PRIiMAX,
+		                        (intmax_t)limit_memlock);
+		if (err != 0)
+			goto free_strs;
+		limit_memlock_str = xx;
 	}
 
 	if (has_timer_slack_nsec) {
@@ -1814,6 +1835,8 @@ spawn_service:
 		    {"--limit-msgqueue", limit_msgqueue_str,
 		     has_limit_msgqueue},
 		    {"--limit-locks", limit_locks_str, has_limit_locks},
+		    {"--limit-memlock", limit_memlock_str,
+		     has_limit_memlock},
 		    {"--dropcaps", 0, drop_caps},
 		    {"--chdir", chdir_path, chdir_path != 0},
 		    {"--timer-slack", timer_slack_str,

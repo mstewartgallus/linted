@@ -35,6 +35,7 @@ struct linted_admin_proto_request_add_unit {
 	hyper *limit_no_file;
 	hyper *limit_msgqueue;
 	hyper *limit_locks;
+	hyper *limit_memlock;
 
 	bool clone_newuser;
 	bool clone_newpid;

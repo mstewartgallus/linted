@@ -56,6 +56,7 @@ struct system_conf {
 	int_least64_t *limit_locks;
 	int_least64_t *limit_msgqueue;
 	int_least64_t *limit_no_file;
+	int_least64_t *limit_memlock;
 };
 
 static linted_error startup_init(struct startup *startup,
@@ -306,6 +307,7 @@ static linted_error startup_start(struct startup *startup)
 	struct system_conf system_conf_struct = {0};
 
 	int_least64_t limit_locks;
+	int_least64_t limit_memlock;
 	int_least64_t limit_msgqueue;
 	int_least64_t limit_no_file;
 	{
@@ -315,6 +317,19 @@ static linted_error startup_start(struct startup *startup)
 		if (0 == err) {
 			limit_locks = xx;
 			system_conf_struct.limit_locks = &limit_locks;
+		} else if (ENOENT == err) {
+		} else {
+			goto destroy_conf_db;
+		}
+	}
+	{
+		int xx;
+		err = linted_conf_find_int(system_conf, "Manager",
+		                           "DefaultLimitMEMLOCK", &xx);
+		if (0 == err) {
+			limit_memlock = xx;
+			system_conf_struct.limit_memlock =
+			    &limit_memlock;
 		} else if (ENOENT == err) {
 		} else {
 			goto destroy_conf_db;
@@ -679,6 +694,21 @@ add_unit_dir_to_db(struct linted_conf_db *db,
 				if (err != 0)
 					goto close_unit_file;
 			}
+
+			if (system_conf->limit_memlock != 0) {
+				char limits
+				    [LINTED_NUMBER_TYPE_STRING_SIZE(
+				        INT64_MAX)];
+				sprintf(limits, "%" PRId64,
+				        *system_conf->limit_memlock);
+
+				char const *const expr[] = {limits, 0};
+				err = linted_conf_add_setting(
+				    conf, service, "LimitMEMLOCK",
+				    expr);
+				if (err != 0)
+					goto close_unit_file;
+			}
 			break;
 		}
 		}
@@ -986,6 +1016,22 @@ service_activate(struct system_conf const *system_conf,
 		limit_locks = xx;
 	}
 
+	int_least64_t limit_memlock;
+	bool has_limit_memlock;
+	{
+		int xx = -1;
+		err = linted_conf_find_int(conf, "Service",
+		                           "LimitMEMLOCK", &xx);
+		if (0 == err) {
+			has_limit_memlock = true;
+		} else if (ENOENT == err) {
+			has_limit_memlock = false;
+		} else {
+			goto free_unit_name;
+		}
+		limit_memlock = xx;
+	}
+
 	if (0 == type || 0 == strcmp("simple", type)) {
 		/* simple type of service */
 	} else {
@@ -1098,6 +1144,8 @@ envvar_allocate_succeeded:
 		xx->limit_msgqueue =
 		    has_limit_msgqueue ? &limit_msgqueue : 0;
 		xx->limit_locks = has_limit_locks ? &limit_locks : 0;
+		xx->limit_memlock =
+		    has_limit_memlock ? &limit_memlock : 0;
 
 		xx->clone_newuser = clone_newuser;
 		xx->clone_newpid = clone_newpid;
