@@ -38,6 +38,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <mntent.h>
 #include <wordexp.h>
@@ -76,7 +77,6 @@ enum { STOP_OPTIONS,
        TRACEME,
        DROP_CAPS,
        NO_NEW_PRIVS,
-       RLIMIT,
        LIMIT_NO_FILE,
        LIMIT_LOCKS,
        LIMIT_MSGQUEUE,
@@ -91,7 +91,8 @@ enum { STOP_OPTIONS,
        NEWIPC_ARG,
        NEWNET_ARG,
        NEWNS_ARG,
-       NEWUTS_ARG };
+       NEWUTS_ARG,
+       NUM_OPTIONS };
 
 struct mount_args {
 	char const *fsname;
@@ -106,7 +107,7 @@ struct mount_args {
 	bool nomount_flag : 1U;
 };
 
-static char const *const argstrs[] = {
+static char const *const argstrs[NUM_OPTIONS] = {
         /**/[STOP_OPTIONS] = "--",
         /**/ [HELP] = "--help",
         /**/ [VERSION_OPTION] = "--version",
@@ -114,7 +115,6 @@ static char const *const argstrs[] = {
         /**/ [TRACEME] = "--traceme",
         /**/ [DROP_CAPS] = "--dropcaps",
         /**/ [NO_NEW_PRIVS] = "--nonewprivs",
-        /**/ [RLIMIT] = "--rlimit",
         /**/ [LIMIT_NO_FILE] = "--limit-no-file",
         /**/ [LIMIT_LOCKS] = "--limit-locks",
         /**/ [LIMIT_MSGQUEUE] = "--limit-msgqueue",
@@ -130,6 +130,39 @@ static char const *const argstrs[] = {
         /**/ [NEWNET_ARG] = "--clone-newnet",
         /**/ [NEWNS_ARG] = "--clone-newns",
         /**/ [NEWUTS_ARG] = "--clone-newuts"};
+
+enum { OPT_TYPE_FLAG,
+       OPT_TYPE_STRING,
+};
+union opt_value {
+	bool flag;
+	char const *string;
+};
+
+static uint_least8_t opt_types[NUM_OPTIONS] = {
+        /**/[STOP_OPTIONS] = OPT_TYPE_FLAG,
+        /**/ [HELP] = OPT_TYPE_FLAG,
+        /**/ [VERSION_OPTION] = OPT_TYPE_FLAG,
+        /**/ [WAIT] = OPT_TYPE_FLAG,
+        /**/ [TRACEME] = OPT_TYPE_FLAG,
+        /**/ [DROP_CAPS] = OPT_TYPE_FLAG,
+        /**/ [NO_NEW_PRIVS] = OPT_TYPE_FLAG,
+        /**/ [LIMIT_NO_FILE] = OPT_TYPE_STRING,
+        /**/ [LIMIT_LOCKS] = OPT_TYPE_STRING,
+        /**/ [LIMIT_MSGQUEUE] = OPT_TYPE_STRING,
+        /**/ [CHDIR] = OPT_TYPE_STRING,
+        /**/ [PRIORITY] = OPT_TYPE_STRING,
+        /**/ [TIMER_SLACK] = OPT_TYPE_STRING,
+        /**/ [CHROOTDIR] = OPT_TYPE_STRING,
+        /**/ [FSTAB] = OPT_TYPE_STRING,
+        /**/ [WAITER] = OPT_TYPE_STRING,
+        /**/ [NEWUSER_ARG] = OPT_TYPE_FLAG,
+        /**/ [NEWPID_ARG] = OPT_TYPE_FLAG,
+        /**/ [NEWIPC_ARG] = OPT_TYPE_FLAG,
+        /**/ [NEWNET_ARG] = OPT_TYPE_FLAG,
+        /**/ [NEWNS_ARG] = OPT_TYPE_FLAG,
+        /**/ [NEWUTS_ARG] = OPT_TYPE_FLAG,
+};
 
 struct first_fork_args {
 	char const *chdir_path;
@@ -198,168 +231,104 @@ static unsigned char linted_start_main(char const *const process_name,
 	size_t arguments_length = argc;
 
 	char const *bad_option = 0;
-	bool need_version = false;
-	bool need_help = false;
 
-	bool wait = false;
-	bool traceme = false;
-	bool no_new_privs = false;
-	bool drop_caps = false;
-
-	bool clone_newuser = false;
-	bool clone_newpid = false;
-	bool clone_newipc = false;
-	bool clone_newnet = false;
-	bool clone_newns = false;
-	bool clone_newuts = false;
-
-	char const *chdir_path = 0;
-	char const *timer_slack = 0;
-	char const *priority = 0;
-	char const *limit_no_file = 0;
-	char const *limit_locks = 0;
-	char const *limit_msgqueue = 0;
-	char const *chrootdir = 0;
-	char const *fstab = 0;
-	char const *waiter = 0;
 	bool have_command = false;
 	size_t command_start;
 
-	for (size_t ii = 1U; ii < arguments_length; ++ii) {
-		char const *argument = argv[ii];
+	bool need_version;
+	bool need_help;
 
-		int arg = -1;
-		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs);
-		     ++jj) {
-			if (0 == strcmp(argument, argstrs[jj])) {
-				arg = jj;
+	bool wait;
+	bool traceme;
+	bool no_new_privs;
+	bool drop_caps;
+
+	bool clone_newuser;
+	bool clone_newpid;
+	bool clone_newipc;
+	bool clone_newnet;
+	bool clone_newns;
+	bool clone_newuts;
+
+	char const *limit_no_file_str;
+	char const *limit_locks_str;
+	char const *limit_msgqueue_str;
+	char const *chdir_str;
+	char const *priority_str;
+	char const *timer_slack_str;
+	char const *chrootdir_str;
+	char const *fstab_str;
+	char const *waiter_str;
+
+	{
+		union opt_value opt_values[NUM_OPTIONS] = {0};
+		for (size_t ii = 1U; ii < arguments_length; ++ii) {
+			char const *argument = argv[ii];
+
+			int arg = -1;
+			for (size_t jj = 0U;
+			     jj < LINTED_ARRAY_SIZE(argstrs); ++jj) {
+				if (0 ==
+				    strcmp(argument, argstrs[jj])) {
+					arg = jj;
+					break;
+				}
+			}
+
+			switch (arg) {
+			case -1:
+				bad_option = argument;
+				break;
+
+			case STOP_OPTIONS:
+				have_command = true;
+				command_start = ii;
+				goto exit_loop;
+
+			default:
+				switch (opt_types[arg]) {
+				case OPT_TYPE_FLAG:
+					opt_values[arg].flag = true;
+					break;
+
+				case OPT_TYPE_STRING:
+					++ii;
+					if (ii >= arguments_length)
+						goto exit_loop;
+					opt_values[arg].string =
+					    argv[ii];
+					break;
+				}
 				break;
 			}
 		}
+	exit_loop:
+		need_version = opt_values[VERSION_OPTION].flag;
+		need_help = opt_values[HELP].flag;
 
-		switch (arg) {
-		case -1:
-			bad_option = argument;
-			break;
+		wait = opt_values[WAIT].flag;
+		traceme = opt_values[TRACEME].flag;
+		no_new_privs = opt_values[NO_NEW_PRIVS].flag;
+		drop_caps = opt_values[DROP_CAPS].flag;
 
-		case STOP_OPTIONS:
-			have_command = true;
-			command_start = ii;
-			goto exit_loop;
+		clone_newuser = opt_values[NEWUSER_ARG].flag;
+		clone_newpid = opt_values[NEWPID_ARG].flag;
+		clone_newipc = opt_values[NEWIPC_ARG].flag;
+		clone_newnet = opt_values[NEWNET_ARG].flag;
+		clone_newns = opt_values[NEWNS_ARG].flag;
+		clone_newuts = opt_values[NEWUTS_ARG].flag;
 
-		case HELP:
-			need_help = true;
-			break;
-
-		case VERSION_OPTION:
-			need_version = true;
-			break;
-
-		case WAIT:
-			wait = true;
-			break;
-
-		case TRACEME:
-			traceme = true;
-			break;
-
-		case NO_NEW_PRIVS:
-			no_new_privs = true;
-			break;
-
-		case LIMIT_NO_FILE:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			limit_no_file = argv[ii];
-			break;
-
-		case LIMIT_LOCKS:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			limit_locks = argv[ii];
-			break;
-
-		case LIMIT_MSGQUEUE:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			limit_msgqueue = argv[ii];
-			break;
-
-		case DROP_CAPS:
-			drop_caps = true;
-			break;
-
-		case CHDIR:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			chdir_path = argv[ii];
-			break;
-
-		case PRIORITY:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			priority = argv[ii];
-			break;
-
-		case TIMER_SLACK:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			timer_slack = argv[ii];
-			break;
-
-		case CHROOTDIR:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			chrootdir = argv[ii];
-			break;
-
-		case FSTAB:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			fstab = argv[ii];
-			break;
-
-		case WAITER:
-			++ii;
-			if (ii >= arguments_length)
-				goto exit_loop;
-			waiter = argv[ii];
-			break;
-
-		case NEWUSER_ARG:
-			clone_newuser = true;
-			break;
-
-		case NEWPID_ARG:
-			clone_newpid = true;
-			break;
-
-		case NEWIPC_ARG:
-			clone_newipc = true;
-			break;
-
-		case NEWNET_ARG:
-			clone_newnet = true;
-			break;
-
-		case NEWNS_ARG:
-			clone_newns = true;
-			break;
-
-		case NEWUTS_ARG:
-			clone_newuts = true;
-			break;
-		}
+		limit_no_file_str = opt_values[RLIMIT_NOFILE].string;
+		limit_locks_str = opt_values[LIMIT_LOCKS].string;
+		limit_msgqueue_str = opt_values[LIMIT_MSGQUEUE].string;
+		chdir_str = opt_values[CHDIR].string;
+		priority_str = opt_values[PRIORITY].string;
+		timer_slack_str = opt_values[TIMER_SLACK].string;
+		chrootdir_str = opt_values[CHROOTDIR].string;
+		fstab_str = opt_values[FSTAB].string;
+		waiter_str = opt_values[WAITER].string;
 	}
-exit_loop:
+
 	if (need_help) {
 		do_help(LINTED_KO_STDOUT, process_name, PACKAGE_NAME,
 		        PACKAGE_URL, PACKAGE_BUGREPORT);
@@ -383,13 +352,13 @@ exit_loop:
 		return EXIT_FAILURE;
 	}
 
-	if (0 == waiter) {
+	if (0 == waiter_str) {
 		linted_log(LINTED_LOG_ERROR, "need waiter");
 		return EXIT_FAILURE;
 	}
 
-	if ((fstab != 0 && 0 == chrootdir) ||
-	    (0 == fstab && chrootdir != 0)) {
+	if ((fstab_str != 0 && 0 == chrootdir_str) ||
+	    (0 == fstab_str && chrootdir_str != 0)) {
 		linted_log(
 		    LINTED_LOG_ERROR,
 		    "--chrootdir and --fstab are required together");
@@ -434,7 +403,7 @@ exit_loop:
 	char *waiter_base;
 	{
 		char *xx;
-		err = linted_path_base(&xx, waiter);
+		err = linted_path_base(&xx, waiter_str);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR,
 			           "linted_path_base: %s",
@@ -462,9 +431,9 @@ exit_loop:
 	char const *binary = command[0U];
 
 	int prio_val;
-	if (priority != 0) {
+	if (priority_str != 0) {
 		int xx;
-		err = parse_int(priority, &xx);
+		err = parse_int(priority_str, &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
 			           linted_error_string(err));
@@ -474,9 +443,9 @@ exit_loop:
 	}
 
 	int timer_slack_val;
-	if (timer_slack != 0) {
+	if (timer_slack_str != 0) {
 		int xx;
-		err = parse_int(timer_slack, &xx);
+		err = parse_int(timer_slack_str, &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
 			           linted_error_string(err));
@@ -486,9 +455,9 @@ exit_loop:
 	}
 
 	int limit_no_file_val = -1;
-	if (limit_no_file != 0) {
+	if (limit_no_file_str != 0) {
 		int xx;
-		err = parse_int(limit_no_file, &xx);
+		err = parse_int(limit_no_file_str, &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
 			           linted_error_string(err));
@@ -498,9 +467,9 @@ exit_loop:
 	}
 
 	int limit_locks_val = -1;
-	if (limit_locks != 0) {
+	if (limit_locks_str != 0) {
 		int xx;
-		err = parse_int(limit_locks, &xx);
+		err = parse_int(limit_locks_str, &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
 			           linted_error_string(err));
@@ -510,9 +479,9 @@ exit_loop:
 	}
 
 	int limit_msgqueue_val = -1;
-	if (limit_msgqueue != 0) {
+	if (limit_msgqueue_str != 0) {
 		int xx;
-		err = parse_int(limit_msgqueue, &xx);
+		err = parse_int(limit_msgqueue_str, &xx);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
 			           linted_error_string(err));
@@ -523,11 +492,12 @@ exit_loop:
 
 	size_t mount_args_size = 0U;
 	struct mount_args *mount_args = 0;
-	if (fstab != 0) {
-		FILE *fstab_file = fopen(fstab, "re");
+	if (fstab_str != 0) {
+		FILE *fstab_file = fopen(fstab_str, "re");
 		if (0 == fstab_file) {
 			linted_log(LINTED_LOG_ERROR, "fopen(%s): %s",
-			           fstab, linted_error_string(errno));
+			           fstab_str,
+			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
@@ -841,7 +811,7 @@ exit_loop:
 	}
 
 	/* Only start actually dropping privileges now */
-	if (timer_slack != 0) {
+	if (timer_slack_str != 0) {
 		err = linted_prctl_set_timerslack(timer_slack_val);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "prctl: %s",
@@ -850,7 +820,7 @@ exit_loop:
 		}
 	}
 
-	if (priority != 0) {
+	if (priority_str != 0) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, prio_val)) {
 			linted_log(LINTED_LOG_ERROR, "setpriority: %s",
 			           linted_error_string(errno));
@@ -899,14 +869,15 @@ exit_loop:
 		}
 	}
 
-	if (chrootdir != 0) {
-		if (-1 == mount(chrootdir, chrootdir, 0, MS_BIND, 0)) {
+	if (chrootdir_str != 0) {
+		if (-1 == mount(chrootdir_str, chrootdir_str, 0,
+		                MS_BIND, 0)) {
 			linted_log(LINTED_LOG_ERROR, "mount: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
-		if (-1 == chdir(chrootdir)) {
+		if (-1 == chdir(chrootdir_str)) {
 			linted_log(LINTED_LOG_ERROR, "chdir: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -946,13 +917,13 @@ exit_loop:
 		    .limit_no_file = limit_no_file_val,
 		    .logger_reader = logger_reader,
 		    .logger_writer = logger_writer,
-		    .chdir_path = chdir_path,
+		    .chdir_path = chdir_str,
 		    .caps = caps,
 		    .mount_args = mount_args,
 		    .mount_args_size = mount_args_size,
 		    .use_seccomp = no_new_privs,
 		    .waiter_base = waiter_base,
-		    .waiter = waiter,
+		    .waiter = waiter_str,
 		    .command = command,
 		    .binary = binary};
 		child = safe_vfork(first_fork_routine, &args);
