@@ -64,9 +64,9 @@ static int do_init(struct linted_start_config const *config,
                    size_t argc, char const *const *argv);
 static void do_nothing(int signo);
 
-linted_error open_standard_handles(void);
-linted_error privilege_check(void);
-linted_error sanitize_fds(void);
+static linted_error open_standard_handles(void);
+static linted_error privilege_check(void);
+static linted_error sanitize_fds(void);
 
 int linted_start__main(struct linted_start_config const *config,
                        unsigned char (*start)(char const *process_name,
@@ -228,7 +228,7 @@ static void do_nothing(int signo)
 	/* Do nothing */
 }
 
-linted_error open_standard_handles(void)
+static linted_error open_standard_handles(void)
 {
 	linted_error err = 0;
 
@@ -253,7 +253,7 @@ linted_error open_standard_handles(void)
 	return err;
 }
 
-linted_error privilege_check(void)
+static linted_error privilege_check(void)
 {
 	uid_t uid = getuid();
 	if (0 == uid)
@@ -272,7 +272,7 @@ linted_error privilege_check(void)
 	return 0;
 }
 
-linted_error sanitize_fds(void)
+static linted_error sanitize_fds(void)
 {
 	linted_error err = 0;
 
