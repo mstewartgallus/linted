@@ -76,6 +76,9 @@ struct gui {
 	xcb_window_t window;
 	unsigned width;
 	unsigned height;
+
+	bool focused : 1U;
+
 	bool update_pending : 1U;
 	bool update_in_progress : 1U;
 };
@@ -357,6 +360,7 @@ static linted_error gui_init(struct gui *gui,
 	gui->width = 1;
 	gui->window = 0;
 	gui->window_ko = window_ko;
+	gui->focused = true;
 
 	linted_async_pool_submit(
 	    pool, linted_window_task_watch_prepare(
@@ -504,9 +508,9 @@ gui_on_conn_ready(struct gui *gui,
 	int32_t device_id = gui->device_id;
 	struct xkb_state *keyboard_state = gui->keyboard_state;
 	struct xkb_keymap *keymap = gui->keymap;
+	bool focused = gui->focused;
 
 	bool had_focus_change = false;
-	bool focused;
 
 	bool had_motion = false;
 	int motion_x;
@@ -541,6 +545,9 @@ gui_on_conn_ready(struct gui *gui,
 			break;
 
 		case XCB_MOTION_NOTIFY: {
+			if (!focused)
+				break;
+
 			xcb_motion_notify_event_t const *motion_event =
 			    (void *)event;
 
@@ -561,6 +568,9 @@ gui_on_conn_ready(struct gui *gui,
 			break;
 
 		case XCB_KEY_PRESS:
+			if (!focused)
+				break;
+
 			is_key_down = true;
 			goto on_key_event;
 
@@ -667,6 +677,7 @@ gui_on_conn_ready(struct gui *gui,
 		} else {
 			clear_controls = true;
 		}
+		gui->focused = focused;
 	}
 
 	/* All X11 processing should be done by this point */
