@@ -12,6 +12,8 @@ set -u
 SCRIPTS="@srcdir@/scripts"
 BINARY="$1"
 
+SRCDIR="${SCRIPTS}/.."
+
 : ${LINTED_FRAMA_C:=frama-c}
 : ${STDLIB:=no}
 
@@ -43,4 +45,4 @@ source_files() {
     -machdep x86_64\
     -warn-signed-downcast\
     -warn-decimal-float none\
-    -cpp-command='clang-3.6 -C -E -I.'
+    -cpp-command="gcc -C -E -I. -D__CHECKER__ -I${SRCDIR}/include/fake-stdatomic"

@@ -18,9 +18,15 @@
 EXTRA_DIST+=\
   include/GLES3/gl3.h\
   include/GLES3/gl3platform.h\
+  \
   include/EGL/egl.h\
   include/EGL/eglplatform.h\
+  \
   include/KHR/khrplatform.h\
+  \
+  include/portable-stdatomic/stdatomic.h\
+  \
+  include/fake-stdatomic/stdatomic.h\
   \
   include/linted/execveat.h\
   include/linted/rpc.h\

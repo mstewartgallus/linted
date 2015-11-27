@@ -13,7 +13,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 SRC="${ROOT}/.."
 JSON_CC="${ROOT}/json-cc.py"
 
-: ${CC:=clang-3.6}
+: ${CC:=gcc}
 
 exec "${SRC}/configure-defaults"\
      --host x86_64-linux-gnu\

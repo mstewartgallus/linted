@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -60,11 +61,11 @@ static void report_sigint(int signo);
 static void report_sigquit(int signo);
 static void report_sigterm(int signo);
 
-static int volatile sigchld_signalled;
-static int volatile sighup_signalled;
-static int volatile sigint_signalled;
-static int volatile sigquit_signalled;
-static int volatile sigterm_signalled;
+static atomic_int sigchld_signalled;
+static atomic_int sighup_signalled;
+static atomic_int sigint_signalled;
+static atomic_int sigquit_signalled;
+static atomic_int sigterm_signalled;
 
 static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
                                       [LINTED_SIGNAL_CHLD] = SIGCHLD,
@@ -229,32 +230,32 @@ void linted_signal_do_wait(struct linted_async_pool *pool,
 	}
 	err = 0;
 
-	if (__atomic_fetch_and(&sighup_signalled, 0,
-	                       __ATOMIC_SEQ_CST)) {
+	if (atomic_fetch_and_explicit(&sighup_signalled, 0,
+	                              memory_order_seq_cst)) {
 		signo = SIGHUP;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigchld_signalled, 0,
-	                       __ATOMIC_SEQ_CST)) {
+	if (atomic_fetch_and_explicit(&sigchld_signalled, 0,
+	                              memory_order_seq_cst)) {
 		signo = SIGCHLD;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigint_signalled, 0,
-	                       __ATOMIC_SEQ_CST)) {
+	if (atomic_fetch_and_explicit(&sigint_signalled, 0,
+	                              memory_order_seq_cst)) {
 		signo = SIGINT;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigquit_signalled, 0,
-	                       __ATOMIC_SEQ_CST)) {
+	if (atomic_fetch_and_explicit(&sigquit_signalled, 0,
+	                              memory_order_seq_cst)) {
 		signo = SIGQUIT;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigterm_signalled, 0,
-	                       __ATOMIC_SEQ_CST)) {
+	if (atomic_fetch_and_explicit(&sigterm_signalled, 0,
+	                              memory_order_seq_cst)) {
 		signo = SIGTERM;
 		goto complete;
 	}
@@ -379,7 +380,8 @@ static void listen_to_signal(size_t n)
 static void report_sigchld(int signo)
 {
 	linted_error err = errno;
-	__atomic_store_n(&sigchld_signalled, 1, __ATOMIC_SEQ_CST);
+	atomic_store_explicit(&sigchld_signalled, 1,
+	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
 	errno = err;
 }
@@ -387,7 +389,8 @@ static void report_sigchld(int signo)
 static void report_sighup(int signo)
 {
 	linted_error err = errno;
-	__atomic_store_n(&sighup_signalled, 1, __ATOMIC_SEQ_CST);
+	atomic_store_explicit(&sighup_signalled, 1,
+	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
 	errno = err;
 }
@@ -395,7 +398,8 @@ static void report_sighup(int signo)
 static void report_sigint(int signo)
 {
 	linted_error err = errno;
-	__atomic_store_n(&sigint_signalled, 1, __ATOMIC_SEQ_CST);
+	atomic_store_explicit(&sigint_signalled, 1,
+	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
 	errno = err;
 }
@@ -403,7 +407,8 @@ static void report_sigint(int signo)
 static void report_sigquit(int signo)
 {
 	linted_error err = errno;
-	__atomic_store_n(&sigquit_signalled, 1, __ATOMIC_SEQ_CST);
+	atomic_store_explicit(&sigquit_signalled, 1,
+	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
 	errno = err;
 }
@@ -411,7 +416,8 @@ static void report_sigquit(int signo)
 static void report_sigterm(int signo)
 {
 	linted_error err = errno;
-	__atomic_store_n(&sigterm_signalled, 1, __ATOMIC_SEQ_CST);
+	atomic_store_explicit(&sigterm_signalled, 1,
+	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
 	errno = err;
 }

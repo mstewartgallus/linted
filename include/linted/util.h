@@ -51,7 +51,8 @@
 #define LINTED_NUMBER_TYPE_STRING_SIZE(T)                              \
 	((CHAR_BIT * sizeof(T) - 1U) / 3U + 2U)
 
-#if LINTED_UTIL_HAS_BUILTIN(__builtin_trap) || LINTED__IS_GCC
+#if !defined __CHECKER__ &&                                            \
+    (LINTED_UTIL_HAS_BUILTIN(__builtin_trap) || LINTED__IS_GCC)
 #define LINTED_CRASH_FAST() __builtin_trap()
 #else
 #define LINTED_CRASH_FAST()                                            \
