@@ -97,7 +97,12 @@ void linted_stack_send(struct linted_stack *stack,
 void linted_stack_recv(struct linted_stack *stack,
                        struct linted_node **nodep)
 {
-	struct linted_node *ret = stack->outbox;
+	struct linted_node *ret = atomic_exchange_explicit(
+	    &stack->inbox, 0, memory_order_relaxed);
+	if (ret != 0)
+		goto put_on_outbox;
+
+	ret = stack->outbox;
 	if (ret != 0) {
 		stack->outbox = ret->next;
 		goto give_node;
@@ -141,17 +146,19 @@ give_node:
 linted_error linted_stack_try_recv(struct linted_stack *stack,
                                    struct linted_node **nodep)
 {
-	struct linted_node *ret = stack->outbox;
+	struct linted_node *ret = atomic_exchange_explicit(
+	    &stack->inbox, 0, memory_order_relaxed);
+	if (ret != 0)
+		goto put_on_outbox;
+
+	ret = stack->outbox;
 	if (ret != 0) {
 		stack->outbox = ret->next;
 		goto give_node;
 	}
+	return EAGAIN;
 
-	ret = atomic_exchange_explicit(&stack->inbox, 0,
-	                               memory_order_relaxed);
-	if (0 == ret)
-		return EAGAIN;
-
+put_on_outbox:
 	atomic_thread_fence(memory_order_acquire);
 
 	struct linted_node *start = ret->next;
