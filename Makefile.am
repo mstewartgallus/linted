@@ -77,6 +77,9 @@ AM_CFLAGS+=$(linted_CFLAGS_UNICODE)
 endif
 
 AM_CPPFLAGS+=-I$(srcdir)/include
+if !HAVE_STDATOMIC_H
+AM_CPPFLAGS+=-I$(srcdir)/include/portable-stdatomic
+endif
 AM_LDFLAGS+=\
   $$(for II in \
   $(linted_LDFLAGS_TARGET_TYPE)\

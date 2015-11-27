@@ -336,6 +336,12 @@ dnl
 AC_SYS_LARGEFILE
 AC_C_INLINE
 dnl
+AC_CHECK_HEADERS([[stdatomic.h]],[
+AM_CONDITIONAL([HAVE_STDATOMIC_H], [true])
+],[
+AM_CONDITIONAL([HAVE_STDATOMIC_H], [false])
+])
+dnl
 AC_CHECK_HEADERS([[fcntl.h]dnl
                   [limits.h]dnl
                   [locale.h]dnl
