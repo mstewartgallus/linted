@@ -96,7 +96,7 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 
 	for (;;) {
 		struct linted_node *next = atomic_load_explicit(
-		    &stack->inbox, memory_order_acquire);
+		    &stack->inbox, memory_order_relaxed);
 
 		node->next = next;
 
@@ -104,9 +104,10 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 
 		if (atomic_compare_exchange_weak_explicit(
 		        &stack->inbox, &next, node,
-		        memory_order_acq_rel, memory_order_acquire)) {
+		        memory_order_relaxed, memory_order_relaxed)) {
 			break;
 		}
+
 		linted_sched_light_yield();
 	}
 
@@ -127,35 +128,38 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 linted_error linted_ko_stack_try_recv(struct linted_ko_stack *stack,
                                       struct linted_node **nodep)
 {
-	{
-		struct linted_node *node = atomic_exchange_explicit(
-		    &stack->inbox, 0, memory_order_acq_rel);
+	struct linted_node *ret = atomic_exchange_explicit(
+	    &stack->inbox, 0, memory_order_relaxed);
+	if (ret != 0)
+		goto put_on_outbox;
 
-		atomic_thread_fence(memory_order_acquire);
+	ret = stack->outbox;
+	if (ret != 0) {
+		stack->outbox = ret->next;
+		goto give_node;
+	}
+	return EAGAIN;
 
+put_on_outbox:
+	atomic_thread_fence(memory_order_acquire);
+
+	struct linted_node *start = ret->next;
+	if (start != 0) {
+		struct linted_node *end = start;
 		for (;;) {
-			if (0 == node)
+			struct linted_node *next = end->next;
+			if (0 == next)
 				break;
-
-			struct linted_node *next = node->next;
-
-			node->next = stack->outbox;
-			stack->outbox = node;
-
-			node = next;
+			end = next;
 		}
+		end->next = stack->outbox;
+		stack->outbox = start;
 	}
 
-	struct linted_node *node = stack->outbox;
-	if (0 == node)
-		return EAGAIN;
+give_node:
+	refresh_node(ret);
 
-	stack->outbox = node->next;
-
-	refresh_node(node);
-
-	*nodep = node;
-
+	*nodep = ret;
 	return 0;
 }
 
