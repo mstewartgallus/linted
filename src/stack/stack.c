@@ -76,7 +76,7 @@ void linted_stack_send(struct linted_stack *stack,
 {
 	for (;;) {
 		struct linted_node *next = atomic_load_explicit(
-		    &stack->inbox, memory_order_acquire);
+		    &stack->inbox, memory_order_relaxed);
 
 		node->next = next;
 
@@ -84,7 +84,7 @@ void linted_stack_send(struct linted_stack *stack,
 
 		if (atomic_compare_exchange_weak_explicit(
 		        &stack->inbox, &next, node,
-		        memory_order_acq_rel, memory_order_acquire)) {
+		        memory_order_relaxed, memory_order_relaxed)) {
 			break;
 		}
 
@@ -106,7 +106,7 @@ void linted_stack_recv(struct linted_stack *stack,
 	for (;;) {
 		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {
 			ret = atomic_exchange_explicit(
-			    &stack->inbox, 0, memory_order_acq_rel);
+			    &stack->inbox, 0, memory_order_relaxed);
 			if (ret != 0)
 				goto put_on_outbox;
 
@@ -119,16 +119,17 @@ void linted_stack_recv(struct linted_stack *stack,
 put_on_outbox:
 	atomic_thread_fence(memory_order_acquire);
 
-	for (struct linted_node *node = ret->next;;) {
-		if (0 == node)
-			break;
-
-		struct linted_node *next = node->next;
-
-		node->next = stack->outbox;
-		stack->outbox = node;
-
-		node = next;
+	struct linted_node *start = ret->next;
+	if (start != 0) {
+		struct linted_node *end = start;
+		for (;;) {
+			struct linted_node *next = end->next;
+			if (0 == next)
+				break;
+			end = next;
+		}
+		end->next = stack->outbox;
+		stack->outbox = start;
 	}
 
 give_node:
@@ -147,22 +148,23 @@ linted_error linted_stack_try_recv(struct linted_stack *stack,
 	}
 
 	ret = atomic_exchange_explicit(&stack->inbox, 0,
-	                               memory_order_acq_rel);
+	                               memory_order_relaxed);
 	if (0 == ret)
 		return EAGAIN;
 
 	atomic_thread_fence(memory_order_acquire);
 
-	for (struct linted_node *node = ret->next;;) {
-		if (0 == node)
-			break;
-
-		struct linted_node *next = node->next;
-
-		node->next = stack->outbox;
-		stack->outbox = node;
-
-		node = next;
+	struct linted_node *start = ret->next;
+	if (start != 0) {
+		struct linted_node *end = start;
+		for (;;) {
+			struct linted_node *next = end->next;
+			if (0 == next)
+				break;
+			end = next;
+		}
+		end->next = stack->outbox;
+		stack->outbox = start;
 	}
 
 give_node:

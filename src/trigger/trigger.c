@@ -49,8 +49,10 @@ void linted_trigger_destroy(struct linted_trigger *trigger)
 
 void linted_trigger_set(struct linted_trigger *trigger)
 {
+	atomic_thread_fence(memory_order_release);
+
 	atomic_store_explicit(&trigger->_triggered, 1,
-	                      memory_order_release);
+	                      memory_order_relaxed);
 	hint_wakeup(&trigger->_triggered);
 }
 
@@ -60,6 +62,8 @@ void linted_trigger_wait(struct linted_trigger *trigger)
 
 	atomic_store_explicit(&trigger->_triggered, 0,
 	                      memory_order_release);
+
+	atomic_thread_fence(memory_order_acquire);
 }
 
 #if defined HAVE_POSIX_API
@@ -83,11 +87,13 @@ static linted_error wait_until_different(atomic_int const *uaddr,
                                          int val)
 {
 	for (;;) {
-		if (atomic_load_explicit(uaddr, memory_order_acquire) !=
+		if (atomic_load_explicit(uaddr, memory_order_relaxed) !=
 		    val)
 			return 0;
 		linted_sched_light_yield();
 	}
+
+	atomic_thread_fence(memory_order_acquire);
 }
 
 static linted_error hint_wakeup(atomic_int const *uaddr)

@@ -67,12 +67,13 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 	LINTED_ASSERT_NOT_NULL(channel);
 	LINTED_ASSERT_NOT_NULL(node);
 
+	void *expected = 0;
+
 	atomic_thread_fence(memory_order_release);
 
-	void *expected = 0;
 	if (!atomic_compare_exchange_strong_explicit(
-	        &channel->value, &expected, node, memory_order_acq_rel,
-	        memory_order_acquire))
+	        &channel->value, &expected, node, memory_order_relaxed,
+	        memory_order_relaxed))
 		return LINTED_ERROR_AGAIN;
 
 	linted_trigger_set(&channel->filled);
@@ -90,7 +91,7 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 	for (;;) {
 		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {
 			node = atomic_exchange_explicit(
-			    &channel->value, 0, memory_order_acq_rel);
+			    &channel->value, 0, memory_order_relaxed);
 			if (node != 0)
 				goto exit_loop;
 			linted_sched_light_yield();
