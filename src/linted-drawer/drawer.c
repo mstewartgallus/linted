@@ -91,8 +91,6 @@ struct drawer {
 	linted_window_notifier notifier;
 	linted_updater updater;
 	linted_window window_ko;
-
-	bool window_viewable : 1U;
 };
 
 enum { ON_RECEIVE_UPDATE, ON_POLL_CONN, ON_RECEIVE_NOTICE, MAX_TASKS };
@@ -278,7 +276,6 @@ drawer_init(struct drawer *drawer, struct linted_async_pool *pool,
 	drawer->notifier = notifier;
 	drawer->window_ko = window_ko;
 	drawer->updater = updater;
-	drawer->window_viewable = false;
 
 	return 0;
 
@@ -447,11 +444,11 @@ drawer_on_conn_ready(struct drawer *drawer,
 		}
 
 		case XCB_UNMAP_NOTIFY:
-			drawer->window_viewable = false;
+			linted_gpu_hide(gpu_context);
 			break;
 
 		case XCB_MAP_NOTIFY:
-			drawer->window_viewable = true;
+			linted_gpu_show(gpu_context);
 			break;
 
 		case XCB_DESTROY_NOTIFY:
@@ -474,7 +471,6 @@ drawer_on_conn_ready(struct drawer *drawer,
 
 	if (window_destroyed) {
 		linted_gpu_remove_window(gpu_context);
-		drawer->window_viewable = false;
 	}
 
 	return 0;
@@ -625,7 +621,6 @@ static linted_error drawer_update_window(struct drawer *drawer)
 	linted_gpu_set_x11_window(gpu_context, new_window);
 	linted_gpu_resize(gpu_context, width, height);
 
-	drawer->window_viewable = true;
 	drawer->window = new_window;
 
 	return 0;

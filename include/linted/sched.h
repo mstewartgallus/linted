@@ -90,6 +90,11 @@ static inline void linted_sched_light_yield(void)
 {
 	__asm__ __volatile__("yield");
 }
+#elif defined __powerpc__
+static inline void linted_sched_light_yield(void)
+{
+	/* Do nothing */
+}
 #endif
 
 #endif /* LINTED_SCHED_H */

@@ -32,14 +32,6 @@ deps() {
     printf '%s\0' "x11proto-xext-dev"
     printf '%s\0' "x11proto-xf86vidmode-dev"
 
-    case "${OS}" in
-	'linux')
-	    printf '%s\0' "linux-libc-dev:${ARCH}"
-	    ;;
-	*)
-	    ;;
-    esac
-
     case "${ABI}" in
 	'dietlibc')
 	    printf '%s\0' 'dietlibc-dev'
@@ -100,71 +92,87 @@ deps() {
 	    ;;
     esac
 
-    case "${OS}-${ABI}" in
-	'linux-gnu')
-	    printf '%s\0' "libc6:${ARCH}"
-	    printf '%s\0' "libc6-dev:${ARCH}"
-	    printf '%s\0' "libcap-dev:${ARCH}"
-	    printf '%s\0' "libegl1-mesa:${ARCH}"
-	    printf '%s\0' "libegl1-mesa-dev:${ARCH}"
-	    printf '%s\0' "libgl1-mesa-glx:${ARCH}"
-	    printf '%s\0' "libgles2-mesa:${ARCH}"
-	    printf '%s\0' "libgles2-mesa-dev:${ARCH}"
-	    printf '%s\0' "libglib2.0-0:${ARCH}"
-	    printf '%s\0' "libpulse0:${ARCH}"
-	    printf '%s\0' "libpulse-dev:${ARCH}"
-	    printf '%s\0' "libxcb1:${ARCH}"
-	    printf '%s\0' "libxcb1-dev:${ARCH}"
-	    printf '%s\0' "libxcb-xkb1:${ARCH}"
-	    printf '%s\0' "libxcb-xkb-dev:${ARCH}"
-	    printf '%s\0' "libxdmcp-dev:${ARCH}"
-	    printf '%s\0' "libxkbcommon0:${ARCH}"
-	    printf '%s\0' "libxkbcommon-dev:${ARCH}"
-	    printf '%s\0' "libxkbcommon-x11-0:${ARCH}"
-	    printf '%s\0' "libxkbcommon-x11-dev:${ARCH}"
+    case "${ARCH}" in
+    	'i386' | 'amd64')
 
-	    printf '%s\0' "libasyncns0:${ARCH}"
-	    printf '%s\0' "libcap2:${ARCH}"
-	    printf '%s\0' "libdbus-1-3:${ARCH}"
-	    printf '%s\0' "libdrm2:${ARCH}"
-	    printf '%s\0' "libdrm-dev:${ARCH}"
-	    printf '%s\0' "libffi6:${ARCH}"
-	    printf '%s\0' "libflac8:${ARCH}"
-	    printf '%s\0' "libgbm1:${ARCH}"
-	    printf '%s\0' "libglapi-mesa:${ARCH}"
-	    printf '%s\0' "libjson-c2:${ARCH}"
-	    printf '%s\0' "libogg0:${ARCH}"
-	    printf '%s\0' "libpthread-stubs0-dev:${ARCH}"
-	    printf '%s\0' "libsndfile1:${ARCH}"
-	    printf '%s\0' "libvorbis0a:${ARCH}"
-	    printf '%s\0' "libvorbisenc2:${ARCH}"
-	    printf '%s\0' "libwayland-client0:${ARCH}"
-	    printf '%s\0' "libwayland-server0:${ARCH}"
-	    printf '%s\0' "libwrap0:${ARCH}"
-	    printf '%s\0' "libx11-6:${ARCH}"
-	    printf '%s\0' "libx11-dev:${ARCH}"
-	    printf '%s\0' "libx11-xcb1:${ARCH}"
-	    printf '%s\0' "libx11-xcb-dev:${ARCH}"
-	    printf '%s\0' "libxau6:${ARCH}"
-	    printf '%s\0' "libxau-dev:${ARCH}"
-	    printf '%s\0' "libxcb-dri2-0:${ARCH}"
-	    printf '%s\0' "libxcb-dri2-0-dev:${ARCH}"
-	    printf '%s\0' "libxcb-dri3-dev:${ARCH}"
-	    printf '%s\0' "libxcb-glx0-dev:${ARCH}"
-	    printf '%s\0' "libxcb-present-dev:${ARCH}"
-	    printf '%s\0' "libxcb-sync-dev:${ARCH}"
-	    printf '%s\0' "libxcb-xfixes0:${ARCH}"
-	    printf '%s\0' "libxcb-xfixes0-dev:${ARCH}"
-	    printf '%s\0' "libxdamage-dev:${ARCH}"
-	    printf '%s\0' "libxdmcp6:${ARCH}"
-	    printf '%s\0' "libxext-dev:${ARCH}"
-	    printf '%s\0' "libxfixes-dev:${ARCH}"
-	    printf '%s\0' "libxkbcommon-x11-dev:${ARCH}"
-	    printf '%s\0' "libxshmfence-dev:${ARCH}"
-	    printf '%s\0' "libxxf86vm-dev:${ARCH}"
+	    case "${OS}" in
+		'linux')
+		    printf '%s\0' "linux-libc-dev:${ARCH}"
+		    ;;
+		*)
+		    ;;
+	    esac
+
+	    case "${ARCH}-${OS}-${ABI}" in
+		'i386-linux-gnu' | 'amd64-linux-gnu')
+		    printf '%s\0' "libc6:${ARCH}"
+		    printf '%s\0' "libc6-dev:${ARCH}"
+		    printf '%s\0' "libcap-dev:${ARCH}"
+		    printf '%s\0' "libegl1-mesa:${ARCH}"
+		    printf '%s\0' "libegl1-mesa-dev:${ARCH}"
+		    printf '%s\0' "libgl1-mesa-glx:${ARCH}"
+		    printf '%s\0' "libgles2-mesa:${ARCH}"
+		    printf '%s\0' "libgles2-mesa-dev:${ARCH}"
+		    printf '%s\0' "libglib2.0-0:${ARCH}"
+		    printf '%s\0' "libpulse0:${ARCH}"
+		    printf '%s\0' "libpulse-dev:${ARCH}"
+		    printf '%s\0' "libxcb1:${ARCH}"
+		    printf '%s\0' "libxcb1-dev:${ARCH}"
+		    printf '%s\0' "libxcb-xkb1:${ARCH}"
+		    printf '%s\0' "libxcb-xkb-dev:${ARCH}"
+		    printf '%s\0' "libxdmcp-dev:${ARCH}"
+		    printf '%s\0' "libxkbcommon0:${ARCH}"
+		    printf '%s\0' "libxkbcommon-dev:${ARCH}"
+		    printf '%s\0' "libxkbcommon-x11-0:${ARCH}"
+		    printf '%s\0' "libxkbcommon-x11-dev:${ARCH}"
+
+		    printf '%s\0' "libasyncns0:${ARCH}"
+		    printf '%s\0' "libcap2:${ARCH}"
+		    printf '%s\0' "libdbus-1-3:${ARCH}"
+		    printf '%s\0' "libdrm2:${ARCH}"
+		    printf '%s\0' "libdrm-dev:${ARCH}"
+		    printf '%s\0' "libffi6:${ARCH}"
+		    printf '%s\0' "libflac8:${ARCH}"
+		    printf '%s\0' "libgbm1:${ARCH}"
+		    printf '%s\0' "libglapi-mesa:${ARCH}"
+		    printf '%s\0' "libjson-c2:${ARCH}"
+		    printf '%s\0' "libogg0:${ARCH}"
+		    printf '%s\0' "libpthread-stubs0-dev:${ARCH}"
+		    printf '%s\0' "libsndfile1:${ARCH}"
+		    printf '%s\0' "libvorbis0a:${ARCH}"
+		    printf '%s\0' "libvorbisenc2:${ARCH}"
+		    printf '%s\0' "libwayland-client0:${ARCH}"
+		    printf '%s\0' "libwayland-server0:${ARCH}"
+		    printf '%s\0' "libwrap0:${ARCH}"
+		    printf '%s\0' "libx11-6:${ARCH}"
+		    printf '%s\0' "libx11-dev:${ARCH}"
+		    printf '%s\0' "libx11-xcb1:${ARCH}"
+		    printf '%s\0' "libx11-xcb-dev:${ARCH}"
+		    printf '%s\0' "libxau6:${ARCH}"
+		    printf '%s\0' "libxau-dev:${ARCH}"
+		    printf '%s\0' "libxcb-dri2-0:${ARCH}"
+		    printf '%s\0' "libxcb-dri2-0-dev:${ARCH}"
+		    printf '%s\0' "libxcb-dri3-dev:${ARCH}"
+		    printf '%s\0' "libxcb-glx0-dev:${ARCH}"
+		    printf '%s\0' "libxcb-present-dev:${ARCH}"
+		    printf '%s\0' "libxcb-sync-dev:${ARCH}"
+		    printf '%s\0' "libxcb-xfixes0:${ARCH}"
+		    printf '%s\0' "libxcb-xfixes0-dev:${ARCH}"
+		    printf '%s\0' "libxdamage-dev:${ARCH}"
+		    printf '%s\0' "libxdmcp6:${ARCH}"
+		    printf '%s\0' "libxext-dev:${ARCH}"
+		    printf '%s\0' "libxfixes-dev:${ARCH}"
+		    printf '%s\0' "libxkbcommon-x11-dev:${ARCH}"
+		    printf '%s\0' "libxshmfence-dev:${ARCH}"
+		    printf '%s\0' "libxxf86vm-dev:${ARCH}"
+		    ;;
+
+		*)
+		    ;;
+	    esac
 	    ;;
 
-	*)
+       	 *)
 	    ;;
     esac
 }

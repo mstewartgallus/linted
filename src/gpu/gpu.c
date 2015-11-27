@@ -42,19 +42,22 @@
 #include <GLES3/gl3.h>
 
 struct command_queue {
-	pthread_spinlock_t lock;
+	pthread_mutex_t lock;
+	pthread_cond_t wake_up;
 
 	struct linted_gpu_update update;
 	uint64_t skipped_updates_counter;
 	linted_gpu_x11_window window;
 	unsigned width;
 	unsigned height;
+	bool shown : 1U;
 
 	bool time_to_quit : 1U;
 	bool has_new_window : 1U;
 	bool remove_window : 1U;
 	bool update_pending : 1U;
 	bool resize_pending : 1U;
+	bool view_update_pending : 1U;
 };
 
 struct privates {
@@ -304,8 +307,9 @@ choose_config_succeeded:
 	{
 		struct command_queue xx = {0};
 		gpu_context->command_queue = xx;
-		pthread_spin_init(&gpu_context->command_queue.lock,
-		                  false);
+		pthread_mutex_init(&gpu_context->command_queue.lock, 0);
+		pthread_cond_init(&gpu_context->command_queue.wake_up,
+		                  0);
 	}
 
 	err = pthread_create(&gpu_context->thread, 0, gpu_routine,
@@ -353,9 +357,10 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 	    &gpu_context->command_queue;
 
 	{
-		pthread_spin_lock(&command_queue->lock);
+		pthread_mutex_lock(&command_queue->lock);
 		command_queue->time_to_quit = true;
-		pthread_spin_unlock(&command_queue->lock);
+		pthread_cond_signal(&command_queue->wake_up);
+		pthread_mutex_unlock(&command_queue->lock);
 	}
 
 	pthread_join(gpu_context->thread, 0);
@@ -374,11 +379,12 @@ linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
 	    &gpu_context->command_queue;
 
 	{
-		pthread_spin_lock(&command_queue->lock);
+		pthread_mutex_lock(&command_queue->lock);
 		command_queue->remove_window = false;
 		command_queue->has_new_window = true;
 		command_queue->window = new_window;
-		pthread_spin_unlock(&command_queue->lock);
+		pthread_cond_signal(&command_queue->wake_up);
+		pthread_mutex_unlock(&command_queue->lock);
 	}
 
 	return 0;
@@ -391,9 +397,9 @@ linted_gpu_remove_window(struct linted_gpu_context *gpu_context)
 	    &gpu_context->command_queue;
 
 	{
-		pthread_spin_lock(&command_queue->lock);
+		pthread_mutex_lock(&command_queue->lock);
 		command_queue->remove_window = true;
-		pthread_spin_unlock(&command_queue->lock);
+		pthread_mutex_unlock(&command_queue->lock);
 	}
 
 	return 0;
@@ -407,11 +413,11 @@ void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
 
 	struct linted_gpu_update update = *updatep;
 	{
-		pthread_spin_lock(&command_queue->lock);
+		pthread_mutex_lock(&command_queue->lock);
 		command_queue->update = update;
 		command_queue->update_pending = true;
 		++command_queue->skipped_updates_counter;
-		pthread_spin_unlock(&command_queue->lock);
+		pthread_mutex_unlock(&command_queue->lock);
 	}
 }
 
@@ -422,11 +428,38 @@ void linted_gpu_resize(struct linted_gpu_context *gpu_context,
 	    &gpu_context->command_queue;
 
 	{
-		pthread_spin_lock(&command_queue->lock);
+		pthread_mutex_lock(&command_queue->lock);
 		command_queue->width = width;
 		command_queue->height = height;
 		command_queue->resize_pending = true;
-		pthread_spin_unlock(&command_queue->lock);
+		pthread_mutex_unlock(&command_queue->lock);
+	}
+}
+
+void linted_gpu_hide(struct linted_gpu_context *gpu_context)
+{
+	struct command_queue *command_queue =
+	    &gpu_context->command_queue;
+
+	{
+		pthread_mutex_lock(&command_queue->lock);
+		command_queue->shown = false;
+		command_queue->view_update_pending = true;
+		pthread_mutex_unlock(&command_queue->lock);
+	}
+}
+
+void linted_gpu_show(struct linted_gpu_context *gpu_context)
+{
+	struct command_queue *command_queue =
+	    &gpu_context->command_queue;
+
+	{
+		pthread_mutex_lock(&command_queue->lock);
+		command_queue->shown = true;
+		command_queue->view_update_pending = true;
+		pthread_cond_signal(&command_queue->wake_up);
+		pthread_mutex_unlock(&command_queue->lock);
 	}
 }
 
@@ -474,45 +507,73 @@ static void *gpu_routine(void *arg)
 		unsigned width;
 		unsigned height;
 		uint64_t skipped_updates_counter = 0U;
+		bool shown = true;
+		bool time_to_quit = false;
 
-		bool time_to_quit;
 		bool has_new_window;
 		bool remove_window;
 		bool update_pending;
 		bool resize_pending;
+		bool view_update_pending;
 		{
-			pthread_spin_lock(&command_queue->lock);
+			pthread_mutex_lock(&command_queue->lock);
 
-			time_to_quit = command_queue->time_to_quit;
-			has_new_window = command_queue->has_new_window;
-			remove_window = command_queue->remove_window;
-			update_pending = command_queue->update_pending;
-			resize_pending = command_queue->resize_pending;
+			for (;;) {
+				time_to_quit =
+				    command_queue->time_to_quit;
+				has_new_window =
+				    command_queue->has_new_window;
+				remove_window =
+				    command_queue->remove_window;
+				update_pending =
+				    command_queue->update_pending;
+				resize_pending =
+				    command_queue->resize_pending;
+				view_update_pending =
+				    command_queue->view_update_pending;
 
-			if (has_new_window)
-				new_window = command_queue->window;
+				if (has_new_window)
+					new_window =
+					    command_queue->window;
 
-			if (update_pending) {
-				update = command_queue->update;
-				skipped_updates_counter =
-				    command_queue
-				        ->skipped_updates_counter;
+				if (update_pending) {
+					update = command_queue->update;
+					skipped_updates_counter =
+					    command_queue
+					        ->skipped_updates_counter;
+				}
+
+				if (resize_pending) {
+					width = command_queue->width;
+					height = command_queue->height;
+				}
+
+				if (view_update_pending) {
+					shown = command_queue->shown;
+				}
+
+				command_queue->skipped_updates_counter =
+				    0U;
+
+				command_queue->time_to_quit = false;
+				command_queue->has_new_window = false;
+				command_queue->remove_window = false;
+				command_queue->update_pending = false;
+				command_queue->resize_pending = false;
+				command_queue->view_update_pending =
+				    false;
+
+				if (!shown && !time_to_quit) {
+					pthread_cond_wait(
+					    &command_queue->wake_up,
+					    &command_queue->lock);
+					continue;
+				}
+
+				break;
 			}
 
-			if (resize_pending) {
-				width = command_queue->width;
-				height = command_queue->height;
-			}
-
-			command_queue->skipped_updates_counter = 0U;
-
-			command_queue->time_to_quit = false;
-			command_queue->has_new_window = false;
-			command_queue->remove_window = false;
-			command_queue->update_pending = false;
-			command_queue->resize_pending = false;
-
-			pthread_spin_unlock(&command_queue->lock);
+			pthread_mutex_unlock(&command_queue->lock);
 		}
 
 		if (time_to_quit)
