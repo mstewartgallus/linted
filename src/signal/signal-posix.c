@@ -61,11 +61,11 @@ static void report_sigint(int signo);
 static void report_sigquit(int signo);
 static void report_sigterm(int signo);
 
-static atomic_int sigchld_signalled;
-static atomic_int sighup_signalled;
-static atomic_int sigint_signalled;
-static atomic_int sigquit_signalled;
-static atomic_int sigterm_signalled;
+static atomic_bool sigchld_signalled;
+static atomic_bool sighup_signalled;
+static atomic_bool sigint_signalled;
+static atomic_bool sigquit_signalled;
+static atomic_bool sigterm_signalled;
 
 static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
                                       [LINTED_SIGNAL_CHLD] = SIGCHLD,
