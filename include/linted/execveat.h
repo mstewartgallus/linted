@@ -39,6 +39,9 @@ static inline linted_error linted_execveat(linted_ko fd,
 #define __NR_execveat 362
 #elif defined __arm__
 #define __NR_execveat (__NR_SYSCALL_BASE + 387)
+#elif defined __aarch64__
+/* This is the generic syscall number */
+#define __NR_execveat 281
 #endif
 #endif
 
