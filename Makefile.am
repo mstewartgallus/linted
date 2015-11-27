@@ -25,7 +25,7 @@ AM_TESTS_ENVIRONMENT=\
   export MALLOC_PERTURB_=57005;
 
 if HAVE_VALGRIND
-LOG_COMPILER=$(VALGRIND) --quiet --
+LOG_COMPILER=$(VALGRIND) --error-exitcode=1 --quiet --
 endif
 
 TESTS=
