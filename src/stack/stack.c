@@ -97,43 +97,38 @@ void linted_stack_send(struct linted_stack *stack,
 void linted_stack_recv(struct linted_stack *stack,
                        struct linted_node **nodep)
 {
-	struct linted_node *ret;
+	struct linted_node *ret = stack->outbox;
+	if (ret != 0) {
+		stack->outbox = ret->next;
+		goto give_node;
+	}
+
 	for (;;) {
 		for (uint_fast8_t ii = 0U; ii < 20U; ++ii) {
-			{
-				struct linted_node *node =
-				    atomic_exchange_explicit(
-				        &stack->inbox, 0,
-				        memory_order_acq_rel);
-
-				atomic_thread_fence(
-				    memory_order_acquire);
-
-				for (;;) {
-					if (0 == node)
-						break;
-
-					struct linted_node *next =
-					    node->next;
-
-					node->next = stack->outbox;
-					stack->outbox = node;
-
-					node = next;
-				}
-			}
-
-			struct linted_node *node = stack->outbox;
-			if (node != 0) {
-				stack->outbox = node->next;
-				ret = node;
-				goto give_node;
-			}
+			ret = atomic_exchange_explicit(
+			    &stack->inbox, 0, memory_order_acq_rel);
+			if (ret != 0)
+				goto put_on_outbox;
 
 			linted_sched_light_yield();
 		}
 
 		linted_trigger_wait(&stack->inbox_filled);
+	}
+
+put_on_outbox:
+	atomic_thread_fence(memory_order_acquire);
+
+	for (struct linted_node *node = ret->next;;) {
+		if (0 == node)
+			break;
+
+		struct linted_node *next = node->next;
+
+		node->next = stack->outbox;
+		stack->outbox = node;
+
+		node = next;
 	}
 
 give_node:
@@ -145,33 +140,34 @@ give_node:
 linted_error linted_stack_try_recv(struct linted_stack *stack,
                                    struct linted_node **nodep)
 {
-	{
-		struct linted_node *node = atomic_exchange_explicit(
-		    &stack->inbox, 0, memory_order_acq_rel);
-
-		atomic_thread_fence(memory_order_acquire);
-
-		for (;;) {
-			if (0 == node)
-				break;
-
-			struct linted_node *next = node->next;
-
-			node->next = stack->outbox;
-			stack->outbox = node;
-
-			node = next;
-		}
+	struct linted_node *ret = stack->outbox;
+	if (ret != 0) {
+		stack->outbox = ret->next;
+		goto give_node;
 	}
 
-	struct linted_node *node = stack->outbox;
-	if (0 == node)
+	ret = atomic_exchange_explicit(&stack->inbox, 0,
+	                               memory_order_acq_rel);
+	if (0 == ret)
 		return EAGAIN;
 
-	stack->outbox = node->next;
+	atomic_thread_fence(memory_order_acquire);
 
-	refresh_node(node);
+	for (struct linted_node *node = ret->next;;) {
+		if (0 == node)
+			break;
 
-	*nodep = node;
+		struct linted_node *next = node->next;
+
+		node->next = stack->outbox;
+		stack->outbox = node;
+
+		node = next;
+	}
+
+give_node:
+	refresh_node(ret);
+
+	*nodep = ret;
 	return 0;
 }
