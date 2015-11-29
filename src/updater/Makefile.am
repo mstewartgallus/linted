@@ -34,7 +34,7 @@ nodist_%C%_librpc_la_SOURCES=\
   %D%/updater_xdr.c\
   %D%/updater.h
 
-%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAG_NO_WARN)
+%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAGS_NO_WARN)
 
 EXTRA_DIST+=%D%/updater.x
 

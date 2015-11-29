@@ -73,7 +73,12 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_WARNINGS],[
 ])
 AC_SUBST([linted_LDFLAGS_WARNINGS])
 dnl
-LINTED_CHECK_CFLAG([linted_CFLAG_NO_WARN],[-Wno-everything])
-AC_SUBST([linted_CFLAG_NO_WARN])
+LINTED_CHECK_CFLAGS([linted_CFLAGS_NO_WARN],[
+        [-Wno-everything]dnl
+        [-Wno-all]dnl
+        [-Wno-extra]dnl
+        [-Wno-unused]dnl
+])
+AC_SUBST([linted_CFLAGS_NO_WARN])
 ])
 ])

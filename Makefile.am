@@ -80,6 +80,9 @@ AM_CPPFLAGS+=-I$(srcdir)/include
 if !HAVE_STDATOMIC_H
 AM_CPPFLAGS+=-I$(srcdir)/include/portable-stdatomic
 endif
+if !HAVE_RPC_RPC_H
+AM_CPPFLAGS+=-I$(srcdir)/include/portable-xdr
+endif
 AM_LDFLAGS+=\
   $$(for II in \
   $(linted_LDFLAGS_TARGET_TYPE)\

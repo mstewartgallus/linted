@@ -1164,7 +1164,7 @@ on_child_ptrace_event_stopped(char const *process_name, linted_pid pid,
 			return err;
 
 		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "%s: ptracing %" PRIiMAX " %s\n",
+		                       "%s: ptracing %" PRIi64 " %s\n",
 		                       process_name, (intmax_t)pid,
 		                       name);
 	}
@@ -1658,7 +1658,7 @@ static linted_error service_activate(struct monitor *monitor,
 	}
 
 	linted_io_write_format(
-	    LINTED_KO_STDERR, 0, "%s: ptracing %" PRIiMAX " %s\n",
+	    LINTED_KO_STDERR, 0, "%s: ptracing %" PRIi64 " %s\n",
 	    process_name, (intmax_t)child, unit_name);
 
 	return linted_ptrace_seize(child, PTRACE_O_TRACEEXIT);
@@ -1688,29 +1688,29 @@ spawn_service:
 	bool clone_newns = unit_service->clone_newns;
 	bool clone_newuts = unit_service->clone_newuts;
 
-	int_least64_t timer_slack_nsec;
+	int_least64_t *timer_slack_nsec = 0;
 	if (has_timer_slack_nsec)
-		timer_slack_nsec = unit_service->timer_slack_nsec;
+		timer_slack_nsec = &unit_service->timer_slack_nsec;
 
-	linted_sched_priority priority;
+	linted_sched_priority *priority = 0;
 	if (has_priority)
-		priority = unit_service->priority;
+		priority = &unit_service->priority;
 
-	int_least64_t limit_no_file;
+	int_least64_t *limit_no_file = 0;
 	if (has_limit_no_file)
-		limit_no_file = unit_service->limit_no_file;
+		limit_no_file = &unit_service->limit_no_file;
 
-	int_least64_t limit_msgqueue;
+	int_least64_t *limit_msgqueue = 0;
 	if (has_limit_msgqueue)
-		limit_msgqueue = unit_service->limit_msgqueue;
+		limit_msgqueue = &unit_service->limit_msgqueue;
 
-	int_least64_t limit_locks;
+	int_least64_t *limit_locks = 0;
 	if (has_limit_locks)
-		limit_locks = unit_service->limit_locks;
+		limit_locks = &unit_service->limit_locks;
 
-	int_least64_t limit_memlock;
+	int_least64_t *limit_memlock = 0;
 	if (has_limit_memlock)
-		limit_memlock = unit_service->limit_memlock;
+		limit_memlock = &unit_service->limit_memlock;
 
 	if (fstab != 0) {
 		linted_ko name_dir;
@@ -1747,55 +1747,53 @@ spawn_service:
 	char *chrootdir = 0;
 	char *sandbox_base = 0;
 
-	if (has_limit_no_file) {
+	if (limit_no_file != 0) {
 		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)limit_no_file);
+		err =
+		    linted_str_format(&xx, "%" PRIi64, *limit_no_file);
 		if (err != 0)
 			return err;
 		limit_no_file_str = xx;
 	}
 
-	if (has_limit_msgqueue) {
+	if (limit_msgqueue != 0) {
 		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)limit_msgqueue);
+		err =
+		    linted_str_format(&xx, "%" PRIi64, *limit_msgqueue);
 		if (err != 0)
 			goto free_strs;
 		limit_msgqueue_str = xx;
 	}
 
-	if (has_limit_locks) {
+	if (limit_locks != 0) {
 		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)limit_locks);
+		err = linted_str_format(&xx, "%" PRIi64, *limit_locks);
 		if (err != 0)
 			goto free_strs;
 		limit_locks_str = xx;
 	}
 
-	if (has_limit_memlock) {
+	if (limit_memlock != 0) {
 		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)limit_memlock);
+		err =
+		    linted_str_format(&xx, "%" PRIi64, *limit_memlock);
 		if (err != 0)
 			goto free_strs;
 		limit_memlock_str = xx;
 	}
 
-	if (has_timer_slack_nsec) {
+	if (timer_slack_nsec != 0) {
 		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)timer_slack_nsec);
+		err = linted_str_format(&xx, "%" PRIi64,
+		                        *timer_slack_nsec);
 		if (err != 0)
 			goto free_strs;
 		timer_slack_str = xx;
 	}
 
-	if (has_priority) {
+	if (priority != 0) {
 		char *xx;
-		err = linted_str_format(&xx, "%" PRIiMAX,
-		                        (intmax_t)priority);
+		err = linted_str_format(&xx, "%i", *priority);
 		if (err != 0)
 			goto free_strs;
 		prio_str = xx;

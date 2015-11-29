@@ -342,6 +342,12 @@ AM_CONDITIONAL([HAVE_STDATOMIC_H], [true])
 AM_CONDITIONAL([HAVE_STDATOMIC_H], [false])
 ])
 dnl
+AC_CHECK_HEADERS([[rpc/rpc.h]],[
+AM_CONDITIONAL([HAVE_RPC_RPC_H], [true])
+],[
+AM_CONDITIONAL([HAVE_RPC_RPC_H], [false])
+])
+dnl
 AC_CHECK_HEADERS([[fcntl.h]dnl
                   [limits.h]dnl
                   [locale.h]dnl

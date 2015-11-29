@@ -30,7 +30,7 @@ noinst_LTLIBRARIES+=%D%/librpc.la
 nodist_%C%_librpc_la_SOURCES=\
   %D%/controller_xdr.c\
   %D%/controller.h
-%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAG_NO_WARN)
+%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAGS_NO_WARN)
 
 EXTRA_DIST+=%D%/controller.x
 

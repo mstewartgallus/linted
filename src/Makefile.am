@@ -64,13 +64,13 @@ include %C%/spawn/Makefile.am
 include %C%/unit/Makefile.am
 
 include %C%/admin/Makefile.am
-include %C%/controller/Makefile.am
 include %C%/updater/Makefile.am
 endif
 
 include %C%/assets/Makefile.am
 include %C%/async/Makefile.am
 include %C%/channel/Makefile.am
+include %C%/controller/Makefile.am
 include %C%/dir/Makefile.am
 include %C%/env/Makefile.am
 include %C%/error/Makefile.am

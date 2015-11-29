@@ -32,7 +32,7 @@ nodist_%C%_librpc_la_SOURCES=\
   %D%/admin_xdr.c\
   %D%/admin.h
 
-%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAG_NO_WARN)
+%C%_librpc_la_CFLAGS=$(AM_CFLAGS) $(linted_CFLAGS_NO_WARN)
 
 EXTRA_DIST+=%D%/admin.x
 

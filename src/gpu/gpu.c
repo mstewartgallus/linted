@@ -502,20 +502,23 @@ static void *gpu_routine(void *arg)
 	struct timespec last_time = {0};
 
 	for (;;) {
-		linted_gpu_x11_window new_window;
-		struct linted_gpu_update update;
-		unsigned width;
-		unsigned height;
 		uint64_t skipped_updates_counter = 0U;
-		bool shown = true;
-		bool time_to_quit = false;
-
-		bool has_new_window;
-		bool remove_window;
-		bool update_pending;
-		bool resize_pending;
-		bool view_update_pending;
 		{
+			linted_gpu_x11_window *new_window =
+			    (linted_gpu_x11_window[1U]){0};
+			struct linted_gpu_update *update =
+			    (struct linted_gpu_update[1U]){0};
+			unsigned *width = (unsigned[1U]){0};
+			unsigned *height = (unsigned[1U]){0};
+			bool shown = true;
+			bool time_to_quit = false;
+
+			bool has_new_window;
+			bool remove_window;
+			bool update_pending;
+			bool resize_pending;
+			bool view_update_pending;
+
 			pthread_mutex_lock(&command_queue->lock);
 
 			for (;;) {
@@ -532,20 +535,28 @@ static void *gpu_routine(void *arg)
 				view_update_pending =
 				    command_queue->view_update_pending;
 
-				if (has_new_window)
-					new_window =
+				if (has_new_window) {
+					*new_window =
 					    command_queue->window;
+				} else {
+					new_window = 0;
+				}
 
 				if (update_pending) {
-					update = command_queue->update;
+					*update = command_queue->update;
 					skipped_updates_counter =
 					    command_queue
 					        ->skipped_updates_counter;
+				} else {
+					update = 0;
 				}
 
 				if (resize_pending) {
-					width = command_queue->width;
-					height = command_queue->height;
+					*width = command_queue->width;
+					*height = command_queue->height;
+				} else {
+					width = 0;
+					height = 0;
 				}
 
 				if (view_update_pending) {
@@ -574,31 +585,31 @@ static void *gpu_routine(void *arg)
 			}
 
 			pthread_mutex_unlock(&command_queue->lock);
-		}
 
-		if (time_to_quit)
-			break;
+			if (time_to_quit)
+				break;
 
-		if (remove_window) {
-			destroy_egl_context(privates);
-			privates->has_window = false;
-		}
+			if (remove_window) {
+				destroy_egl_context(privates);
+				privates->has_window = false;
+			}
 
-		if (has_new_window) {
-			destroy_egl_context(privates);
-			privates->window = new_window;
-			privates->has_window = true;
-		}
+			if (new_window != 0) {
+				destroy_egl_context(privates);
+				privates->window = *new_window;
+				privates->has_window = true;
+			}
 
-		if (update_pending) {
-			privates->update = update;
-			privates->update_pending = true;
-		}
+			if (update != 0) {
+				privates->update = *update;
+				privates->update_pending = true;
+			}
 
-		if (resize_pending) {
-			privates->width = width;
-			privates->height = height;
-			privates->resize_pending = true;
+			if (width != 0 && height != 0) {
+				privates->width = *width;
+				privates->height = *height;
+				privates->resize_pending = true;
+			}
 		}
 
 		err = setup_gl(privates);

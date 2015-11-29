@@ -176,7 +176,7 @@ struct first_fork_args {
 	char const *waiter_base;
 	char const *const *command;
 	char const *binary;
-	int limit_no_file;
+	int_least64_t *limit_no_file;
 	linted_ko err_writer;
 	linted_ko logger_reader;
 	linted_ko logger_writer;
@@ -186,7 +186,7 @@ struct first_fork_args {
 struct second_fork_args {
 	char const *const *argv;
 	char const *binary;
-	int limit_no_file;
+	int_least64_t *limit_no_file;
 	linted_ko err_writer;
 	linted_ko logger_writer;
 	bool use_seccomp : 1U;
@@ -435,8 +435,10 @@ static unsigned char linted_start_main(char const *const process_name,
 
 	char const *binary = command[0U];
 
-	int prio_val;
-	if (priority_str != 0) {
+	int_least64_t *prio_val = (int_least64_t[1U]){0};
+	if (0 == priority_str) {
+		prio_val = 0;
+	} else {
 		int xx;
 		err = parse_int(priority_str, &xx);
 		if (err != 0) {
@@ -444,11 +446,13 @@ static unsigned char linted_start_main(char const *const process_name,
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		prio_val = xx;
+		*prio_val = xx;
 	}
 
-	int timer_slack_val;
-	if (timer_slack_str != 0) {
+	int_least64_t *timer_slack_val = (int_least64_t[1U]){0};
+	if (0 == timer_slack_str) {
+		timer_slack_val = 0;
+	} else {
 		int xx;
 		err = parse_int(timer_slack_str, &xx);
 		if (err != 0) {
@@ -456,11 +460,13 @@ static unsigned char linted_start_main(char const *const process_name,
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		timer_slack_val = xx;
+		*timer_slack_val = xx;
 	}
 
-	int limit_no_file_val = -1;
-	if (limit_no_file_str != 0) {
+	int_least64_t *limit_no_file_val = (int_least64_t[1U]){0};
+	if (0 == limit_no_file_str) {
+		limit_no_file_val = 0;
+	} else {
 		int xx;
 		err = parse_int(limit_no_file_str, &xx);
 		if (err != 0) {
@@ -468,11 +474,13 @@ static unsigned char linted_start_main(char const *const process_name,
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		limit_no_file_val = xx;
+		*limit_no_file_val = xx;
 	}
 
-	int limit_locks_val = -1;
-	if (limit_locks_str != 0) {
+	int_least64_t *limit_locks_val = (int_least64_t[1U]){0};
+	if (0 == limit_locks_str) {
+		limit_locks_val = 0;
+	} else {
 		int xx;
 		err = parse_int(limit_locks_str, &xx);
 		if (err != 0) {
@@ -480,11 +488,13 @@ static unsigned char linted_start_main(char const *const process_name,
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		limit_locks_val = xx;
+		*limit_locks_val = xx;
 	}
 
-	int limit_msgqueue_val = -1;
-	if (limit_msgqueue_str != 0) {
+	int_least64_t *limit_msgqueue_val = (int_least64_t[1U]){0};
+	if (0 == limit_msgqueue_str) {
+		limit_msgqueue_val = 0;
+	} else {
 		int xx;
 		err = parse_int(limit_msgqueue_str, &xx);
 		if (err != 0) {
@@ -492,11 +502,13 @@ static unsigned char linted_start_main(char const *const process_name,
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		limit_msgqueue_val = xx;
+		*limit_msgqueue_val = xx;
 	}
 
-	int limit_memlock_val = -1;
-	if (limit_memlock_str != 0) {
+	int_least64_t *limit_memlock_val = (int_least64_t[1U]){0};
+	if (0 == limit_memlock_str) {
+		limit_memlock_val = 0;
+	} else {
 		int xx;
 		err = parse_int(limit_memlock_str, &xx);
 		if (err != 0) {
@@ -504,7 +516,7 @@ static unsigned char linted_start_main(char const *const process_name,
 			           linted_error_string(err));
 			return EXIT_FAILURE;
 		}
-		limit_memlock_val = xx;
+		*limit_memlock_val = xx;
 	}
 
 	size_t mount_args_size = 0U;
@@ -828,8 +840,8 @@ static unsigned char linted_start_main(char const *const process_name,
 	}
 
 	/* Only start actually dropping privileges now */
-	if (timer_slack_str != 0) {
-		err = linted_prctl_set_timerslack(timer_slack_val);
+	if (timer_slack_val != 0) {
+		err = linted_prctl_set_timerslack(*timer_slack_val);
 		if (err != 0) {
 			linted_log(LINTED_LOG_ERROR, "prctl: %s",
 			           linted_error_string(err));
@@ -837,8 +849,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		}
 	}
 
-	if (priority_str != 0) {
-		if (-1 == setpriority(PRIO_PROCESS, 0, prio_val)) {
+	if (prio_val != 0) {
+		if (-1 == setpriority(PRIO_PROCESS, 0, *prio_val)) {
 			linted_log(LINTED_LOG_ERROR, "setpriority: %s",
 			           linted_error_string(errno));
 			return EXIT_FAILURE;
@@ -901,10 +913,10 @@ static unsigned char linted_start_main(char const *const process_name,
 		}
 	}
 
-	if (limit_locks_val >= 0) {
+	if (limit_locks_val != 0) {
 		struct rlimit const lim = {
-		    .rlim_cur = limit_locks_val,
-		    .rlim_max = limit_locks_val,
+		    .rlim_cur = *limit_locks_val,
+		    .rlim_max = *limit_locks_val,
 		};
 
 		if (-1 == setrlimit(RLIMIT_LOCKS, &lim)) {
@@ -914,10 +926,10 @@ static unsigned char linted_start_main(char const *const process_name,
 		}
 	}
 
-	if (limit_msgqueue_val >= 0) {
+	if (limit_msgqueue_val != 0) {
 		struct rlimit const lim = {
-		    .rlim_cur = limit_msgqueue_val,
-		    .rlim_max = limit_msgqueue_val,
+		    .rlim_cur = *limit_msgqueue_val,
+		    .rlim_max = *limit_msgqueue_val,
 		};
 
 		if (-1 == setrlimit(RLIMIT_MSGQUEUE, &lim)) {
@@ -927,10 +939,10 @@ static unsigned char linted_start_main(char const *const process_name,
 		}
 	}
 
-	if (limit_memlock_val >= 0) {
+	if (limit_memlock_val != 0) {
 		struct rlimit const lim = {
-		    .rlim_cur = limit_memlock_val,
-		    .rlim_max = limit_memlock_val,
+		    .rlim_cur = *limit_memlock_val,
+		    .rlim_max = *limit_memlock_val,
 		};
 
 		if (-1 == setrlimit(RLIMIT_MEMLOCK, &lim)) {
@@ -1091,7 +1103,7 @@ first_fork_routine(void *void_args)
 
 	struct first_fork_args const *first_fork_args = void_args;
 
-	int limit_no_file = first_fork_args->limit_no_file;
+	int_least64_t *limit_no_file = first_fork_args->limit_no_file;
 	linted_ko err_writer = first_fork_args->err_writer;
 	linted_ko logger_reader = first_fork_args->logger_reader;
 	linted_ko logger_writer = first_fork_args->logger_writer;
@@ -1246,7 +1258,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 
 	struct second_fork_args const *args = arg;
 
-	int limit_no_file = args->limit_no_file;
+	int_least64_t *limit_no_file = args->limit_no_file;
 	linted_ko err_writer = args->err_writer;
 	linted_ko logger_writer = args->logger_writer;
 	char const *const *argv = args->argv;
@@ -1261,10 +1273,10 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	if (err != 0)
 		goto fail;
 
-	if (limit_no_file >= 0) {
+	if (limit_no_file != 0) {
 		struct rlimit const lim = {
-		    .rlim_cur = limit_no_file,
-		    .rlim_max = limit_no_file,
+		    .rlim_cur = *limit_no_file,
+		    .rlim_max = *limit_no_file,
 		};
 
 		if (-1 == setrlimit(RLIMIT_NOFILE, &lim)) {
