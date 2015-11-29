@@ -253,6 +253,8 @@ destroy_waiter_queue:
 free_pool:
 	linted_mem_free(pool);
 
+	LINTED_ASSERT(err != 0);
+
 	return err;
 }
 
@@ -346,10 +348,12 @@ linted_error linted_async_pool_wait(struct linted_async_pool *pool,
 {
 	linted_error err = 0;
 
+	struct completion_queue *queue = pool->completion_queue;
+
 	struct linted_async_task *task;
 	{
 		struct linted_async_task *xx;
-		err = completion_recv(pool->completion_queue, &xx);
+		err = completion_recv(queue, &xx);
 		if (err != 0)
 			return err;
 		task = xx;
@@ -366,10 +370,13 @@ linted_error linted_async_pool_poll(struct linted_async_pool *pool,
 	LINTED_ASSERT_NOT_NULL(pool);
 
 	linted_error err = 0;
+
+	struct completion_queue *queue = pool->completion_queue;
+
 	struct linted_async_task *task;
 	{
 		struct linted_async_task *xx;
-		err = completion_try_recv(pool->completion_queue, &xx);
+		err = completion_try_recv(queue, &xx);
 		if (err != 0)
 			return err;
 		task = xx;
@@ -1281,8 +1288,11 @@ static linted_error completion_recv(struct completion_queue *queue,
 	LINTED_ASSERT_NOT_NULL(taskp);
 
 	struct linted_node *node;
-
-	linted_stack_recv((void *)queue, &node);
+	{
+		struct linted_node *xx;
+		linted_stack_recv((void *)queue, &xx);
+		node = xx;
+	}
 
 	*taskp = DOWNCAST(struct linted_async_task, node);
 

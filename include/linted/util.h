@@ -91,7 +91,8 @@
 #else
 #define LINTED_ASSERT_NOT_NULL(...)                                    \
 	do {                                                           \
-		*((char const volatile *)(__VA_ARGS__));               \
+		if (0 == (__VA_ARGS__))                                \
+			LINTED_CRASH_FAST();                           \
 	} while (0)
 #endif
 

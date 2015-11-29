@@ -345,6 +345,8 @@ release_thread:
 
 	linted_mem_free(gpu_context);
 
+	LINTED_ASSERT(err != 0);
+
 	return err;
 }
 
@@ -513,26 +515,22 @@ static void *gpu_routine(void *arg)
 			bool shown = true;
 			bool time_to_quit = false;
 
-			bool has_new_window;
 			bool remove_window;
-			bool update_pending;
-			bool resize_pending;
-			bool view_update_pending;
 
 			pthread_mutex_lock(&command_queue->lock);
 
 			for (;;) {
 				time_to_quit =
 				    command_queue->time_to_quit;
-				has_new_window =
+				bool has_new_window =
 				    command_queue->has_new_window;
 				remove_window =
 				    command_queue->remove_window;
-				update_pending =
+				bool update_pending =
 				    command_queue->update_pending;
-				resize_pending =
+				bool resize_pending =
 				    command_queue->resize_pending;
-				view_update_pending =
+				bool view_update_pending =
 				    command_queue->view_update_pending;
 
 				if (has_new_window) {
