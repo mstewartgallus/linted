@@ -147,8 +147,6 @@ struct linted_async_waiter {
 	bool thread_canceller : 1U;
 };
 
-static void set_thread_name(char const *name);
-
 linted_error linted_async_pool_create(struct linted_async_pool **poolp,
                                       unsigned max_tasks)
 {
@@ -599,7 +597,7 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 static DWORD WINAPI master_worker_routine(void *arg)
 {
-	set_thread_name("async-worker-master");
+	linted_pid_name("async-worker-master");
 
 	struct worker_pool *pool = arg;
 
@@ -662,7 +660,7 @@ static DWORD WINAPI master_worker_routine(void *arg)
 
 static DWORD WINAPI worker_routine(void *arg)
 {
-	set_thread_name("async-worker");
+	linted_pid_name("async-worker");
 
 	struct worker *worker = arg;
 
@@ -909,7 +907,7 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 static DWORD WINAPI master_poller_routine(void *arg)
 {
-	set_thread_name("async-poller-master");
+	linted_pid_name("async-poller-master");
 
 	struct wait_manager *pool = arg;
 
@@ -973,7 +971,7 @@ static DWORD WINAPI master_poller_routine(void *arg)
 
 static DWORD WINAPI poller_routine(void *arg)
 {
-	set_thread_name("async-poller");
+	linted_pid_name("async-poller");
 
 	struct poller *poller = arg;
 
@@ -1469,52 +1467,4 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 	LeaveCriticalSection(&canceller->lock);
 
 	return cancelled;
-}
-
-/* MSVC's way of setting thread names is really weird and hacky */
-
-#define MS_VC_EXCEPTION 0x406D1388
-
-#pragma pack(push, 8)
-typedef struct tagTHREADNAME_INFO {
-	DWORD dwType;
-	LPCSTR szName;
-	DWORD dwThreadID;
-	DWORD dwFlags;
-} THREADNAME_INFO;
-#pragma pack(pop)
-
-/**
- * @todo Get Window's thread name setting to work on GCC which doesn't
- * support SEH.
- */
-static void set_thread_name(char const *name)
-{
-
-	THREADNAME_INFO info = {0};
-
-	/* Must be 0x1000 */
-	info.dwType = 0x1000;
-	info.szName = name;
-
-	/* Thread ID (-1=caller thread) */
-	info.dwThreadID = -1;
-
-	/* Reserved for the future */
-	info.dwFlags = 0;
-
-#if !defined __GNUC__
-	__try
-	{
-#endif
-		RaiseException(MS_VC_EXCEPTION, 0,
-		               sizeof info / sizeof(ULONG_PTR),
-		               (ULONG_PTR *)&info);
-#if !defined __GNUC__
-	}
-	__except(EXCEPTION_EXECUTE_HANDLER)
-	{
-		/* Do nothing */
-	}
-#endif
 }

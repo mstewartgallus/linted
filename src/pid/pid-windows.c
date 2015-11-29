@@ -40,3 +40,52 @@ linted_pid linted_pid_get_pid(void)
 {
 	return GetCurrentProcessId();
 }
+
+/* MSVC's way of setting thread names is really weird and hacky */
+
+#define MS_VC_EXCEPTION 0x406D1388
+
+#pragma pack(push, 8)
+typedef struct tagTHREADNAME_INFO {
+	DWORD dwType;
+	LPCSTR szName;
+	DWORD dwThreadID;
+	DWORD dwFlags;
+} THREADNAME_INFO;
+#pragma pack(pop)
+
+static LONG CALLBACK exception_handler(EXCEPTION_POINTERS *infop);
+
+/**
+ * @todo Get Window's thread name setting to work on GCC which doesn't
+ * support SEH.
+ */
+linted_error linted_pid_name(char const *name)
+{
+
+	THREADNAME_INFO info = {0};
+
+	/* Must be 0x1000 */
+	info.dwType = 0x1000;
+	info.szName = name;
+
+	/* Thread ID (-1=caller thread) */
+	info.dwThreadID = -1;
+
+	/* Reserved for the future */
+	info.dwFlags = 0;
+
+	void *handler =
+	    AddVectoredExceptionHandler(1, exception_handler);
+	RaiseException(MS_VC_EXCEPTION, 0,
+	               sizeof info / sizeof(ULONG_PTR),
+	               (ULONG_PTR *)&info);
+	RemoveVectoredExceptionHandler(handler);
+
+	return 0;
+}
+
+static LONG CALLBACK exception_handler(EXCEPTION_POINTERS *infop)
+{
+	return EXCEPTION_CONTINUE_EXECUTION;
+}
