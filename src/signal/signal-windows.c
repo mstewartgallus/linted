@@ -34,6 +34,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <signal.h>
 
@@ -60,8 +61,8 @@ struct linted_signal_task_wait {
 
 static void write_one(linted_ko ko);
 
-static int volatile sigint_signalled;
-static int volatile sigterm_signalled;
+static atomic_int sigint_signalled;
+static atomic_int sigterm_signalled;
 
 static BOOL WINAPI sigint_handler_routine(DWORD dwCtrlType);
 static BOOL WINAPI sigterm_handler_routine(DWORD dwCtrlType);
@@ -180,14 +181,14 @@ retry:
 	}
 	err = 0;
 
-	if (__atomic_fetch_and(&sigint_signalled, 0,
-	                       __ATOMIC_SEQ_CST)) {
+	if (atomic_fetch_and_explicit(&sigint_signalled, 0,
+	                       memory_order_seq_cst)) {
 		signo = SIGINT;
 		goto complete;
 	}
 
-	if (__atomic_fetch_and(&sigterm_signalled, 0,
-	                       __ATOMIC_SEQ_CST)) {
+	if (atomic_fetch_and_explicit(&sigterm_signalled, 0,
+	                       memory_order_seq_cst)) {
 		signo = SIGTERM;
 		goto complete;
 	}
@@ -252,8 +253,8 @@ static BOOL WINAPI sigint_handler_routine(DWORD dwCtrlType)
 {
 	switch (dwCtrlType) {
 	case CTRL_C_EVENT:
-		__atomic_store_n(&sigint_signalled, 1,
-		                 __ATOMIC_SEQ_CST);
+		atomic_store_explicit(&sigint_signalled, 1,
+		                 memory_order_seq_cst);
 		write_one(sigpipe_writer);
 		return true;
 
@@ -269,8 +270,8 @@ static BOOL WINAPI sigterm_handler_routine(DWORD dwCtrlType)
 	case CTRL_CLOSE_EVENT:
 	case CTRL_LOGOFF_EVENT:
 	case CTRL_SHUTDOWN_EVENT:
-		__atomic_store_n(&sigterm_signalled, 1,
-		                 __ATOMIC_SEQ_CST);
+		atomic_store_explicit(&sigterm_signalled, 1,
+		                 memory_order_seq_cst);
 		write_one(sigpipe_writer);
 		return true;
 
