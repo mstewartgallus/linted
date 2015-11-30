@@ -164,20 +164,17 @@ static int do_init(struct linted_start_config const *config,
 		process_basename = xx;
 	}
 
+	if (config->sanitize_fds) {
+		err = sanitize_fds();
+		if (err != 0)
+			return err;
+	}
+
 	linted_log_open(process_basename);
 
 	if (missing_name) {
 		linted_log(LINTED_LOG_ERROR, "missing process name");
 		return EXIT_FAILURE;
-	}
-
-	if (config->sanitize_fds) {
-		err = sanitize_fds();
-		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "sanitize_fds: %s",
-			           linted_error_string(err));
-			return EXIT_FAILURE;
-		}
 	}
 
 	if (config->check_privilege) {

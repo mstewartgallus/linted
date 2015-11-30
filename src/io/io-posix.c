@@ -265,19 +265,44 @@ linted_error linted_io_write_va_list(linted_ko ko,
                                      char const *format_str,
                                      va_list list)
 {
+	linted_error err = 0;
+
 	int bytes;
+	{
+		sigset_t oldset;
+		/* Get EPIPEs */
+		/* SIGPIPE may not be blocked already */
+		/* Reuse oldset to save on stack space */
+		sigemptyset(&oldset);
+		sigaddset(&oldset, SIGPIPE);
+
+		err = pthread_sigmask(SIG_BLOCK, &oldset, &oldset);
+		if (err != 0)
+			return err;
 
 #if defined __BIONIC__
-	bytes = vfdprintf(ko, format_str, list);
+		bytes = vfdprintf(ko, format_str, list);
 #else
-	bytes = vdprintf(ko, format_str, list);
+		bytes = vdprintf(ko, format_str, list);
 #endif
 
-	if (bytes < 0) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
-		return err;
+		if (bytes < 0) {
+			err = errno;
+			LINTED_ASSUME(err != 0);
+		}
+
+		linted_error eat_err = eat_sigpipes();
+		if (0 == err)
+			err = eat_err;
+
+		linted_error mask_err =
+		    pthread_sigmask(SIG_SETMASK, &oldset, 0);
+		if (0 == err)
+			err = mask_err;
 	}
+
+	if (err != 0)
+		return err;
 
 	if (bytes_wrote_out != 0)
 		*bytes_wrote_out = bytes;

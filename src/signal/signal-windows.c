@@ -182,13 +182,13 @@ retry:
 	err = 0;
 
 	if (atomic_fetch_and_explicit(&sigint_signalled, 0,
-	                       memory_order_seq_cst)) {
+	                              memory_order_seq_cst)) {
 		signo = SIGINT;
 		goto complete;
 	}
 
 	if (atomic_fetch_and_explicit(&sigterm_signalled, 0,
-	                       memory_order_seq_cst)) {
+	                              memory_order_seq_cst)) {
 		signo = SIGTERM;
 		goto complete;
 	}
@@ -254,7 +254,7 @@ static BOOL WINAPI sigint_handler_routine(DWORD dwCtrlType)
 	switch (dwCtrlType) {
 	case CTRL_C_EVENT:
 		atomic_store_explicit(&sigint_signalled, 1,
-		                 memory_order_seq_cst);
+		                      memory_order_seq_cst);
 		write_one(sigpipe_writer);
 		return true;
 
@@ -271,7 +271,7 @@ static BOOL WINAPI sigterm_handler_routine(DWORD dwCtrlType)
 	case CTRL_LOGOFF_EVENT:
 	case CTRL_SHUTDOWN_EVENT:
 		atomic_store_explicit(&sigterm_signalled, 1,
-		                 memory_order_seq_cst);
+		                      memory_order_seq_cst);
 		write_one(sigpipe_writer);
 		return true;
 
