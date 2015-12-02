@@ -112,7 +112,7 @@ void linted_ko_stack_send(struct linted_ko_stack *stack,
 	}
 
 	for (;;) {
-		uint64_t xx = 0xFF;
+		static uint64_t const xx = 0xFF;
 		if (-1 == write(waiter_fd, &xx, sizeof xx)) {
 			err = errno;
 			LINTED_ASSERT(err != 0);

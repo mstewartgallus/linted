@@ -214,7 +214,7 @@ void linted_signal_do_wait(struct linted_async_pool *pool,
 	int signo = -1;
 
 	for (;;) {
-		char dummy;
+		static char dummy;
 		if (-1 == read(sigpipe_reader, &dummy, sizeof dummy)) {
 			err = errno;
 			LINTED_ASSUME(err != 0);

@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 #include <time.h>
 
 #include <EGL/egl.h>
@@ -291,25 +292,27 @@ choose_config_succeeded:
 	}
 
 	{
-		struct privates xx = {0};
-		xx.display = display;
-		xx.config = config;
+		struct privates *xx = &gpu_context->privates;
 
-		xx.surface = EGL_NO_SURFACE;
+		memset(xx, 0, sizeof *xx);
 
-		xx.width = 1U;
-		xx.height = 1U;
-		xx.resize_pending = true;
+		xx->display = display;
+		xx->config = config;
 
-		gpu_context->privates = xx;
+		xx->surface = EGL_NO_SURFACE;
+
+		xx->width = 1U;
+		xx->height = 1U;
+		xx->resize_pending = true;
 	}
 
 	{
-		struct command_queue xx = {0};
-		gpu_context->command_queue = xx;
-		pthread_mutex_init(&gpu_context->command_queue.lock, 0);
-		pthread_cond_init(&gpu_context->command_queue.wake_up,
-		                  0);
+		struct command_queue *xx = &gpu_context->command_queue;
+
+		memset(xx, 0, sizeof *xx);
+
+		pthread_mutex_init(&xx->lock, 0);
+		pthread_cond_init(&xx->wake_up, 0);
 	}
 
 	err = pthread_create(&gpu_context->thread, 0, gpu_routine,

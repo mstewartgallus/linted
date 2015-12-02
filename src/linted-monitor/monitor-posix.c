@@ -914,25 +914,31 @@ static linted_error on_sigchld(struct monitor *monitor)
 
 	linted_error err = 0;
 
-	siginfo_t info;
 	for (;;) {
-		info.si_pid = 0;
-		int wait_status = waitid(P_ALL, -1, &info,
-		                         WEXITED | WSTOPPED | WNOHANG);
-		if (-1 == wait_status) {
-			err = errno;
-			LINTED_ASSUME(err != 0);
-			if (ECHILD == err)
-				return LINTED_ERROR_CANCELLED;
-			return err;
+		linted_pid pid;
+		int exit_status;
+		int exit_code;
+		{
+			siginfo_t info;
+			info.si_pid = 0;
+			int wait_status =
+			    waitid(P_ALL, -1, &info,
+			           WEXITED | WSTOPPED | WNOHANG);
+			if (-1 == wait_status) {
+				err = errno;
+				LINTED_ASSUME(err != 0);
+				if (ECHILD == err)
+					return LINTED_ERROR_CANCELLED;
+				return err;
+			}
+
+			pid = info.si_pid;
+			if (0 == pid)
+				break;
+
+			exit_status = info.si_status;
+			exit_code = info.si_code;
 		}
-
-		linted_pid pid = info.si_pid;
-		if (0 == pid)
-			break;
-
-		int exit_status = info.si_status;
-		int exit_code = info.si_code;
 
 		switch (exit_code) {
 		case CLD_DUMPED:
@@ -1064,24 +1070,42 @@ static linted_error on_child_signaled(char const *process_name,
 
 	bool is_sigchld = SIGCHLD == signo;
 
-	siginfo_t info = {0};
-	if (is_sigchld) {
-		err = linted_ptrace_getsiginfo(pid, &info);
+	int child_code;
+	linted_pid child_pid;
+	int child_signo;
+	int child_status;
+	int child_errno;
+	uid_t child_uid;
+	clock_t child_utime;
+	clock_t child_stime;
+	{
+		siginfo_t info = {0};
+		if (is_sigchld) {
+			err = linted_ptrace_getsiginfo(pid, &info);
+		}
+
+		linted_error cont_err = linted_ptrace_cont(pid, signo);
+		if (0 == err)
+			err = cont_err;
+
+		if (err != 0)
+			return err;
+
+		if (!is_sigchld)
+			return 0;
+
+		child_code = info.si_code;
+		child_pid = info.si_pid;
+		child_signo = info.si_signo;
+		child_status = info.si_status;
+		child_errno = info.si_errno;
+		child_uid = info.si_uid;
+		child_utime = info.si_utime;
+		child_stime = info.si_stime;
 	}
 
-	linted_error cont_err = linted_ptrace_cont(pid, signo);
-	if (0 == err)
-		err = cont_err;
-
-	if (err != 0)
-		return err;
-
-	if (!is_sigchld)
-		return 0;
-
-	int child_code = info.si_code;
-	char const *code_str;
 	bool is_signal = true;
+	char const *code_str;
 	switch (child_code) {
 	case CLD_EXITED:
 		code_str = "exited";
@@ -1100,14 +1124,6 @@ static linted_error on_child_signaled(char const *process_name,
 		code_str = "unknown";
 		break;
 	}
-
-	linted_pid child_pid = info.si_pid;
-	int child_signo = info.si_signo;
-	int child_status = info.si_status;
-	int child_errno = info.si_errno;
-	uid_t child_uid = info.si_uid;
-	clock_t child_utime = info.si_utime;
-	clock_t child_stime = info.si_stime;
 
 	linted_io_write_format(
 	    LINTED_KO_STDERR, 0, "child exited!\n"

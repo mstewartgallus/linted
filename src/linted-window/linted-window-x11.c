@@ -145,7 +145,7 @@ static unsigned char linted_start_main(char const *process_name,
 		pool = xx;
 	}
 
-	struct window window_obj = {0};
+	static struct window window_obj = {0};
 
 	err = window_init(&window_obj, pool, kill_ko_path, window_path,
 	                  gui_notifier_path, drawer_notifier_path,
@@ -193,7 +193,7 @@ stop_pool:
 
 	/* Tell the manager to exit everything */
 	if (0 == err) {
-		char const dummy = 0U;
+		static char const dummy = 0U;
 		err = linted_io_write_all(window_obj.kill_ko, 0, &dummy,
 		                          sizeof dummy);
 		if (err != 0) {
@@ -729,12 +729,11 @@ window_on_conn_ready(struct window *window,
                      struct linted_io_task_poll *poll_conn_task,
                      linted_error err)
 {
+	if (err != 0)
+		return err;
 
 	xcb_connection_t *connection = window->connection;
 	struct linted_async_pool *pool = window->pool;
-
-	if (err != 0)
-		return err;
 
 	for (;;) {
 		xcb_generic_event_t *event =

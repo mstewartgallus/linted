@@ -86,6 +86,7 @@ static linted_error
 drawer_on_notice_recved(struct drawer *drawer,
                         struct linted_window_task_watch *notice_task,
                         linted_error err);
+static linted_error drawer_remove_window(struct drawer *drawer);
 static linted_error drawer_update_window(struct drawer *drawer);
 
 struct drawer {
@@ -587,16 +588,18 @@ drawer_on_update_recved(struct drawer *drawer,
 	float gpu_y_position = y_position * (1 / 4096.0);
 	float gpu_z_position = z_position * (1 / 4096.0);
 
-	struct linted_gpu_update gpu_update;
+	{
+		struct linted_gpu_update gpu_update;
 
-	gpu_update.z_rotation = gpu_z_rotation;
-	gpu_update.x_rotation = gpu_x_rotation;
+		gpu_update.z_rotation = gpu_z_rotation;
+		gpu_update.x_rotation = gpu_x_rotation;
 
-	gpu_update.x_position = gpu_x_position;
-	gpu_update.y_position = gpu_y_position;
-	gpu_update.z_position = gpu_z_position;
+		gpu_update.x_position = gpu_x_position;
+		gpu_update.y_position = gpu_y_position;
+		gpu_update.z_position = gpu_z_position;
 
-	linted_gpu_update_state(gpu_context, &gpu_update);
+		linted_gpu_update_state(gpu_context, &gpu_update);
+	}
 
 	return 0;
 }
@@ -621,9 +624,33 @@ drawer_on_notice_recved(struct drawer *drawer,
 	return drawer_update_window(drawer);
 }
 
+static linted_error drawer_remove_window(struct drawer *drawer)
+{
+	linted_error err = 0;
+
+	xcb_connection_t *connection = drawer->connection;
+	xcb_window_t window = drawer->window;
+
+	static uint32_t const no_opts[] = {0, 0};
+
+	xcb_change_window_attributes(connection, window,
+	                             XCB_CW_EVENT_MASK, no_opts);
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
+		return err;
+
+	xcb_flush(connection);
+
+	return 0;
+}
+
 static linted_error drawer_update_window(struct drawer *drawer)
 {
 	linted_error err = 0;
+
+	err = drawer_remove_window(drawer);
+	if (err != 0)
+		return err;
 
 	xcb_connection_t *connection = drawer->connection;
 	linted_window window_ko = drawer->window_ko;

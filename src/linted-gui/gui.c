@@ -107,7 +107,9 @@ static linted_error gui_on_sent_controller_state(
     struct linted_controller_task_send *controller_task,
     linted_error err);
 
-static linted_error refresh_gui_window(struct gui *gui);
+static linted_error gui_refresh_window(struct gui *gui);
+static linted_error gui_remove_window(struct gui *gui);
+
 static void maybe_update_controller(struct gui *gui);
 
 static linted_error get_mouse_position(xcb_connection_t *connection,
@@ -375,7 +377,7 @@ static linted_error gui_init(struct gui *gui,
 	              poll_conn_task,
 	              xcb_get_file_descriptor(connection), POLLIN));
 
-	err = refresh_gui_window(gui);
+	err = gui_refresh_window(gui);
 	if (err != 0)
 		goto destroy_keyboard_state;
 
@@ -726,7 +728,7 @@ gui_on_window_change(struct gui *gui,
 	              (union linted_async_ck){.u64 = ON_RECEIVE_NOTICE},
 	              notice_task, notifier));
 
-	return refresh_gui_window(gui);
+	return gui_refresh_window(gui);
 }
 
 static linted_error gui_on_sent_controller_state(
@@ -767,9 +769,33 @@ static void maybe_update_controller(struct gui *gui)
 	gui->update_in_progress = true;
 }
 
-static linted_error refresh_gui_window(struct gui *gui)
+static linted_error gui_remove_window(struct gui *gui)
 {
 	linted_error err = 0;
+
+	xcb_connection_t *connection = gui->connection;
+	xcb_window_t window = gui->window;
+
+	static uint32_t const no_opts[] = {0, 0};
+
+	xcb_change_window_attributes(connection, window,
+	                             XCB_CW_EVENT_MASK, no_opts);
+	err = linted_xcb_conn_error(connection);
+	if (err != 0)
+		return err;
+
+	xcb_flush(connection);
+
+	return 0;
+}
+
+static linted_error gui_refresh_window(struct gui *gui)
+{
+	linted_error err = 0;
+
+	err = gui_remove_window(gui);
+	if (err != 0)
+		return err;
 
 	xcb_connection_t *connection = gui->connection;
 	linted_window window_ko = gui->window_ko;

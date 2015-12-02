@@ -31,7 +31,7 @@ go() {
 			;;
 		esac
 	done
-
+	shift "$(expr "${OPTIND}" - 1)"
 	if test "$#" -lt 1
 	then
 		help >&2
@@ -69,11 +69,33 @@ help()
 	printf -- '%s TASK\n' "${BASENAME}"
 }
 
+source_help()
+{
+
+	printf -- '%s fetch-source SRCDIR\n' "${BASENAME}"
+}
+
 source()
 {
+	while getopts 'h' OPT
+	do
+		case "${OPT}" in
+		h)
+			source_help
+			return
+			;;
+
+		\?)
+			printf -- 'Invalid option: -%s\n' "${OPTARG}"  >&2
+			source_help >&2
+			return 1
+			;;
+		esac
+	done
+	shift "$(expr "${OPTIND}" - 1)"
 	if test "$#" -ne 1
 	then
-		help >&2
+		source_help >&2
 		return 1
 	fi
 	SRCDIR="$1"
@@ -84,11 +106,33 @@ source()
 	autoreconf -ivf -Wall "${SRCDIR}/linted"
 }
 
+configure_help()
+{
+
+	printf -- '%s configure SRCDIR DEPDIR BUILDDIR\n' "${BASENAME}"
+}
+
 configure()
 {
+	while getopts 'h' OPT
+	do
+		case "${OPT}" in
+		h)
+			configure_help
+			return
+			;;
+
+		\?)
+			printf -- 'Invalid option: -%s\n' "${OPTARG}"  >&2
+			configure_help >&2
+			return 1
+			;;
+		esac
+	done
+	shift "$(expr "${OPTIND}" - 1)"
 	if test "$#" -ne 3
 	then
-		help >&2
+		configure_help >&2
 		return 1
 	fi
 	SRCDIR="$1"
@@ -100,34 +144,76 @@ configure()
 	CONFIGURE="$(realpath "${SRCDIR}/linted/configure-defaults")"
 
 	DEPDIR="$(realpath "${DEPDIR}")"
-	(
-	cd "${BUILDDIR}/linted"
-	"${CONFIGURE}" --with-sysroot="${DEPDIR}"
-	)
+	(cd "${BUILDDIR}/linted" && "${CONFIGURE}" --with-sysroot="${DEPDIR}" CC=gcc-4.8 --prefix='/opt/linted')
+}
+
+build_help()
+{
+
+	printf -- '%s build BUILDDIR\n' "${BASENAME}"
 }
 
 build()
 {
-	if test "$#" -ne 1
+	while getopts 'h' OPT
+	do
+		case "${OPT}" in
+		h)
+			build_help
+			return
+			;;
+
+		\?)
+			printf -- 'Invalid option: -%s\n' "${OPTARG}"  >&2
+			build_help >&2
+			return 1
+			;;
+		esac
+	done
+	shift "$(expr "${OPTIND}" - 1)"
+	if test "$#" -ne 2
 	then
-		help >&2
+		build_help >&2
 		return 1
 	fi
-	BUILDDIR="$1"
+	SRCDIR="$1"
+	BUILDDIR="$2"
 	shift
 
-
 	make --silent -C "${BUILDDIR}/linted"
-	make --silent install -C "${BUILDDIR}/linted" prefix="$(realpath "${BUILDDIR}/tarball")"
+	make --silent install -C "${BUILDDIR}/linted" DESTDIR="$(realpath "${BUILDDIR}/tarball")"
+	cp "${SRCDIR}/linted/README" "${BUILDDIR}/tarball"
 	(cd "${BUILDDIR}" && tar --mtime=0 --numeric-owner --group=root --owner=root -c -f 'tarball.tar' -C tarball -- .)
 	gzip -n -9 -f -- "${BUILDDIR}/tarball.tar"
 }
 
+deps_help()
+{
+
+	printf -- '%s fetch-dependencies DEPDIR\n' "${BASENAME}"
+}
+
 deps()
 {
+	while getopts 'h' OPT
+	do
+		case "${OPT}" in
+		h)
+			deps_help
+			return
+			;;
+
+		\?)
+			printf -- 'Invalid option: -%s\n' "${OPTARG}"  >&2
+			deps_help >&2
+			return 1
+			;;
+		esac
+	done
+	shift "$(expr "${OPTIND}" - 1)"
 	if test "$#" -ne 1
 	then
-		help >&2
+		deps_help >&2
 		return 1
 	fi
 	DEPDIR="$1"
@@ -136,10 +222,12 @@ deps()
 	mkdir -p "${DEPDIR}/var/cache/builddeps"
 	(cd "${DEPDIR}/var/cache/builddeps" && printdeps | xargs -0 -- apt-get download --quiet) || :
 
-	for II in "${DEPDIR}"/var/cache/builddeps/*.deb
-	do
-	dpkg-deb -x "$II" "${DEPDIR}"
-	done
+	find "${DEPDIR}/var/cache/builddeps" -name '*.deb' -type f | {
+		while read II
+		do
+			dpkg-deb -x "$II" "${DEPDIR}"
+		done
+	}
 }
 
 printdeps() {
