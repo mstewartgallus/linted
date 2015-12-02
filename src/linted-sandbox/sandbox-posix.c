@@ -966,7 +966,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		    .use_seccomp = no_new_privs,
 		    .waiter_base = waiter_base,
 		    .waiter = waiter_str,
-		    .command = command,
+		    .command = (char const *const *)command_dup,
 		    .binary = binary};
 		child = safe_vfork(first_fork_routine, &args);
 	}
