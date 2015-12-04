@@ -17,8 +17,6 @@
 
 #include "config.h"
 
-#include "sandbox.h"
-
 #include "linted/dir.h"
 #include "linted/execveat.h"
 #include "linted/error.h"
@@ -58,6 +56,7 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include <seccomp.h>
 #include <linux/seccomp.h>
 
 /**
@@ -177,19 +176,19 @@ struct first_fork_args {
 	char const *const *command;
 	char const *binary;
 	int_least64_t *limit_no_file;
+	scmp_filter_ctx *seccomp_context;
 	linted_ko err_writer;
 	linted_ko logger_reader;
 	linted_ko logger_writer;
-	bool use_seccomp : 1U;
 };
 
 struct second_fork_args {
 	char const *const *argv;
 	char const *binary;
 	int_least64_t *limit_no_file;
+	scmp_filter_ctx *seccomp_context;
 	linted_ko err_writer;
 	linted_ko logger_writer;
-	bool use_seccomp : 1U;
 };
 
 static int first_fork_routine(void *arg);
@@ -223,6 +222,115 @@ static struct linted_start_config const linted_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
     .dont_init_signals = true,
     .dont_fork_thread = true};
+
+static int const sysnos[] = {
+    /* Common */
+    /**/ SCMP_SYS(execve),
+    /**/ SCMP_SYS(brk),
+    /**/ SCMP_SYS(access),
+    /**/ SCMP_SYS(mmap),
+    /**/ SCMP_SYS(open),
+    /**/ SCMP_SYS(stat),
+    /**/ SCMP_SYS(fstat),
+    /**/ SCMP_SYS(close),
+    /**/ SCMP_SYS(read),
+    /**/ SCMP_SYS(mprotect),
+    /**/ SCMP_SYS(arch_prctl),
+    /**/ SCMP_SYS(munmap),
+    /**/ SCMP_SYS(set_tid_address),
+    /**/ SCMP_SYS(set_robust_list),
+    /**/ SCMP_SYS(futex),
+    /**/ SCMP_SYS(rt_sigaction),
+    /**/ SCMP_SYS(rt_sigprocmask),
+    /**/ SCMP_SYS(getrlimit),
+    /**/ SCMP_SYS(clone),
+    /**/ SCMP_SYS(openat),
+    /**/ SCMP_SYS(exit),
+    /**/ SCMP_SYS(exit_group),
+    /**/ SCMP_SYS(restart_syscall),
+
+    /* Not common */
+    /**/ SCMP_SYS(socket),
+    /**/ SCMP_SYS(connect),
+    /**/ SCMP_SYS(pipe2),
+    /**/ SCMP_SYS(pause),
+    /**/ SCMP_SYS(lseek),
+    /**/ SCMP_SYS(sendto),
+    /**/ SCMP_SYS(prctl),
+    /**/ SCMP_SYS(eventfd2),
+    /**/ SCMP_SYS(fcntl),
+    /**/ SCMP_SYS(epoll_create1),
+    /**/ SCMP_SYS(epoll_ctl),
+    /**/ SCMP_SYS(epoll_wait),
+    /**/ SCMP_SYS(readlink),
+    /**/ SCMP_SYS(getpeername),
+    /**/ SCMP_SYS(clock_nanosleep),
+    /**/ SCMP_SYS(write),
+    /**/ SCMP_SYS(umask),
+    /**/ SCMP_SYS(uname),
+    /**/ SCMP_SYS(mkdir),
+    /**/ SCMP_SYS(poll),
+    /**/ SCMP_SYS(ftruncate),
+    /**/ SCMP_SYS(writev),
+    /**/ SCMP_SYS(getdents),
+    /**/ SCMP_SYS(recvfrom),
+    /**/ SCMP_SYS(statfs),
+    /**/ SCMP_SYS(recvmsg),
+    /**/ SCMP_SYS(pwrite64),
+    /**/ SCMP_SYS(geteuid),
+    /**/ SCMP_SYS(getuid),
+    /**/ SCMP_SYS(kill),
+    /**/ SCMP_SYS(rt_sigtimedwait),
+    /**/ SCMP_SYS(unlink),
+    /**/ SCMP_SYS(getgid),
+    /**/ SCMP_SYS(getegid),
+    /**/ SCMP_SYS(shutdown),
+    /**/ SCMP_SYS(fchown),
+    /**/ SCMP_SYS(madvise),
+    /**/ SCMP_SYS(ioctl),
+    /**/ SCMP_SYS(pread64),
+    /**/ SCMP_SYS(sched_yield),
+    /**/ SCMP_SYS(fchmod),
+    /**/ SCMP_SYS(lstat),
+    /**/ SCMP_SYS(setsockopt),
+    /**/ SCMP_SYS(tgkill),
+    /**/ SCMP_SYS(rt_sigreturn),
+    /**/ SCMP_SYS(getsockopt),
+    /**/ SCMP_SYS(getsockname),
+    /**/ SCMP_SYS(ppoll),
+    /**/ SCMP_SYS(sendmsg),
+
+#if 0
+    /**/ SCMP_SYS(clock_gettime),
+    /**/ SCMP_SYS(dup2),
+    /**/ SCMP_SYS(dup3),
+    /**/ SCMP_SYS(execveat),
+    /**/ SCMP_SYS(mincore),
+    /**/ SCMP_SYS(wait4),
+
+    /* Debugging related system calls */
+    /**/ SCMP_SYS(gettid),
+    /**/ SCMP_SYS(getpid),
+    /**/ SCMP_SYS(nanosleep),
+    /**/ SCMP_SYS(sched_getaffinity),
+    /**/ SCMP_SYS(setrlimit),
+    /**/ SCMP_SYS(sigaltstack),
+
+    /* Apitrace related system calls */
+    /**/ SCMP_SYS(dup),
+
+    /* Valgrind related system calls */
+    /**/ SCMP_SYS(getcwd),
+    /**/ SCMP_SYS(getppid),
+    /**/ SCMP_SYS(gettimeofday),
+    /**/ SCMP_SYS(getxattr),
+    /**/ SCMP_SYS(mknod),
+    /**/ SCMP_SYS(pipe),
+    /**/ SCMP_SYS(pread64),
+    /**/ SCMP_SYS(time),
+    /**/ SCMP_SYS(tkill),
+#endif
+};
 
 static unsigned char linted_start_main(char const *const process_name,
                                        size_t argc,
@@ -839,6 +947,43 @@ static unsigned char linted_start_main(char const *const process_name,
 		}
 	}
 
+	scmp_filter_ctx *seccomp_context = 0;
+	if (no_new_privs) {
+		seccomp_context = seccomp_init(SCMP_ACT_KILL);
+		if (0 == seccomp_context) {
+			linted_log(LINTED_LOG_ERROR, "seccomp_init: %s",
+			           linted_error_string(errno));
+			return EXIT_FAILURE;
+		}
+
+		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(sysnos);
+		     ++ii) {
+			err = -seccomp_rule_add(seccomp_context,
+			                        SCMP_ACT_ALLOW,
+			                        sysnos[ii], 0);
+			if (err != 0) {
+				linted_log(LINTED_LOG_ERROR,
+				           "seccomp_rule_add: %s",
+				           linted_error_string(err));
+				return EXIT_FAILURE;
+			}
+		}
+	}
+
+	int clone_flags = 0;
+	if (clone_newuser)
+		clone_flags |= CLONE_NEWUSER;
+	if (clone_newipc)
+		clone_flags |= CLONE_NEWIPC;
+	if (clone_newns)
+		clone_flags |= CLONE_NEWNS;
+	if (clone_newuts)
+		clone_flags |= CLONE_NEWUTS;
+	if (clone_newnet)
+		clone_flags |= CLONE_NEWNET;
+	if (clone_newpid)
+		clone_flags |= CLONE_NEWPID;
+
 	/* Only start actually dropping privileges now */
 	if (timer_slack_val != 0) {
 		err = linted_prctl_set_timerslack(*timer_slack_val);
@@ -866,20 +1011,6 @@ static unsigned char linted_start_main(char const *const process_name,
 			return EXIT_FAILURE;
 		}
 	}
-
-	int clone_flags = 0;
-	if (clone_newuser)
-		clone_flags |= CLONE_NEWUSER;
-	if (clone_newipc)
-		clone_flags |= CLONE_NEWIPC;
-	if (clone_newns)
-		clone_flags |= CLONE_NEWNS;
-	if (clone_newuts)
-		clone_flags |= CLONE_NEWUTS;
-	if (clone_newnet)
-		clone_flags |= CLONE_NEWNET;
-	if (clone_newpid)
-		clone_flags |= CLONE_NEWPID;
 
 	if (clone_flags != 0) {
 		if (-1 == unshare(clone_flags)) {
@@ -963,7 +1094,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		    .caps = caps,
 		    .mount_args = mount_args,
 		    .mount_args_size = mount_args_size,
-		    .use_seccomp = no_new_privs,
+		    .seccomp_context = seccomp_context,
 		    .waiter_base = waiter_base,
 		    .waiter = waiter_str,
 		    .command = (char const *const *)command_dup,
@@ -1111,7 +1242,8 @@ first_fork_routine(void *void_args)
 	cap_t caps = first_fork_args->caps;
 	struct mount_args *mount_args = first_fork_args->mount_args;
 	size_t mount_args_size = first_fork_args->mount_args_size;
-	bool use_seccomp = first_fork_args->use_seccomp;
+	scmp_filter_ctx *seccomp_context =
+	    first_fork_args->seccomp_context;
 	char const *waiter = first_fork_args->waiter;
 	char const *waiter_base = first_fork_args->waiter_base;
 	char const *const *command = first_fork_args->command;
@@ -1202,7 +1334,8 @@ first_fork_routine(void *void_args)
 	                                .logger_writer = logger_writer,
 	                                .binary = binary,
 	                                .argv = command,
-	                                .use_seccomp = use_seccomp};
+	                                .seccomp_context =
+	                                    seccomp_context};
 	grand_child = safe_vfork(second_fork_routine, &args);
 	if (-1 == grand_child) {
 		err = errno;
@@ -1262,7 +1395,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	linted_ko err_writer = args->err_writer;
 	linted_ko logger_writer = args->logger_writer;
 	char const *const *argv = args->argv;
-	bool use_seccomp = args->use_seccomp;
+	scmp_filter_ctx seccomp_context = args->seccomp_context;
 	char const *binary = args->binary;
 
 	err = safe_dup2(logger_writer, LINTED_KO_STDOUT);
@@ -1289,6 +1422,12 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	}
 
 	/* Do seccomp filter last of all */
+	if (seccomp_context != 0) {
+		err = -seccomp_load(seccomp_context);
+		if (err != 0)
+			goto fail;
+	}
+#if 0
 	if (use_seccomp) {
 		if (-1 == prctl(PR_SET_SECCOMP,
 		                (unsigned long)SECCOMP_MODE_FILTER,
@@ -1300,6 +1439,7 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 			goto fail;
 		}
 	}
+#endif
 
 	execve(binary, (char *const *)argv, environ);
 	err = errno;

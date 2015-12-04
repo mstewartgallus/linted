@@ -331,6 +331,10 @@ dnl
                 AC_MSG_WARN([Unable to find a PulseAudio library])
         ])
 dnl
+	PKG_CHECK_MODULES(SECCOMP, libseccomp, [], [
+                AC_MSG_WARN([Unable to find a libseccomp library])
+        ])
+dnl
 ])
 dnl
 AC_SYS_LARGEFILE
