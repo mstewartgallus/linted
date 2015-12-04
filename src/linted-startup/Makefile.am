@@ -21,7 +21,6 @@ pkglibexec_PROGRAMS+=%D%/linted-startup
   src/start/libstart.la\
   \
   src/admin/libadmin.la\
-  src/conf/libconf.la\
   src/env/libenv.la\
   src/error/liberror.la\
   src/io/libio.la\

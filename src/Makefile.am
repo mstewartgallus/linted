@@ -58,7 +58,6 @@ include %C%/linted-enter/Makefile.am
 include %C%/linted-control/Makefile.am
 
 include %C%/ko-stack/Makefile.am
-include %C%/conf/Makefile.am
 include %C%/gpu/Makefile.am
 include %C%/spawn/Makefile.am
 include %C%/unit/Makefile.am
