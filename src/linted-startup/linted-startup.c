@@ -84,6 +84,15 @@ static linted_error conf_service_limit_locks(struct conf *conf,
 static linted_error conf_service_limit_memlock(struct conf *conf,
                                                int_least64_t *intp);
 
+static linted_error conf_service_type(struct conf *conf,
+                                      char const **strp);
+static linted_error conf_service_no_new_privileges(struct conf *conf,
+                                                   bool *boolp);
+static linted_error conf_service_x_linted_fstab(struct conf *conf,
+                                                char const **strp);
+static linted_error conf_service_working_directory(struct conf *conf,
+                                                   char const **strp);
+
 struct conf_db;
 struct conf;
 
@@ -108,22 +117,6 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 static void conf_put(struct conf *conf);
 
 static char const *conf_peek_name(struct conf *conf);
-
-static char const *const *
-conf_find(struct conf *conf, char const *section, char const *field);
-
-static linted_error conf_find_str(struct conf *conf,
-                                  char const *section,
-                                  char const *field, char const **strp);
-
-static linted_error conf_find_int(struct conf *conf,
-                                  char const *section,
-                                  char const *field,
-                                  int_least64_t *intp);
-
-static linted_error conf_find_bool(struct conf *conf,
-                                   char const *section,
-                                   char const *field, _Bool *boolp);
 
 static linted_error conf_add_section(struct conf *conf,
                                      conf_section *sectionp,
@@ -967,7 +960,7 @@ service_activate(struct system_conf const *system_conf,
 	char const *type;
 	{
 		char const *xx = 0;
-		err = conf_find_str(conf, "Service", "Type", &xx);
+		err = conf_service_type(conf, &xx);
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		type = xx;
@@ -976,8 +969,7 @@ service_activate(struct system_conf const *system_conf,
 	bool no_new_privs;
 	{
 		bool xx = false;
-		err = conf_find_bool(conf, "Service", "NoNewPrivileges",
-		                     &xx);
+		err = conf_service_no_new_privileges(conf, &xx);
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		no_new_privs = xx;
@@ -986,8 +978,7 @@ service_activate(struct system_conf const *system_conf,
 	char const *fstab;
 	{
 		char const *xx = 0;
-		err = conf_find_str(conf, "Service", "X-LintedFstab",
-		                    &xx);
+		err = conf_service_x_linted_fstab(conf, &xx);
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		fstab = xx;
@@ -996,8 +987,7 @@ service_activate(struct system_conf const *system_conf,
 	char const *chdir_path;
 	{
 		char const *xx = 0;
-		err = conf_find_str(conf, "Service", "WorkingDirectory",
-		                    &xx);
+		err = conf_service_working_directory(conf, &xx);
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		chdir_path = xx;
@@ -1596,6 +1586,22 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 	return err;
 }
 
+static char const *const *
+conf_find(struct conf *conf, char const *section, char const *field);
+
+static linted_error conf_find_str(struct conf *conf,
+                                  char const *section,
+                                  char const *field, char const **strp);
+
+static linted_error conf_find_int(struct conf *conf,
+                                  char const *section,
+                                  char const *field,
+                                  int_least64_t *intp);
+
+static linted_error conf_find_bool(struct conf *conf,
+                                   char const *section,
+                                   char const *field, _Bool *boolp);
+
 static linted_error
 conf_system_default_limit_locks(struct conf *conf,
                                 int_least64_t *limitp)
@@ -1696,6 +1702,28 @@ static linted_error conf_service_limit_memlock(struct conf *conf,
                                                int_least64_t *intp)
 {
 	return conf_find_int(conf, "Service", "LimitMEMLOCK", intp);
+}
+
+static linted_error conf_service_type(struct conf *conf,
+                                      char const **strp)
+{
+	return conf_find_str(conf, "Service", "Type", strp);
+}
+static linted_error conf_service_no_new_privileges(struct conf *conf,
+                                                   bool *boolp)
+{
+	return conf_find_bool(conf, "Service", "NoNewPrivileges",
+	                      boolp);
+}
+static linted_error conf_service_x_linted_fstab(struct conf *conf,
+                                                char const **strp)
+{
+	return conf_find_str(conf, "Service", "X-LintedFstab", strp);
+}
+static linted_error conf_service_working_directory(struct conf *conf,
+                                                   char const **strp)
+{
+	return conf_find_str(conf, "Service", "WorkingDirectory", strp);
 }
 
 struct conf_db {
