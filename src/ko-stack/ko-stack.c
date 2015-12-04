@@ -35,12 +35,18 @@
 typedef _Atomic(struct linted_node *) atomic_node;
 
 struct linted_ko_stack {
-	atomic_node inbox;
-	struct linted_node *outbox;
 	int waiter_fd;
+
+	char __padding1[64U - sizeof(int)];
+
+	atomic_node inbox;
+
+	char __padding2[64U - sizeof(atomic_node)];
+
+	struct linted_node *outbox;
 };
 
-static void refresh_node(struct linted_node *node)
+static inline void refresh_node(struct linted_node *node)
 {
 	node->next = 0;
 }

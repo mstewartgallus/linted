@@ -148,21 +148,37 @@ struct linted_async_pool {
 struct linted_async_task {
 	struct linted_node parent;
 	struct canceller canceller;
+	linted_error err;
+	bool thread_canceller : 1U;
+
+	char __padding1[64U -
+	                (sizeof(struct linted_node) +
+	                 sizeof(struct canceller) +
+	                 sizeof(linted_error) + sizeof(bool)) %
+	                    64U];
+
+	/* Stuff below should only be written by one thread on the fast
+	 * path */
 	void *data;
 	void *userstate;
 	union linted_async_ck task_ck;
-	linted_error err;
 	linted_async_type type;
-	bool thread_canceller : 1U;
 };
 
 struct linted_async_waiter {
 	struct linted_node parent;
+	short revents;
+	bool thread_canceller : 1U;
+
+	char __padding1[64U -
+	                (sizeof(struct linted_node) + sizeof(bool)) %
+	                    64U];
+
+	/* Stuff below should only be written by one thread on the fast
+	 * path */
 	struct linted_async_task *task;
 	linted_ko ko;
 	short flags;
-	short revents;
-	bool thread_canceller : 1U;
 };
 
 linted_error linted_async_pool_create(struct linted_async_pool **poolp,

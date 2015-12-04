@@ -72,19 +72,19 @@ static linted_error futex_wait(atomic_int const *uaddr, int val,
 static linted_error futex_wake(unsigned *restrict wokeupp,
                                atomic_int const *uaddr, int val);
 
-static linted_error wait_until_different(atomic_int const *uaddr,
-                                         int val)
+static inline linted_error wait_until_different(atomic_int const *uaddr,
+                                                int val)
 {
 	return futex_wait(uaddr, val, NULL);
 }
 
-static linted_error hint_wakeup(atomic_int const *uaddr)
+static inline linted_error hint_wakeup(atomic_int const *uaddr)
 {
 	return futex_wake(NULL, uaddr, 1);
 }
 #else
-static linted_error wait_until_different(atomic_int const *uaddr,
-                                         int val)
+static inline linted_error wait_until_different(atomic_int const *uaddr,
+                                                int val)
 {
 	for (;;) {
 		if (atomic_load_explicit(uaddr, memory_order_relaxed) !=
@@ -96,15 +96,15 @@ static linted_error wait_until_different(atomic_int const *uaddr,
 	atomic_thread_fence(memory_order_acquire);
 }
 
-static linted_error hint_wakeup(atomic_int const *uaddr)
+static inline linted_error hint_wakeup(atomic_int const *uaddr)
 {
 	return 0;
 }
 #endif
 
 #if defined HAVE_POSIX_API
-static linted_error futex_wait(atomic_int const *uaddr, int val,
-                               struct timespec const *timeout)
+static inline linted_error futex_wait(atomic_int const *uaddr, int val,
+                                      struct timespec const *timeout)
 {
 	int xx =
 	    syscall(__NR_futex, (intptr_t)uaddr, (intptr_t)FUTEX_WAIT,
@@ -116,8 +116,8 @@ static linted_error futex_wait(atomic_int const *uaddr, int val,
 	return 0;
 }
 
-static linted_error futex_wake(unsigned *restrict wokeupp,
-                               atomic_int const *uaddr, int val)
+static inline linted_error futex_wake(unsigned *restrict wokeupp,
+                                      atomic_int const *uaddr, int val)
 {
 	int xx = syscall(__NR_futex, (intptr_t)uaddr,
 	                 (intptr_t)FUTEX_WAKE, (intptr_t)val);

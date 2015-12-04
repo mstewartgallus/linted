@@ -137,6 +137,9 @@ struct privates {
 
 struct linted_gpu_context {
 	struct command_queue command_queue;
+
+	char __padding1[64U - sizeof(struct command_queue) % 64U];
+
 	struct privates privates;
 
 	pthread_t thread;
@@ -191,11 +194,10 @@ static void real_draw(struct privates *privates,
 static void flush_gl_errors(struct privates *privates,
                             struct gl const *restrict gl);
 
-static struct matrix
-model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
-                      GLfloat x_position, GLfloat y_position,
-                      GLfloat z_position, unsigned width,
-                      unsigned height);
+static inline void model_view_projection(
+    struct matrix *restrict resultp, GLfloat x_rotation,
+    GLfloat z_rotation, GLfloat x_position, GLfloat y_position,
+    GLfloat z_position, unsigned width, unsigned height);
 
 static void matrix_multiply(struct matrix const *restrict a,
                             struct matrix const *restrict b,
@@ -1388,8 +1390,9 @@ static void real_draw(struct privates *privates,
 		GLfloat z_position = update->z_position;
 
 		if (mvp_matrix >= 0) {
-			struct matrix mvp = model_view_projection(
-			    x_rotation, z_rotation, x_position,
+			struct matrix mvp;
+			model_view_projection(
+			    &mvp, x_rotation, z_rotation, x_position,
 			    y_position, z_position, width, height);
 			gl->UniformMatrix4fv(mvp_matrix, 1U, false,
 			                     (void const *)&mvp);
@@ -1482,11 +1485,10 @@ static linted_error get_gl_error(struct privates *privates,
 	return 0;
 }
 
-static struct matrix
-model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
-                      GLfloat x_position, GLfloat y_position,
-                      GLfloat z_position, unsigned width,
-                      unsigned height)
+static inline void model_view_projection(
+    struct matrix *restrict resultp, GLfloat x_rotation,
+    GLfloat z_rotation, GLfloat x_position, GLfloat y_position,
+    GLfloat z_position, unsigned width, unsigned height)
 {
 	/* Rotate the camera */
 	GLfloat cos_x = cosf(x_rotation);
@@ -1502,50 +1504,44 @@ model_view_projection(GLfloat x_rotation, GLfloat z_rotation,
 	double far = 1000;
 	double near = 1;
 
+	struct matrix model_view;
 	{
-		struct matrix model_view;
+		struct matrix rotations;
 		{
-			struct matrix rotations;
-			{
-				struct matrix const x_rotation_matrix =
-				    {{{1, 0, 0, 0},
-				      {0, cos_x, -sin_x, 0},
-				      {0, sin_x, cos_x, 0},
-				      {0, 0, 0, 1}}};
-
-				struct matrix const z_rotation_matrix =
-				    {{{cos_z, sin_z, 0, 0},
-				      {-sin_z, cos_z, 0, 0},
-				      {0, 0, 1, 0},
-				      {0, 0, 0, 1}}};
-
-				matrix_multiply(&z_rotation_matrix,
-				                &x_rotation_matrix,
-				                &rotations);
-			}
-
-			/* Translate the camera */
-			struct matrix const camera = {
+			struct matrix const x_rotation_matrix = {
 			    {{1, 0, 0, 0},
-			     {0, 1, 0, 0},
-			     {0, 0, 1, 0},
-			     {x_position, y_position, z_position, 1}}};
+			     {0, cos_x, -sin_x, 0},
+			     {0, sin_x, cos_x, 0},
+			     {0, 0, 0, 1}}};
 
-			matrix_multiply(&camera, &rotations,
-			                &model_view);
+			struct matrix const z_rotation_matrix = {
+			    {{cos_z, sin_z, 0, 0},
+			     {-sin_z, cos_z, 0, 0},
+			     {0, 0, 1, 0},
+			     {0, 0, 0, 1}}};
+
+			matrix_multiply(&z_rotation_matrix,
+			                &x_rotation_matrix, &rotations);
 		}
 
-		struct matrix const projection = {
-		    {{d / aspect, 0, 0, 0},
-		     {0, d, 0, 0},
-		     {0, 0, (far + near) / (near - far),
-		      2 * far * near / (near - far)},
-		     {0, 0, -1, 0}}};
+		/* Translate the camera */
+		struct matrix const camera = {
+		    {{1, 0, 0, 0},
+		     {0, 1, 0, 0},
+		     {0, 0, 1, 0},
+		     {x_position, y_position, z_position, 1}}};
 
-		struct matrix result;
-		matrix_multiply(&model_view, &projection, &result);
-		return result;
+		matrix_multiply(&camera, &rotations, &model_view);
 	}
+
+	struct matrix const projection = {
+	    {{d / aspect, 0, 0, 0},
+	     {0, d, 0, 0},
+	     {0, 0, (far + near) / (near - far),
+	      2 * far * near / (near - far)},
+	     {0, 0, -1, 0}}};
+
+	matrix_multiply(&model_view, &projection, resultp);
 }
 
 static inline void matrix_multiply(struct matrix const *restrict a,
