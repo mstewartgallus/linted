@@ -41,6 +41,49 @@
 #include <sys/types.h>
 #include <wordexp.h>
 
+struct conf;
+
+static linted_error
+conf_system_default_limit_locks(struct conf *conf,
+                                int_least64_t *limitp);
+static linted_error
+conf_system_default_limit_memlock(struct conf *conf,
+                                  int_least64_t *limitp);
+static linted_error
+conf_system_default_limit_msgqueue(struct conf *conf,
+                                   int_least64_t *limitp);
+static linted_error
+conf_system_default_limit_nofile(struct conf *conf,
+                                 int_least64_t *limitp);
+
+static linted_error conf_socket_listen_directory(struct conf *conf,
+                                                 char const **strp);
+static linted_error conf_socket_listen_file(struct conf *conf,
+                                            char const **strp);
+static linted_error conf_socket_listen_fifo(struct conf *conf,
+                                            char const **strp);
+static linted_error conf_socket_pipe_size(struct conf *conf,
+                                          int_least64_t *intp);
+
+static char const *const *conf_service_exec_start(struct conf *conf);
+static char const *const *
+conf_service_pass_environment(struct conf *conf);
+static char const *const *
+conf_service_x_linted_clone_flags(struct conf *conf);
+
+static linted_error conf_service_timer_slack_nsec(struct conf *conf,
+                                                  int_least64_t *intp);
+static linted_error conf_service_priority(struct conf *conf,
+                                          int_least64_t *intp);
+static linted_error conf_service_limit_no_file(struct conf *conf,
+                                               int_least64_t *intp);
+static linted_error conf_service_limit_msgqueue(struct conf *conf,
+                                                int_least64_t *intp);
+static linted_error conf_service_limit_locks(struct conf *conf,
+                                             int_least64_t *intp);
+static linted_error conf_service_limit_memlock(struct conf *conf,
+                                               int_least64_t *intp);
+
 struct conf_db;
 struct conf;
 
@@ -75,7 +118,8 @@ static linted_error conf_find_str(struct conf *conf,
 
 static linted_error conf_find_int(struct conf *conf,
                                   char const *section,
-                                  char const *field, int *intp);
+                                  char const *field,
+                                  int_least64_t *intp);
 
 static linted_error conf_find_bool(struct conf *conf,
                                    char const *section,
@@ -360,56 +404,38 @@ static linted_error startup_start(struct startup *startup)
 	int_least64_t limit_memlock;
 	int_least64_t limit_msgqueue;
 	int_least64_t limit_no_file;
-	{
-		int xx;
-		err = conf_find_int(system_conf, "Manager",
-		                    "DefaultLimitLOCKS", &xx);
-		if (0 == err) {
-			limit_locks = xx;
-			system_conf_struct.limit_locks = &limit_locks;
-		} else if (ENOENT == err) {
-		} else {
-			goto destroy_conf_db;
-		}
+
+	err =
+	    conf_system_default_limit_locks(system_conf, &limit_locks);
+	if (0 == err) {
+		system_conf_struct.limit_locks = &limit_locks;
+	} else if (ENOENT == err) {
+	} else {
+		goto destroy_conf_db;
 	}
-	{
-		int xx;
-		err = conf_find_int(system_conf, "Manager",
-		                    "DefaultLimitMEMLOCK", &xx);
-		if (0 == err) {
-			limit_memlock = xx;
-			system_conf_struct.limit_memlock =
-			    &limit_memlock;
-		} else if (ENOENT == err) {
-		} else {
-			goto destroy_conf_db;
-		}
+	err = conf_system_default_limit_memlock(system_conf,
+	                                        &limit_memlock);
+	if (0 == err) {
+		system_conf_struct.limit_memlock = &limit_memlock;
+	} else if (ENOENT == err) {
+	} else {
+		goto destroy_conf_db;
 	}
-	{
-		int xx;
-		err = conf_find_int(system_conf, "Manager",
-		                    "DefaultLimitMSGQUEUE", &xx);
-		if (0 == err) {
-			limit_msgqueue = xx;
-			system_conf_struct.limit_msgqueue =
-			    &limit_msgqueue;
-		} else if (ENOENT == err) {
-		} else {
-			goto destroy_conf_db;
-		}
+	err = conf_system_default_limit_msgqueue(system_conf,
+	                                         &limit_msgqueue);
+	if (0 == err) {
+		system_conf_struct.limit_msgqueue = &limit_msgqueue;
+	} else if (ENOENT == err) {
+	} else {
+		goto destroy_conf_db;
 	}
-	{
-		int xx;
-		err = conf_find_int(system_conf, "Manager",
-		                    "DefaultLimitNOFILE", &xx);
-		if (0 == err) {
-			limit_no_file = xx;
-			system_conf_struct.limit_no_file =
-			    &limit_no_file;
-		} else if (ENOENT == err) {
-		} else {
-			goto destroy_conf_db;
-		}
+	err = conf_system_default_limit_nofile(system_conf,
+	                                       &limit_no_file);
+	if (0 == err) {
+		system_conf_struct.limit_no_file = &limit_no_file;
+	} else if (ENOENT == err) {
+	} else {
+		goto destroy_conf_db;
 	}
 
 	err = populate_conf_db(conf_db, &system_conf_struct,
@@ -808,12 +834,10 @@ static linted_error socket_activate(struct conf *conf,
 			return err;
 		unit_name = xx;
 	}
-
 	char const *listen_dir;
 	{
 		char const *xx = 0;
-		err = conf_find_str(conf, "Socket", "ListenDirectory",
-		                    &xx);
+		err = conf_socket_listen_directory(conf, &xx);
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		listen_dir = xx;
@@ -822,7 +846,7 @@ static linted_error socket_activate(struct conf *conf,
 	char const *listen_file;
 	{
 		char const *xx = 0;
-		err = conf_find_str(conf, "Socket", "ListenFile", &xx);
+		err = conf_socket_listen_file(conf, &xx);
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		listen_file = xx;
@@ -831,7 +855,7 @@ static linted_error socket_activate(struct conf *conf,
 	char const *listen_fifo;
 	{
 		char const *xx = 0;
-		err = conf_find_str(conf, "Socket", "ListenFIFO", &xx);
+		err = conf_socket_listen_fifo(conf, &xx);
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		listen_fifo = xx;
@@ -840,8 +864,8 @@ static linted_error socket_activate(struct conf *conf,
 	int fifo_size;
 	bool have_fifo_size;
 	{
-		int xx = -1;
-		err = conf_find_int(conf, "Socket", "PipeSize", &xx);
+		int_least64_t xx = -1;
+		err = conf_socket_pipe_size(conf, &xx);
 		if (0 == err) {
 			have_fifo_size = true;
 		} else if (ENOENT == err) {
@@ -934,12 +958,11 @@ service_activate(struct system_conf const *system_conf,
 		unit_name = xx;
 	}
 
-	char const *const *command =
-	    conf_find(conf, "Service", "ExecStart");
+	char const *const *command = conf_service_exec_start(conf);
 	char const *const *env_whitelist =
-	    conf_find(conf, "Service", "PassEnvironment");
+	    conf_service_pass_environment(conf);
 	char const *const *clone_flags =
-	    conf_find(conf, "Service", "X-LintedCloneFlags");
+	    conf_service_x_linted_clone_flags(conf);
 
 	char const *type;
 	{
@@ -983,9 +1006,8 @@ service_activate(struct system_conf const *system_conf,
 	int_least64_t timer_slack_nsec;
 	bool has_timer_slack_nsec;
 	{
-		int xx = -1;
-		err = conf_find_int(conf, "Service", "TimerSlackNSec",
-		                    &xx);
+		int_least64_t xx = -1;
+		err = conf_service_timer_slack_nsec(conf, &xx);
 		if (0 == err) {
 			has_timer_slack_nsec = true;
 		} else if (ENOENT == err) {
@@ -999,8 +1021,8 @@ service_activate(struct system_conf const *system_conf,
 	int_least64_t priority;
 	bool has_priority;
 	{
-		int xx = -1;
-		err = conf_find_int(conf, "Service", "Nice", &xx);
+		int_least64_t xx = -1;
+		err = conf_service_priority(conf, &xx);
 		if (0 == err) {
 			has_priority = true;
 		} else if (ENOENT == err) {
@@ -1014,9 +1036,8 @@ service_activate(struct system_conf const *system_conf,
 	int_least64_t limit_no_file;
 	bool has_limit_no_file;
 	{
-		int xx = -1;
-		err =
-		    conf_find_int(conf, "Service", "LimitNOFILE", &xx);
+		int_least64_t xx = -1;
+		err = conf_service_limit_no_file(conf, &xx);
 		if (0 == err) {
 			has_limit_no_file = true;
 		} else if (ENOENT == err) {
@@ -1030,9 +1051,8 @@ service_activate(struct system_conf const *system_conf,
 	int_least64_t limit_msgqueue;
 	bool has_limit_msgqueue;
 	{
-		int xx = -1;
-		err = conf_find_int(conf, "Service", "LimitMSGQUEUE",
-		                    &xx);
+		int_least64_t xx = -1;
+		err = conf_service_limit_msgqueue(conf, &xx);
 		if (0 == err) {
 			has_limit_msgqueue = true;
 		} else if (ENOENT == err) {
@@ -1046,8 +1066,8 @@ service_activate(struct system_conf const *system_conf,
 	int_least64_t limit_locks;
 	bool has_limit_locks;
 	{
-		int xx = -1;
-		err = conf_find_int(conf, "Service", "LimitLOCKS", &xx);
+		int_least64_t xx = -1;
+		err = conf_service_limit_locks(conf, &xx);
 		if (0 == err) {
 			has_limit_locks = true;
 		} else if (ENOENT == err) {
@@ -1061,9 +1081,8 @@ service_activate(struct system_conf const *system_conf,
 	int_least64_t limit_memlock;
 	bool has_limit_memlock;
 	{
-		int xx = -1;
-		err =
-		    conf_find_int(conf, "Service", "LimitMEMLOCK", &xx);
+		int_least64_t xx = -1;
+		err = conf_service_limit_memlock(conf, &xx);
 		if (0 == err) {
 			has_limit_memlock = true;
 		} else if (ENOENT == err) {
@@ -1577,6 +1596,108 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 	return err;
 }
 
+static linted_error
+conf_system_default_limit_locks(struct conf *conf,
+                                int_least64_t *limitp)
+{
+	return conf_find_int(conf, "Manager", "DefaultLimitLOCKS",
+	                     limitp);
+}
+
+static linted_error
+conf_system_default_limit_memlock(struct conf *conf,
+                                  int_least64_t *limitp)
+{
+	return conf_find_int(conf, "Manager", "DefaultLimitMEMLOCK",
+	                     limitp);
+}
+
+static linted_error
+conf_system_default_limit_msgqueue(struct conf *conf,
+                                   int_least64_t *limitp)
+{
+	return conf_find_int(conf, "Manager", "DefaultLimitMSGQUEUE",
+	                     limitp);
+}
+
+static linted_error
+conf_system_default_limit_nofile(struct conf *conf,
+                                 int_least64_t *limitp)
+{
+	return conf_find_int(conf, "Manager", "DefaultLimitNOFILE",
+	                     limitp);
+}
+
+static linted_error conf_socket_listen_directory(struct conf *conf,
+                                                 char const **strp)
+{
+	return conf_find_str(conf, "Socket", "ListenDirectory", strp);
+}
+
+static linted_error conf_socket_listen_file(struct conf *conf,
+                                            char const **strp)
+{
+	return conf_find_str(conf, "Socket", "ListenFile", strp);
+}
+
+static linted_error conf_socket_listen_fifo(struct conf *conf,
+                                            char const **strp)
+{
+	return conf_find_str(conf, "Socket", "ListenFIFO", strp);
+}
+
+static linted_error conf_socket_pipe_size(struct conf *conf,
+                                          int_least64_t *intp)
+{
+	return conf_find_int(conf, "Socket", "PipeSize", intp);
+}
+
+static char const *const *conf_service_exec_start(struct conf *conf)
+{
+	return conf_find(conf, "Service", "ExecStart");
+}
+static char const *const *
+conf_service_pass_environment(struct conf *conf)
+{
+	return conf_find(conf, "Service", "PassEnvironment");
+}
+static char const *const *
+conf_service_x_linted_clone_flags(struct conf *conf)
+{
+	return conf_find(conf, "Service", "X-LintedCloneFlags");
+}
+
+static linted_error conf_service_timer_slack_nsec(struct conf *conf,
+                                                  int_least64_t *intp)
+{
+	return conf_find_int(conf, "Service", "TimerSlackNSec", intp);
+}
+static linted_error conf_service_priority(struct conf *conf,
+                                          int_least64_t *intp)
+{
+	return conf_find_int(conf, "Service", "Nice", intp);
+}
+static linted_error conf_service_limit_no_file(struct conf *conf,
+                                               int_least64_t *intp)
+{
+	return conf_find_int(conf, "Service", "LimitNOFILE", intp);
+}
+static linted_error conf_service_limit_msgqueue(struct conf *conf,
+                                                int_least64_t *intp)
+{
+	return conf_find_int(conf, "Service", "LimitMSGQUEUE", intp);
+}
+static linted_error conf_service_limit_locks(struct conf *conf,
+                                             int_least64_t *intp)
+{
+	return conf_find_int(conf, "Service", "LimitLOCKS", intp);
+}
+static linted_error conf_service_limit_memlock(struct conf *conf,
+                                               int_least64_t *intp)
+{
+	return conf_find_int(conf, "Service", "LimitMEMLOCK", intp);
+}
+
 struct conf_db {
 	struct conf **confs;
 	size_t size;
@@ -1950,7 +2071,8 @@ static linted_error conf_find_str(struct conf *conf,
 
 static linted_error conf_find_int(struct conf *conf,
                                   char const *section,
-                                  char const *field, int *intp)
+                                  char const *field,
+                                  int_least64_t *intp)
 {
 	char const *const *strs = conf_find(conf, section, field);
 	if (0 == strs)
