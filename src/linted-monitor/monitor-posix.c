@@ -72,6 +72,8 @@ static char const *const required_envs[] =
      [LINTED_SANDBOX] = "LINTED_SANDBOX",
      [LINTED_WAITER] = "LINTED_WAITER"};
 
+static char const *const allowed_syscalls;
+
 enum { SIGNAL_WAIT,
        ADMIN_IN_READ,
        ADMIN_OUT_WRITE,
@@ -1856,6 +1858,8 @@ spawn_service:
 		    {"--timer-slack", timer_slack_str,
 		     has_timer_slack_nsec},
 		    {"--priority", prio_str, has_priority},
+		    {"--seccomp-filter", allowed_syscalls,
+		     no_new_privs},
 		    {"--clone-newuser", 0, clone_newuser},
 		    {"--clone-newpid", 0, clone_newpid},
 		    {"--clone-newipc", 0, clone_newipc},
@@ -2035,3 +2039,112 @@ free_new:
 
 	return err;
 }
+
+static char const *const allowed_syscalls =
+    /* Common */
+    "execve,"
+    "brk,"
+    "access,"
+    "mmap,"
+    "open,"
+    "stat,"
+    "fstat,"
+    "close,"
+    "read,"
+    "mprotect,"
+    "arch_prctl,"
+    "munmap,"
+    "set_tid_address,"
+    "set_robust_list,"
+    "futex,"
+    "rt_sigaction,"
+    "rt_sigprocmask,"
+    "getrlimit,"
+    "clone,"
+    "openat,"
+    "exit,"
+    "exit_group,"
+    "restart_syscall,"
+
+    /* Not common */
+    "socket,"
+    "connect,"
+    "pipe2,"
+    "pause,"
+    "lseek,"
+    "sendto,"
+    "prctl,"
+    "eventfd2,"
+    "fcntl,"
+    "epoll_create1,"
+    "epoll_ctl,"
+    "epoll_wait,"
+    "readlink,"
+    "getpeername,"
+    "clock_nanosleep,"
+    "write,"
+    "umask,"
+    "uname,"
+    "mkdir,"
+    "poll,"
+    "ftruncate,"
+    "writev,"
+    "getdents,"
+    "recvfrom,"
+    "statfs,"
+    "recvmsg,"
+    "pwrite64,"
+    "geteuid,"
+    "getuid,"
+    "kill,"
+    "rt_sigtimedwait,"
+    "unlink,"
+    "getgid,"
+    "getegid,"
+    "shutdown,"
+    "fchown,"
+    "madvise,"
+    "ioctl,"
+    "pread64,"
+    "sched_yield,"
+    "fchmod,"
+    "lstat,"
+    "setsockopt,"
+    "tgkill,"
+    "rt_sigreturn,"
+    "getsockopt,"
+    "getsockname,"
+    "ppoll,"
+    "sendmsg"
+
+#if 0
+    "clock_gettime,"
+    "dup2,"
+    "dup3,"
+    "execveat,"
+    "mincore,"
+    "wait4,"
+
+    /* Debugging related system calls */
+    "gettid,"
+    "getpid,"
+    "nanosleep,"
+    "sched_getaffinity,"
+    "setrlimit,"
+    "sigaltstack,"
+
+    /* Apitrace related system calls */
+    "dup,"
+
+    /* Valgrind related system calls */
+    "getcwd,"
+    "getppid,"
+    "gettimeofday,"
+    "getxattr,"
+    "mknod,"
+    "pipe,"
+    "pread64,"
+    "time,"
+    "tkill,"
+#endif
+    ;

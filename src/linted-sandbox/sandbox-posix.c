@@ -86,6 +86,7 @@ enum { STOP_OPTIONS,
        CHROOTDIR,
        FSTAB,
        WAITER,
+       SECCOMP_FILTER,
        NEWUSER_ARG,
        NEWPID_ARG,
        NEWIPC_ARG,
@@ -125,6 +126,7 @@ static char const *const argstrs[NUM_OPTIONS] = {
         /**/ [CHROOTDIR] = "--chrootdir",
         /**/ [FSTAB] = "--fstab",
         /**/ [WAITER] = "--waiter",
+        /**/ [SECCOMP_FILTER] = "--seccomp-filter",
         /**/ [NEWUSER_ARG] = "--clone-newuser",
         /**/ [NEWPID_ARG] = "--clone-newpid",
         /**/ [NEWIPC_ARG] = "--clone-newipc",
@@ -158,6 +160,7 @@ static uint_least8_t opt_types[NUM_OPTIONS] = {
         /**/ [CHROOTDIR] = OPT_TYPE_STRING,
         /**/ [FSTAB] = OPT_TYPE_STRING,
         /**/ [WAITER] = OPT_TYPE_STRING,
+        /**/ [SECCOMP_FILTER] = OPT_TYPE_STRING,
         /**/ [NEWUSER_ARG] = OPT_TYPE_FLAG,
         /**/ [NEWPID_ARG] = OPT_TYPE_FLAG,
         /**/ [NEWIPC_ARG] = OPT_TYPE_FLAG,
@@ -223,115 +226,6 @@ static struct linted_start_config const linted_start_config = {
     .dont_init_signals = true,
     .dont_fork_thread = true};
 
-static int const sysnos[] = {
-    /* Common */
-    /**/ SCMP_SYS(execve),
-    /**/ SCMP_SYS(brk),
-    /**/ SCMP_SYS(access),
-    /**/ SCMP_SYS(mmap),
-    /**/ SCMP_SYS(open),
-    /**/ SCMP_SYS(stat),
-    /**/ SCMP_SYS(fstat),
-    /**/ SCMP_SYS(close),
-    /**/ SCMP_SYS(read),
-    /**/ SCMP_SYS(mprotect),
-    /**/ SCMP_SYS(arch_prctl),
-    /**/ SCMP_SYS(munmap),
-    /**/ SCMP_SYS(set_tid_address),
-    /**/ SCMP_SYS(set_robust_list),
-    /**/ SCMP_SYS(futex),
-    /**/ SCMP_SYS(rt_sigaction),
-    /**/ SCMP_SYS(rt_sigprocmask),
-    /**/ SCMP_SYS(getrlimit),
-    /**/ SCMP_SYS(clone),
-    /**/ SCMP_SYS(openat),
-    /**/ SCMP_SYS(exit),
-    /**/ SCMP_SYS(exit_group),
-    /**/ SCMP_SYS(restart_syscall),
-
-    /* Not common */
-    /**/ SCMP_SYS(socket),
-    /**/ SCMP_SYS(connect),
-    /**/ SCMP_SYS(pipe2),
-    /**/ SCMP_SYS(pause),
-    /**/ SCMP_SYS(lseek),
-    /**/ SCMP_SYS(sendto),
-    /**/ SCMP_SYS(prctl),
-    /**/ SCMP_SYS(eventfd2),
-    /**/ SCMP_SYS(fcntl),
-    /**/ SCMP_SYS(epoll_create1),
-    /**/ SCMP_SYS(epoll_ctl),
-    /**/ SCMP_SYS(epoll_wait),
-    /**/ SCMP_SYS(readlink),
-    /**/ SCMP_SYS(getpeername),
-    /**/ SCMP_SYS(clock_nanosleep),
-    /**/ SCMP_SYS(write),
-    /**/ SCMP_SYS(umask),
-    /**/ SCMP_SYS(uname),
-    /**/ SCMP_SYS(mkdir),
-    /**/ SCMP_SYS(poll),
-    /**/ SCMP_SYS(ftruncate),
-    /**/ SCMP_SYS(writev),
-    /**/ SCMP_SYS(getdents),
-    /**/ SCMP_SYS(recvfrom),
-    /**/ SCMP_SYS(statfs),
-    /**/ SCMP_SYS(recvmsg),
-    /**/ SCMP_SYS(pwrite64),
-    /**/ SCMP_SYS(geteuid),
-    /**/ SCMP_SYS(getuid),
-    /**/ SCMP_SYS(kill),
-    /**/ SCMP_SYS(rt_sigtimedwait),
-    /**/ SCMP_SYS(unlink),
-    /**/ SCMP_SYS(getgid),
-    /**/ SCMP_SYS(getegid),
-    /**/ SCMP_SYS(shutdown),
-    /**/ SCMP_SYS(fchown),
-    /**/ SCMP_SYS(madvise),
-    /**/ SCMP_SYS(ioctl),
-    /**/ SCMP_SYS(pread64),
-    /**/ SCMP_SYS(sched_yield),
-    /**/ SCMP_SYS(fchmod),
-    /**/ SCMP_SYS(lstat),
-    /**/ SCMP_SYS(setsockopt),
-    /**/ SCMP_SYS(tgkill),
-    /**/ SCMP_SYS(rt_sigreturn),
-    /**/ SCMP_SYS(getsockopt),
-    /**/ SCMP_SYS(getsockname),
-    /**/ SCMP_SYS(ppoll),
-    /**/ SCMP_SYS(sendmsg),
-
-#if 0
-    /**/ SCMP_SYS(clock_gettime),
-    /**/ SCMP_SYS(dup2),
-    /**/ SCMP_SYS(dup3),
-    /**/ SCMP_SYS(execveat),
-    /**/ SCMP_SYS(mincore),
-    /**/ SCMP_SYS(wait4),
-
-    /* Debugging related system calls */
-    /**/ SCMP_SYS(gettid),
-    /**/ SCMP_SYS(getpid),
-    /**/ SCMP_SYS(nanosleep),
-    /**/ SCMP_SYS(sched_getaffinity),
-    /**/ SCMP_SYS(setrlimit),
-    /**/ SCMP_SYS(sigaltstack),
-
-    /* Apitrace related system calls */
-    /**/ SCMP_SYS(dup),
-
-    /* Valgrind related system calls */
-    /**/ SCMP_SYS(getcwd),
-    /**/ SCMP_SYS(getppid),
-    /**/ SCMP_SYS(gettimeofday),
-    /**/ SCMP_SYS(getxattr),
-    /**/ SCMP_SYS(mknod),
-    /**/ SCMP_SYS(pipe),
-    /**/ SCMP_SYS(pread64),
-    /**/ SCMP_SYS(time),
-    /**/ SCMP_SYS(tkill),
-#endif
-};
-
 static unsigned char linted_start_main(char const *const process_name,
                                        size_t argc,
                                        char const *const argv[])
@@ -371,6 +265,7 @@ static unsigned char linted_start_main(char const *const process_name,
 	char const *chrootdir_str;
 	char const *fstab_str;
 	char const *waiter_str;
+	char const *seccomp_filter_str;
 
 	{
 		union opt_value opt_values[NUM_OPTIONS] = {0};
@@ -440,6 +335,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		chrootdir_str = opt_values[CHROOTDIR].string;
 		fstab_str = opt_values[FSTAB].string;
 		waiter_str = opt_values[WAITER].string;
+		seccomp_filter_str = opt_values[SECCOMP_FILTER].string;
 	}
 
 	if (need_help) {
@@ -948,7 +844,7 @@ static unsigned char linted_start_main(char const *const process_name,
 	}
 
 	scmp_filter_ctx *seccomp_context = 0;
-	if (no_new_privs) {
+	if (seccomp_filter_str != 0) {
 		seccomp_context = seccomp_init(SCMP_ACT_KILL);
 		if (0 == seccomp_context) {
 			linted_log(LINTED_LOG_ERROR, "seccomp_init: %s",
@@ -956,17 +852,56 @@ static unsigned char linted_start_main(char const *const process_name,
 			return EXIT_FAILURE;
 		}
 
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(sysnos);
-		     ++ii) {
-			err = -seccomp_rule_add(seccomp_context,
-			                        SCMP_ACT_ALLOW,
-			                        sysnos[ii], 0);
+		char const *start = seccomp_filter_str;
+		for (;;) {
+			char *end = strchr(start, ',');
+			size_t size;
+			if (0 == end) {
+				size = strlen(start);
+			} else {
+				size = end - start;
+			}
+
+			char *syscall_str;
+			{
+				char *xx;
+				err = linted_str_dup_len(&xx, start,
+				                         size);
+				if (err != 0) {
+					linted_log(
+					    LINTED_LOG_ERROR,
+					    "linted_str_dup: %s",
+					    linted_error_string(err));
+					return EXIT_FAILURE;
+				}
+				syscall_str = xx;
+			}
+			start = end + 1U;
+
+			int sysno =
+			    seccomp_syscall_resolve_name(syscall_str);
+			if (__NR_SCMP_ERROR == sysno) {
+				linted_log(
+				    LINTED_LOG_ERROR,
+				    "seccomp_syscall_resolve_name: %s",
+				    syscall_str);
+				return EXIT_FAILURE;
+			}
+
+			linted_mem_free(syscall_str);
+
+			err =
+			    -seccomp_rule_add(seccomp_context,
+			                      SCMP_ACT_ALLOW, sysno, 0);
 			if (err != 0) {
 				linted_log(LINTED_LOG_ERROR,
 				           "seccomp_rule_add: %s",
 				           linted_error_string(err));
 				return EXIT_FAILURE;
 			}
+
+			if (0 == end)
+				break;
 		}
 	}
 

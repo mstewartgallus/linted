@@ -18,7 +18,6 @@
 #include "config.h"
 
 #include "linted/admin.h"
-#include "linted/conf.h"
 #include "linted/env.h"
 #include "linted/error.h"
 #include "linted/ko.h"
