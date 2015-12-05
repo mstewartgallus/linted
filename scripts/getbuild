@@ -109,7 +109,7 @@ source()
 configure_help()
 {
 
-	printf -- '%s configure SRCDIR DEPDIR BUILDDIR\n' "${BASENAME}"
+	printf -- '%s configure CONFIG SRCDIR DEPDIR BUILDDIR\n' "${BASENAME}"
 }
 
 configure()
@@ -130,21 +130,35 @@ configure()
 		esac
 	done
 	shift "$(expr "${OPTIND}" - 1)"
-	if test "$#" -ne 3
+	if test "$#" -ne 4
 	then
 		configure_help >&2
 		return 1
 	fi
-	SRCDIR="$1"
-	DEPDIR="$2"
-	BUILDDIR="$3"
-	shift 3
+	CONFIG="$1"
+	SRCDIR="$2"
+	DEPDIR="$3"
+	BUILDDIR="$4"
+	shift 4
+
+	case "${CONFIG}" in
+	'x86_64-w64-mingw32')
+		CC='x86_64-w64-mingw32-gcc-4.8'
+		HOST='x86_64-w64-mingw32'
+		;;
+
+	*)
+		printf -- 'Invalid config: -%s\n' "${CONFIG}"  >&2
+		configure_help >&2
+		return 1
+		;;
+	esac
 
 	mkdir -p "${BUILDDIR}/linted"
 	CONFIGURE="$(realpath "${SRCDIR}/linted/configure-defaults")"
 
 	DEPDIR="$(realpath "${DEPDIR}")"
-	(cd "${BUILDDIR}/linted" && "${CONFIGURE}" --with-sysroot="${DEPDIR}" CC=gcc-4.8 --prefix='/opt/linted')
+	(cd "${BUILDDIR}/linted" && "${CONFIGURE}" --with-sysroot="${DEPDIR}" CC="${CC}" --prefix='/opt/linted' --host="${HOST}")
 }
 
 build_help()
@@ -183,7 +197,10 @@ build()
 	make --silent -C "${BUILDDIR}/linted"
 	make --silent install -C "${BUILDDIR}/linted" DESTDIR="$(realpath "${BUILDDIR}/tarball")"
 	cp "${SRCDIR}/linted/README" "${BUILDDIR}/tarball"
-	(cd "${BUILDDIR}" && tar --mtime=0 --numeric-owner --group=root --owner=root -c -f 'tarball.tar' -C tarball -- .)
+	(
+		cd "${BUILDDIR}"
+		find tarball -print0 | LC_ALL=C sort -z | tar --null -T - --no-recursion --mtime=0 --numeric-owner --group=root --owner=root -c -f 'tarball.tar'
+	)
 	gzip -n -9 -f -- "${BUILDDIR}/tarball.tar"
 }
 
@@ -211,16 +228,17 @@ deps()
 		esac
 	done
 	shift "$(expr "${OPTIND}" - 1)"
-	if test "$#" -ne 1
+	if test "$#" -ne 2
 	then
 		deps_help >&2
 		return 1
 	fi
-	DEPDIR="$1"
-	shift
+	CONFIG="$1"
+	DEPDIR="$2"
+	shift 2
 
 	mkdir -p "${DEPDIR}/var/cache/builddeps"
-	(cd "${DEPDIR}/var/cache/builddeps" && printdeps | xargs -0 -- apt-get download --quiet) || :
+	printdeps "${CONFIG}" | (cd "${DEPDIR}/var/cache/builddeps" && xargs -0 -- apt-get download --quiet) || :
 
 	find "${DEPDIR}/var/cache/builddeps" -name '*.deb' -type f | {
 		while read II
@@ -231,9 +249,17 @@ deps()
 }
 
 printdeps() {
-	: ${ARCH:='amd64'}
-	: ${OS:='linux'}
-	: ${ABI:='gnu'}
+	case "${CONFIG}" in
+	'x86_64-w64-mingw32')
+		ARCH='amd64'
+		OS='w64'
+		ABI='mingw32'
+		;;
+
+	*)
+		return 1
+		;;
+	esac
 
 	# This is an ugly hack to get autoconf working
 	printf '%s\0' 'libc6'

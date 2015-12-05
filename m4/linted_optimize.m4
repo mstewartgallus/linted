@@ -31,9 +31,6 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_OPTIMIZE],[dnl
         [-O2]dnl
         [-O3]dnl
 dnl
-        [-fno-common]dnl This gives better performance and stops
-                     dnl sloppy code
-dnl
         [-fvisibility=hidden]dnl This gets around a few redirections
                              dnl and prevents symbol conflicts
         [-Bsymbolic]dnl Also gets around some more redirections

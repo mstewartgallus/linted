@@ -34,7 +34,7 @@ pkglibexec_PROGRAMS+=%D%/linted-sandbox
 
 if POSIX_API
 %C%_linted_sandbox_SOURCES+=%D%/sandbox-posix.c
-%C%_linted_sandbox_CFLAGS+=$(SECCOMP_CFLAGS) $(AM_CFLAGS)
+%C%_linted_sandbox_CFLAGS+=$(SECCOMP_CFLAGS)
 %C%_linted_sandbox_LDADD+=$(CAP_LIBS) $(SECCOMP_LIBS)
 endif
 
@@ -42,3 +42,5 @@ if WINDOWS_API
 %C%_linted_sandbox_SOURCES+=%D%/sandbox-windows.c
 %C%_linted_sandbox_LDADD+=src/utf/libutf.la
 endif
+
+%C%_linted_sandbox_CFLAGS+=$(AM_CFLAGS)

@@ -70,6 +70,9 @@ LINTED_CHECK_LDFLAGS([linted_LDFLAGS_WARNINGS],[
         [-Wl,--warn-shared-textrel]dnl
         [-Wl,--no-undefined]dnl
         [-Wl,--no-allow-shlib-undefined]dnl
+        [-Wl,--disable-stdcall-fixup]dnl
+        [-Wl,--disable-auto-import]dnl
+        [-Wl,--disable-runtime-pseudo-reloc]dnl
 ])
 AC_SUBST([linted_LDFLAGS_WARNINGS])
 dnl

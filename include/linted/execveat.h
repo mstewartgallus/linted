@@ -22,13 +22,18 @@
 
 #include <errno.h>
 #include <stdint.h>
-#include <sys/syscall.h>
 #include <unistd.h>
+
+#if defined HAVE_POSIX_API
+#include <sys/syscall.h>
+#endif
 
 static inline linted_error linted_execveat(linted_ko fd,
                                            char const *binary,
                                            char **args, char **env,
                                            uint_least64_t opts);
+
+#if defined HAVE_POSIX_API
 
 #ifndef __NR_execveat
 #if defined __amd64__
@@ -56,6 +61,8 @@ static inline linted_error linted_execveat(linted_ko fd,
 	LINTED_ASSUME(err != 0);
 	return err;
 }
+#endif
+
 #endif
 
 #endif /* LINTED_EXECVEAT_H */
