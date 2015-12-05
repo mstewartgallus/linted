@@ -65,7 +65,7 @@ dnl
 dnl We only use static convenience libraries anyway
 LT_INIT([disable-shared])
 dnl
-AS_IF([test "x{lt_sysroot}" != 'x'], [
+AS_IF([test "x${lt_sysroot}" != 'x'], [
       LINTED_CHECK_CFLAG([linted_CFLAGS_SYSROOT], [--sysroot="$lt_sysroot"])
       [CC="${CC} ${linted_CFLAGS_SYSROOT}"]
 ])

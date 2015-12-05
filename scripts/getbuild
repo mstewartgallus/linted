@@ -330,6 +330,8 @@ printdeps() {
 			printf '%s\0' "libglib2.0-0:${ARCH}"
 			printf '%s\0' "libpulse0:${ARCH}"
 			printf '%s\0' "libpulse-dev:${ARCH}"
+			printf '%s\0' "libseccomp2:${ARCH}"
+			printf '%s\0' "libseccomp-dev:${ARCH}"
 			printf '%s\0' "libxcb1:${ARCH}"
 			printf '%s\0' "libxcb1-dev:${ARCH}"
 			printf '%s\0' "libxcb-xkb1:${ARCH}"
