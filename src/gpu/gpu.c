@@ -42,6 +42,17 @@
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
 
+struct config_attr {
+	EGLint depth_size;
+
+	EGLint red_size;
+	EGLint green_size;
+	EGLint blue_size;
+
+	EGLint sample_buffers;
+	EGLint samples;
+};
+
 struct command_queue {
 	pthread_mutex_t lock;
 	pthread_cond_t wake_up;
@@ -157,19 +168,19 @@ struct matrix {
 };
 
 static EGLint const attr_list[] = {
-    EGL_CONFORMANT, EGL_OPENGL_ES3_BIT_KHR,      /**/
-    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR, /**/
-    EGL_DEPTH_SIZE, 16,                          /**/
-    EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,       /**/
-    EGL_RED_SIZE, 8,                             /**/
-    EGL_GREEN_SIZE, 8,                           /**/
-    EGL_BLUE_SIZE, 8,                            /**/
-    EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_SWAP_BEHAVIOR_PRESERVED_BIT,
-    EGL_NONE};
+    /**/ EGL_CONFORMANT, EGL_OPENGL_ES3_BIT_KHR,
+    /**/ EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
+    /**/ EGL_SURFACE_TYPE,
+    EGL_WINDOW_BIT | EGL_SWAP_BEHAVIOR_PRESERVED_BIT,
+    /**/ EGL_DEPTH_SIZE, 1, EGL_NONE};
 
 static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION,
                                       3, /**/
                                       EGL_NONE};
+
+static EGLBoolean get_egl_config_attr(struct config_attr *attr,
+                                      EGLDisplay display,
+                                      EGLConfig config);
 
 static void *gpu_routine(void *);
 
@@ -268,42 +279,99 @@ lntd_gpu_context_create(struct lntd_gpu_context **gpu_contextp)
 		goto destroy_display;
 	}
 
-	EGLConfig config;
-	EGLint matching_config_count;
+	size_t matching_config_count;
 	{
-		EGLConfig xx;
-		EGLint yy;
+		EGLint xx;
 		if (EGL_FALSE ==
-		    eglChooseConfig(display, attr_list, &xx, 1U, &yy))
-			goto choose_config_failed;
-		config = xx;
-		matching_config_count = yy;
-		goto choose_config_succeeded;
+		    eglChooseConfig(display, attr_list, 0, 0, &xx)) {
+			EGLint err_egl = eglGetError();
+			LNTD_ASSUME(err_egl != EGL_SUCCESS);
+
+			LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LNTD_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+			LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+			LNTD_ASSERT(err_egl != EGL_BAD_PARAMETER);
+
+			switch (err_egl) {
+			case EGL_BAD_ALLOC:
+				err = LNTD_ERROR_OUT_OF_MEMORY;
+				goto destroy_display;
+			}
+
+			LNTD_ASSERT(false);
+		}
+		matching_config_count = xx;
 	}
 
-choose_config_failed : {
-	EGLint err_egl = eglGetError();
-	LNTD_ASSUME(err_egl != EGL_SUCCESS);
-
-	LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
-	LNTD_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
-	LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-	LNTD_ASSERT(err_egl != EGL_BAD_PARAMETER);
-
-	switch (err_egl) {
-	case EGL_BAD_ALLOC:
-		err = LNTD_ERROR_OUT_OF_MEMORY;
-		goto destroy_display;
-	}
-
-	LNTD_ASSERT(false);
-}
-
-choose_config_succeeded:
-	if (matching_config_count < 1) {
+	if (matching_config_count < 1U) {
 		err = LNTD_ERROR_INVALID_PARAMETER;
 		goto destroy_display;
 	}
+
+	EGLConfig *configs;
+	{
+		void *xx;
+		err = lntd_mem_alloc_array(&xx, matching_config_count,
+		                           sizeof configs[0U]);
+		if (err != 0)
+			goto destroy_display;
+		configs = xx;
+	}
+
+	{
+		EGLint xx;
+		if (EGL_FALSE ==
+		    eglChooseConfig(display, attr_list, configs,
+		                    matching_config_count, &xx)) {
+			EGLint err_egl = eglGetError();
+			LNTD_ASSUME(err_egl != EGL_SUCCESS);
+
+			LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LNTD_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+			LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+			LNTD_ASSERT(err_egl != EGL_BAD_PARAMETER);
+
+			switch (err_egl) {
+			case EGL_BAD_ALLOC:
+				err = LNTD_ERROR_OUT_OF_MEMORY;
+				goto free_configs;
+			}
+
+			LNTD_ASSERT(false);
+		}
+		LNTD_ASSERT(matching_config_count == (size_t)xx);
+	}
+
+	EGLConfig config = configs[0U];
+
+	{
+		struct config_attr attr;
+		get_egl_config_attr(&attr, display, config);
+
+		for (size_t ii = 1U; ii < matching_config_count; ++ii) {
+			EGLConfig maybe_config = configs[ii];
+
+			struct config_attr maybe_attr;
+			get_egl_config_attr(&maybe_attr, display,
+			                    maybe_config);
+
+			if (maybe_attr.samples > attr.samples) {
+				attr = maybe_attr;
+				config = maybe_config;
+			}
+
+			if (maybe_attr.sample_buffers >
+			    attr.sample_buffers) {
+				attr = maybe_attr;
+				config = maybe_config;
+			}
+		}
+	}
+
+free_configs:
+	lntd_mem_free(configs);
+	if (err != 0)
+		goto destroy_display;
 
 	{
 		struct privates *xx = &gpu_context->privates;
@@ -1631,4 +1699,39 @@ static inline void matrix_multiply(struct matrix const *restrict a,
 
 		result->x[ii] = result_ii;
 	} while (ii != 0U);
+}
+
+static EGLBoolean get_egl_config_attr(struct config_attr *attr,
+                                      EGLDisplay display,
+                                      EGLConfig config)
+{
+	if (!eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE,
+	                        &attr->depth_size))
+		return EGL_FALSE;
+
+	if (!eglGetConfigAttrib(display, config, EGL_RED_SIZE,
+	                        &attr->red_size))
+		return EGL_FALSE;
+
+	if (!eglGetConfigAttrib(display, config, EGL_GREEN_SIZE,
+	                        &attr->green_size))
+		return EGL_FALSE;
+
+	if (!eglGetConfigAttrib(display, config, EGL_BLUE_SIZE,
+	                        &attr->blue_size))
+		return EGL_FALSE;
+
+	if (!eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE,
+	                        &attr->depth_size))
+		return EGL_FALSE;
+
+	if (!eglGetConfigAttrib(display, config, EGL_SAMPLES,
+	                        &attr->samples))
+		return EGL_FALSE;
+
+	if (!eglGetConfigAttrib(display, config, EGL_SAMPLE_BUFFERS,
+	                        &attr->sample_buffers))
+		return EGL_FALSE;
+
+	return EGL_TRUE;
 }
