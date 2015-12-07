@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/liblocale.la
-%C%_liblocale_la_SOURCES=%D%/locale.c include/linted/locale.h
+%C%_liblocale_la_SOURCES=%D%/locale.c include/lntd/locale.h
 %C%_liblocale_la_LIBADD=\
   src/error/liberror.la\
   src/io/libio.la\

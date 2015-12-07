@@ -15,8 +15,8 @@
  */
 #include "config.h"
 
-#include "linted/io.h"
-#include "linted/log.h"
+#include "lntd/io.h"
+#include "lntd/log.h"
 
 #include <stdarg.h>
 
@@ -26,18 +26,18 @@
  * @bug Windows NT: provide Event Tracing events.
  */
 
-void linted_log_open(char const *ident)
+void lntd_log_open(char const *ident)
 {
 }
 
-void linted_log(linted_log_level log_level, char const *format, ...)
+void lntd_log(lntd_log_level log_level, char const *format, ...)
 {
 
 	va_list ap;
 	va_start(ap, format);
 
-	linted_io_write_va_list(LINTED_KO_STDERR, 0, format, ap);
-	linted_io_write_string(LINTED_KO_STDERR, 0, "\n");
+	lntd_io_write_va_list(LNTD_KO_STDERR, 0, format, ap);
+	lntd_io_write_string(LNTD_KO_STDERR, 0, "\n");
 
 	va_end(ap);
 }

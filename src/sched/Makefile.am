@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libsched.la
 
-%C%_libsched_la_SOURCES=include/linted/sched.h
+%C%_libsched_la_SOURCES=include/lntd/sched.h
 %C%_libsched_la_LIBADD=\
   src/async/libasync.la\
   $(REALTIME_LIBS)

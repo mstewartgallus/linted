@@ -25,13 +25,13 @@
 
 #include "config.h"
 
-#include "linted/io.h"
+#include "lntd/io.h"
 
-#include "linted/async.h"
-#include "linted/mem.h"
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/util.h"
+#include "lntd/async.h"
+#include "lntd/mem.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
+#include "lntd/util.h"
 
 #include <conio.h>
 #include <fcntl.h>
@@ -45,78 +45,77 @@
 #include <windows.h>
 #include <winsock2.h>
 
-struct linted_io_task_accept {
-	struct linted_async_task *parent;
-	struct linted_async_waiter *waiter;
+struct lntd_io_task_accept {
+	struct lntd_async_task *parent;
+	struct lntd_async_waiter *waiter;
 	void *data;
-	linted_ko ko;
-	linted_ko returned_ko;
+	lntd_ko ko;
+	lntd_ko returned_ko;
 };
 
-struct linted_io_task_poll {
-	struct linted_async_task *parent;
-	struct linted_async_waiter *waiter;
+struct lntd_io_task_poll {
+	struct lntd_async_task *parent;
+	struct lntd_async_waiter *waiter;
 	void *data;
-	linted_ko ko;
+	lntd_ko ko;
 	short events;
 	short revents;
 };
 
-struct linted_io_task_read {
-	struct linted_async_task *parent;
-	struct linted_async_waiter *waiter;
+struct lntd_io_task_read {
+	struct lntd_async_task *parent;
+	struct lntd_async_waiter *waiter;
 	void *data;
 	char *buf;
 	size_t size;
 	size_t current_position;
 	size_t bytes_read;
-	linted_ko ko;
+	lntd_ko ko;
 };
 
-struct linted_io_task_write {
-	struct linted_async_task *parent;
-	struct linted_async_waiter *waiter;
+struct lntd_io_task_write {
+	struct lntd_async_task *parent;
+	struct lntd_async_waiter *waiter;
 	void *data;
 	char const *buf;
 	size_t size;
 	size_t current_position;
 	size_t bytes_wrote;
-	linted_ko ko;
+	lntd_ko ko;
 };
 
-struct linted_io_task_recv {
-	struct linted_async_task *parent;
-	struct linted_async_waiter *waiter;
+struct lntd_io_task_recv {
+	struct lntd_async_task *parent;
+	struct lntd_async_waiter *waiter;
 	void *data;
 	char *buf;
 	size_t size;
 	size_t bytes_read;
-	linted_ko ko;
+	lntd_ko ko;
 };
 
-struct linted_io_task_sendto {
-	struct linted_async_task *parent;
-	struct linted_async_waiter *waiter;
+struct lntd_io_task_sendto {
+	struct lntd_async_task *parent;
+	struct lntd_async_waiter *waiter;
 	void *data;
 	char const *buf;
 	size_t size;
 	size_t bytes_wrote;
-	linted_ko ko;
+	lntd_ko ko;
 	struct sockaddr_storage dest_addr;
 	size_t dest_addr_size;
 };
 
-static linted_error poll_one(linted_ko ko, short events,
-                             short *revents);
-static linted_error check_for_poll_error(short revents);
+static lntd_error poll_one(lntd_ko ko, short events, short *revents);
+static lntd_error check_for_poll_error(short revents);
 
-linted_error linted_io_read_all(linted_ko ko, size_t *bytes_read_out,
-                                void *buf, size_t size)
+lntd_error lntd_io_read_all(lntd_ko ko, size_t *bytes_read_out,
+                            void *buf, size_t size)
 {
 	size_t bytes_read = 0U;
 	size_t bytes_left = size;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
 restart_reading:
 	;
@@ -126,7 +125,7 @@ restart_reading:
 		if (!ReadFile(ko, (char *)buf + bytes_read, bytes_left,
 		              &xx, 0)) {
 			err = HRESULT_FROM_WIN32(GetLastError());
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
 			if (HRESULT_FROM_WIN32(ERROR_HANDLE_EOF) ==
 			    err) {
@@ -179,13 +178,13 @@ poll_for_readability:
 	if ((revents & POLLHUP) != 0)
 		goto finish_reading;
 
-	LINTED_ASSUME_UNREACHABLE();
+	LNTD_ASSUME_UNREACHABLE();
 }
 
-linted_error linted_io_write_all(linted_ko ko, size_t *bytes_wrote_out,
-                                 void const *buf, size_t size)
+lntd_error lntd_io_write_all(lntd_ko ko, size_t *bytes_wrote_out,
+                             void const *buf, size_t size)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 	size_t bytes_wrote = 0U;
 	size_t bytes_left = size;
 
@@ -197,7 +196,7 @@ restart_writing:
 		if (!WriteFile(ko, (char const *)buf + bytes_wrote,
 		               bytes_left, &xx, 0)) {
 			err = HRESULT_FROM_WIN32(GetLastError());
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
 			if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 				goto restart_writing;
@@ -243,48 +242,44 @@ poll_for_writeability:
 	if ((revents & POLLOUT) != 0)
 		goto restart_writing;
 
-	LINTED_ASSUME_UNREACHABLE();
+	LNTD_ASSUME_UNREACHABLE();
 }
 
-linted_error linted_io_write_string(linted_ko ko,
-                                    size_t *bytes_wrote_out,
-                                    char const *s)
+lntd_error lntd_io_write_string(lntd_ko ko, size_t *bytes_wrote_out,
+                                char const *s)
 {
-	return linted_io_write_format(ko, bytes_wrote_out, "%s", s);
+	return lntd_io_write_format(ko, bytes_wrote_out, "%s", s);
 }
 
-linted_error linted_io_write_format(linted_ko ko,
-                                    size_t *bytes_wrote_out,
-                                    char const *format_str, ...)
+lntd_error lntd_io_write_format(lntd_ko ko, size_t *bytes_wrote_out,
+                                char const *format_str, ...)
 {
 	va_list ap;
 	va_start(ap, format_str);
 
-	linted_error err = linted_io_write_va_list(ko, bytes_wrote_out,
-	                                           format_str, ap);
+	lntd_error err =
+	    lntd_io_write_va_list(ko, bytes_wrote_out, format_str, ap);
 
 	va_end(ap);
 
 	return err;
 }
 
-linted_error linted_io_write_va_list(linted_ko ko,
-                                     size_t *bytes_wrote_out,
-                                     char const *format_str,
-                                     va_list list)
+lntd_error lntd_io_write_va_list(lntd_ko ko, size_t *bytes_wrote_out,
+                                 char const *format_str, va_list list)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	int maybe_bytes = vsprintf_s(0, 0U, format_str, list);
 	if (maybe_bytes < 0)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	size_t bytes = (size_t)maybe_bytes;
 
 	char *str;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, bytes + 1U);
+		err = lntd_mem_alloc(&xx, bytes + 1U);
 		if (err != 0)
 			return err;
 		str = xx;
@@ -292,44 +287,43 @@ linted_error linted_io_write_va_list(linted_ko ko,
 	str[bytes] = 0U;
 
 	if (vsprintf_s(str, bytes + 1U, format_str, list) < 0) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 		goto free_str;
 	}
 
-	err = linted_io_write_all(ko, bytes_wrote_out, str, bytes);
+	err = lntd_io_write_all(ko, bytes_wrote_out, str, bytes);
 
 free_str:
-	linted_mem_free(str);
+	lntd_mem_free(str);
 
 	return err;
 }
 
-linted_error
-linted_io_task_poll_create(struct linted_io_task_poll **taskp,
-                           void *data)
+lntd_error lntd_io_task_poll_create(struct lntd_io_task_poll **taskp,
+                                    void *data)
 {
-	linted_error err;
-	struct linted_io_task_poll *task;
+	lntd_error err;
+	struct lntd_io_task_poll *task;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *task);
+		err = lntd_mem_alloc(&xx, sizeof *task);
 		if (err != 0)
 			return err;
 		task = xx;
 	}
-	struct linted_async_task *parent;
+	struct lntd_async_task *parent;
 	{
-		struct linted_async_task *xx;
-		err = linted_async_task_create(&xx, task,
-		                               LINTED_ASYNCH_TASK_POLL);
+		struct lntd_async_task *xx;
+		err = lntd_async_task_create(&xx, task,
+		                             LNTD_ASYNCH_TASK_POLL);
 		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
 
 	{
-		struct linted_async_waiter *xx;
-		err = linted_async_waiter_create(&xx);
+		struct lntd_async_waiter *xx;
+		err = lntd_async_waiter_create(&xx);
 		if (err != 0)
 			goto free_parent;
 		task->waiter = xx;
@@ -340,67 +334,66 @@ linted_io_task_poll_create(struct linted_io_task_poll **taskp,
 	*taskp = task;
 	return 0;
 free_parent:
-	linted_mem_free(parent);
+	lntd_mem_free(parent);
 free_task:
-	linted_mem_free(task);
+	lntd_mem_free(task);
 	return err;
 }
 
-void linted_io_task_poll_destroy(struct linted_io_task_poll *task)
+void lntd_io_task_poll_destroy(struct lntd_io_task_poll *task)
 {
-	linted_async_waiter_destroy(task->waiter);
-	linted_async_task_destroy(task->parent);
-	linted_mem_free(task);
+	lntd_async_waiter_destroy(task->waiter);
+	lntd_async_task_destroy(task->parent);
+	lntd_mem_free(task);
 }
 
-struct linted_async_task *
-linted_io_task_poll_prepare(struct linted_io_task_poll *task,
-                            union linted_async_ck task_ck,
-                            void *userstate, linted_ko ko, int flags)
+struct lntd_async_task *
+lntd_io_task_poll_prepare(struct lntd_io_task_poll *task,
+                          union lntd_async_ck task_ck, void *userstate,
+                          lntd_ko ko, int flags)
 {
 	task->ko = ko;
 	task->events = flags;
-	return linted_async_task_prepare(task->parent, task_ck,
-	                                 userstate);
+	return lntd_async_task_prepare(task->parent, task_ck,
+	                               userstate);
 }
 
-struct linted_async_task *
-linted_io_task_poll_to_async(struct linted_io_task_poll *task)
+struct lntd_async_task *
+lntd_io_task_poll_to_async(struct lntd_io_task_poll *task)
 {
 	return task->parent;
 }
 
-void *linted_io_task_poll_data(struct linted_io_task_poll *task)
+void *lntd_io_task_poll_data(struct lntd_io_task_poll *task)
 {
 	return task->data;
 }
 
-linted_error
-linted_io_task_read_create(struct linted_io_task_read **taskp,
-                           void *data)
+lntd_error lntd_io_task_read_create(struct lntd_io_task_read **taskp,
+                                    void *data)
 {
-	linted_error err;
-	struct linted_io_task_read *task;
+	lntd_error err;
+	struct lntd_io_task_read *task;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *task);
+		err = lntd_mem_alloc(&xx, sizeof *task);
 		if (err != 0)
 			return err;
 		task = xx;
 	}
-	struct linted_async_task *parent;
+	struct lntd_async_task *parent;
 	{
-		struct linted_async_task *xx;
-		err = linted_async_task_create(&xx, task,
-		                               LINTED_ASYNCH_TASK_READ);
+		struct lntd_async_task *xx;
+		err = lntd_async_task_create(&xx, task,
+		                             LNTD_ASYNCH_TASK_READ);
 		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
 
 	{
-		struct linted_async_waiter *xx;
-		err = linted_async_waiter_create(&xx);
+		struct lntd_async_waiter *xx;
+		err = lntd_async_waiter_create(&xx);
 		if (err != 0)
 			goto free_parent;
 		task->waiter = xx;
@@ -413,77 +406,77 @@ linted_io_task_read_create(struct linted_io_task_read **taskp,
 	*taskp = task;
 	return 0;
 free_parent:
-	linted_mem_free(parent);
+	lntd_mem_free(parent);
 free_task:
-	linted_mem_free(task);
+	lntd_mem_free(task);
 	return err;
 }
 
-void linted_io_task_read_destroy(struct linted_io_task_read *task)
+void lntd_io_task_read_destroy(struct lntd_io_task_read *task)
 {
-	linted_async_waiter_destroy(task->waiter);
-	linted_async_task_destroy(task->parent);
-	linted_mem_free(task);
+	lntd_async_waiter_destroy(task->waiter);
+	lntd_async_task_destroy(task->parent);
+	lntd_mem_free(task);
 }
 
-struct linted_async_task *linted_io_task_read_prepare(
-    struct linted_io_task_read *task, union linted_async_ck task_ck,
-    void *userstate, linted_ko ko, char *buf, size_t size)
+struct lntd_async_task *
+lntd_io_task_read_prepare(struct lntd_io_task_read *task,
+                          union lntd_async_ck task_ck, void *userstate,
+                          lntd_ko ko, char *buf, size_t size)
 {
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
-	return linted_async_task_prepare(task->parent, task_ck,
-	                                 userstate);
+	return lntd_async_task_prepare(task->parent, task_ck,
+	                               userstate);
 }
 
-struct linted_async_task *
-linted_io_task_read_to_async(struct linted_io_task_read *task)
+struct lntd_async_task *
+lntd_io_task_read_to_async(struct lntd_io_task_read *task)
 {
 	return task->parent;
 }
 
-void *linted_io_task_read_data(struct linted_io_task_read *task)
+void *lntd_io_task_read_data(struct lntd_io_task_read *task)
 {
 	return task->data;
 }
 
-linted_ko linted_io_task_read_ko(struct linted_io_task_read *task)
+lntd_ko lntd_io_task_read_ko(struct lntd_io_task_read *task)
 {
 	return task->ko;
 }
 
-size_t linted_io_task_read_bytes_read(struct linted_io_task_read *task)
+size_t lntd_io_task_read_bytes_read(struct lntd_io_task_read *task)
 {
 	return task->bytes_read;
 }
 
-linted_error
-linted_io_task_write_create(struct linted_io_task_write **taskp,
-                            void *data)
+lntd_error lntd_io_task_write_create(struct lntd_io_task_write **taskp,
+                                     void *data)
 {
-	linted_error err;
-	struct linted_io_task_write *task;
+	lntd_error err;
+	struct lntd_io_task_write *task;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *task);
+		err = lntd_mem_alloc(&xx, sizeof *task);
 		if (err != 0)
 			return err;
 		task = xx;
 	}
-	struct linted_async_task *parent;
+	struct lntd_async_task *parent;
 	{
-		struct linted_async_task *xx;
-		err = linted_async_task_create(
-		    &xx, task, LINTED_ASYNCH_TASK_WRITE);
+		struct lntd_async_task *xx;
+		err = lntd_async_task_create(&xx, task,
+		                             LNTD_ASYNCH_TASK_WRITE);
 		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
 
 	{
-		struct linted_async_waiter *xx;
-		err = linted_async_waiter_create(&xx);
+		struct lntd_async_waiter *xx;
+		err = lntd_async_waiter_create(&xx);
 		if (err != 0)
 			goto free_parent;
 		task->waiter = xx;
@@ -496,77 +489,78 @@ linted_io_task_write_create(struct linted_io_task_write **taskp,
 	return 0;
 
 free_parent:
-	linted_async_task_destroy(parent);
+	lntd_async_task_destroy(parent);
 
 free_task:
-	linted_mem_free(task);
+	lntd_mem_free(task);
 	return err;
 }
 
-void linted_io_task_write_destroy(struct linted_io_task_write *task)
+void lntd_io_task_write_destroy(struct lntd_io_task_write *task)
 {
-	linted_async_waiter_destroy(task->waiter);
-	linted_async_task_destroy(task->parent);
-	linted_mem_free(task);
+	lntd_async_waiter_destroy(task->waiter);
+	lntd_async_task_destroy(task->parent);
+	lntd_mem_free(task);
 }
 
-struct linted_async_task *linted_io_task_write_prepare(
-    struct linted_io_task_write *task, union linted_async_ck task_ck,
-    void *userstate, linted_ko ko, char const *buf, size_t size)
+struct lntd_async_task *
+lntd_io_task_write_prepare(struct lntd_io_task_write *task,
+                           union lntd_async_ck task_ck, void *userstate,
+                           lntd_ko ko, char const *buf, size_t size)
 {
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
-	return linted_async_task_prepare(task->parent, task_ck,
-	                                 userstate);
+	return lntd_async_task_prepare(task->parent, task_ck,
+	                               userstate);
 }
 
-struct linted_async_task *
-linted_io_task_write_to_async(struct linted_io_task_write *task)
+struct lntd_async_task *
+lntd_io_task_write_to_async(struct lntd_io_task_write *task)
 {
 	return task->parent;
 }
 
-void *linted_io_task_write_data(struct linted_io_task_write *task)
+void *lntd_io_task_write_data(struct lntd_io_task_write *task)
 {
 	return task->data;
 }
 
-void linted_io_do_poll(struct linted_async_pool *pool,
-                       struct linted_async_task *task)
+void lntd_io_do_poll(struct lntd_async_pool *pool,
+                     struct lntd_async_task *task)
 {
-	struct linted_io_task_poll *task_poll =
-	    linted_async_task_data(task);
+	struct lntd_io_task_poll *task_poll =
+	    lntd_async_task_data(task);
 
-	struct linted_async_waiter *waiter = task_poll->waiter;
-	linted_ko ko = task_poll->ko;
+	struct lntd_async_waiter *waiter = task_poll->waiter;
+	lntd_ko ko = task_poll->ko;
 	short events = task_poll->events;
 
-	short revents = linted_async_waiter_revents(waiter);
+	short revents = lntd_async_waiter_revents(waiter);
 	if (0 == revents) {
-		linted_async_pool_wait_on_poll(pool, waiter, task, ko,
-		                               events);
+		lntd_async_pool_wait_on_poll(pool, waiter, task, ko,
+		                             events);
 		return;
 	}
 
 	task_poll->revents = revents;
-	linted_async_pool_complete(pool, task, 0);
+	lntd_async_pool_complete(pool, task, 0);
 }
 
-void linted_io_do_read(struct linted_async_pool *pool,
-                       struct linted_async_task *task)
+void lntd_io_do_read(struct lntd_async_pool *pool,
+                     struct lntd_async_task *task)
 {
-	struct linted_io_task_read *task_read =
-	    linted_async_task_data(task);
+	struct lntd_io_task_read *task_read =
+	    lntd_async_task_data(task);
 	size_t bytes_read = task_read->current_position;
 	size_t bytes_left = task_read->size - bytes_read;
 
-	linted_ko ko = task_read->ko;
+	lntd_ko ko = task_read->ko;
 	char *buf = task_read->buf;
 
-	struct linted_async_waiter *waiter = task_read->waiter;
+	struct lntd_async_waiter *waiter = task_read->waiter;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	size_t bytes_read_delta;
 	{
@@ -574,7 +568,7 @@ void linted_io_do_read(struct linted_async_pool *pool,
 		if (!ReadFile(ko, buf + bytes_read, bytes_left, &xx,
 		              0)) {
 			err = HRESULT_FROM_WIN32(GetLastError());
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
 			if (HRESULT_FROM_WIN32(ERROR_HANDLE_EOF) ==
 			    err) {
@@ -603,30 +597,30 @@ complete_task:
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = 0U;
 
-	linted_async_pool_complete(pool, task, err);
+	lntd_async_pool_complete(pool, task, err);
 	return;
 
 submit_retry:
 	task_read->bytes_read = bytes_read;
 	task_read->current_position = bytes_read;
-	linted_async_pool_resubmit(pool, task);
+	lntd_async_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:
-	linted_async_pool_wait_on_poll(pool, waiter, task, ko, POLLIN);
+	lntd_async_pool_wait_on_poll(pool, waiter, task, ko, POLLIN);
 }
 
-void linted_io_do_write(struct linted_async_pool *pool,
-                        struct linted_async_task *task)
+void lntd_io_do_write(struct lntd_async_pool *pool,
+                      struct lntd_async_task *task)
 {
-	struct linted_io_task_write *task_write =
-	    linted_async_task_data(task);
+	struct lntd_io_task_write *task_write =
+	    lntd_async_task_data(task);
 	size_t bytes_wrote = task_write->current_position;
 	size_t bytes_left = task_write->size - bytes_wrote;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_ko ko = task_write->ko;
+	lntd_ko ko = task_write->ko;
 	char const *buf = task_write->buf;
 
 	size_t bytes_wrote_delta;
@@ -635,7 +629,7 @@ void linted_io_do_write(struct linted_async_pool *pool,
 		if (!WriteFile(ko, buf + bytes_wrote, bytes_left, &xx,
 		               0)) {
 			err = HRESULT_FROM_WIN32(GetLastError());
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
 			if (HRESULT_FROM_WIN32(WSAEINTR) == err)
 				goto submit_retry;
@@ -660,25 +654,24 @@ complete_task:
 	task_write->bytes_wrote = bytes_wrote;
 	task_write->current_position = 0U;
 
-	linted_async_pool_complete(pool, task, err);
+	lntd_async_pool_complete(pool, task, err);
 	return;
 
 submit_retry:
 	task_write->bytes_wrote = bytes_wrote;
 	task_write->current_position = bytes_wrote;
 
-	linted_async_pool_resubmit(pool, task);
+	lntd_async_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:
-	linted_async_pool_wait_on_poll(pool, task_write->waiter, task,
-	                               ko, POLLOUT);
+	lntd_async_pool_wait_on_poll(pool, task_write->waiter, task, ko,
+	                             POLLOUT);
 }
 
-static linted_error poll_one(linted_ko ko, short events,
-                             short *reventsp)
+static lntd_error poll_one(lntd_ko ko, short events, short *reventsp)
 {
-	linted_error err;
+	lntd_error err;
 
 	short revents;
 	{
@@ -694,7 +687,7 @@ static linted_error poll_one(linted_ko ko, short events,
 
 poll_failed:
 	err = errno;
-	LINTED_ASSUME(err != 0);
+	LNTD_ASSUME(err != 0);
 	return err;
 
 poll_succeeded:
@@ -702,12 +695,12 @@ poll_succeeded:
 	return 0;
 }
 
-static linted_error check_for_poll_error(short revents)
+static lntd_error check_for_poll_error(short revents)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	if ((revents & POLLNVAL) != 0)
-		err = LINTED_ERROR_INVALID_KO;
+		err = LNTD_ERROR_INVALID_KO;
 
 	return err;
 }

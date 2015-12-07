@@ -17,22 +17,22 @@
 
 #include "config.h"
 
-#include "linted/io.h"
-#include "linted/ko.h"
-#include "linted/log.h"
-#include "linted/util.h"
+#include "lntd/io.h"
+#include "lntd/ko.h"
+#include "lntd/log.h"
+#include "lntd/util.h"
 
 #include <stdarg.h>
 #include <stdbool.h>
 #include <syslog.h>
 
-static linted_ko tty;
+static lntd_ko tty;
 static bool tty_init;
 
 static void do_syslog(int prio, char const *format, va_list args)
-    LINTED_FORMAT(__printf__, 2, 0);
+    LNTD_FORMAT(__printf__, 2, 0);
 
-void linted_log_open(char const *ident)
+void lntd_log_open(char const *ident)
 {
 	/* For now, don't use LOG_PID because syslog is confused by
 	 * CLONE_NEWPID.
@@ -40,29 +40,29 @@ void linted_log_open(char const *ident)
 
 	openlog(ident, LOG_CONS | LOG_NDELAY, LOG_USER);
 
-	if (0 == linted_ko_open(&tty, LINTED_KO_CWD, "/dev/tty",
-	                        LINTED_KO_WRONLY))
+	if (0 ==
+	    lntd_ko_open(&tty, LNTD_KO_CWD, "/dev/tty", LNTD_KO_WRONLY))
 		tty_init = true;
 }
 
-void linted_log(linted_log_level log_level, char const *format, ...)
+void lntd_log(lntd_log_level log_level, char const *format, ...)
 {
 	int priority;
 	switch (log_level) {
-	case LINTED_LOG_ERROR:
+	case LNTD_LOG_ERROR:
 		priority = LOG_ERR;
 		break;
 
-	case LINTED_LOG_WARNING:
+	case LNTD_LOG_WARNING:
 		priority = LOG_WARNING;
 		break;
 
-	case LINTED_LOG_INFO:
+	case LNTD_LOG_INFO:
 		priority = LOG_INFO;
 		break;
 
 	default:
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(false);
 		return;
 	}
 
@@ -72,8 +72,8 @@ void linted_log(linted_log_level log_level, char const *format, ...)
 	do_syslog(priority, format, ap);
 
 	if (tty_init) {
-		linted_io_write_va_list(tty, 0, format, ap);
-		linted_io_write_string(tty, 0, "\n");
+		lntd_io_write_va_list(tty, 0, format, ap);
+		lntd_io_write_string(tty, 0, "\n");
 	}
 
 	va_end(ap);

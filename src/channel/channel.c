@@ -15,31 +15,31 @@
  */
 #include "config.h"
 
-#include "linted/channel.h"
+#include "lntd/channel.h"
 
-#include "linted/error.h"
-#include "linted/mem.h"
-#include "linted/sched.h"
-#include "linted/trigger.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/mem.h"
+#include "lntd/sched.h"
+#include "lntd/trigger.h"
+#include "lntd/util.h"
 
 #include <stdatomic.h>
 #include <stdint.h>
 
 typedef _Atomic(void *) atomic_voidptr;
 
-struct linted_channel {
+struct lntd_channel {
 	atomic_voidptr value;
-	struct linted_trigger filled;
+	struct lntd_trigger filled;
 };
 
-linted_error linted_channel_create(struct linted_channel **channelp)
+lntd_error lntd_channel_create(struct lntd_channel **channelp)
 {
-	linted_error err;
-	struct linted_channel *channel;
+	lntd_error err;
+	struct lntd_channel *channel;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *channel);
+		err = lntd_mem_alloc(&xx, sizeof *channel);
 		if (err != 0)
 			return err;
 		channel = xx;
@@ -47,25 +47,25 @@ linted_error linted_channel_create(struct linted_channel **channelp)
 
 	atomic_voidptr ptr = ATOMIC_VAR_INIT((void *)0);
 	channel->value = ptr;
-	linted_trigger_create(&channel->filled);
+	lntd_trigger_create(&channel->filled);
 
 	*channelp = channel;
 
 	return 0;
 }
 
-void linted_channel_destroy(struct linted_channel *channel)
+void lntd_channel_destroy(struct lntd_channel *channel)
 {
-	linted_trigger_destroy(&channel->filled);
+	lntd_trigger_destroy(&channel->filled);
 
-	linted_mem_free(channel);
+	lntd_mem_free(channel);
 }
 
-linted_error linted_channel_try_send(struct linted_channel *channel,
-                                     void *node)
+lntd_error lntd_channel_try_send(struct lntd_channel *channel,
+                                 void *node)
 {
-	LINTED_ASSERT_NOT_NULL(channel);
-	LINTED_ASSERT_NOT_NULL(node);
+	LNTD_ASSERT_NOT_NULL(channel);
+	LNTD_ASSERT_NOT_NULL(node);
 
 	void *expected = 0;
 
@@ -74,18 +74,18 @@ linted_error linted_channel_try_send(struct linted_channel *channel,
 	if (!atomic_compare_exchange_strong_explicit(
 	        &channel->value, &expected, node, memory_order_relaxed,
 	        memory_order_relaxed))
-		return LINTED_ERROR_AGAIN;
+		return LNTD_ERROR_AGAIN;
 
-	linted_trigger_set(&channel->filled);
+	lntd_trigger_set(&channel->filled);
 
 	return 0;
 }
 
 /* Remove from the head */
-void linted_channel_recv(struct linted_channel *channel, void **nodep)
+void lntd_channel_recv(struct lntd_channel *channel, void **nodep)
 {
-	LINTED_ASSERT_NOT_NULL(channel);
-	LINTED_ASSERT_NOT_NULL(nodep);
+	LNTD_ASSERT_NOT_NULL(channel);
+	LNTD_ASSERT_NOT_NULL(nodep);
 
 	void *node;
 	for (;;) {
@@ -94,10 +94,10 @@ void linted_channel_recv(struct linted_channel *channel, void **nodep)
 			    &channel->value, 0, memory_order_relaxed);
 			if (node != 0)
 				goto exit_loop;
-			linted_sched_light_yield();
+			lntd_sched_light_yield();
 		}
 
-		linted_trigger_wait(&channel->filled);
+		lntd_trigger_wait(&channel->filled);
 	}
 exit_loop:
 	atomic_thread_fence(memory_order_acquire);

@@ -15,89 +15,89 @@
  */
 #include "config.h"
 
-#include "linted/sched.h"
+#include "lntd/sched.h"
 
-#include "linted/async.h"
-#include "linted/mem.h"
-#include "linted/util.h"
+#include "lntd/async.h"
+#include "lntd/mem.h"
+#include "lntd/util.h"
 
 #include <sys/time.h>
 #include <time.h>
 
-struct linted_sched_task_sleep_until {
-	struct linted_async_task *parent;
+struct lntd_sched_task_sleep_until {
+	struct lntd_async_task *parent;
 	void *data;
 	struct timespec time;
 };
 
-linted_error linted_sched_time(struct timespec *now)
+lntd_error lntd_sched_time(struct timespec *now)
 {
-	return LINTED_ERROR_UNIMPLEMENTED;
+	return LNTD_ERROR_UNIMPLEMENTED;
 }
 
 /* task_idle is just a fake */
-linted_error
-linted_sched_task_idle_create(struct linted_sched_task_idle **taskp,
-                              void *data)
+lntd_error
+lntd_sched_task_idle_create(struct lntd_sched_task_idle **taskp,
+                            void *data)
 {
-	struct linted_async_task *xx;
-	linted_error err = linted_async_task_create(
-	    &xx, data, LINTED_ASYNCH_TASK_IDLE);
+	struct lntd_async_task *xx;
+	lntd_error err =
+	    lntd_async_task_create(&xx, data, LNTD_ASYNCH_TASK_IDLE);
 	if (err != 0)
 		return err;
-	*taskp = (struct linted_sched_task_idle *)xx;
+	*taskp = (struct lntd_sched_task_idle *)xx;
 
 	return 0;
 }
 
-void linted_sched_task_idle_destroy(struct linted_sched_task_idle *task)
+void lntd_sched_task_idle_destroy(struct lntd_sched_task_idle *task)
 {
-	linted_async_task_destroy((void *)task);
+	lntd_async_task_destroy((void *)task);
 }
 
-void *linted_sched_task_idle_data(struct linted_sched_task_idle *task)
+void *lntd_sched_task_idle_data(struct lntd_sched_task_idle *task)
 {
-	return linted_async_task_data((void *)task);
+	return lntd_async_task_data((void *)task);
 }
 
-struct linted_async_task *
-linted_sched_task_idle_to_async(struct linted_sched_task_idle *task)
+struct lntd_async_task *
+lntd_sched_task_idle_to_async(struct lntd_sched_task_idle *task)
 {
 	return (void *)task;
 }
 
-struct linted_sched_task_idle *
-linted_sched_task_idle_from_async(struct linted_async_task *task)
+struct lntd_sched_task_idle *
+lntd_sched_task_idle_from_async(struct lntd_async_task *task)
 {
 	return (void *)task;
 }
 
-struct linted_async_task *
-linted_sched_task_idle_prepare(struct linted_sched_task_idle *task,
-                               union linted_async_ck task_ck,
-                               void *userstate)
+struct lntd_async_task *
+lntd_sched_task_idle_prepare(struct lntd_sched_task_idle *task,
+                             union lntd_async_ck task_ck,
+                             void *userstate)
 {
-	return linted_async_task_prepare((void *)task, task_ck,
-	                                 userstate);
+	return lntd_async_task_prepare((void *)task, task_ck,
+	                               userstate);
 }
 
-linted_error linted_sched_task_sleep_until_create(
-    struct linted_sched_task_sleep_until **taskp, void *data)
+lntd_error lntd_sched_task_sleep_until_create(
+    struct lntd_sched_task_sleep_until **taskp, void *data)
 {
-	linted_error err;
-	struct linted_sched_task_sleep_until *task;
+	lntd_error err;
+	struct lntd_sched_task_sleep_until *task;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *task);
+		err = lntd_mem_alloc(&xx, sizeof *task);
 		if (err != 0)
 			return err;
 		task = xx;
 	}
-	struct linted_async_task *parent;
+	struct lntd_async_task *parent;
 	{
-		struct linted_async_task *xx;
-		err = linted_async_task_create(
-		    &xx, task, LINTED_ASYNCH_TASK_SLEEP_UNTIL);
+		struct lntd_async_task *xx;
+		err = lntd_async_task_create(
+		    &xx, task, LNTD_ASYNCH_TASK_SLEEP_UNTIL);
 		if (err != 0)
 			goto free_task;
 		parent = xx;
@@ -107,60 +107,59 @@ linted_error linted_sched_task_sleep_until_create(
 	*taskp = task;
 	return 0;
 free_task:
-	linted_mem_free(task);
+	lntd_mem_free(task);
 	return err;
 }
 
-void linted_sched_task_sleep_until_destroy(
-    struct linted_sched_task_sleep_until *task)
+void lntd_sched_task_sleep_until_destroy(
+    struct lntd_sched_task_sleep_until *task)
 {
-	linted_async_task_destroy(task->parent);
-	linted_mem_free(task);
+	lntd_async_task_destroy(task->parent);
+	lntd_mem_free(task);
 }
 
-void *linted_sched_task_sleep_until_data(
-    struct linted_sched_task_sleep_until *task)
+void *lntd_sched_task_sleep_until_data(
+    struct lntd_sched_task_sleep_until *task)
 {
 	return task->data;
 }
 
-void linted_sched_task_sleep_until_time(
-    struct linted_sched_task_sleep_until *task, struct timespec *xx)
+void lntd_sched_task_sleep_until_time(
+    struct lntd_sched_task_sleep_until *task, struct timespec *xx)
 {
 	*xx = task->time;
 }
 
-struct linted_async_task *linted_sched_task_sleep_until_prepare(
-    struct linted_sched_task_sleep_until *task,
-    union linted_async_ck task_ck, void *userstate,
+struct lntd_async_task *lntd_sched_task_sleep_until_prepare(
+    struct lntd_sched_task_sleep_until *task,
+    union lntd_async_ck task_ck, void *userstate,
     struct timespec const *req)
 {
 	task->time = *req;
-	return linted_async_task_prepare(task->parent, task_ck,
-	                                 userstate);
+	return lntd_async_task_prepare(task->parent, task_ck,
+	                               userstate);
 }
 
-struct linted_async_task *linted_sched_task_sleep_until_to_async(
-    struct linted_sched_task_sleep_until *task)
+struct lntd_async_task *lntd_sched_task_sleep_until_to_async(
+    struct lntd_sched_task_sleep_until *task)
 {
 	return task->parent;
 }
 
-struct linted_sched_task_sleep_until *
-linted_sched_task_sleep_until_from_async(struct linted_async_task *task)
+struct lntd_sched_task_sleep_until *
+lntd_sched_task_sleep_until_from_async(struct lntd_async_task *task)
 {
-	return linted_async_task_data(task);
+	return lntd_async_task_data(task);
 }
 
-void linted_sched_do_idle(struct linted_async_pool *pool,
-                          struct linted_async_task *task)
+void lntd_sched_do_idle(struct lntd_async_pool *pool,
+                        struct lntd_async_task *task)
 {
-	linted_async_pool_complete(pool, task, 0);
+	lntd_async_pool_complete(pool, task, 0);
 }
 
-void linted_sched_do_sleep_until(struct linted_async_pool *pool,
-                                 struct linted_async_task *task)
+void lntd_sched_do_sleep_until(struct lntd_async_pool *pool,
+                               struct lntd_async_task *task)
 {
-	linted_async_pool_complete(pool, task,
-	                           LINTED_ERROR_UNIMPLEMENTED);
+	lntd_async_pool_complete(pool, task, LNTD_ERROR_UNIMPLEMENTED);
 }

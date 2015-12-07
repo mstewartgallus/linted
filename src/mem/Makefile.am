@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
-EXTRA_DIST+=include/linted/mem.h
+EXTRA_DIST+=include/lntd/mem.h
 
 TESTS+=%D%/test_mem
 check_PROGRAMS+=%D%/test_mem

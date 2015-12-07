@@ -17,5 +17,5 @@
 
 noinst_LTLIBRARIES+=%D%/libtrigger.la
 %C%_libtrigger_la_SOURCES=\
-  include/linted/trigger.h\
+  include/lntd/trigger.h\
   %D%/trigger.c

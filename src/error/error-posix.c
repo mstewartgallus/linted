@@ -17,9 +17,9 @@
 
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/mem.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/mem.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -30,12 +30,12 @@ static char const invalid_error_string[] = "invalid error number";
 static char const out_of_memory_string[] =
     "cannot print error, out of memory";
 
-char const *linted_error_string(linted_error err_to_print)
+char const *lntd_error_string(lntd_error err_to_print)
 {
 	if (err_to_print > INT_MAX)
 		return invalid_error_string;
 
-	linted_error err;
+	lntd_error err;
 
 	char *buf = 0;
 	size_t buf_size = 0U;
@@ -44,7 +44,7 @@ char const *linted_error_string(linted_error err_to_print)
 		buf_size = 2U * buf_size + 1U;
 		{
 			void *xx;
-			err = linted_mem_realloc(&xx, buf, buf_size);
+			err = lntd_mem_realloc(&xx, buf, buf_size);
 			if (err != 0)
 				break;
 			buf = xx;
@@ -60,13 +60,13 @@ char const *linted_error_string(linted_error err_to_print)
 
 	if (0 == err) {
 		void *xx;
-		err = linted_mem_realloc(&xx, buf, strlen(buf) + 1U);
+		err = lntd_mem_realloc(&xx, buf, strlen(buf) + 1U);
 		if (0 == err)
 			buf = xx;
 	}
 
 	if (err != 0)
-		linted_mem_free(buf);
+		lntd_mem_free(buf);
 
 	switch (err) {
 	case 0:
@@ -79,11 +79,11 @@ char const *linted_error_string(linted_error err_to_print)
 		return out_of_memory_string;
 
 	default:
-		LINTED_ASSUME_UNREACHABLE();
+		LNTD_ASSUME_UNREACHABLE();
 	}
 }
 
-void linted_error_string_free(char const *str)
+void lntd_error_string_free(char const *str)
 {
 	if (invalid_error_string == str)
 		return;
@@ -91,5 +91,5 @@ void linted_error_string_free(char const *str)
 	if (out_of_memory_string == str)
 		return;
 
-	linted_mem_free((char *)str);
+	lntd_mem_free((char *)str);
 }

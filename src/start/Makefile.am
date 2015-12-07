@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libstart.la
-%C%_libstart_la_SOURCES=include/linted/start.h
+%C%_libstart_la_SOURCES=include/lntd/start.h
 %C%_libstart_la_LIBADD=\
   src/env/libenv.la\
   src/error/liberror.la\

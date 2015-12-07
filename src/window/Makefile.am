@@ -17,7 +17,7 @@
 noinst_LTLIBRARIES+=%D%/libwindow.la
 
 %C%_libwindow_la_SOURCES=\
-  include/linted/window.h
+  include/lntd/window.h
 %C%_libwindow_la_LIBADD=\
   src/io/libio.la
 dist_pkgdefaultunits_DATA+=\

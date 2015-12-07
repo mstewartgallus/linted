@@ -16,5 +16,5 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libchannel.la
-%C%_libchannel_la_SOURCES=%D%/channel.c include/linted/channel.h
+%C%_libchannel_la_SOURCES=%D%/channel.c include/lntd/channel.h
 %C%_libchannel_la_LIBADD=src/trigger/libtrigger.la

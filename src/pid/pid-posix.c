@@ -17,15 +17,15 @@
 
 #include "config.h"
 
-#include "linted/pid.h"
+#include "lntd/pid.h"
 
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/mem.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
+#include "lntd/mem.h"
+#include "lntd/util.h"
 
 #if !defined HAVE_PTHREAD_SETNAME_NP && defined HAVE_SYS_PRCTL_H
-#include "linted/prctl.h"
+#include "lntd/prctl.h"
 #endif
 
 #include <dirent.h>
@@ -49,52 +49,51 @@
 	          << (uintmax_t)(sizeof(pid_t) * CHAR_BIT - 1U)) -     \
 	         1U))
 
-linted_error linted_pid_kill(linted_pid pid, int signo)
+lntd_error lntd_pid_kill(lntd_pid pid, int signo)
 {
 	if (pid < 1)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 	if (signo < 1)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (-1 == kill(pid, signo)) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
+		lntd_error err = errno;
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 
 	return 0;
 }
 
-linted_error linted_pid_terminate(linted_pid pid)
+lntd_error lntd_pid_terminate(lntd_pid pid)
 {
-	return linted_pid_kill(pid, SIGKILL);
+	return lntd_pid_kill(pid, SIGKILL);
 }
 
-linted_error linted_pid_continue(linted_pid pid)
+lntd_error lntd_pid_continue(lntd_pid pid)
 {
-	return linted_pid_kill(pid, SIGCONT);
+	return lntd_pid_kill(pid, SIGCONT);
 }
 
-linted_error linted_pid_stat(linted_pid pid,
-                             struct linted_pid_stat *buf)
+lntd_error lntd_pid_stat(lntd_pid pid, struct lntd_pid_stat *buf)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_ko stat_ko;
+	lntd_ko stat_ko;
 	{
 		char path[sizeof "/proc/" - 1U +
-		          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
 		          sizeof "/stat" - 1U + 1U];
 		if (-1 == sprintf(path, "/proc/%" PRIuMAX "/stat",
 		                  (uintmax_t)pid)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
-		                     LINTED_KO_RDONLY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, path,
+		                   LNTD_KO_RDONLY);
 		if (ENOENT == err)
 			return ESRCH;
 		if (err != 0)
@@ -105,9 +104,9 @@ linted_error linted_pid_stat(linted_pid pid,
 	FILE *file = fdopen(stat_ko, "r");
 	if (0 == file) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 
-		linted_ko_close(stat_ko);
+		lntd_ko_close(stat_ko);
 
 		return err;
 	}
@@ -132,12 +131,12 @@ linted_error linted_pid_stat(linted_pid pid,
 
 	/* If some fields are missing just leave them to be zero */
 	{
-		linted_pid xx;
+		lntd_pid xx;
 		if (EOF == sscanf(line, "%" PRIuMAX " (" /* pid */
 		                  ,
 		                  &xx)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			goto free_line;
 		}
 		buf->pid = xx;
@@ -154,10 +153,10 @@ linted_error linted_pid_stat(linted_pid pid,
 	memcpy(buf->comm, start, end - start);
 
 	{
-		linted_pid ppid;
-		linted_pid pgrp;
-		linted_pid session;
-		linted_pid tpgid;
+		lntd_pid ppid;
+		lntd_pid pgrp;
+		lntd_pid session;
+		lntd_pid tpgid;
 		if (EOF ==
 		    sscanf(end, ")\n"
 		                "%c\n"           /* state */
@@ -220,7 +219,7 @@ linted_error linted_pid_stat(linted_pid pid,
 		           &buf->policy, &buf->delayacct_blkio_ticks,
 		           &buf->guest_time, &buf->cguest_time)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			goto free_line;
 		}
 
@@ -231,11 +230,11 @@ linted_error linted_pid_stat(linted_pid pid,
 	}
 
 free_line:
-	linted_mem_free(line);
+	lntd_mem_free(line);
 
 	if (EOF == fclose(file)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 
@@ -245,26 +244,26 @@ free_line:
 /**
  * @bug Only obtains children of the main thread.
  */
-linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
-                                 size_t *lenp)
+lntd_error lntd_pid_children(lntd_pid pid, lntd_pid **childrenp,
+                             size_t *lenp)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_ko task_ko;
+	lntd_ko task_ko;
 	{
 		char path[sizeof "/proc/" - 1U +
-		          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
 		          sizeof "/task" - 1U + 1U];
 		if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task",
 		                  (uintmax_t)pid)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
-		                     LINTED_KO_RDONLY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, path,
+		                   LNTD_KO_RDONLY);
 		if (err != 0)
 			return err;
 		task_ko = xx;
@@ -273,9 +272,9 @@ linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
 	DIR *task_dir = fdopendir(task_ko);
 	if (0 == task_dir) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 
-		linted_ko_close(task_ko);
+		lntd_ko_close(task_ko);
 
 		return err;
 	}
@@ -300,27 +299,27 @@ linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
 
 		{
 			void *xx;
-			err = linted_mem_realloc_array(
-			    &xx, tasks, num_tasks + 1U,
-			    sizeof tasks[0U]);
+			err = lntd_mem_realloc_array(&xx, tasks,
+			                             num_tasks + 1U,
+			                             sizeof tasks[0U]);
 			if (err != 0)
 				goto close_tasks;
 			tasks = xx;
 		}
 
-		char path[LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+		char path[LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
 		          sizeof "/children" - 1U + 1U];
 		if (-1 == sprintf(path, "%s/children", name)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			goto close_tasks;
 		}
 
-		linted_ko this_task;
+		lntd_ko this_task;
 		{
-			linted_ko xx;
-			err = linted_ko_open(&xx, task_ko, path,
-			                     LINTED_KO_RDONLY);
+			lntd_ko xx;
+			err = lntd_ko_open(&xx, task_ko, path,
+			                   LNTD_KO_RDONLY);
 			if (ENOENT == err) {
 				err = ESRCH;
 				goto close_tasks;
@@ -333,9 +332,9 @@ linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
 		FILE *file = fdopen(this_task, "r");
 		if (0 == file) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
-			linted_ko_close(task_ko);
+			lntd_ko_close(task_ko);
 
 			goto close_tasks;
 		}
@@ -346,7 +345,7 @@ linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
 	}
 
 	size_t num_children = 0U;
-	linted_pid *children = 0;
+	lntd_pid *children = 0;
 
 	char *buf = 0;
 	size_t buf_size = 0U;
@@ -382,14 +381,14 @@ linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
 
 		for (;;) {
 			errno = 0;
-			linted_pid child = strtol(start, 0, 10);
+			lntd_pid child = strtol(start, 0, 10);
 			err = errno;
 			if (err != 0)
 				goto free_buf;
 
 			{
 				void *xx;
-				err = linted_mem_realloc_array(
+				err = lntd_mem_realloc_array(
 				    &xx, children, num_children + 1U,
 				    sizeof children[0U]);
 				if (err != 0)
@@ -414,7 +413,7 @@ linted_error linted_pid_children(linted_pid pid, linted_pid **childrenp,
 		}
 	}
 free_buf:
-	linted_mem_free(buf);
+	lntd_mem_free(buf);
 
 	if (0 == err) {
 		*lenp = num_children;
@@ -422,30 +421,30 @@ free_buf:
 	}
 
 	if (err != 0) {
-		linted_mem_free(children);
+		lntd_mem_free(children);
 	}
 
 close_tasks:
 	for (size_t ii = 0U; ii < num_tasks; ++ii) {
 		fclose(tasks[ii]);
 	}
-	linted_mem_free(tasks);
+	lntd_mem_free(tasks);
 
 	closedir(task_dir);
 
 	return err;
 }
 
-linted_pid linted_pid_get_pid(void)
+lntd_pid lntd_pid_get_pid(void)
 {
 	return getpid();
 }
 
-linted_error linted_pid_from_str(char const *str, linted_pid *pidp)
+lntd_error lntd_pid_from_str(char const *str, lntd_pid *pidp)
 {
 	size_t digits_count = strlen(str);
 
-	linted_pid pid;
+	lntd_pid pid;
 
 	if ('0' == str[0U]) {
 		pid = 0;
@@ -459,7 +458,7 @@ linted_error linted_pid_from_str(char const *str, linted_pid *pidp)
 		char digit = str[ii];
 
 		if (digit < '0' || digit > '9')
-			return LINTED_ERROR_INVALID_PARAMETER;
+			return LNTD_ERROR_INVALID_PARAMETER;
 
 		unsigned long digit_val = digit - '0';
 
@@ -476,17 +475,17 @@ write_pid:
 }
 
 #if defined HAVE_PTHREAD_SETNAME_NP
-linted_error linted_pid_name(char const *name)
+lntd_error lntd_pid_name(char const *name)
 {
 	return pthread_setname_np(pthread_self(), name);
 }
 #elif defined HAVE_SYS_PRCTL_H
-linted_error linted_pid_name(char const *name)
+lntd_error lntd_pid_name(char const *name)
 {
-	return linted_prctl_set_name(name);
+	return lntd_prctl_set_name(name);
 }
 #else
-linted_error linted_pid_name(char const *name)
+lntd_error lntd_pid_name(char const *name)
 {
 	return 0;
 }

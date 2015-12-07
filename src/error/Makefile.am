@@ -16,11 +16,11 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/liberror.la
 
-%C%_liberror_la_SOURCES=include/linted/error.h
+%C%_liberror_la_SOURCES=include/lntd/error.h
 EXTRA_%C%_liberror_la_SOURCES=\
   %D%/error-posix.c\
-  include/linted/error-posix.h\
-  include/linted/error-windows.h
+  include/lntd/error-posix.h\
+  include/lntd/error-windows.h
 %C%_liberror_la_LIBADD=
 
 if POSIX_API

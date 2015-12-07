@@ -14,7 +14,7 @@
  * permissions and limitations under the License.
  */
 
-struct linted_controller_code {
+struct lntd_controller_code {
 	int z_tilt;
 	int x_tilt;
 

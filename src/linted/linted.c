@@ -31,19 +31,19 @@
 
 #include "settings.h"
 
-#include "linted/env.h"
-#include "linted/error.h"
-#include "linted/io.h"
-#include "linted/ko.h"
-#include "linted/locale.h"
-#include "linted/log.h"
-#include "linted/path.h"
-#include "linted/pid.h"
-#include "linted/start.h"
-#include "linted/util.h"
+#include "lntd/env.h"
+#include "lntd/error.h"
+#include "lntd/io.h"
+#include "lntd/ko.h"
+#include "lntd/locale.h"
+#include "lntd/log.h"
+#include "lntd/path.h"
+#include "lntd/pid.h"
+#include "lntd/start.h"
+#include "lntd/util.h"
 
 #ifdef HAVE_WINDOWS_API
-#include "linted/utf.h"
+#include "lntd/utf.h"
 #endif
 
 #include <errno.h>
@@ -71,44 +71,44 @@ struct envvar {
 
 enum { HELP, VERSION_OPTION };
 
-static linted_error do_help(linted_ko ko, char const *process_name,
-                            char const *package_name,
-                            char const *package_url,
-                            char const *package_bugreport);
+static lntd_error do_help(lntd_ko ko, char const *process_name,
+                          char const *package_name,
+                          char const *package_url,
+                          char const *package_bugreport);
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-linted",
     .check_privilege = true,
     .sanitize_fds = true};
 
 static struct envvar const default_envvars[] = {
     {"LINTED_PROCESS_NAME", "linted"},
-    {"LINTED_SYSTEM_CONF_PATH", LINTED_SYSTEM_CONF_PATH},
-    {"LINTED_UNIT_PATH", LINTED_UNIT_PATH},
-    {"LINTED_INIT", LINTED_INIT},
-    {"LINTED_MONITOR", LINTED_MONITOR},
-    {"LINTED_STARTUP", LINTED_STARTUP},
-    {"LINTED_SANDBOX", LINTED_SANDBOX},
-    {"LINTED_WAITER", LINTED_WAITER},
-    {"LINTED_AUDIO", LINTED_AUDIO},
-    {"LINTED_AUDIO_FSTAB", LINTED_AUDIO_FSTAB},
-    {"LINTED_GUI", LINTED_GUI},
-    {"LINTED_GUI_FSTAB", LINTED_GUI_FSTAB},
-    {"LINTED_SIMULATOR", LINTED_SIMULATOR},
-    {"LINTED_SIMULATOR_FSTAB", LINTED_SIMULATOR_FSTAB},
-    {"LINTED_DRAWER", LINTED_DRAWER},
-    {"LINTED_DRAWER_FSTAB", LINTED_DRAWER_FSTAB},
-    {"LINTED_WINDOW", LINTED_WINDOW},
-    {"LINTED_WINDOW_FSTAB", LINTED_WINDOW_FSTAB}};
+    {"LINTED_SYSTEM_CONF_PATH", LNTD_SYSTEM_CONF_PATH},
+    {"LINTED_UNIT_PATH", LNTD_UNIT_PATH},
+    {"LINTED_INIT", LNTD_INIT},
+    {"LINTED_MONITOR", LNTD_MONITOR},
+    {"LINTED_STARTUP", LNTD_STARTUP},
+    {"LINTED_SANDBOX", LNTD_SANDBOX},
+    {"LINTED_WAITER", LNTD_WAITER},
+    {"LINTED_AUDIO", LNTD_AUDIO},
+    {"LINTED_AUDIO_FSTAB", LNTD_AUDIO_FSTAB},
+    {"LINTED_GUI", LNTD_GUI},
+    {"LINTED_GUI_FSTAB", LNTD_GUI_FSTAB},
+    {"LINTED_SIMULATOR", LNTD_SIMULATOR},
+    {"LINTED_SIMULATOR_FSTAB", LNTD_SIMULATOR_FSTAB},
+    {"LINTED_DRAWER", LNTD_DRAWER},
+    {"LINTED_DRAWER_FSTAB", LNTD_DRAWER_FSTAB},
+    {"LINTED_WINDOW", LNTD_WINDOW},
+    {"LINTED_WINDOW_FSTAB", LNTD_WINDOW_FSTAB}};
 
 static char const *const argstrs[] = {[HELP] = "--help",
                                       [VERSION_OPTION] = "--version"};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const *const argv)
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const *const argv)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	bool need_help = false;
 	bool need_version = false;
@@ -119,7 +119,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		char const *argument = argv[ii];
 
 		int arg = -1;
-		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs);
+		for (size_t jj = 0U; jj < LNTD_ARRAY_SIZE(argstrs);
 		     ++jj) {
 			if (0 == strcmp(argument, argstrs[jj])) {
 				arg = jj;
@@ -143,51 +143,48 @@ static unsigned char linted_start_main(char const *const process_name,
 	}
 
 	if (need_help) {
-		do_help(LINTED_KO_STDOUT, process_name, PACKAGE_NAME,
+		do_help(LNTD_KO_STDOUT, process_name, PACKAGE_NAME,
 		        PACKAGE_URL, PACKAGE_BUGREPORT);
 		return EXIT_SUCCESS;
 	}
 
 	if (bad_option != 0) {
-		linted_locale_on_bad_option(LINTED_KO_STDERR,
-		                            process_name, bad_option);
-		linted_locale_try_for_more_help(LINTED_KO_STDERR,
-		                                process_name, "--help");
+		lntd_locale_on_bad_option(LNTD_KO_STDERR, process_name,
+		                          bad_option);
+		lntd_locale_try_for_more_help(LNTD_KO_STDERR,
+		                              process_name, "--help");
 		return EXIT_FAILURE;
 	}
 
 	if (need_version) {
-		linted_locale_version(LINTED_KO_STDOUT, PACKAGE_STRING,
-		                      COPYRIGHT_YEAR);
+		lntd_locale_version(LNTD_KO_STDOUT, PACKAGE_STRING,
+		                    COPYRIGHT_YEAR);
 		return EXIT_SUCCESS;
 	}
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(default_envvars);
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(default_envvars);
 	     ++ii) {
 		struct envvar const *envvar = &default_envvars[ii];
 
-		err = linted_env_set(envvar->key, envvar->value, false);
+		err = lntd_env_set(envvar->key, envvar->value, false);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_set: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_env_set: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
 
-	linted_pid self = linted_pid_get_pid();
+	lntd_pid self = lntd_pid_get_pid();
 
 	{
-		char
-		    pid_str[LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
-		            1U];
+		char pid_str[LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
+		             1U];
 		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)self);
 
-		err = linted_env_set("MANAGERPID", pid_str, true);
+		err = lntd_env_set("MANAGERPID", pid_str, true);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_set: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_env_set: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -195,29 +192,27 @@ static unsigned char linted_start_main(char const *const process_name,
 	char const *init;
 	{
 		char *xx;
-		err = linted_env_get("LINTED_INIT", &xx);
+		err = lntd_env_get("LINTED_INIT", &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_get: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_env_get: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		init = xx;
 	}
-	LINTED_ASSERT(init != 0);
+	LNTD_ASSERT(init != 0);
 
-	linted_io_write_format(LINTED_KO_STDOUT, 0,
-	                       "LINTED_PID=%" PRIuMAX "\n",
-	                       (uintmax_t)self);
+	lntd_io_write_format(LNTD_KO_STDOUT, 0,
+	                     "LINTED_PID=%" PRIuMAX "\n",
+	                     (uintmax_t)self);
 
 	char *init_base;
 	{
 		char *xx;
-		err = linted_path_base(&xx, init);
+		err = lntd_path_base(&xx, init);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_path_base: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_path_base: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		init_base = xx;
@@ -227,11 +222,10 @@ static unsigned char linted_start_main(char const *const process_name,
 	wchar_t *init_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(init, &xx);
+		err = lntd_utf_1_to_2(init, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_utf_1_to_2: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_utf_1_to_2: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		init_utf2 = xx;
@@ -240,63 +234,61 @@ static unsigned char linted_start_main(char const *const process_name,
 	wchar_t *init_base_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(init_base, &xx);
+		err = lntd_utf_1_to_2(init_base, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_utf_1_to_2: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_utf_1_to_2: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		init_base_utf2 = xx;
 	}
 
-	linted_ko monitor_handle;
-	linted_ko thread_handle;
+	lntd_ko monitor_handle;
+	lntd_ko thread_handle;
 	{
 		DWORD creation_flags = 0U;
 		STARTUPINFO startup_info = {0};
 
 		startup_info.cb = sizeof startup_info;
 		startup_info.dwFlags = STARTF_USESTDHANDLES;
-		startup_info.hStdInput = LINTED_KO_STDIN;
-		startup_info.hStdOutput = LINTED_KO_STDOUT;
-		startup_info.hStdError = LINTED_KO_STDERR;
+		startup_info.hStdInput = LNTD_KO_STDIN;
+		startup_info.hStdOutput = LNTD_KO_STDOUT;
+		startup_info.hStdError = LNTD_KO_STDERR;
 
 		PROCESS_INFORMATION process_information;
 		if (!CreateProcessW(init_utf2, init_base_utf2, 0, 0,
 		                    false, creation_flags, 0, 0,
 		                    &startup_info,
 		                    &process_information)) {
-			linted_log(
-			    LINTED_LOG_ERROR, "CreateProcessW: %s",
-			    linted_error_string(
-			        HRESULT_FROM_WIN32(GetLastError())));
+			lntd_log(LNTD_LOG_ERROR, "CreateProcessW: %s",
+			         lntd_error_string(HRESULT_FROM_WIN32(
+			             GetLastError())));
 			return EXIT_FAILURE;
 		}
 		monitor_handle = process_information.hProcess;
 		thread_handle = process_information.hThread;
 	}
-	linted_ko_close(thread_handle);
+	lntd_ko_close(thread_handle);
 
 	switch (WaitForSingleObject(monitor_handle, INFINITE)) {
 	case WAIT_OBJECT_0:
 		break;
 
 	case WAIT_FAILED:
-		linted_log(LINTED_LOG_ERROR, "WaitForSingleObject: %s",
-		           linted_error_string(
-		               HRESULT_FROM_WIN32(GetLastError())));
+		lntd_log(LNTD_LOG_ERROR, "WaitForSingleObject: %s",
+		         lntd_error_string(
+		             HRESULT_FROM_WIN32(GetLastError())));
 		return EXIT_FAILURE;
 
 	default:
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(false);
 	}
 
 	DWORD xx;
 	if (!GetExitCodeProcess(monitor_handle, &xx)) {
-		linted_log(LINTED_LOG_ERROR, "GetExitCodeProcess: %s",
-		           linted_error_string(
-		               HRESULT_FROM_WIN32(GetLastError())));
+		lntd_log(LNTD_LOG_ERROR, "GetExitCodeProcess: %s",
+		         lntd_error_string(
+		             HRESULT_FROM_WIN32(GetLastError())));
 		return EXIT_FAILURE;
 	}
 	return xx;
@@ -304,89 +296,89 @@ static unsigned char linted_start_main(char const *const process_name,
 #else
 	char const *const init_argv[] = {init_base, 0};
 	execve(init, (char *const *)init_argv, environ);
-	linted_log(LINTED_LOG_ERROR, "execve: %s",
-	           linted_error_string(errno));
+	lntd_log(LNTD_LOG_ERROR, "execve: %s",
+	         lntd_error_string(errno));
 	return EXIT_FAILURE;
 #endif
 }
 
-static linted_error do_help(linted_ko ko, char const *process_name,
-                            char const *package_name,
-                            char const *package_url,
-                            char const *package_bugreport)
+static lntd_error do_help(lntd_ko ko, char const *process_name,
+                          char const *package_name,
+                          char const *package_url,
+                          char const *package_bugreport)
 {
-	linted_error err;
+	lntd_error err;
 
-	err = linted_io_write_string(ko, 0, "Usage: ");
+	err = lntd_io_write_string(ko, 0, "Usage: ");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, process_name);
+	err = lntd_io_write_string(ko, 0, process_name);
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, " [OPTIONS]\n");
+	err = lntd_io_write_string(ko, 0, " [OPTIONS]\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "Play the game.\n");
+	err = lntd_io_write_string(ko, 0, "Play the game.\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "\n");
+	err = lntd_io_write_string(ko, 0, "\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "\
+	err = lntd_io_write_string(ko, 0, "\
   --help              display this help and exit\n\
   --version           display version information and exit\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "\n");
+	err = lntd_io_write_string(ko, 0, "\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "\
-  LINTED_UNIT_PATH    a `:' separated list of directories units are from\n\
-  LINTED_LOGGER_FSTAB the location of the logger fstab\n\
-  LINTED_LOGGER       the location of the logger executable\n\
-  LINTED_GUI_FSTAB    the location of the GUI fstab\n\
-  LINTED_GUI          the location of the GUI executable\n\
-  LINTED_SIMULATOR_FSTAB the location of the simulator fstab\n\
-  LINTED_SIMULATOR    the location of the simulator executable\n");
+	err = lntd_io_write_string(ko, 0, "\
+  LNTD_UNIT_PATH    a `:' separated list of directories units are from\n\
+  LNTD_LOGGER_FSTAB the location of the logger fstab\n\
+  LNTD_LOGGER       the location of the logger executable\n\
+  LNTD_GUI_FSTAB    the location of the GUI fstab\n\
+  LNTD_GUI          the location of the GUI executable\n\
+  LNTD_SIMULATOR_FSTAB the location of the simulator fstab\n\
+  LNTD_SIMULATOR    the location of the simulator executable\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "\n");
+	err = lntd_io_write_string(ko, 0, "\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "Report bugs to <");
+	err = lntd_io_write_string(ko, 0, "Report bugs to <");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, package_bugreport);
+	err = lntd_io_write_string(ko, 0, package_bugreport);
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, ">\n");
+	err = lntd_io_write_string(ko, 0, ">\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, package_name);
+	err = lntd_io_write_string(ko, 0, package_name);
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, " home page: <");
+	err = lntd_io_write_string(ko, 0, " home page: <");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, package_url);
+	err = lntd_io_write_string(ko, 0, package_url);
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, ">\n");
+	err = lntd_io_write_string(ko, 0, ">\n");
 	if (err != 0)
 		return err;
 

@@ -25,30 +25,30 @@
 
 #include "config.h"
 
-#include "linted/utf.h"
+#include "lntd/utf.h"
 
-#include "linted/mem.h"
-#include "linted/util.h"
+#include "lntd/mem.h"
+#include "lntd/util.h"
 
 #include <windows.h>
 
-linted_error linted_utf_2_to_1(wchar_t const *input, char **outputp)
+lntd_error lntd_utf_2_to_1(wchar_t const *input, char **outputp)
 {
-	linted_error err;
+	lntd_error err;
 
 	size_t buffer_size = WideCharToMultiByte(
 	    CP_UTF8, WC_ERR_INVALID_CHARS, input, -1, 0, 0, 0, 0);
 	if (0 == buffer_size) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 
 	char *buffer;
 	{
 		void *xx;
-		err = linted_mem_alloc_array(&xx, buffer_size,
-		                             sizeof buffer[0U]);
+		err = lntd_mem_alloc_array(&xx, buffer_size,
+		                           sizeof buffer[0U]);
 		if (err != 0)
 			return err;
 		buffer = xx;
@@ -58,9 +58,9 @@ linted_error linted_utf_2_to_1(wchar_t const *input, char **outputp)
 	                             input, -1, buffer, buffer_size, 0,
 	                             0)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 
-		linted_mem_free(buffer);
+		lntd_mem_free(buffer);
 
 		return err;
 	}
@@ -70,23 +70,23 @@ linted_error linted_utf_2_to_1(wchar_t const *input, char **outputp)
 	return 0;
 }
 
-linted_error linted_utf_1_to_2(char const *input, wchar_t **outputp)
+lntd_error lntd_utf_1_to_2(char const *input, wchar_t **outputp)
 {
-	linted_error err;
+	lntd_error err;
 
 	size_t buffer_size = MultiByteToWideChar(
 	    CP_UTF8, MB_ERR_INVALID_CHARS, input, -1, 0, 0);
 	if (0 == buffer_size) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 
 	wchar_t *buffer;
 	{
 		void *xx;
-		err = linted_mem_alloc_array(&xx, buffer_size,
-		                             sizeof buffer[0U]);
+		err = lntd_mem_alloc_array(&xx, buffer_size,
+		                           sizeof buffer[0U]);
 		if (err != 0)
 			return err;
 		buffer = xx;
@@ -95,9 +95,9 @@ linted_error linted_utf_1_to_2(char const *input, wchar_t **outputp)
 	if (0 == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
 	                             input, -1, buffer, buffer_size)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 
-		linted_mem_free(buffer);
+		lntd_mem_free(buffer);
 
 		return err;
 	}

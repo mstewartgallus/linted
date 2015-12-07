@@ -18,4 +18,4 @@ noinst_LTLIBRARIES+=%D%/libstr.la
 
 %C%_libstr_la_SOURCES=\
   %D%/str.c\
-  include/linted/str.h
+  include/lntd/str.h

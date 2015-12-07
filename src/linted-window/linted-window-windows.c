@@ -27,10 +27,10 @@
 
 #include "config.h"
 
-#include "linted/start.h"
+#include "lntd/start.h"
 
-#include "linted/error.h"
-#include "linted/log.h"
+#include "lntd/error.h"
+#include "lntd/log.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -67,26 +67,26 @@ static HINSTANCE get_current_module(void)
 
 static LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-window", 0};
 
-static unsigned char linted_start_main(char const *process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	HGDIOBJ arrow_cursor = LoadCursor(0, IDC_ARROW);
 	if (0 == arrow_cursor) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSERT(err != 0);
+		LNTD_ASSERT(err != 0);
 		goto report_exit_status;
 	}
 
 	HGDIOBJ white_brush = GetStockObject(WHITE_BRUSH);
 	if (0 == white_brush) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSERT(err != 0);
+		LNTD_ASSERT(err != 0);
 		goto report_exit_status;
 	}
 
@@ -106,7 +106,7 @@ static unsigned char linted_start_main(char const *process_name,
 	}
 	if (0 == class_atom) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSERT(err != 0);
+		LNTD_ASSERT(err != 0);
 		goto report_exit_status;
 	}
 
@@ -119,14 +119,14 @@ static unsigned char linted_start_main(char const *process_name,
 	    0, 0, get_current_module(), 0);
 	if (0 == main_window) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSERT(err != 0);
+		LNTD_ASSERT(err != 0);
 		goto destroy_window;
 	}
 
-	switch (ShowWindow(main_window, linted_start_show_command())) {
+	switch (ShowWindow(main_window, lntd_start_show_command())) {
 	case -1: {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSERT(err != 0);
+		LNTD_ASSERT(err != 0);
 		goto destroy_window;
 	}
 
@@ -137,7 +137,7 @@ static unsigned char linted_start_main(char const *process_name,
 
 	HMODULE d3d9_module = LoadLibraryW(L"d3d9.dll");
 	if (0 == d3d9_module) {
-		linted_log(LINTED_LOG_ERROR, "Could not find d3d9.dll");
+		lntd_log(LNTD_LOG_ERROR, "Could not find d3d9.dll");
 		return EXIT_FAILURE;
 	}
 
@@ -147,15 +147,15 @@ static unsigned char linted_start_main(char const *process_name,
 	                                             "Direct3DCreate9");
 	err = HRESULT_FROM_WIN32(GetLastError());
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "GetProcAddress: %s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "GetProcAddress: %s",
+		         lntd_error_string(err));
 		return EXIT_FAILURE;
 	}
 
 	IDirect3D9 *direct3d = my_Direct3dCreate9(D3D_SDK_VERSION);
 	if (0 == direct3d) {
-		linted_log(LINTED_LOG_ERROR, "Direct3dCreate9");
-		err = LINTED_ERROR_UNIMPLEMENTED;
+		lntd_log(LNTD_LOG_ERROR, "Direct3dCreate9");
+		err = LNTD_ERROR_UNIMPLEMENTED;
 		goto destroy_window;
 	}
 
@@ -184,7 +184,7 @@ static unsigned char linted_start_main(char const *process_name,
 
 	if (0 == UpdateWindow(main_window)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSERT(err != 0);
+		LNTD_ASSERT(err != 0);
 		goto destroy_device;
 	}
 
@@ -258,8 +258,7 @@ destroy_window:
 window_destroyed:
 report_exit_status:
 	if (FAILED(err))
-		linted_log(LINTED_LOG_ERROR, "%s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "%s", lntd_error_string(err));
 	return err;
 }
 
@@ -297,13 +296,13 @@ static LRESULT on_paint(HWND main_window, UINT message_type,
 	HDC hdc = BeginPaint(main_window, &ps);
 	if (0 == hdc) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSERT(err != 0);
+		LNTD_ASSERT(err != 0);
 		goto post_quit_message;
 	}
 
 	if (0 == EndPaint(main_window, &ps)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSERT(err != 0);
+		LNTD_ASSERT(err != 0);
 	}
 
 post_quit_message:

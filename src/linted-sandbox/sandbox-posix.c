@@ -17,21 +17,21 @@
 
 #include "config.h"
 
-#include "linted/dir.h"
-#include "linted/execveat.h"
-#include "linted/error.h"
-#include "linted/file.h"
-#include "linted/fifo.h"
-#include "linted/io.h"
-#include "linted/ko.h"
-#include "linted/locale.h"
-#include "linted/log.h"
-#include "linted/mem.h"
-#include "linted/path.h"
-#include "linted/prctl.h"
-#include "linted/start.h"
-#include "linted/str.h"
-#include "linted/util.h"
+#include "lntd/dir.h"
+#include "lntd/execveat.h"
+#include "lntd/error.h"
+#include "lntd/file.h"
+#include "lntd/fifo.h"
+#include "lntd/io.h"
+#include "lntd/ko.h"
+#include "lntd/locale.h"
+#include "lntd/log.h"
+#include "lntd/mem.h"
+#include "lntd/path.h"
+#include "lntd/prctl.h"
+#include "lntd/start.h"
+#include "lntd/str.h"
+#include "lntd/util.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -180,9 +180,9 @@ struct first_fork_args {
 	char const *binary;
 	int_least64_t *limit_no_file;
 	scmp_filter_ctx *seccomp_context;
-	linted_ko err_writer;
-	linted_ko logger_reader;
-	linted_ko logger_writer;
+	lntd_ko err_writer;
+	lntd_ko logger_reader;
+	lntd_ko logger_writer;
 };
 
 struct second_fork_args {
@@ -190,47 +190,47 @@ struct second_fork_args {
 	char const *binary;
 	int_least64_t *limit_no_file;
 	scmp_filter_ctx *seccomp_context;
-	linted_ko err_writer;
-	linted_ko logger_writer;
+	lntd_ko err_writer;
+	lntd_ko logger_writer;
 };
 
 static int first_fork_routine(void *arg);
 static int second_fork_routine(void *arg);
 
-static linted_error do_help(linted_ko ko, char const *process_name,
-                            char const *package_name,
-                            char const *package_url,
-                            char const *package_bugreport);
+static lntd_error do_help(lntd_ko ko, char const *process_name,
+                          char const *package_name,
+                          char const *package_url,
+                          char const *package_bugreport);
 
-static linted_error
-parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
-                 bool *nomount_flagp, unsigned long *mountflagsp,
-                 char const **leftoversp);
+static lntd_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
+                                   bool *touch_flagp,
+                                   bool *nomount_flagp,
+                                   unsigned long *mountflagsp,
+                                   char const **leftoversp);
 
-static linted_error set_id_maps(char const *uid_map,
-                                char const *gid_map);
+static lntd_error set_id_maps(char const *uid_map, char const *gid_map);
 
-static linted_error
-mount_directories(struct mount_args const *mount_args, size_t size);
+static lntd_error mount_directories(struct mount_args const *mount_args,
+                                    size_t size);
 
-static linted_error set_child_subreaper(bool v);
+static lntd_error set_child_subreaper(bool v);
 
-static linted_error parse_int(char const *str, int *resultp);
+static lntd_error parse_int(char const *str, int *resultp);
 
-static linted_error safe_dup2(int oldfd, int newfd);
+static lntd_error safe_dup2(int oldfd, int newfd);
 static pid_t safe_vfork(int (*f)(void *), void *args);
 static int my_pivot_root(char const *new_root, char const *put_old);
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
     .dont_init_signals = true,
     .dont_fork_thread = true};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err;
+	lntd_error err;
 
 	size_t arguments_length = argc;
 
@@ -274,7 +274,7 @@ static unsigned char linted_start_main(char const *const process_name,
 
 			int arg = -1;
 			for (size_t jj = 0U;
-			     jj < LINTED_ARRAY_SIZE(argstrs); ++jj) {
+			     jj < LNTD_ARRAY_SIZE(argstrs); ++jj) {
 				if (0 ==
 				    strcmp(argument, argstrs[jj])) {
 					arg = jj;
@@ -339,37 +339,36 @@ static unsigned char linted_start_main(char const *const process_name,
 	}
 
 	if (need_help) {
-		do_help(LINTED_KO_STDOUT, process_name, PACKAGE_NAME,
+		do_help(LNTD_KO_STDOUT, process_name, PACKAGE_NAME,
 		        PACKAGE_URL, PACKAGE_BUGREPORT);
 		return EXIT_SUCCESS;
 	}
 
 	if (bad_option != 0) {
-		linted_log(LINTED_LOG_ERROR, "bad option: %s",
-		           bad_option);
+		lntd_log(LNTD_LOG_ERROR, "bad option: %s", bad_option);
 		return EXIT_FAILURE;
 	}
 
 	if (need_version) {
-		linted_locale_version(LINTED_KO_STDOUT, PACKAGE_STRING,
-		                      COPYRIGHT_YEAR);
+		lntd_locale_version(LNTD_KO_STDOUT, PACKAGE_STRING,
+		                    COPYRIGHT_YEAR);
 		return EXIT_SUCCESS;
 	}
 
 	if (!have_command) {
-		linted_log(LINTED_LOG_ERROR, "need command");
+		lntd_log(LNTD_LOG_ERROR, "need command");
 		return EXIT_FAILURE;
 	}
 
 	if (0 == waiter_str) {
-		linted_log(LINTED_LOG_ERROR, "need waiter");
+		lntd_log(LNTD_LOG_ERROR, "need waiter");
 		return EXIT_FAILURE;
 	}
 
 	if ((fstab_str != 0 && 0 == chrootdir_str) ||
 	    (0 == fstab_str && chrootdir_str != 0)) {
-		linted_log(
-		    LINTED_LOG_ERROR,
+		lntd_log(
+		    LNTD_LOG_ERROR,
 		    "--chrootdir and --fstab are required together");
 		return EXIT_FAILURE;
 	}
@@ -377,8 +376,8 @@ static unsigned char linted_start_main(char const *const process_name,
 	if (traceme) {
 		/* Register with the parent */
 		if (-1 == raise(SIGSTOP)) {
-			linted_log(LINTED_LOG_ERROR, "raise: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "raise: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -388,23 +387,22 @@ static unsigned char linted_start_main(char const *const process_name,
 	char **command_dup;
 	{
 		void *xx;
-		err = linted_mem_alloc_array(&xx, command_size + 1U,
-		                             sizeof command_dup[0U]);
+		err = lntd_mem_alloc_array(&xx, command_size + 1U,
+		                           sizeof command_dup[0U]);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_mem_alloc_array: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR,
+			         "lntd_mem_alloc_array: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		command_dup = xx;
 	}
 	command_dup[command_size] = 0;
 	for (size_t ii = 0U; ii < command_size; ++ii) {
-		err = linted_str_dup(&command_dup[ii], command[ii]);
+		err = lntd_str_dup(&command_dup[ii], command[ii]);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_str_dup: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_str_dup: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -412,11 +410,10 @@ static unsigned char linted_start_main(char const *const process_name,
 	char *waiter_base;
 	{
 		char *xx;
-		err = linted_path_base(&xx, waiter_str);
+		err = lntd_path_base(&xx, waiter_str);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_path_base: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_path_base: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		waiter_base = xx;
@@ -425,16 +422,15 @@ static unsigned char linted_start_main(char const *const process_name,
 	char *command_base;
 	{
 		char *xx;
-		err = linted_path_base(&xx, command_dup[0U]);
+		err = lntd_path_base(&xx, command_dup[0U]);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_path_base: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_path_base: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		command_base = xx;
 	}
-	linted_mem_free(command_dup[0U]);
+	lntd_mem_free(command_dup[0U]);
 	command_dup[0U] = command_base;
 
 	char const *binary = command[0U];
@@ -446,8 +442,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		int xx;
 		err = parse_int(priority_str, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "parse_int: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		*prio_val = xx;
@@ -460,8 +456,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		int xx;
 		err = parse_int(timer_slack_str, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "parse_int: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		*timer_slack_val = xx;
@@ -474,8 +470,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		int xx;
 		err = parse_int(limit_no_file_str, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "parse_int: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		*limit_no_file_val = xx;
@@ -488,8 +484,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		int xx;
 		err = parse_int(limit_locks_str, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "parse_int: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		*limit_locks_val = xx;
@@ -502,8 +498,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		int xx;
 		err = parse_int(limit_msgqueue_str, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "parse_int: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		*limit_msgqueue_val = xx;
@@ -516,8 +512,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		int xx;
 		err = parse_int(limit_memlock_str, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "parse_int: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "parse_int: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		*limit_memlock_val = xx;
@@ -528,9 +524,8 @@ static unsigned char linted_start_main(char const *const process_name,
 	if (fstab_str != 0) {
 		FILE *fstab_file = fopen(fstab_str, "re");
 		if (0 == fstab_file) {
-			linted_log(LINTED_LOG_ERROR, "fopen(%s): %s",
-			           fstab_str,
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "fopen(%s): %s",
+			         fstab_str, lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
@@ -547,10 +542,10 @@ static unsigned char linted_start_main(char const *const process_name,
 				if (zz < 0) {
 					err = errno;
 					if (err != 0) {
-						linted_log(
-						    LINTED_LOG_ERROR,
+						lntd_log(
+						    LNTD_LOG_ERROR,
 						    "getlines: %s",
-						    linted_error_string(
+						    lntd_error_string(
 						        err));
 						return EXIT_FAILURE;
 					}
@@ -583,9 +578,9 @@ static unsigned char linted_start_main(char const *const process_name,
 				break;
 			}
 			if (err != 0) {
-				linted_log(LINTED_LOG_ERROR,
-				           "wordexp(%s): %s", buf,
-				           linted_error_string(err));
+				lntd_log(LNTD_LOG_ERROR,
+				         "wordexp(%s): %s", buf,
+				         lntd_error_string(err));
 				return EXIT_FAILURE;
 			}
 			char const *const *words =
@@ -633,10 +628,10 @@ static unsigned char linted_start_main(char const *const process_name,
 				err = parse_mount_opts(opts, &xx, &yy,
 				                       &zz, &ww, &uu);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
+					lntd_log(
+					    LNTD_LOG_ERROR,
 					    "parse_mount_opts: %s",
-					    linted_error_string(err));
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				mkdir_flag = xx;
@@ -650,16 +645,16 @@ static unsigned char linted_start_main(char const *const process_name,
 			    mount_args_size + 1U;
 			{
 				void *xx;
-				err = linted_mem_realloc_array(
+				err = lntd_mem_realloc_array(
 				    &xx, mount_args,
 				    new_mount_args_size,
 				    sizeof mount_args[0U]);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "linted_mem_realloc_"
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "lntd_mem_realloc_"
 					    "array: %s",
-					    linted_error_string(err));
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				mount_args = xx;
@@ -667,12 +662,12 @@ static unsigned char linted_start_main(char const *const process_name,
 
 			if (fsname != 0) {
 				char *xx;
-				err = linted_str_dup(&xx, fsname);
+				err = lntd_str_dup(&xx, fsname);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "linted_str_dup: %s",
-					    linted_error_string(err));
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "lntd_str_dup: %s",
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				fsname = xx;
@@ -680,12 +675,12 @@ static unsigned char linted_start_main(char const *const process_name,
 
 			if (dir != 0) {
 				char *xx;
-				err = linted_str_dup(&xx, dir);
+				err = lntd_str_dup(&xx, dir);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "linted_str_dup: %s",
-					    linted_error_string(err));
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "lntd_str_dup: %s",
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				dir = xx;
@@ -693,12 +688,12 @@ static unsigned char linted_start_main(char const *const process_name,
 
 			if (type != 0) {
 				char *xx;
-				err = linted_str_dup(&xx, type);
+				err = lntd_str_dup(&xx, type);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "linted_str_dup: %s",
-					    linted_error_string(err));
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "lntd_str_dup: %s",
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				type = xx;
@@ -706,12 +701,12 @@ static unsigned char linted_start_main(char const *const process_name,
 
 			if (data != 0) {
 				char *xx;
-				err = linted_str_dup(&xx, data);
+				err = lntd_str_dup(&xx, data);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "linted_str_dup: %s",
-					    linted_error_string(err));
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "lntd_str_dup: %s",
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				data = xx;
@@ -720,12 +715,12 @@ static unsigned char linted_start_main(char const *const process_name,
 			char *dir_dup;
 			{
 				char *xx;
-				err = linted_str_dup(&xx, dir);
+				err = lntd_str_dup(&xx, dir);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "linted_str_dup: %s",
-					    linted_error_string(err));
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "lntd_str_dup: %s",
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				dir_dup = xx;
@@ -748,8 +743,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		}
 
 		if (fclose(fstab_file) != 0) {
-			linted_log(LINTED_LOG_ERROR, "fclose: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "fclose: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -766,8 +761,8 @@ static unsigned char linted_start_main(char const *const process_name,
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_uid, uid)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "asprintf: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 		uid_map = xx;
@@ -776,36 +771,35 @@ static unsigned char linted_start_main(char const *const process_name,
 	{
 		char *xx;
 		if (-1 == asprintf(&xx, "%i %i 1\n", mapped_gid, gid)) {
-			linted_log(LINTED_LOG_ERROR, "asprintf: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "asprintf: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 		gid_map = xx;
 	}
 
-	linted_ko logger_reader;
-	linted_ko logger_writer;
+	lntd_ko logger_reader;
+	lntd_ko logger_writer;
 	{
 		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC)) {
-			linted_log(LINTED_LOG_ERROR, "pipe2: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "pipe2: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 		logger_reader = xx[0U];
 		logger_writer = xx[1U];
 	}
 
-	linted_ko err_reader;
-	linted_ko err_writer;
+	lntd_ko err_reader;
+	lntd_ko err_writer;
 	{
-		linted_ko xx;
-		linted_ko yy;
-		err = linted_fifo_pair(&xx, &yy, 0);
+		lntd_ko xx;
+		lntd_ko yy;
+		err = lntd_fifo_pair(&xx, &yy, 0);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_fifo_pair: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_fifo_pair: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		err_reader = xx;
@@ -816,29 +810,26 @@ static unsigned char linted_start_main(char const *const process_name,
 	if (drop_caps) {
 		caps = cap_get_proc();
 		if (0 == caps) {
-			linted_log(LINTED_LOG_ERROR, "cap_get_proc: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "cap_get_proc: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		if (-1 == cap_clear_flag(caps, CAP_EFFECTIVE)) {
-			linted_log(LINTED_LOG_ERROR,
-			           "cap_clear_flag: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "cap_clear_flag: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		if (-1 == cap_clear_flag(caps, CAP_PERMITTED)) {
-			linted_log(LINTED_LOG_ERROR,
-			           "cap_clear_flag: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "cap_clear_flag: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		if (-1 == cap_clear_flag(caps, CAP_INHERITABLE)) {
-			linted_log(LINTED_LOG_ERROR,
-			           "cap_clear_flag: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "cap_clear_flag: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -847,8 +838,8 @@ static unsigned char linted_start_main(char const *const process_name,
 	if (seccomp_filter_str != 0) {
 		seccomp_context = seccomp_init(SCMP_ACT_KILL);
 		if (0 == seccomp_context) {
-			linted_log(LINTED_LOG_ERROR, "seccomp_init: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "seccomp_init: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
@@ -865,13 +856,13 @@ static unsigned char linted_start_main(char const *const process_name,
 			char *syscall_str;
 			{
 				char *xx;
-				err = linted_str_dup_len(&xx, start,
-				                         size);
+				err =
+				    lntd_str_dup_len(&xx, start, size);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "linted_str_dup: %s",
-					    linted_error_string(err));
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "lntd_str_dup: %s",
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				syscall_str = xx;
@@ -881,22 +872,22 @@ static unsigned char linted_start_main(char const *const process_name,
 			int sysno =
 			    seccomp_syscall_resolve_name(syscall_str);
 			if (__NR_SCMP_ERROR == sysno) {
-				linted_log(
-				    LINTED_LOG_ERROR,
+				lntd_log(
+				    LNTD_LOG_ERROR,
 				    "seccomp_syscall_resolve_name: %s",
 				    syscall_str);
 				return EXIT_FAILURE;
 			}
 
-			linted_mem_free(syscall_str);
+			lntd_mem_free(syscall_str);
 
 			err =
 			    -seccomp_rule_add(seccomp_context,
 			                      SCMP_ACT_ALLOW, sysno, 0);
 			if (err != 0) {
-				linted_log(LINTED_LOG_ERROR,
-				           "seccomp_rule_add: %s",
-				           linted_error_string(err));
+				lntd_log(LNTD_LOG_ERROR,
+				         "seccomp_rule_add: %s",
+				         lntd_error_string(err));
 				return EXIT_FAILURE;
 			}
 
@@ -921,36 +912,36 @@ static unsigned char linted_start_main(char const *const process_name,
 
 	/* Only start actually dropping privileges now */
 	if (timer_slack_val != 0) {
-		err = linted_prctl_set_timerslack(*timer_slack_val);
+		err = lntd_prctl_set_timerslack(*timer_slack_val);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "prctl: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "prctl: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (prio_val != 0) {
 		if (-1 == setpriority(PRIO_PROCESS, 0, *prio_val)) {
-			linted_log(LINTED_LOG_ERROR, "setpriority: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "setpriority: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (no_new_privs) {
 		/* Must appear before the seccomp filter */
-		err = linted_prctl_set_no_new_privs(true);
+		err = lntd_prctl_set_no_new_privs(true);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "prctl: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "prctl: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (clone_flags != 0) {
 		if (-1 == unshare(clone_flags)) {
-			linted_log(LINTED_LOG_ERROR, "unshare: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "unshare: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -958,8 +949,8 @@ static unsigned char linted_start_main(char const *const process_name,
 	if (clone_newuser) {
 		err = set_id_maps(uid_map, gid_map);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR, "set_id_maps: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "set_id_maps: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -967,14 +958,14 @@ static unsigned char linted_start_main(char const *const process_name,
 	if (chrootdir_str != 0) {
 		if (-1 == mount(chrootdir_str, chrootdir_str, 0,
 		                MS_BIND, 0)) {
-			linted_log(LINTED_LOG_ERROR, "mount: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "mount: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 
 		if (-1 == chdir(chrootdir_str)) {
-			linted_log(LINTED_LOG_ERROR, "chdir: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "chdir: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -986,8 +977,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		};
 
 		if (-1 == setrlimit(RLIMIT_LOCKS, &lim)) {
-			linted_log(LINTED_LOG_ERROR, "setrlimit: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "setrlimit: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -999,8 +990,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		};
 
 		if (-1 == setrlimit(RLIMIT_MSGQUEUE, &lim)) {
-			linted_log(LINTED_LOG_ERROR, "setrlimit: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "setrlimit: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -1012,8 +1003,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		};
 
 		if (-1 == setrlimit(RLIMIT_MEMLOCK, &lim)) {
-			linted_log(LINTED_LOG_ERROR, "setrlimit: %s",
-			           linted_error_string(errno));
+			lntd_log(LNTD_LOG_ERROR, "setrlimit: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
@@ -1037,18 +1028,17 @@ static unsigned char linted_start_main(char const *const process_name,
 		child = safe_vfork(first_fork_routine, &args);
 	}
 	if (-1 == child) {
-		linted_log(LINTED_LOG_ERROR, "clone: %s",
-		           linted_error_string(errno));
+		lntd_log(LNTD_LOG_ERROR, "clone: %s",
+		         lntd_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
-	linted_ko_close(err_writer);
+	lntd_ko_close(err_writer);
 
 	{
 		size_t xx;
-		linted_error yy;
-		err =
-		    linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
+		lntd_error yy;
+		err = lntd_io_read_all(err_reader, &xx, &yy, sizeof yy);
 		if (err != 0)
 			goto close_err_reader;
 		/* If bytes_read is zero then a succesful exec
@@ -1057,19 +1047,19 @@ static unsigned char linted_start_main(char const *const process_name,
 			err = yy;
 	}
 close_err_reader:
-	linted_ko_close(err_reader);
+	lntd_ko_close(err_reader);
 
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "spawning: %s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "spawning: %s",
+		         lntd_error_string(err));
 		return EXIT_FAILURE;
 	}
 
 	if (!wait)
 		return EXIT_SUCCESS;
 
-	linted_ko_close(LINTED_KO_STDIN);
-	linted_ko_close(LINTED_KO_STDOUT);
+	lntd_ko_close(LNTD_KO_STDIN);
+	lntd_ko_close(LNTD_KO_STDOUT);
 
 	for (;;) {
 		int xx;
@@ -1079,9 +1069,8 @@ close_err_reader:
 			case EINTR:
 				continue;
 			default:
-				linted_log(LINTED_LOG_ERROR,
-				           "waitpid: %s",
-				           linted_error_string(errno));
+				lntd_log(LNTD_LOG_ERROR, "waitpid: %s",
+				         lntd_error_string(errno));
 				return EXIT_FAILURE;
 			}
 
@@ -1091,27 +1080,26 @@ close_err_reader:
 	}
 }
 
-static linted_error set_id_maps(char const *uid_map,
-                                char const *gid_map)
+static lntd_error set_id_maps(char const *uid_map, char const *gid_map)
 {
-	linted_error err;
+	lntd_error err;
 
-	linted_ko set_groups;
+	lntd_ko set_groups;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     "/proc/thread-self/setgroups",
-		                     LINTED_KO_WRONLY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD,
+		                   "/proc/thread-self/setgroups",
+		                   LNTD_KO_WRONLY);
 		if (err != 0)
 			return err;
 		set_groups = xx;
 	}
 
-	err = linted_io_write_string(set_groups, 0, "deny");
+	err = lntd_io_write_string(set_groups, 0, "deny");
 	if (err != 0)
 		return err;
 
-	err = linted_ko_close(set_groups);
+	err = lntd_ko_close(set_groups);
 	if (err != 0)
 		return err;
 
@@ -1121,58 +1109,57 @@ static linted_error set_id_maps(char const *uid_map,
 	 * invoker of the process had good reasons to have the process
 	 * nondumpable.
 	 */
-	linted_ko uid_file;
+	lntd_ko uid_file;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     "/proc/thread-self/uid_map",
-		                     LINTED_KO_WRONLY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD,
+		                   "/proc/thread-self/uid_map",
+		                   LNTD_KO_WRONLY);
 		if (err != 0)
 			return err;
 		uid_file = xx;
 	}
 
-	err = linted_io_write_string(uid_file, 0, uid_map);
+	err = lntd_io_write_string(uid_file, 0, uid_map);
 	if (err != 0)
 		return err;
 
-	err = linted_ko_close(uid_file);
+	err = lntd_ko_close(uid_file);
 	if (err != 0)
 		return err;
 
-	linted_ko gid_file;
+	lntd_ko gid_file;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     "/proc/thread-self/gid_map",
-		                     LINTED_KO_WRONLY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD,
+		                   "/proc/thread-self/gid_map",
+		                   LNTD_KO_WRONLY);
 		if (err != 0)
 			return err;
 		gid_file = xx;
 	}
 
-	err = linted_io_write_string(gid_file, 0, gid_map);
+	err = lntd_io_write_string(gid_file, 0, gid_map);
 	if (err != 0)
 		return err;
 
-	err = linted_ko_close(gid_file);
+	err = lntd_ko_close(gid_file);
 	if (err != 0)
 		return err;
 
 	return 0;
 }
 
-LINTED_NO_SANITIZE_ADDRESS static int
-first_fork_routine(void *void_args)
+LNTD_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	struct first_fork_args const *first_fork_args = void_args;
 
 	int_least64_t *limit_no_file = first_fork_args->limit_no_file;
-	linted_ko err_writer = first_fork_args->err_writer;
-	linted_ko logger_reader = first_fork_args->logger_reader;
-	linted_ko logger_writer = first_fork_args->logger_writer;
+	lntd_ko err_writer = first_fork_args->err_writer;
+	lntd_ko logger_reader = first_fork_args->logger_reader;
+	lntd_ko logger_writer = first_fork_args->logger_writer;
 	char const *chdir_path = first_fork_args->chdir_path;
 	cap_t caps = first_fork_args->caps;
 	struct mount_args *mount_args = first_fork_args->mount_args;
@@ -1202,12 +1189,11 @@ first_fork_routine(void *void_args)
 	/* For some reason we must mount directories after we actually
 	 * become PID 1 in the new pid namespace so that we can mount
 	 * procfs */
-	linted_ko waiter_ko;
+	lntd_ko waiter_ko;
 	if (mount_args_size > 0U) {
 		{
-			linted_ko xx;
-			err = linted_ko_open(&xx, LINTED_KO_CWD, waiter,
-			                     0);
+			lntd_ko xx;
+			err = lntd_ko_open(&xx, LNTD_KO_CWD, waiter, 0);
 			if (err != 0)
 				goto fail;
 			waiter_ko = xx;
@@ -1251,8 +1237,8 @@ first_fork_routine(void *void_args)
 		}
 	}
 
-	linted_ko vfork_err_reader;
-	linted_ko vfork_err_writer;
+	lntd_ko vfork_err_reader;
+	lntd_ko vfork_err_writer;
 	{
 		int xx[2U];
 		if (-1 == pipe2(xx, O_CLOEXEC | O_NONBLOCK)) {
@@ -1277,13 +1263,13 @@ first_fork_routine(void *void_args)
 		goto fail;
 	}
 
-	linted_ko_close(vfork_err_writer);
+	lntd_ko_close(vfork_err_writer);
 
 	{
 		size_t xx;
-		linted_error yy;
-		err = linted_io_read_all(vfork_err_reader, &xx, &yy,
-		                         sizeof yy);
+		lntd_error yy;
+		err = lntd_io_read_all(vfork_err_reader, &xx, &yy,
+		                       sizeof yy);
 		if (err != 0)
 			goto fail;
 
@@ -1295,49 +1281,49 @@ first_fork_routine(void *void_args)
 	if (err != 0)
 		goto fail;
 
-	err = safe_dup2(logger_reader, LINTED_KO_STDIN);
+	err = safe_dup2(logger_reader, LNTD_KO_STDIN);
 	if (err != 0)
 		goto fail;
 
 	{
 		char const *const arguments[] = {waiter_base, 0};
 		if (mount_args_size > 0U) {
-			err = linted_execveat(waiter_ko, "",
-			                      (char **)arguments,
-			                      environ, AT_EMPTY_PATH);
+			err = lntd_execveat(waiter_ko, "",
+			                    (char **)arguments, environ,
+			                    AT_EMPTY_PATH);
 		} else {
 			execve(waiter, (char *const *)arguments,
 			       environ);
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 		}
 	}
 
 fail : {
-	linted_error xx = err;
-	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
+	lntd_error xx = err;
+	lntd_io_write_all(err_writer, 0, &xx, sizeof xx);
 }
 	return EXIT_FAILURE;
 }
 
-LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
+LNTD_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 {
-	linted_error err;
+	lntd_error err;
 
 	struct second_fork_args const *args = arg;
 
 	int_least64_t *limit_no_file = args->limit_no_file;
-	linted_ko err_writer = args->err_writer;
-	linted_ko logger_writer = args->logger_writer;
+	lntd_ko err_writer = args->err_writer;
+	lntd_ko logger_writer = args->logger_writer;
 	char const *const *argv = args->argv;
 	scmp_filter_ctx seccomp_context = args->seccomp_context;
 	char const *binary = args->binary;
 
-	err = safe_dup2(logger_writer, LINTED_KO_STDOUT);
+	err = safe_dup2(logger_writer, LNTD_KO_STDOUT);
 	if (err != 0)
 		goto fail;
 
-	err = safe_dup2(logger_writer, LINTED_KO_STDERR);
+	err = safe_dup2(logger_writer, LNTD_KO_STDERR);
 	if (err != 0)
 		goto fail;
 
@@ -1349,9 +1335,9 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 
 		if (-1 == setrlimit(RLIMIT_NOFILE, &lim)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
-			LINTED_ASSERT(err != EINVAL);
+			LNTD_ASSERT(err != EINVAL);
 			goto fail;
 		}
 	}
@@ -1366,11 +1352,11 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	if (use_seccomp) {
 		if (-1 == prctl(PR_SET_SECCOMP,
 		                (unsigned long)SECCOMP_MODE_FILTER,
-		                linted_sandbox_filter, 0UL, 0UL)) {
+		                lntd_sandbox_filter, 0UL, 0UL)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
-			LINTED_ASSERT(err != EINVAL);
+			LNTD_ASSERT(err != EINVAL);
 			goto fail;
 		}
 	}
@@ -1380,16 +1366,16 @@ LINTED_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	err = errno;
 
 fail : {
-	linted_error xx = err;
-	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
+	lntd_error xx = err;
+	lntd_io_write_all(err_writer, 0, &xx, sizeof xx);
 }
 	return EXIT_FAILURE;
 }
 
-LINTED_NO_SANITIZE_ADDRESS static linted_error
+LNTD_NO_SANITIZE_ADDRESS static lntd_error
 mount_directories(struct mount_args const *mount_args, size_t size)
 {
-	linted_error err;
+	lntd_error err;
 
 	for (size_t ii = 0U; ii < size; ++ii) {
 		struct mount_args const *arg = &mount_args[ii];
@@ -1403,8 +1389,8 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 		unsigned long mountflags = arg->mountflags;
 
 		if (mkdir_flag) {
-			err = linted_dir_create(0, LINTED_KO_CWD, dir,
-			                        0U, S_IRWXU);
+			err = lntd_dir_create(0, LNTD_KO_CWD, dir, 0U,
+			                      S_IRWXU);
 			if (err != 0)
 				return err;
 		} else if (touch_flag) {
@@ -1417,8 +1403,8 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 				if (0 == xx)
 					break;
 				*xx = '\0';
-				err = linted_dir_create(
-				    0, LINTED_KO_CWD, dir, 0U, S_IRWXU);
+				err = lntd_dir_create(0, LNTD_KO_CWD,
+				                      dir, 0U, S_IRWXU);
 				if (EEXIST == err)
 					err = 0;
 				if (err != 0)
@@ -1427,8 +1413,8 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 				++xx;
 			}
 
-			err = linted_file_create(0, LINTED_KO_CWD, dir,
-			                         0U, S_IRWXU);
+			err = lntd_file_create(0, LNTD_KO_CWD, dir, 0U,
+			                       S_IRWXU);
 			if (err != 0)
 				return err;
 		}
@@ -1442,7 +1428,7 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 			if (-1 == mount(fsname, dir, type, mountflags,
 			                data)) {
 				err = errno;
-				LINTED_ASSUME(err != 0);
+				LNTD_ASSUME(err != 0);
 				return err;
 			}
 			continue;
@@ -1450,7 +1436,7 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 
 		if (-1 == mount(fsname, dir, type, aliasflags, 0)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 
@@ -1460,7 +1446,7 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 		if (-1 == mount(fsname, dir, type,
 		                MS_REMOUNT | mountflags, data)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 	}
@@ -1485,7 +1471,7 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 	if (-1 == fchdir(old_root))
 		return errno;
 
-	err = linted_ko_close(old_root);
+	err = lntd_ko_close(old_root);
 	if (err != 0)
 		return err;
 
@@ -1528,12 +1514,13 @@ static char const *const mount_options[] =
      [NOEXEC] = "noexec",      /**/
      0};
 
-static linted_error
-parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
-                 bool *nomount_flagp, unsigned long *mountflagsp,
-                 char const **leftoversp)
+static lntd_error parse_mount_opts(char const *opts, bool *mkdir_flagp,
+                                   bool *touch_flagp,
+                                   bool *nomount_flagp,
+                                   unsigned long *mountflagsp,
+                                   char const **leftoversp)
 {
-	linted_error err;
+	lntd_error err;
 
 	bool nomount_flag = false;
 	bool touch_flag = false;
@@ -1552,7 +1539,7 @@ parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
 	char *subopts_str;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, opts);
+		err = lntd_str_dup(&xx, opts);
 		if (err != 0)
 			return err;
 		subopts_str = xx;
@@ -1632,7 +1619,7 @@ parse_mount_opts(char const *opts, bool *mkdir_flagp, bool *touch_flagp,
 	}
 
 free_subopts_str:
-	linted_mem_free(subopts_str);
+	lntd_mem_free(subopts_str);
 
 	if (readwrite && readonly)
 		return EINVAL;
@@ -1698,24 +1685,23 @@ free_subopts_str:
 	return 0;
 }
 
-LINTED_NO_SANITIZE_ADDRESS static linted_error
-set_child_subreaper(bool v)
+LNTD_NO_SANITIZE_ADDRESS static lntd_error set_child_subreaper(bool v)
 {
-	linted_error err;
+	lntd_error err;
 
 	if (-1 == prctl(PR_SET_CHILD_SUBREAPER, (unsigned long)v, 0UL,
 	                0UL, 0UL)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 
 	return 0;
 }
 
-static linted_error safe_dup2(int oldfd, int newfd)
+static lntd_error safe_dup2(int oldfd, int newfd)
 {
-	linted_error err;
+	lntd_error err;
 	/*
 	 * The state of a file descriptor after close gives an EINTR
 	 * error is unspecified by POSIX so this function avoids the
@@ -1735,13 +1721,12 @@ static linted_error safe_dup2(int oldfd, int newfd)
 
 	if (-1 == dup2(oldfd, newfd)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	} else {
 		err = 0;
 	}
 
-	linted_error mask_err =
-	    pthread_sigmask(SIG_SETMASK, &sigset, 0);
+	lntd_error mask_err = pthread_sigmask(SIG_SETMASK, &sigset, 0);
 	if (0 == err)
 		err = mask_err;
 
@@ -1751,7 +1736,7 @@ static linted_error safe_dup2(int oldfd, int newfd)
 /* Most compilers can't handle the weirdness of vfork so contain it in
  * a safe abstraction.
  */
-LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
+LNTD_NOINLINE LNTD_NOCLONE LNTD_NO_SANITIZE_ADDRESS static pid_t
 safe_vfork(int (*volatile f)(void *), void *volatile arg)
 {
 	pid_t child = vfork();
@@ -1760,15 +1745,15 @@ safe_vfork(int (*volatile f)(void *), void *volatile arg)
 	return child;
 }
 
-LINTED_NO_SANITIZE_ADDRESS static int
-my_pivot_root(char const *new_root, char const *put_old)
+LNTD_NO_SANITIZE_ADDRESS static int my_pivot_root(char const *new_root,
+                                                  char const *put_old)
 {
 	return syscall(__NR_pivot_root, new_root, put_old);
 }
 
-static linted_error parse_int(char const *str, int *resultp)
+static lntd_error parse_int(char const *str, int *resultp)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	char start = str[0U];
 
@@ -1800,68 +1785,68 @@ static linted_error parse_int(char const *str, int *resultp)
 	return 0;
 }
 
-static linted_error do_help(linted_ko ko, char const *process_name,
-                            char const *package_name,
-                            char const *package_url,
-                            char const *package_bugreport)
+static lntd_error do_help(lntd_ko ko, char const *process_name,
+                          char const *package_name,
+                          char const *package_url,
+                          char const *package_bugreport)
 {
-	linted_error err;
+	lntd_error err;
 
-	err = linted_io_write_string(ko, 0, "Usage: ");
+	err = lntd_io_write_string(ko, 0, "Usage: ");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, process_name);
+	err = lntd_io_write_string(ko, 0, process_name);
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, " [OPTIONS]\n");
+	err = lntd_io_write_string(ko, 0, " [OPTIONS]\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "Play the game.\n");
+	err = lntd_io_write_string(ko, 0, "Play the game.\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "\n");
+	err = lntd_io_write_string(ko, 0, "\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "\
+	err = lntd_io_write_string(ko, 0, "\
   --help              display this help and exit\n\
   --version           display version information and exit\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "\n");
+	err = lntd_io_write_string(ko, 0, "\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, "Report bugs to <");
+	err = lntd_io_write_string(ko, 0, "Report bugs to <");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, package_bugreport);
+	err = lntd_io_write_string(ko, 0, package_bugreport);
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, ">\n");
+	err = lntd_io_write_string(ko, 0, ">\n");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, package_name);
+	err = lntd_io_write_string(ko, 0, package_name);
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, " home page: <");
+	err = lntd_io_write_string(ko, 0, " home page: <");
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, package_url);
+	err = lntd_io_write_string(ko, 0, package_url);
 	if (err != 0)
 		return err;
 
-	err = linted_io_write_string(ko, 0, ">\n");
+	err = lntd_io_write_string(ko, 0, ">\n");
 	if (err != 0)
 		return err;
 

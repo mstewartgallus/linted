@@ -17,14 +17,14 @@
 
 #include "config.h"
 
-#include "linted/signal.h"
+#include "lntd/signal.h"
 
-#include "linted/async.h"
-#include "linted/error.h"
-#include "linted/fifo.h"
-#include "linted/ko.h"
-#include "linted/mem.h"
-#include "linted/util.h"
+#include "lntd/async.h"
+#include "lntd/error.h"
+#include "lntd/fifo.h"
+#include "lntd/ko.h"
+#include "lntd/mem.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <poll.h>
@@ -36,24 +36,24 @@
 #include <signal.h>
 #include <unistd.h>
 
-enum { LINTED_SIGNAL_HUP,
-       LINTED_SIGNAL_CHLD,
-       LINTED_SIGNAL_INT,
-       LINTED_SIGNAL_TERM,
-       LINTED_SIGNAL_QUIT,
+enum { LNTD_SIGNAL_HUP,
+       LNTD_SIGNAL_CHLD,
+       LNTD_SIGNAL_INT,
+       LNTD_SIGNAL_TERM,
+       LNTD_SIGNAL_QUIT,
        NUM_SIGS };
 
-static linted_ko sigpipe_reader = (linted_ko)-1;
-static linted_ko sigpipe_writer = (linted_ko)-1;
+static lntd_ko sigpipe_reader = (lntd_ko)-1;
+static lntd_ko sigpipe_writer = (lntd_ko)-1;
 
-struct linted_signal_task_wait {
-	struct linted_async_task *parent;
-	struct linted_async_waiter *waiter;
+struct lntd_signal_task_wait {
+	struct lntd_async_task *parent;
+	struct lntd_async_waiter *waiter;
 	void *data;
 	int signo;
 };
 
-static void write_one(linted_ko ko);
+static void write_one(lntd_ko ko);
 
 static void report_sigchld(int signo);
 static void report_sighup(int signo);
@@ -67,31 +67,31 @@ static atomic_bool sigint_signalled;
 static atomic_bool sigquit_signalled;
 static atomic_bool sigterm_signalled;
 
-static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
-                                      [LINTED_SIGNAL_CHLD] = SIGCHLD,
-                                      [LINTED_SIGNAL_INT] = SIGINT,
-                                      [LINTED_SIGNAL_QUIT] = SIGQUIT,
-                                      [LINTED_SIGNAL_TERM] = SIGTERM};
+static int const signals[NUM_SIGS] = {[LNTD_SIGNAL_HUP] = SIGHUP,
+                                      [LNTD_SIGNAL_CHLD] = SIGCHLD,
+                                      [LNTD_SIGNAL_INT] = SIGINT,
+                                      [LNTD_SIGNAL_QUIT] = SIGQUIT,
+                                      [LNTD_SIGNAL_TERM] = SIGTERM};
 
 static void (*const sighandlers[NUM_SIGS])(
-    int) = {[LINTED_SIGNAL_HUP] = report_sighup,
-            [LINTED_SIGNAL_CHLD] = report_sigchld,
-            [LINTED_SIGNAL_INT] = report_sigint,
-            [LINTED_SIGNAL_QUIT] = report_sigquit,
-            [LINTED_SIGNAL_TERM] = report_sigterm};
+    int) = {[LNTD_SIGNAL_HUP] = report_sighup,
+            [LNTD_SIGNAL_CHLD] = report_sigchld,
+            [LNTD_SIGNAL_INT] = report_sigint,
+            [LNTD_SIGNAL_QUIT] = report_sigquit,
+            [LNTD_SIGNAL_TERM] = report_sigterm};
 
 static void *signal_routine(void *arg);
 
-linted_error linted_signal_init(void)
+lntd_error lntd_signal_init(void)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_ko reader;
-	linted_ko writer;
+	lntd_ko reader;
+	lntd_ko writer;
 	{
-		linted_ko xx;
-		linted_ko yy;
-		err = linted_fifo_pair(&xx, &yy, 0);
+		lntd_ko xx;
+		lntd_ko yy;
+		err = lntd_fifo_pair(&xx, &yy, 0);
 		if (err != 0)
 			return err;
 		reader = xx;
@@ -104,7 +104,7 @@ linted_error linted_signal_init(void)
 	{
 		sigset_t set;
 		sigemptyset(&set);
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(signals);
+		for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(signals);
 		     ++ii) {
 			sigaddset(&set, signals[ii]);
 		}
@@ -122,38 +122,38 @@ linted_error linted_signal_init(void)
 	return 0;
 
 close_fifos:
-	linted_ko_close(reader);
-	linted_ko_close(writer);
+	lntd_ko_close(reader);
+	lntd_ko_close(writer);
 
 	return err;
 }
 
-linted_error
-linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
-                               void *data)
+lntd_error
+lntd_signal_task_wait_create(struct lntd_signal_task_wait **taskp,
+                             void *data)
 {
-	linted_error err;
-	struct linted_signal_task_wait *task;
+	lntd_error err;
+	struct lntd_signal_task_wait *task;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *task);
+		err = lntd_mem_alloc(&xx, sizeof *task);
 		if (err != 0)
 			return err;
 		task = xx;
 	}
-	struct linted_async_task *parent;
+	struct lntd_async_task *parent;
 	{
-		struct linted_async_task *xx;
-		err = linted_async_task_create(
-		    &xx, task, LINTED_ASYNCH_TASK_SIGNAL_WAIT);
+		struct lntd_async_task *xx;
+		err = lntd_async_task_create(
+		    &xx, task, LNTD_ASYNCH_TASK_SIGNAL_WAIT);
 		if (err != 0)
 			goto free_task;
 		parent = xx;
 	}
-	struct linted_async_waiter *waiter;
+	struct lntd_async_waiter *waiter;
 	{
-		struct linted_async_waiter *xx;
-		err = linted_async_waiter_create(&xx);
+		struct lntd_async_waiter *xx;
+		err = lntd_async_waiter_create(&xx);
 		if (err != 0)
 			goto free_parent;
 		waiter = xx;
@@ -164,52 +164,51 @@ linted_signal_task_wait_create(struct linted_signal_task_wait **taskp,
 	*taskp = task;
 	return 0;
 free_parent:
-	linted_async_task_destroy(parent);
+	lntd_async_task_destroy(parent);
 free_task:
-	linted_mem_free(task);
+	lntd_mem_free(task);
 	return err;
 }
 
-void linted_signal_task_wait_destroy(
-    struct linted_signal_task_wait *task)
+void lntd_signal_task_wait_destroy(struct lntd_signal_task_wait *task)
 {
-	linted_async_waiter_destroy(task->waiter);
-	linted_async_task_destroy(task->parent);
-	linted_mem_free(task);
+	lntd_async_waiter_destroy(task->waiter);
+	lntd_async_task_destroy(task->parent);
+	lntd_mem_free(task);
 }
 
-void *linted_signal_task_wait_data(struct linted_signal_task_wait *task)
+void *lntd_signal_task_wait_data(struct lntd_signal_task_wait *task)
 {
 	return task->data;
 }
 
-int linted_signal_task_wait_signo(struct linted_signal_task_wait *task)
+int lntd_signal_task_wait_signo(struct lntd_signal_task_wait *task)
 {
 	return task->signo;
 }
 
-struct linted_async_task *
-linted_signal_task_wait_prepare(struct linted_signal_task_wait *task,
-                                union linted_async_ck task_ck,
-                                void *userstate)
+struct lntd_async_task *
+lntd_signal_task_wait_prepare(struct lntd_signal_task_wait *task,
+                              union lntd_async_ck task_ck,
+                              void *userstate)
 {
-	return linted_async_task_prepare(task->parent, task_ck,
-	                                 userstate);
+	return lntd_async_task_prepare(task->parent, task_ck,
+	                               userstate);
 }
 
-struct linted_async_task *
-linted_signal_task_wait_to_async(struct linted_signal_task_wait *task)
+struct lntd_async_task *
+lntd_signal_task_wait_to_async(struct lntd_signal_task_wait *task)
 {
 	return task->parent;
 }
 
-void linted_signal_do_wait(struct linted_async_pool *pool,
-                           struct linted_async_task *task)
+void lntd_signal_do_wait(struct lntd_async_pool *pool,
+                         struct lntd_async_task *task)
 {
-	struct linted_signal_task_wait *task_wait =
-	    linted_async_task_data(task);
-	linted_error err = 0;
-	struct linted_async_waiter *waiter = task_wait->waiter;
+	struct lntd_signal_task_wait *task_wait =
+	    lntd_async_task_data(task);
+	lntd_error err = 0;
+	struct lntd_async_waiter *waiter = task_wait->waiter;
 
 	int signo = -1;
 
@@ -217,7 +216,7 @@ void linted_signal_do_wait(struct linted_async_pool *pool,
 		static char dummy;
 		if (-1 == read(sigpipe_reader, &dummy, sizeof dummy)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
 			if (EAGAIN == err)
 				break;
@@ -269,20 +268,20 @@ complete:
 		write_one(sigpipe_writer);
 	}
 
-	linted_async_pool_complete(pool, task, err);
+	lntd_async_pool_complete(pool, task, err);
 	return;
 
 resubmit:
-	linted_async_pool_resubmit(pool, task);
+	lntd_async_pool_resubmit(pool, task);
 	return;
 
 wait_on_poll:
-	linted_async_pool_wait_on_poll(pool, waiter, task,
-	                               sigpipe_reader, POLLIN);
+	lntd_async_pool_wait_on_poll(pool, waiter, task, sigpipe_reader,
+	                             POLLIN);
 }
 
 #if defined __GLIBC__
-char const *linted_signal_string(int signo)
+char const *lntd_signal_string(int signo)
 {
 	/* GLibc's strsignal can allocate memory on unknown values
 	 * which is wrong and bad. */
@@ -296,36 +295,36 @@ char const *linted_signal_string(int signo)
 	return strsignal(signo);
 }
 #else
-char const *linted_signal_string(int signo)
+char const *lntd_signal_string(int signo)
 {
 	return strsignal(signo);
 }
 #endif
 static void listen_to_signal(size_t ii);
 
-void linted_signal_listen_to_sigchld(void)
+void lntd_signal_listen_to_sigchld(void)
 {
-	listen_to_signal(LINTED_SIGNAL_CHLD);
+	listen_to_signal(LNTD_SIGNAL_CHLD);
 }
 
-void linted_signal_listen_to_sighup(void)
+void lntd_signal_listen_to_sighup(void)
 {
-	listen_to_signal(LINTED_SIGNAL_HUP);
+	listen_to_signal(LNTD_SIGNAL_HUP);
 }
 
-void linted_signal_listen_to_sigint(void)
+void lntd_signal_listen_to_sigint(void)
 {
-	listen_to_signal(LINTED_SIGNAL_INT);
+	listen_to_signal(LNTD_SIGNAL_INT);
 }
 
-void linted_signal_listen_to_sigquit(void)
+void lntd_signal_listen_to_sigquit(void)
 {
-	listen_to_signal(LINTED_SIGNAL_QUIT);
+	listen_to_signal(LNTD_SIGNAL_QUIT);
 }
 
-void linted_signal_listen_to_sigterm(void)
+void lntd_signal_listen_to_sigterm(void)
 {
-	listen_to_signal(LINTED_SIGNAL_TERM);
+	listen_to_signal(LNTD_SIGNAL_TERM);
 }
 
 static void *signal_routine(void *arg)
@@ -333,14 +332,13 @@ static void *signal_routine(void *arg)
 	{
 		sigset_t set;
 		sigemptyset(&set);
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(signals);
+		for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(signals);
 		     ++ii) {
 			sigaddset(&set, signals[ii]);
 		}
 
-		linted_error err =
-		    pthread_sigmask(SIG_UNBLOCK, &set, 0);
-		LINTED_ASSERT(0 == err);
+		lntd_error err = pthread_sigmask(SIG_UNBLOCK, &set, 0);
+		LNTD_ASSERT(0 == err);
 	}
 
 	for (;;)
@@ -349,7 +347,7 @@ static void *signal_routine(void *arg)
 
 static void listen_to_signal(size_t n)
 {
-	linted_error err;
+	lntd_error err;
 	int signo = signals[n];
 	void (*handler)(int) = sighandlers[n];
 
@@ -366,20 +364,20 @@ static void listen_to_signal(size_t n)
 	/* Block SIGPIPEs to get EPIPEs */
 	sigaddset(&action.sa_mask, SIGPIPE);
 	/* Block the other kill signals for less unpredictability */
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(signals); ++ii) {
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(signals); ++ii) {
 		sigaddset(&action.sa_mask, signals[ii]);
 	}
 
 	if (-1 == sigaction(signo, &action, 0)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
-		LINTED_ASSERT(false);
+		LNTD_ASSUME(err != 0);
+		LNTD_ASSERT(false);
 	}
 }
 
 static void report_sigchld(int signo)
 {
-	linted_error err = errno;
+	lntd_error err = errno;
 	atomic_store_explicit(&sigchld_signalled, 1,
 	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
@@ -388,7 +386,7 @@ static void report_sigchld(int signo)
 
 static void report_sighup(int signo)
 {
-	linted_error err = errno;
+	lntd_error err = errno;
 	atomic_store_explicit(&sighup_signalled, 1,
 	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
@@ -397,7 +395,7 @@ static void report_sighup(int signo)
 
 static void report_sigint(int signo)
 {
-	linted_error err = errno;
+	lntd_error err = errno;
 	atomic_store_explicit(&sigint_signalled, 1,
 	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
@@ -406,7 +404,7 @@ static void report_sigint(int signo)
 
 static void report_sigquit(int signo)
 {
-	linted_error err = errno;
+	lntd_error err = errno;
 	atomic_store_explicit(&sigquit_signalled, 1,
 	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
@@ -415,16 +413,16 @@ static void report_sigquit(int signo)
 
 static void report_sigterm(int signo)
 {
-	linted_error err = errno;
+	lntd_error err = errno;
 	atomic_store_explicit(&sigterm_signalled, 1,
 	                      memory_order_seq_cst);
 	write_one(sigpipe_writer);
 	errno = err;
 }
 
-static void write_one(linted_ko ko)
+static void write_one(lntd_ko ko)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	static char const dummy;
 
@@ -432,7 +430,7 @@ static void write_one(linted_ko ko)
 		ssize_t result = write(ko, &dummy, 1U);
 		if (-1 == result) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 		}
 
 		if (0 == result)
@@ -449,17 +447,17 @@ static void write_one(linted_ko ko)
 	if (EWOULDBLOCK == err)
 		err = 0;
 
-	LINTED_ASSERT(err != EBADF);
-	LINTED_ASSERT(err != EDESTADDRREQ);
-	LINTED_ASSERT(err != EDQUOT);
-	LINTED_ASSERT(err != EFAULT);
-	LINTED_ASSERT(err != EFBIG);
-	LINTED_ASSERT(err != EINVAL);
-	LINTED_ASSERT(err != EIO);
-	LINTED_ASSERT(err != ENOSPC);
+	LNTD_ASSERT(err != EBADF);
+	LNTD_ASSERT(err != EDESTADDRREQ);
+	LNTD_ASSERT(err != EDQUOT);
+	LNTD_ASSERT(err != EFAULT);
+	LNTD_ASSERT(err != EFBIG);
+	LNTD_ASSERT(err != EINVAL);
+	LNTD_ASSERT(err != EIO);
+	LNTD_ASSERT(err != ENOSPC);
 
 	/* EPIPE should never happen because SIGPIPE is blocked */
-	LINTED_ASSERT(err != EPIPE);
+	LNTD_ASSERT(err != EPIPE);
 
-	LINTED_ASSERT(0 == err);
+	LNTD_ASSERT(0 == err);
 }

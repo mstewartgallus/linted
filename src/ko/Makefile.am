@@ -16,10 +16,10 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libko.la
-%C%_libko_la_SOURCES=include/linted/ko.h
+%C%_libko_la_SOURCES=include/lntd/ko.h
 EXTRA_%C%_libko_la_SOURCES=\
-  include/linted/ko-posix.h\
-  include/linted/ko-windows.h
+  include/lntd/ko-posix.h\
+  include/lntd/ko-windows.h
 %C%_libko_la_LIBADD=
 
 if POSIX_API

@@ -25,13 +25,13 @@
 
 #include "config.h"
 
-#include "linted/ko.h"
+#include "lntd/ko.h"
 
-#include "linted/mem.h"
-#include "linted/error.h"
-#include "linted/str.h"
-#include "linted/utf.h"
-#include "linted/util.h"
+#include "lntd/mem.h"
+#include "lntd/error.h"
+#include "lntd/str.h"
+#include "lntd/utf.h"
+#include "lntd/util.h"
 
 #include <direct.h>
 #include <limits.h>
@@ -42,41 +42,41 @@
 #include <winsock2.h>
 #include <windows.h>
 
-linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
-                            char const *pathname, unsigned long flags)
+lntd_error lntd_ko_open(lntd_ko *kop, lntd_ko dirko,
+                        char const *pathname, unsigned long flags)
 {
-	linted_error err;
+	lntd_error err;
 
-	if ((flags & ~LINTED_KO_RDONLY & ~LINTED_KO_WRONLY &
-	     ~LINTED_KO_RDWR & ~LINTED_KO_APPEND & ~LINTED_KO_SYNC &
-	     ~LINTED_KO_DIRECTORY) != 0U)
-		return LINTED_ERROR_INVALID_PARAMETER;
+	if ((flags & ~LNTD_KO_RDONLY & ~LNTD_KO_WRONLY & ~LNTD_KO_RDWR &
+	     ~LNTD_KO_APPEND & ~LNTD_KO_SYNC & ~LNTD_KO_DIRECTORY) !=
+	    0U)
+		return LNTD_ERROR_INVALID_PARAMETER;
 
-	bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0U;
-	bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0U;
-	bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0U;
+	bool ko_rdonly = (flags & LNTD_KO_RDONLY) != 0U;
+	bool ko_wronly = (flags & LNTD_KO_WRONLY) != 0U;
+	bool ko_rdwr = (flags & LNTD_KO_RDWR) != 0U;
 
-	bool ko_append = (flags & LINTED_KO_APPEND) != 0U;
-	bool ko_sync = (flags & LINTED_KO_SYNC) != 0U;
+	bool ko_append = (flags & LNTD_KO_APPEND) != 0U;
+	bool ko_sync = (flags & LNTD_KO_SYNC) != 0U;
 
-	bool ko_directory = (flags & LINTED_KO_DIRECTORY) != 0U;
+	bool ko_directory = (flags & LNTD_KO_DIRECTORY) != 0U;
 
 	if (ko_rdonly && ko_wronly)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (ko_rdwr && ko_rdonly)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (ko_rdwr && ko_wronly)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (ko_append && !ko_wronly)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if ((ko_directory && ko_rdonly) ||
 	    (ko_directory && ko_wronly) || (ko_directory && ko_rdwr) ||
 	    (ko_directory && ko_sync))
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	DWORD desired_access = 0;
 
@@ -92,7 +92,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	char *real_path;
 	{
 		char *xx;
-		err = linted_ko_real_path(&xx, dirko, pathname);
+		err = lntd_ko_real_path(&xx, dirko, pathname);
 		if (err != 0)
 			return err;
 		real_path = xx;
@@ -101,23 +101,23 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	wchar_t *pathname_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(real_path, &xx);
+		err = lntd_utf_1_to_2(real_path, &xx);
 		if (err != 0)
 			goto free_real_path;
 		pathname_utf2 = xx;
 	}
 
-	linted_ko ko = CreateFile(pathname_utf2, desired_access, 0, 0,
-	                          OPEN_EXISTING, 0, 0);
+	lntd_ko ko = CreateFile(pathname_utf2, desired_access, 0, 0,
+	                        OPEN_EXISTING, 0, 0);
 	if (INVALID_HANDLE_VALUE == ko) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	}
 
-	linted_mem_free(pathname_utf2);
+	lntd_mem_free(pathname_utf2);
 
 free_real_path:
-	linted_mem_free(real_path);
+	lntd_mem_free(real_path);
 
 	if (err != 0)
 		return err;
@@ -127,49 +127,49 @@ free_real_path:
 	return 0;
 }
 
-linted_error linted_ko_close(linted_ko ko)
+lntd_error lntd_ko_close(lntd_ko ko)
 {
-	linted_error err;
+	lntd_error err;
 
 	if (SOCKET_ERROR == closesocket((uintptr_t)ko)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 		if (err != WSAENOTSOCK)
 			return err;
 	}
 
 	if (!CloseHandle(ko)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 
 	return 0;
 }
 
-linted_ko linted_ko__get_stdin(void)
+lntd_ko lntd_ko__get_stdin(void)
 {
-	return (linted_ko)GetStdHandle(STD_INPUT_HANDLE);
+	return (lntd_ko)GetStdHandle(STD_INPUT_HANDLE);
 }
 
-linted_ko linted_ko__get_stdout(void)
+lntd_ko lntd_ko__get_stdout(void)
 {
-	return (linted_ko)GetStdHandle(STD_OUTPUT_HANDLE);
+	return (lntd_ko)GetStdHandle(STD_OUTPUT_HANDLE);
 }
 
-linted_ko linted_ko__get_stderr(void)
+lntd_ko lntd_ko__get_stderr(void)
 {
-	return (linted_ko)GetStdHandle(STD_ERROR_HANDLE);
+	return (lntd_ko)GetStdHandle(STD_ERROR_HANDLE);
 }
 
-linted_error linted_ko_change_directory(char const *pathname)
+lntd_error lntd_ko_change_directory(char const *pathname)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	wchar_t *pathname_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(pathname, &xx);
+		err = lntd_utf_1_to_2(pathname, &xx);
 		if (err != 0)
 			return err;
 		pathname_utf2 = xx;
@@ -177,22 +177,22 @@ linted_error linted_ko_change_directory(char const *pathname)
 
 	if (!SetCurrentDirectoryW(pathname_utf2)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	}
 
-	linted_mem_free(pathname_utf2);
+	lntd_mem_free(pathname_utf2);
 
 	return err;
 }
 
-linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
+lntd_error lntd_ko_symlink(char const *oldpath, char const *newpath)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	wchar_t *oldpath_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(oldpath, &xx);
+		err = lntd_utf_1_to_2(oldpath, &xx);
 		if (err != 0)
 			return err;
 		oldpath_utf2 = xx;
@@ -201,7 +201,7 @@ linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
 	wchar_t *newpath_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(newpath, &xx);
+		err = lntd_utf_1_to_2(newpath, &xx);
 		if (err != 0)
 			goto free_oldpath;
 		newpath_utf2 = xx;
@@ -210,36 +210,36 @@ linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
 	if (!CreateSymbolicLinkW(newpath_utf2, oldpath_utf2,
 	                         SYMBOLIC_LINK_FLAG_DIRECTORY)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	}
 
-	linted_mem_free(newpath_utf2);
+	lntd_mem_free(newpath_utf2);
 
 free_oldpath:
-	linted_mem_free(oldpath_utf2);
+	lntd_mem_free(oldpath_utf2);
 
 	return err;
 }
 
 /**
- * @bug Windows NT: work on directories other than `LINTED_KO_CWD`
+ * @bug Windows NT: work on directories other than `LNTD_KO_CWD`
  * @bug Windows NT: actually resolve the path
  */
-linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
-                                 char const *pathname)
+lntd_error lntd_ko_real_path(char **resultp, lntd_ko dirko,
+                             char const *pathname)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	LINTED_ASSERT(resultp != 0);
-	LINTED_ASSERT(pathname != 0);
+	LNTD_ASSERT(resultp != 0);
+	LNTD_ASSERT(pathname != 0);
 
-	if (dirko != LINTED_KO_CWD)
-		return LINTED_ERROR_INVALID_PARAMETER;
+	if (dirko != LNTD_KO_CWD)
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	char *result;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, pathname);
+		err = lntd_str_dup(&xx, pathname);
 		if (err != 0)
 			return err;
 		result = xx;

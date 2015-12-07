@@ -19,15 +19,15 @@
 
 #include "sim.h"
 
-#include "linted/async.h"
-#include "linted/controller.h"
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/log.h"
-#include "linted/sched.h"
-#include "linted/start.h"
-#include "linted/updater.h"
-#include "linted/util.h"
+#include "lntd/async.h"
+#include "lntd/controller.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
+#include "lntd/log.h"
+#include "lntd/sched.h"
+#include "lntd/start.h"
+#include "lntd/updater.h"
+#include "lntd/util.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -95,40 +95,39 @@ struct state {
 struct sim {
 	struct state state;
 	struct intent intent;
-	struct linted_async_pool *pool;
-	struct linted_updater_task_send *updater_task;
-	struct linted_controller_task_recv *controller_task;
-	struct linted_sched_task_sleep_until *tick_task;
-	linted_ko updater;
-	linted_ko controller;
+	struct lntd_async_pool *pool;
+	struct lntd_updater_task_send *updater_task;
+	struct lntd_controller_task_recv *controller_task;
+	struct lntd_sched_task_sleep_until *tick_task;
+	lntd_ko updater;
+	lntd_ko controller;
 };
 
-static linted_error sim_init(struct sim *sim,
-                             struct linted_async_pool *pool,
-                             char const *controller_path,
-                             char const *updater_path);
-static linted_error sim_stop(struct sim *sim);
-static linted_error sim_destroy(struct sim *sim);
+static lntd_error sim_init(struct sim *sim,
+                           struct lntd_async_pool *pool,
+                           char const *controller_path,
+                           char const *updater_path);
+static lntd_error sim_stop(struct sim *sim);
+static lntd_error sim_destroy(struct sim *sim);
 
-static linted_error dispatch(struct sim *sim, union linted_async_ck ck,
-                             void *userstate, linted_error err);
-static linted_error
+static lntd_error dispatch(struct sim *sim, union lntd_async_ck ck,
+                           void *userstate, lntd_error err);
+static lntd_error
 sim_on_tick(struct sim *sim,
-            struct linted_sched_task_sleep_until *timer_task,
-            linted_error err);
-static linted_error sim_on_controller_event(
-    struct sim *sim,
-    struct linted_controller_task_recv *controller_task,
-    linted_error err);
-static linted_error
+            struct lntd_sched_task_sleep_until *timer_task,
+            lntd_error err);
+static lntd_error sim_on_controller_event(
+    struct sim *sim, struct lntd_controller_task_recv *controller_task,
+    lntd_error err);
+static lntd_error
 sim_on_update(struct sim *sim,
-              struct linted_updater_task_send *updater_task,
-              linted_error err);
+              struct lntd_updater_task_send *updater_task,
+              lntd_error err);
 
-static void maybe_update(struct sim *sim, linted_updater updater,
+static void maybe_update(struct sim *sim, lntd_updater updater,
                          struct state *state,
-                         struct linted_updater_task_send *updater_task,
-                         struct linted_async_pool *pool);
+                         struct lntd_updater_task_send *updater_task,
+                         struct lntd_async_pool *pool);
 
 static void simulate_tick(struct state *state,
                           struct intent const *intent);
@@ -141,32 +140,32 @@ static sim_uint absolute(sim_int x);
 static sim_int min_int(sim_int x, sim_int y);
 static sim_int sign(sim_int x);
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator", 0};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	if (argc < 3U) {
-		linted_log(LINTED_LOG_ERROR,
-		           "missing some of 2 file operands");
+		lntd_log(LNTD_LOG_ERROR,
+		         "missing some of 2 file operands");
 		return EXIT_FAILURE;
 	}
 
 	char const *controller_path = argv[1U];
 	char const *updater_path = argv[2U];
 
-	struct linted_async_pool *pool;
+	struct lntd_async_pool *pool;
 	{
-		struct linted_async_pool *xx;
-		err = linted_async_pool_create(&xx, MAX_TASKS);
+		struct lntd_async_pool *xx;
+		err = lntd_async_pool_create(&xx, MAX_TASKS);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_async_pool_create: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR,
+			         "lntd_async_pool_create: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		pool = xx;
@@ -178,10 +177,10 @@ static unsigned char linted_start_main(char const *const process_name,
 		goto destroy_pool;
 
 	for (;;) {
-		struct linted_async_result result;
+		struct lntd_async_result result;
 		{
-			struct linted_async_result xx;
-			linted_async_pool_wait(pool, &xx);
+			struct lntd_async_result xx;
+			lntd_async_pool_wait(pool, &xx);
 			result = xx;
 		}
 
@@ -194,18 +193,18 @@ stop_simulator:
 	sim_stop(&sim);
 
 	for (;;) {
-		struct linted_async_result result;
-		linted_error poll_err;
+		struct lntd_async_result result;
+		lntd_error poll_err;
 		{
-			struct linted_async_result xx;
-			poll_err = linted_async_pool_poll(pool, &xx);
-			if (LINTED_ERROR_AGAIN == poll_err)
+			struct lntd_async_result xx;
+			poll_err = lntd_async_pool_poll(pool, &xx);
+			if (LNTD_ERROR_AGAIN == poll_err)
 				break;
 			result = xx;
 		}
 
-		linted_error dispatch_err = result.err;
-		if (0 == err && dispatch_err != LINTED_ERROR_CANCELLED)
+		lntd_error dispatch_err = result.err;
+		if (0 == err && dispatch_err != LNTD_ERROR_CANCELLED)
 			err = dispatch_err;
 	}
 
@@ -213,68 +212,67 @@ stop_simulator:
 
 destroy_pool:
 	;
-	linted_error destroy_err = linted_async_pool_destroy(pool);
+	lntd_error destroy_err = lntd_async_pool_destroy(pool);
 	if (0 == err)
 		err = destroy_err;
 
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "%s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "%s", lntd_error_string(err));
 		return EXIT_FAILURE;
 	}
 
 	return EXIT_SUCCESS;
 }
 
-static linted_error sim_init(struct sim *sim,
-                             struct linted_async_pool *pool,
-                             char const *controller_path,
-                             char const *updater_path)
+static lntd_error sim_init(struct sim *sim,
+                           struct lntd_async_pool *pool,
+                           char const *controller_path,
+                           char const *updater_path)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_controller controller;
+	lntd_controller controller;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     controller_path, LINTED_KO_RDWR);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, controller_path,
+		                   LNTD_KO_RDWR);
 		if (err != 0)
 			return err;
 		controller = xx;
 	}
 
-	linted_ko updater;
+	lntd_ko updater;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, updater_path,
-		                     LINTED_KO_RDWR);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, updater_path,
+		                   LNTD_KO_RDWR);
 		if (err != 0)
 			goto close_controller;
 		updater = xx;
 	}
 
-	struct linted_sched_task_sleep_until *tick_task;
+	struct lntd_sched_task_sleep_until *tick_task;
 	{
-		struct linted_sched_task_sleep_until *xx;
-		err = linted_sched_task_sleep_until_create(&xx, 0);
+		struct lntd_sched_task_sleep_until *xx;
+		err = lntd_sched_task_sleep_until_create(&xx, 0);
 		if (err != 0)
 			goto close_updater;
 		tick_task = xx;
 	}
 
-	struct linted_controller_task_recv *controller_task;
+	struct lntd_controller_task_recv *controller_task;
 	{
-		struct linted_controller_task_recv *xx;
-		err = linted_controller_task_recv_create(&xx, 0);
+		struct lntd_controller_task_recv *xx;
+		err = lntd_controller_task_recv_create(&xx, 0);
 		if (err != 0)
 			goto destroy_tick_task;
 		controller_task = xx;
 	}
 
-	struct linted_updater_task_send *updater_task;
+	struct lntd_updater_task_send *updater_task;
 	{
-		struct linted_updater_task_send *xx;
-		err = linted_updater_task_send_create(&xx, 0);
+		struct lntd_updater_task_send *xx;
+		err = lntd_updater_task_send_create(&xx, 0);
 		if (err != 0)
 			goto destroy_controller_task;
 		updater_task = xx;
@@ -300,92 +298,87 @@ static linted_error sim_init(struct sim *sim,
 
 	{
 		struct timespec now;
-		err = linted_sched_time(&now);
+		err = lntd_sched_time(&now);
 		if (err != 0)
 			goto destroy_updater_task;
 
-		linted_async_pool_submit(
+		lntd_async_pool_submit(
 		    pool,
-		    linted_sched_task_sleep_until_prepare(
+		    lntd_sched_task_sleep_until_prepare(
 		        tick_task,
-		        (union linted_async_ck){.u64 = ON_READ_TIMER},
+		        (union lntd_async_ck){.u64 = ON_READ_TIMER},
 		        tick_task, &now));
 	}
 
-	linted_async_pool_submit(
-	    pool, linted_controller_task_recv_prepare(
+	lntd_async_pool_submit(
+	    pool, lntd_controller_task_recv_prepare(
 	              controller_task,
-	              (union linted_async_ck){
+	              (union lntd_async_ck){
 	                  .u64 = ON_RECEIVE_CONTROLLER_EVENT},
 	              controller_task, controller));
 
 	return 0;
 
 destroy_updater_task:
-	linted_updater_task_send_destroy(updater_task);
+	lntd_updater_task_send_destroy(updater_task);
 
 destroy_controller_task:
-	linted_controller_task_recv_destroy(controller_task);
+	lntd_controller_task_recv_destroy(controller_task);
 
 destroy_tick_task:
-	linted_sched_task_sleep_until_destroy(tick_task);
+	lntd_sched_task_sleep_until_destroy(tick_task);
 
 close_updater:
-	linted_ko_close(updater);
+	lntd_ko_close(updater);
 
 close_controller:
-	linted_ko_close(controller);
+	lntd_ko_close(controller);
 
 	return err;
 }
 
-static linted_error sim_stop(struct sim *sim)
+static lntd_error sim_stop(struct sim *sim)
 {
-	struct linted_updater_task_send *updater_task =
-	    sim->updater_task;
-	struct linted_controller_task_recv *controller_task =
+	struct lntd_updater_task_send *updater_task = sim->updater_task;
+	struct lntd_controller_task_recv *controller_task =
 	    sim->controller_task;
-	struct linted_sched_task_sleep_until *tick_task =
-	    sim->tick_task;
+	struct lntd_sched_task_sleep_until *tick_task = sim->tick_task;
 
-	linted_async_task_cancel(
-	    linted_sched_task_sleep_until_to_async(tick_task));
-	linted_async_task_cancel(
-	    linted_controller_task_recv_to_async(controller_task));
-	linted_async_task_cancel(
-	    linted_updater_task_send_to_async(updater_task));
+	lntd_async_task_cancel(
+	    lntd_sched_task_sleep_until_to_async(tick_task));
+	lntd_async_task_cancel(
+	    lntd_controller_task_recv_to_async(controller_task));
+	lntd_async_task_cancel(
+	    lntd_updater_task_send_to_async(updater_task));
 
 	return 0;
 }
 
-static linted_error sim_destroy(struct sim *sim)
+static lntd_error sim_destroy(struct sim *sim)
 {
-	struct linted_updater_task_send *updater_task =
-	    sim->updater_task;
-	struct linted_controller_task_recv *controller_task =
+	struct lntd_updater_task_send *updater_task = sim->updater_task;
+	struct lntd_controller_task_recv *controller_task =
 	    sim->controller_task;
-	struct linted_sched_task_sleep_until *tick_task =
-	    sim->tick_task;
+	struct lntd_sched_task_sleep_until *tick_task = sim->tick_task;
 
-	linted_ko updater = sim->updater;
-	linted_ko controller = sim->controller;
+	lntd_ko updater = sim->updater;
+	lntd_ko controller = sim->controller;
 
-	linted_updater_task_send_destroy(updater_task);
+	lntd_updater_task_send_destroy(updater_task);
 
-	linted_controller_task_recv_destroy(controller_task);
+	lntd_controller_task_recv_destroy(controller_task);
 
-	linted_sched_task_sleep_until_destroy(tick_task);
+	lntd_sched_task_sleep_until_destroy(tick_task);
 
-	linted_ko_close(updater);
+	lntd_ko_close(updater);
 
-	linted_ko_close(controller);
+	lntd_ko_close(controller);
 
 	return 0;
 }
 
-static linted_error dispatch(struct sim *sim,
-                             union linted_async_ck task_ck,
-                             void *userstate, linted_error err)
+static lntd_error dispatch(struct sim *sim, union lntd_async_ck task_ck,
+                           void *userstate, lntd_error err)
 {
 	switch (task_ck.u64) {
 	case ON_READ_TIMER:
@@ -398,19 +391,18 @@ static linted_error dispatch(struct sim *sim,
 		return sim_on_update(sim, userstate, err);
 
 	default:
-		LINTED_ASSUME_UNREACHABLE();
+		LNTD_ASSUME_UNREACHABLE();
 	}
 }
 
-static linted_error
+static lntd_error
 sim_on_tick(struct sim *sim,
-            struct linted_sched_task_sleep_until *timer_task,
-            linted_error err)
+            struct lntd_sched_task_sleep_until *timer_task,
+            lntd_error err)
 {
-	struct linted_async_pool *pool = sim->pool;
-	linted_ko updater = sim->updater;
-	struct linted_updater_task_send *updater_task =
-	    sim->updater_task;
+	struct lntd_async_pool *pool = sim->pool;
+	lntd_ko updater = sim->updater;
+	struct lntd_updater_task_send *updater_task = sim->updater_task;
 	struct intent const *intent = &sim->intent;
 	struct state *state = &sim->state;
 
@@ -420,7 +412,7 @@ sim_on_tick(struct sim *sim,
 	struct timespec last_tick_time;
 	{
 		struct timespec xx;
-		linted_sched_task_sleep_until_time(timer_task, &xx);
+		lntd_sched_task_sleep_until_time(timer_task, &xx);
 		last_tick_time = xx;
 	}
 	time_t last_tick_sec = last_tick_time.tv_sec;
@@ -441,11 +433,11 @@ sim_on_tick(struct sim *sim,
 	{
 		struct timespec xx = next_tick_time;
 
-		linted_async_pool_submit(
+		lntd_async_pool_submit(
 		    pool,
-		    linted_sched_task_sleep_until_prepare(
+		    lntd_sched_task_sleep_until_prepare(
 		        timer_task,
-		        (union linted_async_ck){.u64 = ON_READ_TIMER},
+		        (union lntd_async_ck){.u64 = ON_READ_TIMER},
 		        timer_task, &xx));
 	}
 
@@ -456,27 +448,26 @@ sim_on_tick(struct sim *sim,
 	return 0;
 }
 
-static linted_error sim_on_controller_event(
-    struct sim *sim,
-    struct linted_controller_task_recv *controller_task,
-    linted_error err)
+static lntd_error sim_on_controller_event(
+    struct sim *sim, struct lntd_controller_task_recv *controller_task,
+    lntd_error err)
 {
-	struct linted_async_pool *pool = sim->pool;
-	linted_ko controller = sim->controller;
+	struct lntd_async_pool *pool = sim->pool;
+	lntd_ko controller = sim->controller;
 	struct intent *intent = &sim->intent;
 
 	if (err != 0)
 		return err;
 
-	struct linted_controller_message message;
-	err = linted_controller_decode(controller_task, &message);
+	struct lntd_controller_message message;
+	err = lntd_controller_decode(controller_task, &message);
 	if (err != 0)
 		return err;
 
-	linted_async_pool_submit(
-	    pool, linted_controller_task_recv_prepare(
+	lntd_async_pool_submit(
+	    pool, lntd_controller_task_recv_prepare(
 	              controller_task,
-	              (union linted_async_ck){
+	              (union lntd_async_ck){
 	                  .u64 = ON_RECEIVE_CONTROLLER_EVENT},
 	              controller_task, controller));
 
@@ -499,13 +490,13 @@ static linted_error sim_on_controller_event(
 	return 0;
 }
 
-static linted_error
+static lntd_error
 sim_on_update(struct sim *sim,
-              struct linted_updater_task_send *updater_task,
-              linted_error err)
+              struct lntd_updater_task_send *updater_task,
+              lntd_error err)
 {
-	struct linted_async_pool *pool = sim->pool;
-	linted_ko updater = sim->updater;
+	struct lntd_async_pool *pool = sim->pool;
+	lntd_ko updater = sim->updater;
 	struct state *state = &sim->state;
 
 	if (err != 0)
@@ -518,10 +509,10 @@ sim_on_update(struct sim *sim,
 	return 0;
 }
 
-static void maybe_update(struct sim *sim, linted_updater updater,
+static void maybe_update(struct sim *sim, lntd_updater updater,
                          struct state *state,
-                         struct linted_updater_task_send *updater_task,
-                         struct linted_async_pool *pool)
+                         struct lntd_updater_task_send *updater_task,
+                         struct lntd_async_pool *pool)
 {
 	bool update_pending = state->update_pending;
 	bool write_in_progress = state->write_in_progress;
@@ -541,13 +532,13 @@ static void maybe_update(struct sim *sim, linted_updater updater,
 	if (write_in_progress)
 		return;
 
-	linted_updater_angle update_z_rotation = LINTED_UPDATER_ANGLE(
+	lntd_updater_angle update_z_rotation = LNTD_UPDATER_ANGLE(
 	    z_rotation._value, (uintmax_t)SIM_UINT_MAX + 1U);
 
-	linted_updater_angle update_x_rotation = LINTED_UPDATER_ANGLE(
+	lntd_updater_angle update_x_rotation = LNTD_UPDATER_ANGLE(
 	    x_rotation._value, (uintmax_t)SIM_UINT_MAX + 1U);
 
-	struct linted_updater_update update = {
+	struct lntd_updater_update update = {
 	    .x_position = x_position,
 	    .y_position = y_position,
 	    .z_position = z_position,
@@ -555,12 +546,12 @@ static void maybe_update(struct sim *sim, linted_updater updater,
 	    .x_rotation = update_x_rotation};
 
 	{
-		struct linted_updater_update xx = update;
+		struct lntd_updater_update xx = update;
 
-		linted_async_pool_submit(
-		    pool, linted_updater_task_send_prepare(
+		lntd_async_pool_submit(
+		    pool, lntd_updater_task_send_prepare(
 		              updater_task,
-		              (union linted_async_ck){
+		              (union lntd_async_ck){
 		                  .u64 = ON_SENT_UPDATER_EVENT},
 		              updater_task, updater, &xx));
 	}
@@ -576,7 +567,7 @@ static void simulate_tick(struct state *state,
 	sim_angle x_rotation = state->x_rotation;
 
 	struct differentiable *positions = state->position;
-	size_t dimensions = LINTED_ARRAY_SIZE(state->position);
+	size_t dimensions = LNTD_ARRAY_SIZE(state->position);
 
 	sim_int x = intent->strafe;
 	sim_int y = intent->retreat_or_go_forth;

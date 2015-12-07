@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libenv.la
-%C%_libenv_la_SOURCES=include/linted/env.h
+%C%_libenv_la_SOURCES=include/lntd/env.h
 
 %C%_libenv_la_LIBADD=\
   src/str/libstr.la

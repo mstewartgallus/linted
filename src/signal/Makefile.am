@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libsignal.la
 
-%C%_libsignal_la_SOURCES=include/linted/signal.h
+%C%_libsignal_la_SOURCES=include/lntd/signal.h
 %C%_libsignal_la_LIBADD=\
   src/async/libasync.la\
   src/fifo/libfifo.la\

@@ -17,12 +17,12 @@
 
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/mem.h"
-#include "linted/pid.h"
-#include "linted/unit.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
+#include "lntd/mem.h"
+#include "lntd/pid.h"
+#include "lntd/unit.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -33,19 +33,19 @@
 #include <sys/types.h>
 #include <string.h>
 
-struct linted_unit_db {
+struct lntd_unit_db {
 	size_t size;
-	struct linted_unit *list;
+	struct lntd_unit *list;
 };
 
-linted_error linted_unit_db_create(struct linted_unit_db **unitsp)
+lntd_error lntd_unit_db_create(struct lntd_unit_db **unitsp)
 {
-	linted_error err;
+	lntd_error err;
 
-	struct linted_unit_db *units;
+	struct lntd_unit_db *units;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *units);
+		err = lntd_mem_alloc(&xx, sizeof *units);
 		if (err != 0)
 			return err;
 		units = xx;
@@ -59,19 +59,19 @@ linted_error linted_unit_db_create(struct linted_unit_db **unitsp)
 	return 0;
 }
 
-linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
-                                     struct linted_unit **unitp)
+lntd_error lntd_unit_db_add_unit(struct lntd_unit_db *units,
+                                 struct lntd_unit **unitp)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	struct linted_unit *list = units->list;
+	struct lntd_unit *list = units->list;
 	size_t old_size = units->size;
 
 	size_t new_size = old_size + 1U;
 	{
 		void *xx;
-		err = linted_mem_realloc_array(&xx, list, new_size,
-		                               sizeof list[0U]);
+		err = lntd_mem_realloc_array(&xx, list, new_size,
+		                             sizeof list[0U]);
 		if (err != 0)
 			return err;
 		list = xx;
@@ -86,71 +86,69 @@ linted_error linted_unit_db_add_unit(struct linted_unit_db *units,
 	return err;
 }
 
-void linted_unit_db_destroy(struct linted_unit_db *units)
+void lntd_unit_db_destroy(struct lntd_unit_db *units)
 {
 	size_t size = units->size;
-	struct linted_unit *list = units->list;
+	struct lntd_unit *list = units->list;
 
 	for (size_t ii = 0U; ii < size; ++ii)
-		linted_mem_free(list[ii].name);
-	linted_mem_free(list);
+		lntd_mem_free(list[ii].name);
+	lntd_mem_free(list);
 
-	linted_mem_free(units);
+	lntd_mem_free(units);
 }
 
-size_t linted_unit_db_size(struct linted_unit_db *units)
+size_t lntd_unit_db_size(struct lntd_unit_db *units)
 {
 	return units->size;
 }
 
-struct linted_unit *
-linted_unit_db_get_unit(struct linted_unit_db *units, size_t ii)
+struct lntd_unit *lntd_unit_db_get_unit(struct lntd_unit_db *units,
+                                        size_t ii)
 {
 	return &units->list[ii];
 }
 
-struct linted_unit *
-linted_unit_db_get_unit_by_name(struct linted_unit_db *units,
-                                char const *name)
+struct lntd_unit *
+lntd_unit_db_get_unit_by_name(struct lntd_unit_db *units,
+                              char const *name)
 {
 	size_t size = units->size;
-	struct linted_unit *list = units->list;
+	struct lntd_unit *list = units->list;
 
 	for (size_t ii = 0U; ii < size; ++ii) {
-		struct linted_unit *unit = &list[ii];
+		struct lntd_unit *unit = &list[ii];
 
-		if (0 ==
-		    strncmp(unit->name, name, LINTED_UNIT_NAME_MAX))
+		if (0 == strncmp(unit->name, name, LNTD_UNIT_NAME_MAX))
 			return unit;
 	}
 
 	return 0;
 }
 
-linted_error
-linted_unit_name(linted_pid pid,
-                 char name[static LINTED_UNIT_NAME_MAX + 1U])
+lntd_error lntd_unit_name(lntd_pid pid,
+                          char name[static LNTD_UNIT_NAME_MAX + 1U])
 {
-	linted_error err;
+	lntd_error err;
 
-	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
+	memset(name, 0, LNTD_UNIT_NAME_MAX + 1U);
 
 	char path[sizeof "/proc/" - 1U +
-	          LINTED_NUMBER_TYPE_STRING_SIZE(linted_pid) +
+	          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
 	          sizeof "/environ" - 1U + 1U];
 	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/environ",
 	                  (uintmax_t)pid)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 
-	linted_ko ko;
+	lntd_ko ko;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, path,
-		                     LINTED_KO_RDONLY);
-		if (LINTED_ERROR_FILE_NOT_FOUND == err)
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, path,
+		                   LNTD_KO_RDONLY);
+		if (LNTD_ERROR_FILE_NOT_FOUND == err)
 			return ESRCH;
 		if (err != 0)
 			return err;
@@ -160,9 +158,9 @@ linted_unit_name(linted_pid pid,
 	FILE *file = fdopen(ko, "r");
 	if (0 == file) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 
-		linted_ko_close(ko);
+		lntd_ko_close(ko);
 
 		return err;
 	}
@@ -189,14 +187,14 @@ linted_unit_name(linted_pid pid,
 	if (EOF == fclose(file)) {
 		if (0 == err) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 		}
 	}
 
 	if (err != 0)
 		goto free_buf;
 
-	memset(name, 0, LINTED_UNIT_NAME_MAX + 1U);
+	memset(name, 0, LNTD_UNIT_NAME_MAX + 1U);
 
 	if (eof)
 		goto free_buf;
@@ -206,7 +204,7 @@ linted_unit_name(linted_pid pid,
 		if (0 == strncmp("LINTED_SERVICE=", iter,
 		                 strlen("LINTED_SERVICE="))) {
 			strncpy(name, iter + strlen("LINTED_SERVICE="),
-			        LINTED_UNIT_NAME_MAX);
+			        LNTD_UNIT_NAME_MAX);
 			break;
 		}
 		iter = strchr(iter, '\0');
@@ -222,22 +220,22 @@ linted_unit_name(linted_pid pid,
 	}
 
 free_buf:
-	linted_mem_free(buf);
+	lntd_mem_free(buf);
 
 	return err;
 }
 
-linted_error linted_unit_pid(linted_pid *pidp, linted_pid manager_pid,
-                             char const *name)
+lntd_error lntd_unit_pid(lntd_pid *pidp, lntd_pid manager_pid,
+                         char const *name)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_pid *children;
+	lntd_pid *children;
 	size_t len;
 	{
-		linted_pid *xx;
+		lntd_pid *xx;
 		size_t yy;
-		err = linted_pid_children(manager_pid, &xx, &yy);
+		err = lntd_pid_children(manager_pid, &xx, &yy);
 		if (err != 0)
 			return err;
 		children = xx;
@@ -246,13 +244,13 @@ linted_error linted_unit_pid(linted_pid *pidp, linted_pid manager_pid,
 	if (0U == len)
 		return ESRCH;
 
-	linted_pid child;
+	lntd_pid child;
 	bool found_child = false;
 	for (size_t ii = 0U; ii < len; ++ii) {
 		child = children[ii];
 
-		char other_name[LINTED_UNIT_NAME_MAX + 1U];
-		err = linted_unit_name(child, other_name);
+		char other_name[LNTD_UNIT_NAME_MAX + 1U];
+		err = lntd_unit_name(child, other_name);
 		if (EACCES == err) {
 			err = 0U;
 			continue;
@@ -267,7 +265,7 @@ linted_error linted_unit_pid(linted_pid *pidp, linted_pid manager_pid,
 	}
 
 free_buf:
-	linted_mem_free(children);
+	lntd_mem_free(children);
 
 	if (err != 0)
 		return err;

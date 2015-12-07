@@ -14,7 +14,7 @@
  * permissions and limitations under the License.
  */
 
-struct linted_updater_code {
+struct lntd_updater_code {
 	int x_position;
 	int y_position;
 	int z_position;

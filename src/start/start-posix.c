@@ -17,18 +17,18 @@
 
 #include "config.h"
 
-#define LINTED_START__NO_MAIN 1
-#include "linted/start.h"
+#define LNTD_START__NO_MAIN 1
+#include "lntd/start.h"
 
-#include "linted/async.h"
-#include "linted/env.h"
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/log.h"
-#include "linted/mem.h"
-#include "linted/path.h"
-#include "linted/signal.h"
-#include "linted/util.h"
+#include "lntd/async.h"
+#include "lntd/env.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
+#include "lntd/log.h"
+#include "lntd/mem.h"
+#include "lntd/path.h"
+#include "lntd/signal.h"
+#include "lntd/util.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -50,35 +50,35 @@ struct start_args {
 	pthread_t parent;
 	unsigned char (*start)(char const *process_name, size_t argc,
 	                       char const *const argv[]);
-	struct linted_start_config const *config;
+	struct lntd_start_config const *config;
 	size_t argc;
 	char const *const *argv;
 };
 
 static void *start_routine(void *arg);
 
-static int do_init(struct linted_start_config const *config,
+static int do_init(struct lntd_start_config const *config,
                    unsigned char (*start)(char const *process_name,
                                           size_t argc,
                                           char const *const argv[]),
                    size_t argc, char const *const *argv);
 static void do_nothing(int signo);
 
-static linted_error open_standard_handles(void);
-static linted_error privilege_check(void);
-static linted_error sanitize_fds(void);
+static lntd_error open_standard_handles(void);
+static lntd_error privilege_check(void);
+static lntd_error sanitize_fds(void);
 
-int linted_start__main(struct linted_start_config const *config,
-                       unsigned char (*start)(char const *process_name,
-                                              size_t argc,
-                                              char const *const argv[]),
-                       int argc, char **argv)
+int lntd_start__main(struct lntd_start_config const *config,
+                     unsigned char (*start)(char const *process_name,
+                                            size_t argc,
+                                            char const *const argv[]),
+                     int argc, char **argv)
 {
 	if (config->dont_fork_thread)
 		return do_init(config, start, argc,
 		               (char const *const *)argv);
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	static struct start_args start_args = {0};
 	start_args.parent = pthread_self();
@@ -103,14 +103,14 @@ static void *start_routine(void *foo)
 	pthread_t parent = args->parent;
 	unsigned char (*start)(char const *process_name, size_t argc,
 	                       char const *const argv[]) = args->start;
-	struct linted_start_config const *config = args->config;
+	struct lntd_start_config const *config = args->config;
 	size_t argc = args->argc;
 	char const *const *argv = args->argv;
 
-	linted_error err = pthread_join(parent, 0);
+	lntd_error err = pthread_join(parent, 0);
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "pthread_join: %s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "pthread_join: %s",
+		         lntd_error_string(err));
 		exit(EXIT_FAILURE);
 	}
 
@@ -121,13 +121,13 @@ static void *start_routine(void *foo)
 	exit(do_init(config, start, argc, argv));
 }
 
-static int do_init(struct linted_start_config const *config,
+static int do_init(struct lntd_start_config const *config,
                    unsigned char (*start)(char const *process_name,
                                           size_t argc,
                                           char const *const argv[]),
                    size_t argc, char const *const *argv)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	err = open_standard_handles();
 	if (err != 0) {
@@ -141,7 +141,7 @@ static int do_init(struct linted_start_config const *config,
 	char const *service;
 	{
 		char *xx;
-		err = linted_env_get("LINTED_SERVICE", &xx);
+		err = lntd_env_get("LINTED_SERVICE", &xx);
 		if (err != 0)
 			return EXIT_FAILURE;
 		service = xx;
@@ -158,7 +158,7 @@ static int do_init(struct linted_start_config const *config,
 	char *process_basename;
 	{
 		char *xx;
-		err = linted_path_base(&xx, process_name);
+		err = lntd_path_base(&xx, process_name);
 		if (err != 0)
 			return EXIT_FAILURE;
 		process_basename = xx;
@@ -170,19 +170,18 @@ static int do_init(struct linted_start_config const *config,
 			return err;
 	}
 
-	linted_log_open(process_basename);
+	lntd_log_open(process_basename);
 
 	if (missing_name) {
-		linted_log(LINTED_LOG_ERROR, "missing process name");
+		lntd_log(LNTD_LOG_ERROR, "missing process name");
 		return EXIT_FAILURE;
 	}
 
 	if (config->check_privilege) {
 		err = privilege_check();
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "privilege_check: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "privilege_check: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -192,26 +191,25 @@ static int do_init(struct linted_start_config const *config,
 		sigemptyset(&act.sa_mask);
 		act.sa_handler = do_nothing;
 		act.sa_flags = 0;
-		if (-1 == sigaction(LINTED_ASYNCH_SIGNO, &act, 0)) {
-			linted_log(LINTED_LOG_ERROR, "sigaction: %s",
-			           linted_error_string(errno));
+		if (-1 == sigaction(LNTD_ASYNCH_SIGNO, &act, 0)) {
+			lntd_log(LNTD_LOG_ERROR, "sigaction: %s",
+			         lntd_error_string(errno));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (!config->dont_init_signals) {
-		err = linted_signal_init();
+		err = lntd_signal_init();
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_signal_init: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_signal_init: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (0 == setlocale(LC_ALL, "")) {
-		linted_log(LINTED_LOG_ERROR, "setlocale: %s",
-		           linted_error_string(errno));
+		lntd_log(LNTD_LOG_ERROR, "setlocale: %s",
+		         lntd_error_string(errno));
 		return EXIT_FAILURE;
 	}
 
@@ -225,24 +223,23 @@ static void do_nothing(int signo)
 	/* Do nothing */
 }
 
-static linted_error open_standard_handles(void)
+static lntd_error open_standard_handles(void)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	for (;;) {
-		linted_ko ko;
+		lntd_ko ko;
 		{
-			linted_ko xx;
-			err =
-			    linted_ko_open(&xx, LINTED_KO_CWD,
-			                   "/dev/null", LINTED_KO_RDWR);
+			lntd_ko xx;
+			err = lntd_ko_open(&xx, LNTD_KO_CWD,
+			                   "/dev/null", LNTD_KO_RDWR);
 			if (err != 0)
 				break;
 			ko = xx;
 		}
 
 		if (ko > 2U) {
-			err = linted_ko_close(ko);
+			err = lntd_ko_close(ko);
 			break;
 		}
 	}
@@ -250,7 +247,7 @@ static linted_error open_standard_handles(void)
 	return err;
 }
 
-static linted_error privilege_check(void)
+static lntd_error privilege_check(void)
 {
 	uid_t uid = getuid();
 	if (0 == uid)
@@ -269,16 +266,16 @@ static linted_error privilege_check(void)
 	return 0;
 }
 
-static linted_error sanitize_fds(void)
+static lntd_error sanitize_fds(void)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_ko fds_dir_ko;
+	lntd_ko fds_dir_ko;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD,
-		                     "/proc/thread-self/fd",
-		                     LINTED_KO_DIRECTORY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD,
+		                   "/proc/thread-self/fd",
+		                   LNTD_KO_DIRECTORY);
 		if (err != 0)
 			return err;
 		fds_dir_ko = xx;
@@ -287,14 +284,14 @@ static linted_error sanitize_fds(void)
 	DIR *fds_dir = fdopendir(fds_dir_ko);
 	if (0 == fds_dir) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 
-		linted_ko_close(fds_dir_ko);
+		lntd_ko_close(fds_dir_ko);
 
 		return err;
 	}
 
-	linted_ko *kos_to_close = 0;
+	lntd_ko *kos_to_close = 0;
 	size_t num_kos_to_close = 0U;
 	/* Read all the open fds first and then close the fds
 	 * after because otherwise there is a race condition */
@@ -313,7 +310,7 @@ static linted_error sanitize_fds(void)
 		if (0 == strcmp("..", fdname))
 			continue;
 
-		linted_ko open_fd = (linted_ko)atoi(fdname);
+		lntd_ko open_fd = (lntd_ko)atoi(fdname);
 		if (0U == open_fd)
 			continue;
 		if (1U == open_fd)
@@ -326,7 +323,7 @@ static linted_error sanitize_fds(void)
 
 		{
 			void *xx;
-			err = linted_mem_realloc_array(
+			err = lntd_mem_realloc_array(
 			    &xx, kos_to_close, num_kos_to_close + 1U,
 			    sizeof kos_to_close[0U]);
 			if (err != 0)
@@ -339,13 +336,13 @@ static linted_error sanitize_fds(void)
 
 	if (-1 == closedir(fds_dir)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	}
 
 	/* Deliberately don't check the closed fds */
 	for (size_t ii = 0U; ii < num_kos_to_close; ++ii)
-		linted_ko_close(kos_to_close[ii]);
-	linted_mem_free(kos_to_close);
+		lntd_ko_close(kos_to_close[ii]);
+	lntd_mem_free(kos_to_close);
 
 	return err;
 }

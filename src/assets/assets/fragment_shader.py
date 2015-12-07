@@ -26,7 +26,7 @@ def output():
 
     return Template("""#include "config.h"
 
-#include "linted/assets.h"
+#include "lntd/assets.h"
 
-char const * const linted_assets_fragment_shader = $fragment_shader;
+char const * const lntd_assets_fragment_shader = $fragment_shader;
 """).substitute(fragment_shader=fragment_shader)

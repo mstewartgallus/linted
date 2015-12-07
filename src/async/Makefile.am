@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libasync.la
 
-%C%_libasync_la_SOURCES=include/linted/async.h
+%C%_libasync_la_SOURCES=include/lntd/async.h
 
 %C%_libasync_la_LIBADD=\
   src/ko/libko.la\

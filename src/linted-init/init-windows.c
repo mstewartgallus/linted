@@ -23,16 +23,16 @@
 
 #include "config.h"
 
-#include "linted/env.h"
-#include "linted/error.h"
-#include "linted/io.h"
-#include "linted/ko.h"
-#include "linted/log.h"
-#include "linted/path.h"
-#include "linted/start.h"
-#include "linted/str.h"
-#include "linted/utf.h"
-#include "linted/util.h"
+#include "lntd/env.h"
+#include "lntd/error.h"
+#include "lntd/io.h"
+#include "lntd/ko.h"
+#include "lntd/log.h"
+#include "lntd/path.h"
+#include "lntd/start.h"
+#include "lntd/str.h"
+#include "lntd/utf.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <signal.h>
@@ -50,43 +50,41 @@
  * @todo Windows: delegate exit signals from `init` to `monitor`.
  */
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-init", 0};
 
-static unsigned char linted_start_main(char const *process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err;
+	lntd_error err;
 
 	char const *monitor;
 	{
 		char *xx;
-		err = linted_env_get("LINTED_MONITOR", &xx);
+		err = lntd_env_get("LINTED_MONITOR", &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_env_get: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_env_get: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		monitor = xx;
 	}
 
 	if (0 == monitor) {
-		linted_log(LINTED_LOG_ERROR,
-		           "%s is a required environment variable",
-		           "LINTED_MONITOR");
+		lntd_log(LNTD_LOG_ERROR,
+		         "%s is a required environment variable",
+		         "LINTED_MONITOR");
 		return EXIT_FAILURE;
 	}
 
 	char *monitor_base;
 	{
 		char *xx;
-		err = linted_path_base(&xx, monitor);
+		err = lntd_path_base(&xx, monitor);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_path_base: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_path_base: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		monitor_base = xx;
@@ -95,11 +93,10 @@ static unsigned char linted_start_main(char const *process_name,
 	wchar_t *monitor_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(monitor, &xx);
+		err = lntd_utf_1_to_2(monitor, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_utf_1_to_2: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_utf_1_to_2: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		monitor_utf2 = xx;
@@ -108,74 +105,73 @@ static unsigned char linted_start_main(char const *process_name,
 	wchar_t *monitor_base_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(monitor_base, &xx);
+		err = lntd_utf_1_to_2(monitor_base, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_utf_1_to_2: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_utf_1_to_2: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		monitor_base_utf2 = xx;
 	}
 
 	for (;;) {
-		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "%s: spawning %s\n",
-		                       process_name, monitor_base);
+		lntd_io_write_format(LNTD_KO_STDERR, 0,
+		                     "%s: spawning %s\n", process_name,
+		                     monitor_base);
 
-		linted_ko monitor_handle;
-		linted_ko thread_handle;
+		lntd_ko monitor_handle;
+		lntd_ko thread_handle;
 		{
 			DWORD creation_flags = 0U;
 			STARTUPINFO startup_info = {0};
 
 			startup_info.cb = sizeof startup_info;
 			startup_info.dwFlags = STARTF_USESTDHANDLES;
-			startup_info.hStdInput = LINTED_KO_STDIN;
-			startup_info.hStdOutput = LINTED_KO_STDOUT;
-			startup_info.hStdError = LINTED_KO_STDERR;
+			startup_info.hStdInput = LNTD_KO_STDIN;
+			startup_info.hStdOutput = LNTD_KO_STDOUT;
+			startup_info.hStdError = LNTD_KO_STDERR;
 
 			PROCESS_INFORMATION process_information;
 			if (!CreateProcessW(
 			        monitor_utf2, monitor_base_utf2, 0, 0,
 			        false, creation_flags, 0, 0,
 			        &startup_info, &process_information)) {
-				linted_log(LINTED_LOG_ERROR,
-				           "CreateProcessW: %s",
-				           linted_error_string(
-				               HRESULT_FROM_WIN32(
-				                   GetLastError())));
+				lntd_log(LNTD_LOG_ERROR,
+				         "CreateProcessW: %s",
+				         lntd_error_string(
+				             HRESULT_FROM_WIN32(
+				                 GetLastError())));
 				return EXIT_FAILURE;
 			}
 			monitor_handle = process_information.hProcess;
 			thread_handle = process_information.hThread;
 		}
-		linted_ko_close(thread_handle);
+		lntd_ko_close(thread_handle);
 
 		switch (WaitForSingleObject(monitor_handle, INFINITE)) {
 		case WAIT_OBJECT_0:
 			break;
 
 		case WAIT_FAILED:
-			linted_log(
-			    LINTED_LOG_ERROR, "WaitForSingleObject: %s",
-			    linted_error_string(
-			        HRESULT_FROM_WIN32(GetLastError())));
+			lntd_log(LNTD_LOG_ERROR,
+			         "WaitForSingleObject: %s",
+			         lntd_error_string(HRESULT_FROM_WIN32(
+			             GetLastError())));
 			return EXIT_FAILURE;
 
 		default:
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 		}
 
 		DWORD exit_status;
 		{
 			DWORD xx;
 			if (!GetExitCodeProcess(monitor_handle, &xx)) {
-				linted_log(LINTED_LOG_ERROR,
-				           "GetExitCodeProcess: %s",
-				           linted_error_string(
-				               HRESULT_FROM_WIN32(
-				                   GetLastError())));
+				lntd_log(LNTD_LOG_ERROR,
+				         "GetExitCodeProcess: %s",
+				         lntd_error_string(
+				             HRESULT_FROM_WIN32(
+				                 GetLastError())));
 				return EXIT_FAILURE;
 			}
 			exit_status = xx;
@@ -183,11 +179,11 @@ static unsigned char linted_start_main(char const *process_name,
 		if (EXIT_SUCCESS == exit_status)
 			goto exit_loop;
 
-		linted_io_write_format(LINTED_KO_STDERR, 0,
-		                       "monitor exited with %lu\n",
-		                       exit_status);
+		lntd_io_write_format(LNTD_KO_STDERR, 0,
+		                     "monitor exited with %lu\n",
+		                     exit_status);
 
-		linted_ko_close(monitor_handle);
+		lntd_ko_close(monitor_handle);
 	}
 exit_loop:
 	return EXIT_SUCCESS;

@@ -57,25 +57,25 @@ def output():
 
     return Template("""#include "config.h"
 
-#include "linted/assets.h"
+#include "lntd/assets.h"
 
-#include "linted/util.h"
+#include "lntd/util.h"
 
 #include <stddef.h>
 #include <stdint.h>
 
-static linted_assets_point const vertices[] = $vertices;
-linted_assets_point const * const linted_assets_vertices = vertices;
+static lntd_assets_point const vertices[] = $vertices;
+lntd_assets_point const * const lntd_assets_vertices = vertices;
 
-size_t const linted_assets_size = LINTED_ARRAY_SIZE(vertices);
+size_t const lntd_assets_size = LNTD_ARRAY_SIZE(vertices);
 
-static linted_assets_point const normals[] = $normals;
-linted_assets_point const * const linted_assets_normals = normals;
+static lntd_assets_point const normals[] = $normals;
+lntd_assets_point const * const lntd_assets_normals = normals;
 
 static uint16_t const indices_data[][3U] = $indices;
 
-uint16_t const * const linted_assets_indices = &indices_data[0U][0U];
-size_t const linted_assets_indices_size = LINTED_ARRAY_SIZE(indices_data);
+uint16_t const * const lntd_assets_indices = &indices_data[0U][0U];
+size_t const lntd_assets_indices_size = LNTD_ARRAY_SIZE(indices_data);
 """).substitute(
     normals=StaticArray(Array(3, GLfloat))(normals),
     vertices=StaticArray(Array(3, GLfloat))(vertices),

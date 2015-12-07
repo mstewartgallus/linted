@@ -17,9 +17,9 @@
 
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -36,54 +36,54 @@
 #include <pthread.h>
 #endif
 
-linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
-                            char const *pathname, unsigned long flags)
+lntd_error lntd_ko_open(lntd_ko *kop, lntd_ko dirko,
+                        char const *pathname, unsigned long flags)
 {
-	linted_error err;
+	lntd_error err;
 
-	if (LINTED_KO_CWD == dirko) {
+	if (LNTD_KO_CWD == dirko) {
 		dirko = AT_FDCWD;
 	} else if (dirko > INT_MAX) {
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 	}
 
 	unsigned long perm_flags =
-	    LINTED_KO_RDONLY | LINTED_KO_WRONLY | LINTED_KO_RDWR;
-	unsigned long type_flags = LINTED_KO_DIRECTORY | LINTED_KO_FIFO;
-	unsigned long misc_flags = LINTED_KO_APPEND | LINTED_KO_SYNC;
+	    LNTD_KO_RDONLY | LNTD_KO_WRONLY | LNTD_KO_RDWR;
+	unsigned long type_flags = LNTD_KO_DIRECTORY | LNTD_KO_FIFO;
+	unsigned long misc_flags = LNTD_KO_APPEND | LNTD_KO_SYNC;
 	unsigned long all_flags = perm_flags | type_flags | misc_flags;
 
 	if ((flags & ~all_flags) != 0U)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
-	bool ko_rdonly = (flags & LINTED_KO_RDONLY) != 0U;
-	bool ko_wronly = (flags & LINTED_KO_WRONLY) != 0U;
-	bool ko_rdwr = (flags & LINTED_KO_RDWR) != 0U;
+	bool ko_rdonly = (flags & LNTD_KO_RDONLY) != 0U;
+	bool ko_wronly = (flags & LNTD_KO_WRONLY) != 0U;
+	bool ko_rdwr = (flags & LNTD_KO_RDWR) != 0U;
 
-	bool ko_append = (flags & LINTED_KO_APPEND) != 0U;
-	bool ko_sync = (flags & LINTED_KO_SYNC) != 0U;
+	bool ko_append = (flags & LNTD_KO_APPEND) != 0U;
+	bool ko_sync = (flags & LNTD_KO_SYNC) != 0U;
 
-	bool ko_directory = (flags & LINTED_KO_DIRECTORY) != 0U;
-	bool ko_fifo = (flags & LINTED_KO_FIFO) != 0U;
+	bool ko_directory = (flags & LNTD_KO_DIRECTORY) != 0U;
+	bool ko_fifo = (flags & LNTD_KO_FIFO) != 0U;
 
 	if (ko_rdonly && ko_wronly)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (ko_rdwr && ko_rdonly)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (ko_rdwr && ko_wronly)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (ko_append && !ko_wronly)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (ko_directory &&
 	    (ko_rdonly || ko_wronly || ko_rdwr || ko_append || ko_sync))
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (ko_fifo && ko_sync)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	/*
 	 * Always, be safe for execs and terminals.
@@ -118,7 +118,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		fd = openat(dirko, pathname, oflags);
 		if (-1 == fd) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 		} else {
 			err = 0;
 		}
@@ -132,14 +132,14 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 			struct stat buf;
 			if (-1 == fstat(fd, &buf)) {
 				err = errno;
-				LINTED_ASSUME(err != 0);
+				LNTD_ASSUME(err != 0);
 				goto close_file;
 			}
 			mode = buf.st_mode;
 		}
 
 		if (!S_ISFIFO(mode)) {
-			err = LINTED_ERROR_INVALID_PARAMETER;
+			err = LNTD_ERROR_INVALID_PARAMETER;
 			goto close_file;
 		}
 	}
@@ -148,7 +148,7 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 		if (-1 ==
 		    fcntl(fd, F_SETFL, (long)oflags | O_NONBLOCK)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			goto close_file;
 		}
 	}
@@ -158,13 +158,13 @@ linted_error linted_ko_open(linted_ko *kop, linted_ko dirko,
 	return 0;
 
 close_file:
-	linted_ko_close(fd);
+	lntd_ko_close(fd);
 	return err;
 }
 
-linted_error linted_ko_close(linted_ko ko)
+lntd_error lntd_ko_close(lntd_ko ko)
 {
-	linted_error err;
+	lntd_error err;
 	/*
 	 * The state of a file descriptor after close gives an EINTR
 	 * error is unspecified by POSIX so this function avoids the
@@ -184,57 +184,56 @@ linted_error linted_ko_close(linted_ko ko)
 
 	if (-1 == close(ko)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	} else {
 		err = 0;
 	}
 
-	linted_error mask_err =
-	    pthread_sigmask(SIG_SETMASK, &sigset, 0);
+	lntd_error mask_err = pthread_sigmask(SIG_SETMASK, &sigset, 0);
 	if (0 == err)
 		err = mask_err;
 
 	return err;
 }
 
-linted_error linted_ko_change_directory(char const *pathname)
+lntd_error lntd_ko_change_directory(char const *pathname)
 {
 	if (-1 == chdir(pathname)) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
+		lntd_error err = errno;
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 	return 0;
 }
 
-linted_error linted_ko_symlink(char const *oldpath, char const *newpath)
+lntd_error lntd_ko_symlink(char const *oldpath, char const *newpath)
 {
 	if (-1 == symlink(oldpath, newpath)) {
-		linted_error err = errno;
-		LINTED_ASSUME(err != 0);
+		lntd_error err = errno;
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 	return 0;
 }
 
 /**
- * @todo POSIX: work on directories other than `LINTED_KO_CWD`.
+ * @todo POSIX: work on directories other than `LNTD_KO_CWD`.
  */
-linted_error linted_ko_real_path(char **resultp, linted_ko dirko,
-                                 char const *pathname)
+lntd_error lntd_ko_real_path(char **resultp, lntd_ko dirko,
+                             char const *pathname)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	LINTED_ASSERT(resultp != 0);
-	LINTED_ASSERT(pathname != 0);
+	LNTD_ASSERT(resultp != 0);
+	LNTD_ASSERT(pathname != 0);
 
-	if (dirko != LINTED_KO_CWD)
-		return LINTED_ERROR_INVALID_PARAMETER;
+	if (dirko != LNTD_KO_CWD)
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	char *result = realpath(pathname, 0);
 	if (0 == result) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 		return err;
 	}
 

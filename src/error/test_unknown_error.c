@@ -15,19 +15,19 @@
  */
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/start.h"
+#include "lntd/error.h"
+#include "lntd/start.h"
 
 #include <stddef.h>
 #include <stdlib.h>
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-error-test", 0};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error_string(-1);
+	lntd_error_string(-1);
 	return EXIT_SUCCESS;
 }

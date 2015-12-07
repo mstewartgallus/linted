@@ -13,10 +13,10 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LINTED_SIM_SIMULATOR_H
-#define LINTED_SIM_SIMULATOR_H
+#ifndef LNTD_SIM_SIMULATOR_H
+#define LNTD_SIM_SIMULATOR_H
 
-#include "linted/util.h"
+#include "lntd/util.h"
 
 #include <inttypes.h>
 #include <math.h>
@@ -77,8 +77,8 @@ static inline sim_angle sim_angle_add_clamped(int sign, sim_angle min,
                                               sim_angle theta,
                                               sim_angle phi)
 {
-	LINTED_ASSERT(max._value <= SIM_UINT_MAX / 2U);
-	LINTED_ASSERT(min._value <= SIM_UINT_MAX / 2U);
+	LNTD_ASSERT(max._value <= SIM_UINT_MAX / 2U);
+	LNTD_ASSERT(min._value <= SIM_UINT_MAX / 2U);
 
 	sim_uint result =
 	    (theta._value + sign * (int_fast64_t)phi._value) %
@@ -178,4 +178,4 @@ static sim_int sim__saturate(int_fast64_t x)
 
 	return x;
 }
-#endif /* LINTED_SIM_SIMULATOR_H */
+#endif /* LNTD_SIM_SIMULATOR_H */

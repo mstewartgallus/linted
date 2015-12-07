@@ -14,21 +14,21 @@
  * permissions and limitations under the License.
  */
 
-enum linted_admin_proto_type {
-	LINTED_ADMIN_PROTO_ADD_UNIT,
-	LINTED_ADMIN_PROTO_ADD_SOCKET,
-	LINTED_ADMIN_PROTO_STATUS,
-	LINTED_ADMIN_PROTO_STOP };
+enum lntd_admin_proto_type {
+	LNTD_ADMIN_PROTO_ADD_UNIT,
+	LNTD_ADMIN_PROTO_ADD_SOCKET,
+	LNTD_ADMIN_PROTO_STATUS,
+	LNTD_ADMIN_PROTO_STOP };
 
-typedef string linted_admin_proto_string<255>;
+typedef string lntd_admin_proto_string<255>;
 
-struct linted_admin_proto_request_add_unit {
-	linted_admin_proto_string name;
-	linted_admin_proto_string fstab;
-	linted_admin_proto_string chdir_path;
+struct lntd_admin_proto_request_add_unit {
+	lntd_admin_proto_string name;
+	lntd_admin_proto_string fstab;
+	lntd_admin_proto_string chdir_path;
 
-	linted_admin_proto_string command<>;
-	linted_admin_proto_string environment<>;
+	lntd_admin_proto_string command<>;
+	lntd_admin_proto_string environment<>;
 
 	hyper *timer_slack_nsec;
 	hyper *priority;
@@ -46,51 +46,51 @@ struct linted_admin_proto_request_add_unit {
 
 	bool no_new_privs;
 };
-struct linted_admin_proto_request_add_socket {
-	linted_admin_proto_string name;
-	linted_admin_proto_string path;
+struct lntd_admin_proto_request_add_socket {
+	lntd_admin_proto_string name;
+	lntd_admin_proto_string path;
 	int fifo_size;
 	int sock_type;
 };
-struct linted_admin_proto_request_status {
-	linted_admin_proto_string name;
+struct lntd_admin_proto_request_status {
+	lntd_admin_proto_string name;
 };
-struct linted_admin_proto_request_stop {
-	linted_admin_proto_string name;
-};
-
-union linted_admin_proto_request switch(enum linted_admin_proto_type type) {
-case LINTED_ADMIN_PROTO_ADD_UNIT:
-	struct linted_admin_proto_request_add_unit add_unit;
-case  LINTED_ADMIN_PROTO_ADD_SOCKET:
-	struct linted_admin_proto_request_add_socket add_socket;
-case LINTED_ADMIN_PROTO_STATUS:
-	struct linted_admin_proto_request_status status;
-case LINTED_ADMIN_PROTO_STOP:
-	struct linted_admin_proto_request_stop stop;
+struct lntd_admin_proto_request_stop {
+	lntd_admin_proto_string name;
 };
 
+union lntd_admin_proto_request switch(enum lntd_admin_proto_type type) {
+case LNTD_ADMIN_PROTO_ADD_UNIT:
+	struct lntd_admin_proto_request_add_unit add_unit;
+case  LNTD_ADMIN_PROTO_ADD_SOCKET:
+	struct lntd_admin_proto_request_add_socket add_socket;
+case LNTD_ADMIN_PROTO_STATUS:
+	struct lntd_admin_proto_request_status status;
+case LNTD_ADMIN_PROTO_STOP:
+	struct lntd_admin_proto_request_stop stop;
+};
 
-struct linted_admin_proto_reply_add_unit {
+
+struct lntd_admin_proto_reply_add_unit {
 	char dummy;
 };
-struct linted_admin_proto_reply_add_socket {
+struct lntd_admin_proto_reply_add_socket {
 	char dummy;
 };
-struct linted_admin_proto_reply_status {
+struct lntd_admin_proto_reply_status {
 	bool is_up;
 };
-struct linted_admin_proto_reply_stop {
+struct lntd_admin_proto_reply_stop {
 	bool was_up;
 };
 
-union linted_admin_proto_reply switch(enum linted_admin_proto_type type) {
-case LINTED_ADMIN_PROTO_ADD_UNIT:
-	struct linted_admin_proto_reply_add_unit add_unit;
-case  LINTED_ADMIN_PROTO_ADD_SOCKET:
-	struct linted_admin_proto_reply_add_socket add_socket;
-case LINTED_ADMIN_PROTO_STATUS:
-	struct linted_admin_proto_reply_status status;
-case LINTED_ADMIN_PROTO_STOP:
-	struct linted_admin_proto_reply_stop stop;
+union lntd_admin_proto_reply switch(enum lntd_admin_proto_type type) {
+case LNTD_ADMIN_PROTO_ADD_UNIT:
+	struct lntd_admin_proto_reply_add_unit add_unit;
+case  LNTD_ADMIN_PROTO_ADD_SOCKET:
+	struct lntd_admin_proto_reply_add_socket add_socket;
+case LNTD_ADMIN_PROTO_STATUS:
+	struct lntd_admin_proto_reply_status status;
+case LNTD_ADMIN_PROTO_STOP:
+	struct lntd_admin_proto_reply_stop stop;
 };

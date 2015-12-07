@@ -18,7 +18,7 @@ noinst_LTLIBRARIES+=%D%/libadmin.la
 
 %C%_libadmin_la_SOURCES=\
   %D%/admin.c\
-  include/linted/admin.h
+  include/lntd/admin.h
 
 %C%_libadmin_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libadmin_la_LIBADD=\

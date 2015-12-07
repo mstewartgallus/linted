@@ -15,10 +15,10 @@
  */
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/log.h"
-#include "linted/mem.h"
-#include "linted/start.h"
+#include "lntd/error.h"
+#include "lntd/log.h"
+#include "lntd/mem.h"
+#include "lntd/start.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -72,23 +72,23 @@ static void on_notify(pa_context *c, void *userdata);
 
 static void on_ok_to_write(pa_stream *s, size_t nbytes, void *userdata);
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-audio", 0};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
 	size_t greatest_period = 1 / ((A_TONE / 1000.0) / SAMPLE_RATE);
 
 	{
 		void *xx;
-		linted_error err = linted_mem_alloc_array_zeroed(
+		lntd_error err = lntd_mem_alloc_array_zeroed(
 		    &xx, greatest_period, sizeof sampledata[0U]);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_mem_alloc_array: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR,
+			         "lntd_mem_alloc_array: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		sampledata = xx;
@@ -100,17 +100,17 @@ static unsigned char linted_start_main(char const *const process_name,
 		    triangle_wave(ii, A_TONE, 8000, SAMPLE_RATE) *
 		    square_wave(ii, A_TONE / 100.0, 1, SAMPLE_RATE) *
 		    sin_wave(ii, A_TONE / 1000.0, 1, SAMPLE_RATE);
-	linted_log(LINTED_LOG_INFO, "array filled");
+	lntd_log(LNTD_LOG_INFO, "array filled");
 
 	pa_mainloop *mainloop = pa_mainloop_new();
 	if (0 == mainloop) {
-		linted_log(LINTED_LOG_ERROR, "pa_mainloop_new");
+		lntd_log(LNTD_LOG_ERROR, "pa_mainloop_new");
 		return EXIT_FAILURE;
 	}
 
 	pa_proplist *proplist = pa_proplist_new();
 	if (0 == proplist) {
-		linted_log(LINTED_LOG_ERROR, "pa_proplist_new");
+		lntd_log(LNTD_LOG_ERROR, "pa_proplist_new");
 		return EXIT_FAILURE;
 	}
 
@@ -119,7 +119,7 @@ static unsigned char linted_start_main(char const *const process_name,
 	pa_context *context = pa_context_new_with_proplist(
 	    pa_mainloop_get_api(mainloop), PACKAGE_NAME, proplist);
 	if (0 == context) {
-		linted_log(LINTED_LOG_ERROR, "pa_context_new");
+		lntd_log(LNTD_LOG_ERROR, "pa_context_new");
 		return EXIT_FAILURE;
 	}
 
@@ -128,8 +128,8 @@ static unsigned char linted_start_main(char const *const process_name,
 	int err = pa_context_connect(context, 0, PA_CONTEXT_NOAUTOSPAWN,
 	                             NULL);
 	if (err < 0) {
-		linted_log(LINTED_LOG_ERROR, "pa_context_connect: %s",
-		           pa_strerror(-err));
+		lntd_log(LNTD_LOG_ERROR, "pa_context_connect: %s",
+		         pa_strerror(-err));
 		return EXIT_FAILURE;
 	}
 
@@ -138,9 +138,8 @@ static unsigned char linted_start_main(char const *const process_name,
 		int xx;
 		int pulse_err = pa_mainloop_run(mainloop, &xx);
 		if (pulse_err < 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "pa_mainloop_run: %s",
-			           pa_strerror(-pulse_err));
+			lntd_log(LNTD_LOG_ERROR, "pa_mainloop_run: %s",
+			         pa_strerror(-pulse_err));
 			return EXIT_FAILURE;
 		}
 		retval = xx;
@@ -157,30 +156,30 @@ static void on_notify(pa_context *c, void *userdata)
 {
 	switch (pa_context_get_state(c)) {
 	case PA_CONTEXT_UNCONNECTED:
-		linted_log(LINTED_LOG_INFO, "unconnected\n");
+		lntd_log(LNTD_LOG_INFO, "unconnected\n");
 		break;
 
 	case PA_CONTEXT_CONNECTING:
-		linted_log(LINTED_LOG_INFO, "connecting\n");
+		lntd_log(LNTD_LOG_INFO, "connecting\n");
 		break;
 
 	case PA_CONTEXT_AUTHORIZING:
-		linted_log(LINTED_LOG_INFO, "authorizing\n");
+		lntd_log(LNTD_LOG_INFO, "authorizing\n");
 		break;
 
 	case PA_CONTEXT_SETTING_NAME:
-		linted_log(LINTED_LOG_INFO, "setting_name\n");
+		lntd_log(LNTD_LOG_INFO, "setting_name\n");
 		break;
 
 	case PA_CONTEXT_READY: {
-		linted_log(LINTED_LOG_INFO, "ready\n");
+		lntd_log(LNTD_LOG_INFO, "ready\n");
 
 		pa_stream *stream = pa_stream_new(c, "Background Music",
 		                                  &test_sample_spec, 0);
 		if (0 == stream) {
-			linted_log(LINTED_LOG_ERROR,
-			           "pa_context_connect: %s",
-			           pa_strerror(pa_context_errno(c)));
+			lntd_log(LNTD_LOG_ERROR,
+			         "pa_context_connect: %s",
+			         pa_strerror(pa_context_errno(c)));
 			exit(EXIT_FAILURE);
 		}
 
@@ -209,9 +208,9 @@ static void on_notify(pa_context *c, void *userdata)
 			    0, 0);
 		}
 		if (err < 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "pa_context_connect: %s",
-			           pa_strerror(-err));
+			lntd_log(LNTD_LOG_ERROR,
+			         "pa_context_connect: %s",
+			         pa_strerror(-err));
 			exit(EXIT_FAILURE);
 		}
 
@@ -219,11 +218,11 @@ static void on_notify(pa_context *c, void *userdata)
 	}
 
 	case PA_CONTEXT_FAILED:
-		linted_log(LINTED_LOG_INFO, "failed\n");
+		lntd_log(LNTD_LOG_INFO, "failed\n");
 		break;
 
 	case PA_CONTEXT_TERMINATED:
-		linted_log(LINTED_LOG_WARNING, "terminated\n");
+		lntd_log(LNTD_LOG_WARNING, "terminated\n");
 		break;
 	}
 }
@@ -242,8 +241,8 @@ static void on_ok_to_write(pa_stream *s, size_t nbytes, void *userdata)
 	int err = pa_stream_write(s, &sampledata[sampleoffs], nbytes,
 	                          NULL, 0LL, PA_SEEK_RELATIVE);
 	if (err < 0) {
-		linted_log(LINTED_LOG_ERROR, "pa_stream_write: %s",
-		           pa_strerror(-err));
+		lntd_log(LNTD_LOG_ERROR, "pa_stream_write: %s",
+		         pa_strerror(-err));
 		exit(EXIT_FAILURE);
 	}
 

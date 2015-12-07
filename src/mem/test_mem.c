@@ -15,36 +15,36 @@
  */
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/mem.h"
-#include "linted/start.h"
-#include "linted/test.h"
+#include "lntd/error.h"
+#include "lntd/mem.h"
+#include "lntd/start.h"
+#include "lntd/test.h"
 
 #include <stddef.h>
 #include <stdlib.h>
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-ko-test", 0};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err;
+	lntd_error err;
 	{
 		void *xx;
-		err = linted_mem_alloc_array(&xx, 0U, 0U);
+		err = lntd_mem_alloc_array(&xx, 0U, 0U);
 		if (err != 0)
-			LINTED_TEST_FAILURE("err == %i\n", err);
-		linted_mem_free(xx);
+			LNTD_TEST_FAILURE("err == %i\n", err);
+		lntd_mem_free(xx);
 	}
 
 	{
 		void *xx;
-		err = linted_mem_realloc_array(&xx, 0, 0U, 0U);
+		err = lntd_mem_realloc_array(&xx, 0, 0U, 0U);
 		if (err != 0)
-			LINTED_TEST_FAILURE("err == %i\n", err);
-		linted_mem_free(xx);
+			LNTD_TEST_FAILURE("err == %i\n", err);
+		lntd_mem_free(xx);
 	}
 
 	return EXIT_SUCCESS;

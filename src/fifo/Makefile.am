@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libfifo.la
-%C%_libfifo_la_SOURCES=include/linted/fifo.h
+%C%_libfifo_la_SOURCES=include/lntd/fifo.h
 %C%_linted_LDLIBS=\
   src/ko/libko.la\
   src/path/libpath.la

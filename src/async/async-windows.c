@@ -25,17 +25,17 @@
 
 #define WIN32_LEAN_AND_MEAN
 
-#include "linted/async.h"
+#include "lntd/async.h"
 
-#include "linted/io.h"
-#include "linted/mem.h"
-#include "linted/pid.h"
-#include "linted/channel.h"
-#include "linted/node.h"
-#include "linted/sched.h"
-#include "linted/signal.h"
-#include "linted/stack.h"
-#include "linted/util.h"
+#include "lntd/io.h"
+#include "lntd/mem.h"
+#include "lntd/pid.h"
+#include "lntd/channel.h"
+#include "lntd/node.h"
+#include "lntd/sched.h"
+#include "lntd/signal.h"
+#include "lntd/stack.h"
+#include "lntd/util.h"
 
 #include <signal.h>
 #include <stdbool.h>
@@ -54,56 +54,56 @@
  * too large.
  */
 struct completion_queue;
-static linted_error
+static lntd_error
 completion_queue_create(struct completion_queue **queuep);
 static void complete_task(struct completion_queue *queue,
-                          struct linted_async_task *task);
-static linted_error completion_recv(struct completion_queue *queue,
-                                    struct linted_async_task **taskp);
-static linted_error
-completion_try_recv(struct completion_queue *queue,
-                    struct linted_async_task **taskp);
+                          struct lntd_async_task *task);
+static lntd_error completion_recv(struct completion_queue *queue,
+                                  struct lntd_async_task **taskp);
+static lntd_error completion_try_recv(struct completion_queue *queue,
+                                      struct lntd_async_task **taskp);
 static void completion_queue_destroy(struct completion_queue *queue);
 
 struct job_queue;
-static linted_error job_queue_create(struct job_queue **queuep);
+static lntd_error job_queue_create(struct job_queue **queuep);
 static void job_submit(struct job_queue *queue,
-                       struct linted_async_task *task);
-static linted_error job_recv(struct job_queue *queue,
-                             struct linted_async_task **taskp);
+                       struct lntd_async_task *task);
+static lntd_error job_recv(struct job_queue *queue,
+                           struct lntd_async_task **taskp);
 static void job_queue_destroy(struct job_queue *queue);
 
 struct worker_queue;
-static linted_error worker_queue_create(struct worker_queue **queuep);
-static linted_error worker_try_submit(struct worker_queue *queue,
-                                      struct linted_async_task *task);
-static linted_error worker_recv(struct worker_queue *queue,
-                                struct linted_async_task **taskp);
+static lntd_error worker_queue_create(struct worker_queue **queuep);
+static lntd_error worker_try_submit(struct worker_queue *queue,
+                                    struct lntd_async_task *task);
+static lntd_error worker_recv(struct worker_queue *queue,
+                              struct lntd_async_task **taskp);
 static void worker_queue_destroy(struct worker_queue *queue);
 
 struct waiter_queue;
-static linted_error waiter_queue_create(struct waiter_queue **queuep);
+static lntd_error waiter_queue_create(struct waiter_queue **queuep);
 static void waiter_submit(struct waiter_queue *queue,
-                          struct linted_async_waiter *waiter);
-static linted_error waiter_recv(struct waiter_queue *queue,
-                                struct linted_async_waiter **waiterp);
+                          struct lntd_async_waiter *waiter);
+static lntd_error waiter_recv(struct waiter_queue *queue,
+                              struct lntd_async_waiter **waiterp);
 static void waiter_queue_destroy(struct waiter_queue *queue);
 
 struct worker_pool;
-static linted_error worker_pool_create(struct worker_pool **poolp,
-                                       struct job_queue *job_queue,
-                                       struct linted_async_pool *pool,
-                                       unsigned max_tasks);
+static lntd_error worker_pool_create(struct worker_pool **poolp,
+                                     struct job_queue *job_queue,
+                                     struct lntd_async_pool *pool,
+                                     unsigned max_tasks);
 static void worker_pool_destroy(struct worker_pool *pool);
 
 struct wait_manager;
-static linted_error wait_manager_create(
-    struct wait_manager **managerp, struct waiter_queue *waiter_queue,
-    struct linted_async_pool *pool, unsigned max_pollers);
+static lntd_error wait_manager_create(struct wait_manager **managerp,
+                                      struct waiter_queue *waiter_queue,
+                                      struct lntd_async_pool *pool,
+                                      unsigned max_pollers);
 static void wait_manager_destroy(struct wait_manager *manager);
 
 struct canceller {
-	linted_ko owner;
+	lntd_ko owner;
 	CRITICAL_SECTION lock;
 	bool *cancel_replier;
 	bool owned : 1U;
@@ -115,10 +115,10 @@ static void canceller_start(struct canceller *canceller);
 static void canceller_stop(struct canceller *canceller);
 static void canceller_cancel(struct canceller *canceller);
 static bool canceller_check_or_register(struct canceller *canceller,
-                                        linted_ko self);
+                                        lntd_ko self);
 static bool canceller_check_and_unregister(struct canceller *canceller);
 
-struct linted_async_pool {
+struct lntd_async_pool {
 	struct wait_manager *wait_manager;
 	struct worker_pool *worker_pool;
 
@@ -127,35 +127,35 @@ struct linted_async_pool {
 	struct completion_queue *completion_queue;
 };
 
-struct linted_async_task {
-	struct linted_node parent;
+struct lntd_async_task {
+	struct lntd_node parent;
 	struct canceller canceller;
 	void *data;
-	linted_error err;
-	union linted_async_ck task_ck;
+	lntd_error err;
+	union lntd_async_ck task_ck;
 	void *userstate;
-	linted_async_type type;
+	lntd_async_type type;
 	bool thread_canceller : 1U;
 };
 
-struct linted_async_waiter {
-	struct linted_node parent;
-	struct linted_async_task *task;
-	linted_ko ko;
+struct lntd_async_waiter {
+	struct lntd_node parent;
+	struct lntd_async_task *task;
+	lntd_ko ko;
 	short flags;
 	short revents;
 	bool thread_canceller : 1U;
 };
 
-linted_error linted_async_pool_create(struct linted_async_pool **poolp,
-                                      unsigned max_tasks)
+lntd_error lntd_async_pool_create(struct lntd_async_pool **poolp,
+                                  unsigned max_tasks)
 {
-	linted_error err;
+	lntd_error err;
 
-	struct linted_async_pool *pool;
+	struct lntd_async_pool *pool;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *pool);
+		err = lntd_mem_alloc(&xx, sizeof *pool);
 		if (err != 0)
 			return err;
 		pool = xx;
@@ -231,12 +231,12 @@ destroy_waiter_queue:
 	waiter_queue_destroy(waiter_queue);
 
 free_pool:
-	linted_mem_free(pool);
+	lntd_mem_free(pool);
 
 	return err;
 }
 
-linted_error linted_async_pool_destroy(struct linted_async_pool *pool)
+lntd_error lntd_async_pool_destroy(struct lntd_async_pool *pool)
 {
 	struct wait_manager *wait_manager = pool->wait_manager;
 	struct worker_pool *worker_pool = pool->worker_pool;
@@ -253,28 +253,28 @@ linted_error linted_async_pool_destroy(struct linted_async_pool *pool)
 	waiter_queue_destroy(waiter_queue);
 	completion_queue_destroy(completion_queue);
 
-	linted_mem_free(pool);
+	lntd_mem_free(pool);
 
 	return 0;
 }
 
-void linted_async_pool_submit(struct linted_async_pool *pool,
-                              struct linted_async_task *task)
+void lntd_async_pool_submit(struct lntd_async_pool *pool,
+                            struct lntd_async_task *task)
 {
-	LINTED_ASSERT(pool != 0);
+	LNTD_ASSERT(pool != 0);
 
 	canceller_start(&task->canceller);
 
 	job_submit(pool->job_queue, task);
 }
 
-void linted_async_pool_resubmit(struct linted_async_pool *pool,
-                                struct linted_async_task *task)
+void lntd_async_pool_resubmit(struct lntd_async_pool *pool,
+                              struct lntd_async_task *task)
 {
-	LINTED_ASSERT(pool != 0);
+	LNTD_ASSERT(pool != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
-		task->err = LINTED_ERROR_CANCELLED;
+		task->err = LNTD_ERROR_CANCELLED;
 		complete_task(pool->completion_queue, task);
 		return;
 	}
@@ -282,9 +282,9 @@ void linted_async_pool_resubmit(struct linted_async_pool *pool,
 	job_submit(pool->job_queue, task);
 }
 
-void linted_async_pool_complete(struct linted_async_pool *pool,
-                                struct linted_async_task *task,
-                                linted_error task_err)
+void lntd_async_pool_complete(struct lntd_async_pool *pool,
+                              struct lntd_async_task *task,
+                              lntd_error task_err)
 {
 	canceller_stop(&task->canceller);
 
@@ -292,15 +292,15 @@ void linted_async_pool_complete(struct linted_async_pool *pool,
 	complete_task(pool->completion_queue, task);
 }
 
-void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
-                                    struct linted_async_waiter *waiter,
-                                    struct linted_async_task *task,
-                                    linted_ko ko, short flags)
+void lntd_async_pool_wait_on_poll(struct lntd_async_pool *pool,
+                                  struct lntd_async_waiter *waiter,
+                                  struct lntd_async_task *task,
+                                  lntd_ko ko, short flags)
 {
-	LINTED_ASSERT(pool != 0);
+	LNTD_ASSERT(pool != 0);
 
 	if (canceller_check_and_unregister(&task->canceller)) {
-		task->err = LINTED_ERROR_CANCELLED;
+		task->err = LNTD_ERROR_CANCELLED;
 		complete_task(pool->completion_queue, task);
 		return;
 	}
@@ -312,13 +312,12 @@ void linted_async_pool_wait_on_poll(struct linted_async_pool *pool,
 	waiter_submit(pool->waiter_queue, waiter);
 }
 
-linted_error linted_async_pool_wait(struct linted_async_pool *pool,
-                                    struct linted_async_result *resultp)
+lntd_error lntd_async_pool_wait(struct lntd_async_pool *pool,
+                                struct lntd_async_result *resultp)
 {
-	LINTED_ASSERT_NOT_NULL(pool);
-	struct linted_async_task *task;
-	linted_error err =
-	    completion_recv(pool->completion_queue, &task);
+	LNTD_ASSERT_NOT_NULL(pool);
+	struct lntd_async_task *task;
+	lntd_error err = completion_recv(pool->completion_queue, &task);
 	if (0 == err) {
 		resultp->task_ck = task->task_ck;
 		resultp->err = task->err;
@@ -327,12 +326,12 @@ linted_error linted_async_pool_wait(struct linted_async_pool *pool,
 	return err;
 }
 
-linted_error linted_async_pool_poll(struct linted_async_pool *pool,
-                                    struct linted_async_result *resultp)
+lntd_error lntd_async_pool_poll(struct lntd_async_pool *pool,
+                                struct lntd_async_result *resultp)
 {
-	LINTED_ASSERT_NOT_NULL(pool);
-	struct linted_async_task *task;
-	linted_error err =
+	LNTD_ASSERT_NOT_NULL(pool);
+	struct lntd_async_task *task;
+	lntd_error err =
 	    completion_try_recv(pool->completion_queue, &task);
 	if (0 == err) {
 		resultp->task_ck = task->task_ck;
@@ -342,14 +341,13 @@ linted_error linted_async_pool_poll(struct linted_async_pool *pool,
 	return err;
 }
 
-linted_error
-linted_async_waiter_create(struct linted_async_waiter **waiterp)
+lntd_error lntd_async_waiter_create(struct lntd_async_waiter **waiterp)
 {
-	linted_error err;
-	struct linted_async_waiter *waiter;
+	lntd_error err;
+	struct lntd_async_waiter *waiter;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *waiter);
+		err = lntd_mem_alloc(&xx, sizeof *waiter);
 		if (err != 0)
 			return err;
 		waiter = xx;
@@ -362,27 +360,26 @@ linted_async_waiter_create(struct linted_async_waiter **waiterp)
 	return 0;
 }
 
-void linted_async_waiter_destroy(struct linted_async_waiter *waiter)
+void lntd_async_waiter_destroy(struct lntd_async_waiter *waiter)
 {
-	linted_mem_free(waiter);
+	lntd_mem_free(waiter);
 }
 
-short linted_async_waiter_revents(struct linted_async_waiter *waiter)
+short lntd_async_waiter_revents(struct lntd_async_waiter *waiter)
 {
 	short ev = waiter->revents;
 	waiter->revents = 0;
 	return ev;
 }
 
-linted_error linted_async_task_create(struct linted_async_task **taskp,
-                                      void *data,
-                                      linted_async_type type)
+lntd_error lntd_async_task_create(struct lntd_async_task **taskp,
+                                  void *data, lntd_async_type type)
 {
-	linted_error err;
-	struct linted_async_task *task;
+	lntd_error err;
+	struct lntd_async_task *task;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *task);
+		err = lntd_mem_alloc(&xx, sizeof *task);
 		if (err != 0)
 			return err;
 		task = xx;
@@ -392,7 +389,7 @@ linted_error linted_async_task_create(struct linted_async_task **taskp,
 
 	task->data = data;
 	task->type = type;
-	task->err = LINTED_ERROR_INVALID_PARAMETER;
+	task->err = LNTD_ERROR_INVALID_PARAMETER;
 
 	task->thread_canceller = false;
 
@@ -400,38 +397,36 @@ linted_error linted_async_task_create(struct linted_async_task **taskp,
 	return 0;
 }
 
-void linted_async_task_destroy(struct linted_async_task *task)
+void lntd_async_task_destroy(struct lntd_async_task *task)
 {
-	linted_mem_free(task);
+	lntd_mem_free(task);
 }
 
-void linted_async_task_cancel(struct linted_async_task *task)
+void lntd_async_task_cancel(struct lntd_async_task *task)
 {
 	canceller_cancel(&task->canceller);
 }
 
-struct linted_async_task *
-linted_async_task_prepare(struct linted_async_task *task,
-                          union linted_async_ck task_ck,
-                          void *userstate)
+struct lntd_async_task *
+lntd_async_task_prepare(struct lntd_async_task *task,
+                        union lntd_async_ck task_ck, void *userstate)
 {
 	task->task_ck = task_ck;
 	task->userstate = userstate;
 	return task;
 }
 
-union linted_async_ck
-linted_async_task_ck(struct linted_async_task *task)
+union lntd_async_ck lntd_async_task_ck(struct lntd_async_task *task)
 {
 	return task->task_ck;
 }
 
-linted_error linted_async_task_err(struct linted_async_task *task)
+lntd_error lntd_async_task_err(struct lntd_async_task *task)
 {
 	return task->err;
 }
 
-void *linted_async_task_data(struct linted_async_task *task)
+void *lntd_async_task_data(struct lntd_async_task *task)
 {
 	return task->data;
 }
@@ -439,34 +434,35 @@ void *linted_async_task_data(struct linted_async_task *task)
 static DWORD WINAPI master_worker_routine(void *arg);
 static DWORD WINAPI worker_routine(void *arg);
 
-static void run_task(struct linted_async_pool *pool,
-                     struct linted_async_task *task);
+static void run_task(struct lntd_async_pool *pool,
+                     struct lntd_async_task *task);
 
 struct worker_pool;
 
 struct worker {
-	struct linted_async_pool *pool;
+	struct lntd_async_pool *pool;
 	struct worker_queue *queue;
-	linted_ko thread;
+	lntd_ko thread;
 };
 
 struct worker_pool {
-	struct linted_async_pool *async_pool;
+	struct lntd_async_pool *async_pool;
 	struct job_queue *job_queue;
 	struct worker_queue **worker_queues;
 
 	size_t worker_count;
 
-	linted_ko master_thread;
+	lntd_ko master_thread;
 
 	struct worker workers[];
 };
 
-static linted_error worker_pool_create(
-    struct worker_pool **poolp, struct job_queue *job_queue,
-    struct linted_async_pool *async_pool, unsigned max_tasks)
+static lntd_error worker_pool_create(struct worker_pool **poolp,
+                                     struct job_queue *job_queue,
+                                     struct lntd_async_pool *async_pool,
+                                     unsigned max_tasks)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	struct worker_pool *pool;
 	size_t workers_count = max_tasks;
@@ -474,8 +470,7 @@ static linted_error worker_pool_create(
 
 	{
 		void *xx;
-		err =
-		    linted_mem_alloc(&xx, sizeof *pool + workers_size);
+		err = lntd_mem_alloc(&xx, sizeof *pool + workers_size);
 		if (err != 0)
 			return err;
 		pool = xx;
@@ -499,7 +494,7 @@ static linted_error worker_pool_create(
 		struct worker *worker = &pool->workers[created_threads];
 
 		worker->pool = async_pool;
-		linted_ko thread =
+		lntd_ko thread =
 		    CreateThread(0, 0, worker_routine, worker, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
 			err = HRESULT_FROM_WIN32(GetLastError());
@@ -512,7 +507,7 @@ static linted_error worker_pool_create(
 		goto destroy_threads;
 
 	{
-		linted_ko thread = CreateThread(
+		lntd_ko thread = CreateThread(
 		    0, 0, master_worker_routine, pool, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
 			err = HRESULT_FROM_WIN32(GetLastError());
@@ -529,13 +524,13 @@ destroy_threads:
 	for (size_t ii = 0U; ii < created_threads; ++ii) {
 		struct worker const *worker = &pool->workers[ii];
 		struct worker_queue *worker_queue = worker->queue;
-		linted_ko thread = worker->thread;
+		lntd_ko thread = worker->thread;
 
 		for (;;) {
-			struct linted_async_task task;
+			struct lntd_async_task task;
 			task.thread_canceller = true;
 
-			linted_error try_err =
+			lntd_error try_err =
 			    worker_try_submit(worker_queue, &task);
 			if (0 == try_err) {
 
@@ -546,7 +541,7 @@ destroy_threads:
 
 				case WAIT_FAILED:
 				default:
-					LINTED_ASSERT(false);
+					LNTD_ASSERT(false);
 				}
 				break;
 			}
@@ -561,7 +556,7 @@ destroy_worker_queues:
 	for (size_t ii = 0U; ii < worker_queues_created; ++ii)
 		worker_queue_destroy(pool->workers[ii].queue);
 
-	linted_mem_free(pool);
+	lntd_mem_free(pool);
 
 	return err;
 }
@@ -569,12 +564,12 @@ destroy_worker_queues:
 static void worker_pool_destroy(struct worker_pool *pool)
 {
 	struct job_queue *job_queue = pool->job_queue;
-	linted_ko master_thread = pool->master_thread;
+	lntd_ko master_thread = pool->master_thread;
 	struct worker const *workers = pool->workers;
 	size_t worker_count = pool->worker_count;
 
 	{
-		struct linted_async_task task;
+		struct lntd_async_task task;
 		task.thread_canceller = true;
 
 		job_submit(job_queue, &task);
@@ -585,19 +580,19 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 		case WAIT_FAILED:
 		default:
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 		}
 	}
 
 	for (size_t ii = 0U; ii < worker_count; ++ii)
 		worker_queue_destroy(workers[ii].queue);
 
-	linted_mem_free(pool);
+	lntd_mem_free(pool);
 }
 
 static DWORD WINAPI master_worker_routine(void *arg)
 {
-	linted_pid_name("async-worker-master");
+	lntd_pid_name("async-worker-master");
 
 	struct worker_pool *pool = arg;
 
@@ -606,9 +601,9 @@ static DWORD WINAPI master_worker_routine(void *arg)
 	size_t max_tasks = pool->worker_count;
 
 	for (;;) {
-		struct linted_async_task *task;
+		struct lntd_async_task *task;
 		{
-			struct linted_async_task *xx;
+			struct lntd_async_task *xx;
 			job_recv(job_queue, &xx);
 			task = xx;
 		}
@@ -617,11 +612,11 @@ static DWORD WINAPI master_worker_routine(void *arg)
 			break;
 
 		for (size_t ii = 0U;; ii = (ii + 1U) % max_tasks) {
-			linted_error err =
+			lntd_error err =
 			    worker_try_submit(workers[ii].queue, task);
-			if (LINTED_ERROR_AGAIN == err)
+			if (LNTD_ERROR_AGAIN == err)
 				continue;
-			LINTED_ASSERT(0 == err);
+			LNTD_ASSERT(0 == err);
 			break;
 		}
 	}
@@ -629,12 +624,12 @@ static DWORD WINAPI master_worker_routine(void *arg)
 	for (size_t ii = 0U; ii < max_tasks; ++ii) {
 		struct worker *worker = &pool->workers[ii];
 		struct worker_queue *worker_queue = worker->queue;
-		linted_ko thread = worker->thread;
+		lntd_ko thread = worker->thread;
 		for (;;) {
-			struct linted_async_task task;
+			struct lntd_async_task task;
 			task.thread_canceller = true;
 
-			linted_error err =
+			lntd_error err =
 			    worker_try_submit(worker_queue, &task);
 			if (0 == err) {
 				switch (WaitForSingleObject(thread,
@@ -644,7 +639,7 @@ static DWORD WINAPI master_worker_routine(void *arg)
 
 				case WAIT_FAILED:
 				default:
-					LINTED_ASSERT(false);
+					LNTD_ASSERT(false);
 				}
 				break;
 			}
@@ -660,17 +655,17 @@ static DWORD WINAPI master_worker_routine(void *arg)
 
 static DWORD WINAPI worker_routine(void *arg)
 {
-	linted_pid_name("async-worker");
+	lntd_pid_name("async-worker");
 
 	struct worker *worker = arg;
 
-	struct linted_async_pool *async_pool = worker->pool;
+	struct lntd_async_pool *async_pool = worker->pool;
 	struct worker_queue *worker_queue = worker->queue;
 
 	for (;;) {
-		struct linted_async_task *task;
+		struct lntd_async_task *task;
 		{
-			struct linted_async_task *xx;
+			struct lntd_async_task *xx;
 			worker_recv(worker_queue, &xx);
 			task = xx;
 		}
@@ -678,12 +673,12 @@ static DWORD WINAPI worker_routine(void *arg)
 		if (task->thread_canceller)
 			break;
 
-		linted_ko self = worker->thread;
+		lntd_ko self = worker->thread;
 
 		if (canceller_check_or_register(&task->canceller,
 		                                self)) {
-			linted_async_pool_complete(
-			    async_pool, task, LINTED_ERROR_CANCELLED);
+			lntd_async_pool_complete(async_pool, task,
+			                         LNTD_ERROR_CANCELLED);
 			continue;
 		}
 
@@ -693,72 +688,71 @@ static DWORD WINAPI worker_routine(void *arg)
 	return 0;
 }
 
-#pragma weak linted_sched_do_idle
-#pragma weak linted_io_do_poll
-#pragma weak linted_io_do_read
-#pragma weak linted_io_do_write
-#pragma weak linted_signal_do_wait
-#pragma weak linted_sched_do_sleep_until
+#pragma weak lntd_sched_do_idle
+#pragma weak lntd_io_do_poll
+#pragma weak lntd_io_do_read
+#pragma weak lntd_io_do_write
+#pragma weak lntd_signal_do_wait
+#pragma weak lntd_sched_do_sleep_until
 
-static void run_task(struct linted_async_pool *pool,
-                     struct linted_async_task *task)
+static void run_task(struct lntd_async_pool *pool,
+                     struct lntd_async_task *task)
 {
 	switch (task->type) {
-	case LINTED_ASYNCH_TASK_IDLE:
-		linted_sched_do_idle(pool, task);
+	case LNTD_ASYNCH_TASK_IDLE:
+		lntd_sched_do_idle(pool, task);
 		break;
 
-	case LINTED_ASYNCH_TASK_POLL:
-		linted_io_do_poll(pool, task);
+	case LNTD_ASYNCH_TASK_POLL:
+		lntd_io_do_poll(pool, task);
 		break;
 
-	case LINTED_ASYNCH_TASK_READ:
-		linted_io_do_read(pool, task);
+	case LNTD_ASYNCH_TASK_READ:
+		lntd_io_do_read(pool, task);
 		break;
 
-	case LINTED_ASYNCH_TASK_WRITE:
-		linted_io_do_write(pool, task);
+	case LNTD_ASYNCH_TASK_WRITE:
+		lntd_io_do_write(pool, task);
 		break;
 
-	case LINTED_ASYNCH_TASK_SIGNAL_WAIT:
-		linted_signal_do_wait(pool, task);
+	case LNTD_ASYNCH_TASK_SIGNAL_WAIT:
+		lntd_signal_do_wait(pool, task);
 		break;
 
-	case LINTED_ASYNCH_TASK_SLEEP_UNTIL:
-		linted_sched_do_sleep_until(pool, task);
+	case LNTD_ASYNCH_TASK_SLEEP_UNTIL:
+		lntd_sched_do_sleep_until(pool, task);
 		break;
 
 	default:
-		LINTED_ASSUME_UNREACHABLE();
+		LNTD_ASSUME_UNREACHABLE();
 	}
 }
 
 struct poller_queue;
-static linted_error poller_queue_create(struct poller_queue **queuep);
-static linted_error
-poller_try_submit(struct poller_queue *queue,
-                  struct linted_async_waiter *waiter);
-static linted_error poller_recv(struct poller_queue *queue,
-                                struct linted_async_waiter **waiterp);
+static lntd_error poller_queue_create(struct poller_queue **queuep);
+static lntd_error poller_try_submit(struct poller_queue *queue,
+                                    struct lntd_async_waiter *waiter);
+static lntd_error poller_recv(struct poller_queue *queue,
+                              struct lntd_async_waiter **waiterp);
 static void poller_queue_destroy(struct poller_queue *queue);
 
 struct wait_manager;
 
 struct poller {
-	struct linted_async_pool *pool;
+	struct lntd_async_pool *pool;
 	struct poller_queue *queue;
-	linted_ko thread;
+	lntd_ko thread;
 };
 
 struct wait_manager {
-	struct linted_async_pool *async_pool;
+	struct lntd_async_pool *async_pool;
 	struct waiter_queue *waiter_queue;
 
 	size_t poller_count;
 
 	bool stopped : 1U;
 
-	linted_ko master_thread;
+	lntd_ko master_thread;
 
 	struct poller pollers[];
 };
@@ -766,14 +760,13 @@ struct wait_manager {
 static DWORD WINAPI master_poller_routine(void *arg);
 static DWORD WINAPI poller_routine(void *arg);
 
-static linted_error poll_one(linted_ko ko, short events,
-                             short *revents);
+static lntd_error poll_one(lntd_ko ko, short events, short *revents);
 
-static linted_error wait_manager_create(
+static lntd_error wait_manager_create(
     struct wait_manager **managerp, struct waiter_queue *waiter_queue,
-    struct linted_async_pool *async_pool, unsigned max_pollers)
+    struct lntd_async_pool *async_pool, unsigned max_pollers)
 {
-	linted_error err;
+	lntd_error err;
 	size_t created_threads = 0U;
 	struct wait_manager *manager;
 
@@ -783,8 +776,8 @@ static linted_error wait_manager_create(
 
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx,
-		                       sizeof *manager + pollers_size);
+		err =
+		    lntd_mem_alloc(&xx, sizeof *manager + pollers_size);
 		if (err != 0)
 			return err;
 		manager = xx;
@@ -810,7 +803,7 @@ static linted_error wait_manager_create(
 
 		poller->pool = async_pool;
 
-		linted_ko thread =
+		lntd_ko thread =
 		    CreateThread(0, 0, poller_routine, poller, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
 			err = HRESULT_FROM_WIN32(GetLastError());
@@ -823,7 +816,7 @@ static linted_error wait_manager_create(
 		goto destroy_threads;
 
 	{
-		linted_ko thread = CreateThread(
+		lntd_ko thread = CreateThread(
 		    0, 0, master_poller_routine, manager, 0, 0);
 		if (INVALID_HANDLE_VALUE == thread) {
 			err = HRESULT_FROM_WIN32(GetLastError());
@@ -840,13 +833,13 @@ destroy_threads:
 	for (size_t ii = 0U; ii < created_threads; ++ii) {
 		struct poller const *poller = &manager->pollers[ii];
 		struct poller_queue *poller_queue = poller->queue;
-		linted_ko thread = poller->thread;
+		lntd_ko thread = poller->thread;
 
 		for (;;) {
-			struct linted_async_waiter waiter;
+			struct lntd_async_waiter waiter;
 			waiter.thread_canceller = true;
 
-			linted_error try_err =
+			lntd_error try_err =
 			    poller_try_submit(poller_queue, &waiter);
 			if (0 == try_err) {
 				switch (WaitForSingleObject(thread,
@@ -856,7 +849,7 @@ destroy_threads:
 
 				case WAIT_FAILED:
 				default:
-					LINTED_ASSERT(false);
+					LNTD_ASSERT(false);
 				}
 				break;
 			}
@@ -871,7 +864,7 @@ destroy_threads:
 		poller_queue_destroy(manager->pollers[ii].queue);
 
 free_manager:
-	linted_mem_free(manager);
+	lntd_mem_free(manager);
 
 	return err;
 }
@@ -879,12 +872,12 @@ free_manager:
 static void wait_manager_destroy(struct wait_manager *manager)
 {
 	struct waiter_queue *waiter_queue = manager->waiter_queue;
-	linted_ko master_thread = manager->master_thread;
+	lntd_ko master_thread = manager->master_thread;
 	size_t poller_count = manager->poller_count;
 	struct poller const *pollers = manager->pollers;
 
 	{
-		struct linted_async_waiter waiter;
+		struct lntd_async_waiter waiter;
 		waiter.thread_canceller = true;
 
 		waiter_submit(waiter_queue, &waiter);
@@ -895,19 +888,19 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 		case WAIT_FAILED:
 		default:
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 		}
 	}
 
 	for (size_t ii = 0U; ii < poller_count; ++ii)
 		poller_queue_destroy(pollers[ii].queue);
 
-	linted_mem_free(manager);
+	lntd_mem_free(manager);
 }
 
 static DWORD WINAPI master_poller_routine(void *arg)
 {
-	linted_pid_name("async-poller-master");
+	lntd_pid_name("async-poller-master");
 
 	struct wait_manager *pool = arg;
 
@@ -916,9 +909,9 @@ static DWORD WINAPI master_poller_routine(void *arg)
 	size_t max_tasks = pool->poller_count;
 
 	for (;;) {
-		struct linted_async_waiter *waiter;
+		struct lntd_async_waiter *waiter;
 		{
-			struct linted_async_waiter *xx;
+			struct lntd_async_waiter *xx;
 			waiter_recv(waiter_queue, &xx);
 			waiter = xx;
 		}
@@ -927,24 +920,24 @@ static DWORD WINAPI master_poller_routine(void *arg)
 			break;
 
 		for (size_t ii = 0U;; ii = (ii + 1U) % max_tasks) {
-			linted_error err = poller_try_submit(
+			lntd_error err = poller_try_submit(
 			    pollers[ii].queue, waiter);
-			if (LINTED_ERROR_AGAIN == err)
+			if (LNTD_ERROR_AGAIN == err)
 				continue;
-			LINTED_ASSERT(0 == err);
+			LNTD_ASSERT(0 == err);
 			break;
 		}
 	}
 
 	for (size_t ii = 0U; ii < max_tasks; ++ii) {
 		struct poller_queue *poller_queue = pollers[ii].queue;
-		linted_ko thread = pollers[ii].thread;
+		lntd_ko thread = pollers[ii].thread;
 
 		for (;;) {
-			struct linted_async_waiter waiter;
+			struct lntd_async_waiter waiter;
 			waiter.thread_canceller = true;
 
-			linted_error err =
+			lntd_error err =
 			    poller_try_submit(poller_queue, &waiter);
 			if (0 == err) {
 				switch (WaitForSingleObject(thread,
@@ -954,7 +947,7 @@ static DWORD WINAPI master_poller_routine(void *arg)
 
 				case WAIT_FAILED:
 				default:
-					LINTED_ASSERT(false);
+					LNTD_ASSERT(false);
 				}
 
 				break;
@@ -971,18 +964,18 @@ static DWORD WINAPI master_poller_routine(void *arg)
 
 static DWORD WINAPI poller_routine(void *arg)
 {
-	linted_pid_name("async-poller");
+	lntd_pid_name("async-poller");
 
 	struct poller *poller = arg;
 
-	struct linted_async_pool *async_pool = poller->pool;
+	struct lntd_async_pool *async_pool = poller->pool;
 	struct poller_queue *poller_queue = poller->queue;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 	for (;;) {
-		struct linted_async_waiter *waiter;
+		struct lntd_async_waiter *waiter;
 		{
-			struct linted_async_waiter *xx;
+			struct lntd_async_waiter *xx;
 			poller_recv(poller_queue, &xx);
 			waiter = xx;
 		}
@@ -990,15 +983,15 @@ static DWORD WINAPI poller_routine(void *arg)
 		if (waiter->thread_canceller)
 			break;
 
-		linted_ko self = poller->thread;
+		lntd_ko self = poller->thread;
 
-		struct linted_async_task *task = waiter->task;
-		linted_ko ko = waiter->ko;
+		struct lntd_async_task *task = waiter->task;
+		lntd_ko ko = waiter->ko;
 		unsigned short flags = waiter->flags;
 
 		if (canceller_check_or_register(&task->canceller,
 		                                self)) {
-			err = LINTED_ERROR_CANCELLED;
+			err = LNTD_ERROR_CANCELLED;
 			goto complete_task;
 		}
 
@@ -1014,7 +1007,7 @@ static DWORD WINAPI poller_routine(void *arg)
 		}
 
 		if ((revents & POLLNVAL) != 0) {
-			err = LINTED_ERROR_INVALID_KO;
+			err = LNTD_ERROR_INVALID_KO;
 			goto complete_task;
 		}
 
@@ -1039,23 +1032,22 @@ static DWORD WINAPI poller_routine(void *arg)
 
 		waiter->revents = revents;
 
-		linted_async_pool_resubmit(async_pool, task);
+		lntd_async_pool_resubmit(async_pool, task);
 		continue;
 
 	complete_task:
-		linted_async_pool_complete(async_pool, task, err);
+		lntd_async_pool_complete(async_pool, task, err);
 		continue;
 
 	wait_on_poll:
-		linted_async_pool_wait_on_poll(async_pool, waiter, task,
-		                               ko, flags);
+		lntd_async_pool_wait_on_poll(async_pool, waiter, task,
+		                             ko, flags);
 	}
 
 	return 0;
 }
 
-static linted_error poll_one(linted_ko ko, short events,
-                             short *reventsp)
+static lntd_error poll_one(lntd_ko ko, short events, short *reventsp)
 {
 	short revents;
 	{
@@ -1073,21 +1065,21 @@ static linted_error poll_one(linted_ko ko, short events,
 
 poll_failed:
 	;
-	linted_error err = HRESULT_FROM_WIN32(WSAGetLastError());
-	LINTED_ASSUME(err != 0);
+	lntd_error err = HRESULT_FROM_WIN32(WSAGetLastError());
+	LNTD_ASSUME(err != 0);
 	return err;
 }
 
 /* struct complete_queue is just a fake */
-static linted_error
+static lntd_error
 completion_queue_create(struct completion_queue **queuep)
 {
-	linted_error err;
+	lntd_error err;
 
-	struct linted_stack *queue;
+	struct lntd_stack *queue;
 	{
-		struct linted_stack *xx;
-		err = linted_stack_create(&xx);
+		struct lntd_stack *xx;
+		err = lntd_stack_create(&xx);
 		if (err != 0)
 			return err;
 		queue = xx;
@@ -1098,58 +1090,57 @@ completion_queue_create(struct completion_queue **queuep)
 }
 
 static void complete_task(struct completion_queue *queue,
-                          struct linted_async_task *task)
+                          struct lntd_async_task *task)
 {
-	linted_stack_send((struct linted_stack *)queue, UPCAST(task));
+	lntd_stack_send((struct lntd_stack *)queue, UPCAST(task));
 }
 
-static linted_error completion_recv(struct completion_queue *queue,
-                                    struct linted_async_task **taskp)
+static lntd_error completion_recv(struct completion_queue *queue,
+                                  struct lntd_async_task **taskp)
 {
-	struct linted_node *node;
+	struct lntd_node *node;
 
-	linted_stack_recv((struct linted_stack *)queue, &node);
+	lntd_stack_recv((struct lntd_stack *)queue, &node);
 
-	*taskp = DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct lntd_async_task, node);
 
 	return 0;
 }
 
-static linted_error
-completion_try_recv(struct completion_queue *queue,
-                    struct linted_async_task **taskp)
+static lntd_error completion_try_recv(struct completion_queue *queue,
+                                      struct lntd_async_task **taskp)
 {
-	linted_error err;
+	lntd_error err;
 
-	struct linted_node *node;
+	struct lntd_node *node;
 	{
-		struct linted_node *xx;
-		err = linted_stack_try_recv(
-		    (struct linted_stack *)queue, &xx);
+		struct lntd_node *xx;
+		err = lntd_stack_try_recv((struct lntd_stack *)queue,
+		                          &xx);
 		if (err != 0)
 			return err;
 		node = xx;
 	}
 
-	*taskp = DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct lntd_async_task, node);
 
 	return 0;
 }
 
 static void completion_queue_destroy(struct completion_queue *queue)
 {
-	linted_stack_destroy((struct linted_stack *)queue);
+	lntd_stack_destroy((struct lntd_stack *)queue);
 }
 
 /* struct job_queue is just a fake */
-static linted_error job_queue_create(struct job_queue **queuep)
+static lntd_error job_queue_create(struct job_queue **queuep)
 {
-	linted_error err;
+	lntd_error err;
 
-	struct linted_stack *queue;
+	struct lntd_stack *queue;
 	{
-		struct linted_stack *xx;
-		err = linted_stack_create(&xx);
+		struct lntd_stack *xx;
+		err = lntd_stack_create(&xx);
 		if (err != 0)
 			return err;
 		queue = xx;
@@ -1160,41 +1151,41 @@ static linted_error job_queue_create(struct job_queue **queuep)
 }
 
 static void job_submit(struct job_queue *queue,
-                       struct linted_async_task *task)
+                       struct lntd_async_task *task)
 {
-	linted_stack_send((struct linted_stack *)queue, UPCAST(task));
+	lntd_stack_send((struct lntd_stack *)queue, UPCAST(task));
 }
 
-static linted_error job_recv(struct job_queue *queue,
-                             struct linted_async_task **taskp)
+static lntd_error job_recv(struct job_queue *queue,
+                           struct lntd_async_task **taskp)
 {
-	struct linted_node *node;
+	struct lntd_node *node;
 
 	{
-		struct linted_node *xx;
-		linted_stack_recv((struct linted_stack *)queue, &xx);
+		struct lntd_node *xx;
+		lntd_stack_recv((struct lntd_stack *)queue, &xx);
 		node = xx;
 	}
 
-	*taskp = DOWNCAST(struct linted_async_task, node);
+	*taskp = DOWNCAST(struct lntd_async_task, node);
 
 	return 0;
 }
 
 static void job_queue_destroy(struct job_queue *queue)
 {
-	linted_stack_destroy((struct linted_stack *)queue);
+	lntd_stack_destroy((struct lntd_stack *)queue);
 }
 
 /* struct worker_queue is just a fake */
-static linted_error worker_queue_create(struct worker_queue **queuep)
+static lntd_error worker_queue_create(struct worker_queue **queuep)
 {
-	linted_error err;
+	lntd_error err;
 
-	struct linted_channel *channel;
+	struct lntd_channel *channel;
 	{
-		struct linted_channel *xx;
-		err = linted_channel_create(&xx);
+		struct lntd_channel *xx;
+		err = lntd_channel_create(&xx);
 		if (err != 0)
 			return err;
 		channel = xx;
@@ -1203,30 +1194,29 @@ static linted_error worker_queue_create(struct worker_queue **queuep)
 	return 0;
 }
 
-static linted_error worker_try_submit(struct worker_queue *queue,
-                                      struct linted_async_task *task)
+static lntd_error worker_try_submit(struct worker_queue *queue,
+                                    struct lntd_async_task *task)
 {
-	LINTED_ASSERT(queue != 0);
-	LINTED_ASSERT(task != 0);
-	return linted_channel_try_send((struct linted_channel *)queue,
-	                               task);
+	LNTD_ASSERT(queue != 0);
+	LNTD_ASSERT(task != 0);
+	return lntd_channel_try_send((struct lntd_channel *)queue,
+	                             task);
 }
 
-static linted_error worker_recv(struct worker_queue *queue,
-                                struct linted_async_task **taskp)
+static lntd_error worker_recv(struct worker_queue *queue,
+                              struct lntd_async_task **taskp)
 {
-	LINTED_ASSERT(queue != 0);
-	LINTED_ASSERT(taskp != 0);
+	LNTD_ASSERT(queue != 0);
+	LNTD_ASSERT(taskp != 0);
 
-	struct linted_async_task *task;
+	struct lntd_async_task *task;
 	{
 		void *xx;
-		linted_channel_recv((struct linted_channel *)queue,
-		                    &xx);
+		lntd_channel_recv((struct lntd_channel *)queue, &xx);
 		task = xx;
 	}
 
-	LINTED_ASSERT(task != 0);
+	LNTD_ASSERT(task != 0);
 	*taskp = task;
 
 	return 0;
@@ -1234,18 +1224,18 @@ static linted_error worker_recv(struct worker_queue *queue,
 
 static void worker_queue_destroy(struct worker_queue *queue)
 {
-	linted_channel_destroy((struct linted_channel *)queue);
+	lntd_channel_destroy((struct lntd_channel *)queue);
 }
 
 /* struct waiter_queue is just a fake */
-static linted_error waiter_queue_create(struct waiter_queue **queuep)
+static lntd_error waiter_queue_create(struct waiter_queue **queuep)
 {
-	linted_error err;
+	lntd_error err;
 
-	struct linted_stack *raw_queue;
+	struct lntd_stack *raw_queue;
 	{
-		struct linted_stack *xx;
-		err = linted_stack_create(&xx);
+		struct lntd_stack *xx;
+		err = lntd_stack_create(&xx);
 		if (err != 0)
 			return err;
 		raw_queue = xx;
@@ -1256,45 +1246,45 @@ static linted_error waiter_queue_create(struct waiter_queue **queuep)
 
 static void waiter_queue_destroy(struct waiter_queue *queue)
 {
-	linted_stack_destroy((struct linted_stack *)queue);
+	lntd_stack_destroy((struct lntd_stack *)queue);
 }
 
 static void waiter_submit(struct waiter_queue *queue,
-                          struct linted_async_waiter *waiter)
+                          struct lntd_async_waiter *waiter)
 {
-	LINTED_ASSERT(queue != 0);
-	LINTED_ASSERT(waiter != 0);
+	LNTD_ASSERT(queue != 0);
+	LNTD_ASSERT(waiter != 0);
 
-	linted_stack_send((struct linted_stack *)queue, UPCAST(waiter));
+	lntd_stack_send((struct lntd_stack *)queue, UPCAST(waiter));
 }
 
-static linted_error waiter_recv(struct waiter_queue *queue,
-                                struct linted_async_waiter **waiterp)
+static lntd_error waiter_recv(struct waiter_queue *queue,
+                              struct lntd_async_waiter **waiterp)
 {
-	LINTED_ASSERT(queue != 0);
-	LINTED_ASSERT(waiterp != 0);
+	LNTD_ASSERT(queue != 0);
+	LNTD_ASSERT(waiterp != 0);
 
-	struct linted_node *node;
+	struct lntd_node *node;
 	{
-		struct linted_node *xx;
-		linted_stack_recv((struct linted_stack *)queue, &xx);
+		struct lntd_node *xx;
+		lntd_stack_recv((struct lntd_stack *)queue, &xx);
 		node = xx;
 	}
 
-	*waiterp = DOWNCAST(struct linted_async_waiter, node);
+	*waiterp = DOWNCAST(struct lntd_async_waiter, node);
 
 	return 0;
 }
 
 /* struct poller_queue is just a fake */
-static linted_error poller_queue_create(struct poller_queue **queuep)
+static lntd_error poller_queue_create(struct poller_queue **queuep)
 {
-	linted_error err;
+	lntd_error err;
 
-	struct linted_channel *channel;
+	struct lntd_channel *channel;
 	{
-		struct linted_channel *xx;
-		err = linted_channel_create(&xx);
+		struct lntd_channel *xx;
+		err = lntd_channel_create(&xx);
 		if (err != 0)
 			return err;
 		channel = xx;
@@ -1304,28 +1294,26 @@ static linted_error poller_queue_create(struct poller_queue **queuep)
 	return 0;
 }
 
-static linted_error
-poller_try_submit(struct poller_queue *queue,
-                  struct linted_async_waiter *waiter)
+static lntd_error poller_try_submit(struct poller_queue *queue,
+                                    struct lntd_async_waiter *waiter)
 {
-	LINTED_ASSERT(queue != 0);
-	LINTED_ASSERT(waiter != 0);
-	return linted_channel_try_send((struct linted_channel *)queue,
-	                               waiter);
+	LNTD_ASSERT(queue != 0);
+	LNTD_ASSERT(waiter != 0);
+	return lntd_channel_try_send((struct lntd_channel *)queue,
+	                             waiter);
 }
 
-static linted_error poller_recv(struct poller_queue *queue,
-                                struct linted_async_waiter **waiterp)
+static lntd_error poller_recv(struct poller_queue *queue,
+                              struct lntd_async_waiter **waiterp)
 {
-	struct linted_async_waiter *waiter;
+	struct lntd_async_waiter *waiter;
 	{
 		void *xx;
-		linted_channel_recv((struct linted_channel *)queue,
-		                    &xx);
+		lntd_channel_recv((struct lntd_channel *)queue, &xx);
 		waiter = xx;
 	}
 
-	LINTED_ASSERT(waiter != 0);
+	LNTD_ASSERT(waiter != 0);
 	*waiterp = waiter;
 
 	return 0;
@@ -1333,7 +1321,7 @@ static linted_error poller_recv(struct poller_queue *queue,
 
 static void poller_queue_destroy(struct poller_queue *queue)
 {
-	linted_channel_destroy((struct linted_channel *)queue);
+	lntd_channel_destroy((struct lntd_channel *)queue);
 }
 
 static void canceller_init(struct canceller *canceller)
@@ -1350,8 +1338,8 @@ static void canceller_start(struct canceller *canceller)
 {
 	EnterCriticalSection(&canceller->lock);
 
-	LINTED_ASSERT(!canceller->in_flight);
-	LINTED_ASSERT(!canceller->owned);
+	LNTD_ASSERT(!canceller->in_flight);
+	LNTD_ASSERT(!canceller->owned);
 
 	canceller->in_flight = true;
 	canceller->owned = false;
@@ -1363,8 +1351,8 @@ static void canceller_stop(struct canceller *canceller)
 {
 	EnterCriticalSection(&canceller->lock);
 
-	LINTED_ASSERT(canceller->owned);
-	LINTED_ASSERT(canceller->in_flight);
+	LNTD_ASSERT(canceller->owned);
+	LNTD_ASSERT(canceller->in_flight);
 
 	{
 		bool *cancel_replier = canceller->cancel_replier;
@@ -1388,7 +1376,7 @@ static void canceller_cancel(struct canceller *canceller)
 	{
 		EnterCriticalSection(&canceller->lock);
 
-		LINTED_ASSERT(0 == canceller->cancel_replier);
+		LNTD_ASSERT(0 == canceller->cancel_replier);
 
 		in_flight = canceller->in_flight;
 		if (in_flight) {
@@ -1425,7 +1413,7 @@ static void canceller_cancel(struct canceller *canceller)
 }
 
 static bool canceller_check_or_register(struct canceller *canceller,
-                                        linted_ko self)
+                                        lntd_ko self)
 {
 	bool cancelled;
 
@@ -1452,8 +1440,8 @@ static bool canceller_check_and_unregister(struct canceller *canceller)
 
 	EnterCriticalSection(&canceller->lock);
 
-	LINTED_ASSERT(canceller->in_flight);
-	LINTED_ASSERT(canceller->owned);
+	LNTD_ASSERT(canceller->in_flight);
+	LNTD_ASSERT(canceller->owned);
 
 	canceller->owned = false;
 	{

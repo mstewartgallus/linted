@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libio.la
-%C%_libio_la_SOURCES=include/linted/io.h
+%C%_libio_la_SOURCES=include/lntd/io.h
 %C%_libio_la_LIBADD=\
   src/async/libasync.la\
   $(WS2_32_LIBS)

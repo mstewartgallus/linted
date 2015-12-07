@@ -23,17 +23,17 @@
 
 #include "config.h"
 
-#define LINTED_START__NO_MAIN 1
-#include "linted/start.h"
+#define LNTD_START__NO_MAIN 1
+#include "lntd/start.h"
 
-#include "linted/async.h"
-#include "linted/env.h"
-#include "linted/mem.h"
-#include "linted/path.h"
-#include "linted/signal.h"
-#include "linted/str.h"
-#include "linted/utf.h"
-#include "linted/log.h"
+#include "lntd/async.h"
+#include "lntd/env.h"
+#include "lntd/mem.h"
+#include "lntd/path.h"
+#include "lntd/signal.h"
+#include "lntd/str.h"
+#include "lntd/utf.h"
+#include "lntd/log.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -54,16 +54,16 @@
  */
 
 static int show_command;
-linted_error privilege_check(void);
+lntd_error privilege_check(void);
 
-int linted_start_show_command(void)
+int lntd_start_show_command(void)
 {
 	return show_command;
 }
 
-int linted_start__main(struct linted_start_config const *config,
-                       char const **_process_namep, size_t *_argcp,
-                       char const *const **_argvp)
+int lntd_start__main(struct lntd_start_config const *config,
+                     char const **_process_namep, size_t *_argcp,
+                     char const *const **_argvp)
 {
 	/* Cannot fail, return value is only the previous state */
 	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX |
@@ -83,7 +83,7 @@ int linted_start__main(struct linted_start_config const *config,
 		        : SW_SHOWDEFAULT;
 	}
 
-	linted_error err;
+	lntd_error err;
 
 	wchar_t *raw_command_line = GetCommandLineW();
 
@@ -100,15 +100,15 @@ int linted_start__main(struct linted_start_config const *config,
 	char **argv;
 	{
 		void *xx;
-		err = linted_mem_alloc_array(&xx, argc + 1U,
-		                             sizeof argv[0U]);
+		err = lntd_mem_alloc_array(&xx, argc + 1U,
+		                           sizeof argv[0U]);
 		if (err != 0)
 			return EXIT_FAILURE;
 		argv = xx;
 	}
 
 	for (size_t ii = 0U; ii < argc; ++ii) {
-		err = linted_utf_2_to_1(wide_argv[ii], &argv[ii]);
+		err = lntd_utf_2_to_1(wide_argv[ii], &argv[ii]);
 		if (err != 0)
 			return EXIT_FAILURE;
 	}
@@ -122,7 +122,7 @@ int linted_start__main(struct linted_start_config const *config,
 	char const *service;
 	{
 		char *xx;
-		err = linted_env_get("LINTED_SERVICE", &xx);
+		err = lntd_env_get("LINTED_SERVICE", &xx);
 		if (err != 0)
 			return EXIT_FAILURE;
 		service = xx;
@@ -139,35 +139,33 @@ int linted_start__main(struct linted_start_config const *config,
 	char *process_basename;
 	{
 		char *xx;
-		err = linted_path_base(&xx, process_name);
+		err = lntd_path_base(&xx, process_name);
 		if (err != 0)
 			return EXIT_FAILURE;
 		process_basename = xx;
 	}
 
-	linted_log_open(process_basename);
+	lntd_log_open(process_basename);
 
 	if (missing_name) {
-		linted_log(LINTED_LOG_ERROR, "missing process name");
+		lntd_log(LNTD_LOG_ERROR, "missing process name");
 		return EXIT_FAILURE;
 	}
 
 	if (config->check_privilege) {
 		err = privilege_check();
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "privilege_check: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "privilege_check: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
 
 	if (!config->dont_init_signals) {
-		err = linted_signal_init();
+		err = lntd_signal_init();
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_signal_init: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_signal_init: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
@@ -178,8 +176,8 @@ int linted_start__main(struct linted_start_config const *config,
 		error_code = WSAStartup(MAKEWORD(2, 2), &xx);
 	}
 	if (error_code != 0) {
-		linted_log(LINTED_LOG_ERROR, "WSAStartup: %s",
-		           linted_error_string(error_code));
+		lntd_log(LNTD_LOG_ERROR, "WSAStartup: %s",
+		         lntd_error_string(error_code));
 		return EXIT_FAILURE;
 	}
 
@@ -237,26 +235,25 @@ static wchar_t const *const access_names[] = {
     SE_TCB_NAME,                 /**/
     SE_UNDOCK_NAME};
 
-linted_error privilege_check(void)
+lntd_error privilege_check(void)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	struct {
 		DWORD PrivilegeCount;
 		DWORD Control;
 		LUID_AND_ATTRIBUTES
-		Privilege[LINTED_ARRAY_SIZE(access_names)];
+		Privilege[LNTD_ARRAY_SIZE(access_names)];
 	} privileges = {0};
-	privileges.PrivilegeCount = LINTED_ARRAY_SIZE(access_names);
+	privileges.PrivilegeCount = LNTD_ARRAY_SIZE(access_names);
 	privileges.Control = 0;
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(access_names);
-	     ++ii) {
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(access_names); ++ii) {
 		LUID xx;
 
 		if (!LookupPrivilegeValue(0, access_names[ii], &xx)) {
 			err = HRESULT_FROM_WIN32(GetLastError());
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 
@@ -271,7 +268,7 @@ linted_error privilege_check(void)
 		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY,
 		                      &xx)) {
 			err = HRESULT_FROM_WIN32(GetLastError());
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 		current_process_access_token = xx;
@@ -281,7 +278,7 @@ linted_error privilege_check(void)
 	if (!PrivilegeCheck(current_process_access_token,
 	                    (void *)&privileges, &result)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	}
 
 	CloseHandle(current_process_access_token);
@@ -290,6 +287,6 @@ linted_error privilege_check(void)
 		return err;
 
 	if (result)
-		return LINTED_ERROR_PERMISSION;
+		return LNTD_ERROR_PERMISSION;
 	return 0;
 }

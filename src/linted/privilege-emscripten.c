@@ -15,9 +15,9 @@
  */
 #include "privilege.h"
 
-#include "linted/error.h"
+#include "lntd/error.h"
 
-linted_error linted_linted_privilege_check(void)
+lntd_error lntd_lntd_privilege_check(void)
 {
 	return 0;
 }

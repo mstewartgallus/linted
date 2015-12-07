@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libfile.la
-%C%_libfile_la_SOURCES=include/linted/file.h
+%C%_libfile_la_SOURCES=include/lntd/file.h
 
 if POSIX_API
 %C%_libfile_la_SOURCES+=%D%/file-posix.c

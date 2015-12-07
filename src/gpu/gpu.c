@@ -17,14 +17,14 @@
 
 #include "config.h"
 
-#include "linted/assets.h"
-#include "linted/error.h"
-#include "linted/gpu.h"
-#include "linted/log.h"
-#include "linted/mem.h"
-#include "linted/pid.h"
-#include "linted/sched.h"
-#include "linted/util.h"
+#include "lntd/assets.h"
+#include "lntd/error.h"
+#include "lntd/gpu.h"
+#include "lntd/log.h"
+#include "lntd/mem.h"
+#include "lntd/pid.h"
+#include "lntd/sched.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -46,9 +46,9 @@ struct command_queue {
 	pthread_mutex_t lock;
 	pthread_cond_t wake_up;
 
-	struct linted_gpu_update update;
+	struct lntd_gpu_update update;
 	uint64_t skipped_updates_counter;
-	linted_gpu_x11_window window;
+	lntd_gpu_x11_window window;
 	unsigned width;
 	unsigned height;
 	bool shown : 1U;
@@ -101,7 +101,7 @@ struct gl {
 struct privates {
 	struct gl gl;
 
-	struct linted_gpu_update update;
+	struct lntd_gpu_update update;
 
 	struct timespec last_time;
 
@@ -110,7 +110,7 @@ struct privates {
 	EGLDisplay display;
 	EGLConfig config;
 
-	linted_gpu_x11_window window;
+	lntd_gpu_x11_window window;
 
 	unsigned width;
 	unsigned height;
@@ -135,7 +135,7 @@ struct privates {
 	bool has_setup_gl : 1U;
 };
 
-struct linted_gpu_context {
+struct lntd_gpu_context {
 	struct command_queue command_queue;
 
 	char __padding1[64U - sizeof(struct command_queue) % 64U];
@@ -173,20 +173,20 @@ static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION,
 
 static void *gpu_routine(void *);
 
-static linted_error remove_current_context(struct privates *privates);
-static linted_error destroy_egl_context(struct privates *privates,
-                                        struct gl const *restrict gl);
-static linted_error destroy_egl_surface(struct privates *privates,
-                                        struct gl const *restrict gl);
+static lntd_error remove_current_context(struct privates *privates);
+static lntd_error destroy_egl_context(struct privates *privates,
+                                      struct gl const *restrict gl);
+static lntd_error destroy_egl_surface(struct privates *privates,
+                                      struct gl const *restrict gl);
 
-static linted_error create_egl_context(struct privates *privates);
-static linted_error create_egl_surface(struct privates *privates);
-static linted_error make_current(struct privates *privates);
+static lntd_error create_egl_context(struct privates *privates);
+static lntd_error create_egl_surface(struct privates *privates);
+static lntd_error make_current(struct privates *privates);
 
-static linted_error setup_gl(struct privates *privates,
-                             struct gl *restrict gl);
-static linted_error destroy_gl(struct privates *privates,
-                               struct gl const *restrict gl);
+static lntd_error setup_gl(struct privates *privates,
+                           struct gl *restrict gl);
+static lntd_error destroy_gl(struct privates *privates,
+                             struct gl const *restrict gl);
 
 static void real_draw(struct privates *privates,
                       struct gl const *restrict gl);
@@ -203,18 +203,18 @@ static void matrix_multiply(struct matrix const *restrict a,
                             struct matrix const *restrict b,
                             struct matrix *restrict result);
 
-static linted_error get_gl_error(struct privates *privates,
-                                 struct gl const *restrict gl);
+static lntd_error get_gl_error(struct privates *privates,
+                               struct gl const *restrict gl);
 
-linted_error
-linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
+lntd_error
+lntd_gpu_context_create(struct lntd_gpu_context **gpu_contextp)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	struct linted_gpu_context *gpu_context;
+	struct lntd_gpu_context *gpu_context;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *gpu_context);
+		err = lntd_mem_alloc(&xx, sizeof *gpu_context);
 		if (err != 0)
 			return err;
 		gpu_context = xx;
@@ -226,15 +226,15 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 		switch (err_egl) {
 		/* In this case no display was found. */
 		case EGL_SUCCESS:
-			err = LINTED_ERROR_INVALID_PARAMETER;
+			err = LNTD_ERROR_INVALID_PARAMETER;
 			break;
 
 		case EGL_BAD_ALLOC:
-			err = LINTED_ERROR_OUT_OF_MEMORY;
+			err = LNTD_ERROR_OUT_OF_MEMORY;
 			break;
 
 		default:
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 		}
 		goto release_thread;
 	}
@@ -246,19 +246,19 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 		EGLint yy;
 		if (EGL_FALSE == eglInitialize(display, &xx, &yy)) {
 			EGLint err_egl = eglGetError();
-			LINTED_ASSUME(err_egl != EGL_SUCCESS);
+			LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
 			/* Shouldn't happen */
-			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
 
 			switch (err_egl) {
 			case EGL_NOT_INITIALIZED:
 			case EGL_BAD_ALLOC:
-				err = LINTED_ERROR_OUT_OF_MEMORY;
+				err = LNTD_ERROR_OUT_OF_MEMORY;
 				goto destroy_display;
 			}
 
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 		}
 		major = xx;
 		minor = yy;
@@ -283,25 +283,25 @@ linted_gpu_context_create(struct linted_gpu_context **gpu_contextp)
 
 choose_config_failed : {
 	EGLint err_egl = eglGetError();
-	LINTED_ASSUME(err_egl != EGL_SUCCESS);
+	LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
-	LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-	LINTED_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
-	LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-	LINTED_ASSERT(err_egl != EGL_BAD_PARAMETER);
+	LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+	LNTD_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+	LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+	LNTD_ASSERT(err_egl != EGL_BAD_PARAMETER);
 
 	switch (err_egl) {
 	case EGL_BAD_ALLOC:
-		err = LINTED_ERROR_OUT_OF_MEMORY;
+		err = LNTD_ERROR_OUT_OF_MEMORY;
 		goto destroy_display;
 	}
 
-	LINTED_ASSERT(false);
+	LNTD_ASSERT(false);
 }
 
 choose_config_succeeded:
 	if (matching_config_count < 1) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 		goto destroy_display;
 	}
 
@@ -344,10 +344,10 @@ choose_config_succeeded:
 destroy_display:
 	if (EGL_FALSE == eglTerminate(display)) {
 		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LNTD_ASSERT(false);
 	}
 
 release_thread:
@@ -357,20 +357,20 @@ release_thread:
 		 * implementation gives special conditions for this to
 		 * happen.
 		 */
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(false);
 	}
 
-	linted_mem_free(gpu_context);
+	lntd_mem_free(gpu_context);
 
-	LINTED_ASSERT(err != 0);
+	LNTD_ASSERT(err != 0);
 
 	return err;
 }
 
-linted_error
-linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
+lntd_error
+lntd_gpu_context_destroy(struct lntd_gpu_context *gpu_context)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
@@ -387,12 +387,11 @@ linted_gpu_context_destroy(struct linted_gpu_context *gpu_context)
 	return err;
 }
 
-linted_error
-linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
-                          linted_gpu_x11_window new_window)
+lntd_error lntd_gpu_set_x11_window(struct lntd_gpu_context *gpu_context,
+                                   lntd_gpu_x11_window new_window)
 {
 	if (new_window > UINT32_MAX)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
@@ -409,8 +408,7 @@ linted_gpu_set_x11_window(struct linted_gpu_context *gpu_context,
 	return 0;
 }
 
-linted_error
-linted_gpu_remove_window(struct linted_gpu_context *gpu_context)
+lntd_error lntd_gpu_remove_window(struct lntd_gpu_context *gpu_context)
 {
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
@@ -424,13 +422,13 @@ linted_gpu_remove_window(struct linted_gpu_context *gpu_context)
 	return 0;
 }
 
-void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
-                             struct linted_gpu_update const *updatep)
+void lntd_gpu_update_state(struct lntd_gpu_context *gpu_context,
+                           struct lntd_gpu_update const *updatep)
 {
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
 
-	struct linted_gpu_update update = *updatep;
+	struct lntd_gpu_update update = *updatep;
 	{
 		pthread_mutex_lock(&command_queue->lock);
 		command_queue->update = update;
@@ -440,8 +438,8 @@ void linted_gpu_update_state(struct linted_gpu_context *gpu_context,
 	}
 }
 
-void linted_gpu_resize(struct linted_gpu_context *gpu_context,
-                       unsigned width, unsigned height)
+void lntd_gpu_resize(struct lntd_gpu_context *gpu_context,
+                     unsigned width, unsigned height)
 {
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
@@ -455,7 +453,7 @@ void linted_gpu_resize(struct linted_gpu_context *gpu_context,
 	}
 }
 
-void linted_gpu_hide(struct linted_gpu_context *gpu_context)
+void lntd_gpu_hide(struct lntd_gpu_context *gpu_context)
 {
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
@@ -468,7 +466,7 @@ void linted_gpu_hide(struct linted_gpu_context *gpu_context)
 	}
 }
 
-void linted_gpu_show(struct linted_gpu_context *gpu_context)
+void lntd_gpu_show(struct lntd_gpu_context *gpu_context)
 {
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
@@ -509,11 +507,11 @@ static struct timespec timespec_subtract(struct timespec x,
 
 static void *gpu_routine(void *arg)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_pid_name("gpu-renderer");
+	lntd_pid_name("gpu-renderer");
 
-	struct linted_gpu_context *gpu_context = arg;
+	struct lntd_gpu_context *gpu_context = arg;
 	struct command_queue *command_queue =
 	    &gpu_context->command_queue;
 	struct privates *privates = &gpu_context->privates;
@@ -524,10 +522,10 @@ static void *gpu_routine(void *arg)
 	for (;;) {
 		uint64_t skipped_updates_counter = 0U;
 		{
-			linted_gpu_x11_window *new_window =
-			    (linted_gpu_x11_window[1U]){0};
-			struct linted_gpu_update *update =
-			    (struct linted_gpu_update[1U]){0};
+			lntd_gpu_x11_window *new_window =
+			    (lntd_gpu_x11_window[1U]){0};
+			struct lntd_gpu_update *update =
+			    (struct lntd_gpu_update[1U]){0};
 			unsigned *width = (unsigned[1U]){0};
 			unsigned *height = (unsigned[1U]){0};
 			bool shown = true;
@@ -640,24 +638,22 @@ static void *gpu_routine(void *arg)
 			GLenum attachments[] = {GL_DEPTH, GL_STENCIL};
 			gl->InvalidateFramebuffer(
 			    GL_FRAMEBUFFER,
-			    LINTED_ARRAY_SIZE(attachments),
-			    attachments);
+			    LNTD_ARRAY_SIZE(attachments), attachments);
 		}
 
 		if (EGL_FALSE == eglSwapBuffers(privates->display,
 		                                privates->surface)) {
 			EGLint err_egl = eglGetError();
-			LINTED_ASSUME(err_egl != EGL_SUCCESS);
+			LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
 			/* Shouldn't Happen */
-			LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-			LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
-			LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
-			LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
-			LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
-			LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-			LINTED_ASSERT(err_egl !=
-			              EGL_BAD_CURRENT_SURFACE);
+			LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+			LNTD_ASSERT(err_egl != EGL_BAD_SURFACE);
+			LNTD_ASSERT(err_egl != EGL_BAD_CONTEXT);
+			LNTD_ASSERT(err_egl != EGL_BAD_MATCH);
+			LNTD_ASSERT(err_egl != EGL_BAD_ACCESS);
+			LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+			LNTD_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
 
 			/* Maybe the current surface or context can
 			 * become invalidated somehow? */
@@ -672,7 +668,7 @@ static void *gpu_routine(void *arg)
 				abort();
 			}
 
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 		}
 
 		{
@@ -680,20 +676,19 @@ static void *gpu_routine(void *arg)
 			                        GL_STENCIL};
 			gl->InvalidateFramebuffer(
 			    GL_FRAMEBUFFER,
-			    LINTED_ARRAY_SIZE(attachments),
-			    attachments);
+			    LNTD_ARRAY_SIZE(attachments), attachments);
 		}
 
 		if (0) {
 			if (skipped_updates_counter > 2U)
-				linted_log(LINTED_LOG_INFO,
-				           "skipped updates: %" PRIu64,
-				           skipped_updates_counter);
+				lntd_log(LNTD_LOG_INFO,
+				         "skipped updates: %" PRIu64,
+				         skipped_updates_counter);
 		}
 
 		if (0) {
 			struct timespec now;
-			linted_sched_time(&now);
+			lntd_sched_time(&now);
 
 			struct timespec diff =
 			    timespec_subtract(now, last_time);
@@ -706,10 +701,9 @@ static void *gpu_routine(void *arg)
 			if (nanoseconds <= 0.0)
 				nanoseconds = 1.0;
 
-			linted_log(LINTED_LOG_INFO,
-			           "FPS: %lf, SPF: %lf",
-			           second / (double)nanoseconds,
-			           nanoseconds / (double)second);
+			lntd_log(LNTD_LOG_INFO, "FPS: %lf, SPF: %lf",
+			         second / (double)nanoseconds,
+			         nanoseconds / (double)second);
 
 			last_time = now;
 		}
@@ -720,8 +714,8 @@ static void *gpu_routine(void *arg)
 	return 0;
 }
 
-static linted_error destroy_gl(struct privates *privates,
-                               struct gl const *restrict gl)
+static lntd_error destroy_gl(struct privates *privates,
+                             struct gl const *restrict gl)
 {
 	if (!privates->has_setup_gl)
 		return 0;
@@ -738,7 +732,7 @@ static linted_error destroy_gl(struct privates *privates,
 	{
 		GLuint xx[] = {vertex_buffer, normal_buffer,
 		               index_buffer};
-		gl->DeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
+		gl->DeleteBuffers(LNTD_ARRAY_SIZE(xx), xx);
 	}
 
 	gl->UseProgram(0);
@@ -747,13 +741,13 @@ static linted_error destroy_gl(struct privates *privates,
 	return 0;
 }
 
-static linted_error remove_current_context(struct privates *privates)
+static lntd_error remove_current_context(struct privates *privates)
 {
 	if (!privates->has_current_context)
 		return 0;
 	privates->has_current_context = false;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	EGLDisplay display = privates->display;
 
@@ -763,25 +757,25 @@ static linted_error remove_current_context(struct privates *privates)
 
 		EGLint err_egl = eglGetError();
 
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
 		/* Shouldn't Happen */
 
-		LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
-		LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
-		LINTED_ASSERT(err_egl != EGL_BAD_PARAMETER);
-		LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
-		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LNTD_ASSERT(err_egl != EGL_BAD_ACCESS);
+		LNTD_ASSERT(err_egl != EGL_BAD_CONTEXT);
+		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LNTD_ASSERT(err_egl != EGL_BAD_MATCH);
+		LNTD_ASSERT(err_egl != EGL_BAD_PARAMETER);
+		LNTD_ASSERT(err_egl != EGL_BAD_SURFACE);
+		LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
 
 		/* Don't Apply */
-		LINTED_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
-		LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
+		LNTD_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
+		LNTD_ASSERT(err_egl != EGL_BAD_CONFIG);
 
 		switch (err_egl) {
 		default:
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 
 		/* Maybe the current surface or context can
 		 * become invalidated somehow? */
@@ -789,12 +783,12 @@ static linted_error remove_current_context(struct privates *privates)
 		case EGL_BAD_NATIVE_PIXMAP:
 		case EGL_BAD_NATIVE_WINDOW:
 			if (0 == err)
-				err = LINTED_ERROR_INVALID_PARAMETER;
+				err = LNTD_ERROR_INVALID_PARAMETER;
 			break;
 
 		case EGL_BAD_ALLOC:
 			if (0 == err)
-				err = LINTED_ERROR_OUT_OF_MEMORY;
+				err = LNTD_ERROR_OUT_OF_MEMORY;
 			break;
 		}
 	}
@@ -802,8 +796,8 @@ static linted_error remove_current_context(struct privates *privates)
 	return err;
 }
 
-static linted_error destroy_egl_surface(struct privates *privates,
-                                        struct gl const *restrict gl)
+static lntd_error destroy_egl_surface(struct privates *privates,
+                                      struct gl const *restrict gl)
 {
 	destroy_gl(privates, gl);
 
@@ -818,19 +812,19 @@ static linted_error destroy_egl_surface(struct privates *privates,
 
 	if (EGL_FALSE == eglDestroySurface(display, surface)) {
 		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
-		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LNTD_ASSERT(err_egl != EGL_BAD_SURFACE);
+		LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LNTD_ASSERT(false);
 	}
 
 	return 0;
 }
 
-static linted_error destroy_egl_context(struct privates *privates,
-                                        struct gl const *restrict gl)
+static lntd_error destroy_egl_context(struct privates *privates,
+                                      struct gl const *restrict gl)
 {
 	destroy_gl(privates, gl);
 
@@ -847,18 +841,18 @@ static linted_error destroy_egl_context(struct privates *privates,
 
 	if (EGL_FALSE == eglDestroyContext(display, context)) {
 		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
-		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LNTD_ASSERT(err_egl != EGL_BAD_CONTEXT);
+		LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LNTD_ASSERT(false);
 	}
 
 	return 0;
 }
 
-static linted_error create_egl_context(struct privates *privates)
+static lntd_error create_egl_context(struct privates *privates)
 {
 	if (privates->has_egl_context)
 		return 0;
@@ -870,25 +864,25 @@ static linted_error create_egl_context(struct privates *privates)
 	    display, config, EGL_NO_CONTEXT, context_attr);
 	if (EGL_NO_CONTEXT == context) {
 		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
 		/* Shouldn't Happen */
-		LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
-		LINTED_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
-		LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
-		LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
-		LINTED_ASSERT(err_egl != EGL_BAD_PARAMETER);
-		LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
-		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LNTD_ASSERT(err_egl != EGL_BAD_ACCESS);
+		LNTD_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+		LNTD_ASSERT(err_egl != EGL_BAD_CONFIG);
+		LNTD_ASSERT(err_egl != EGL_BAD_CONTEXT);
+		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LNTD_ASSERT(err_egl != EGL_BAD_MATCH);
+		LNTD_ASSERT(err_egl != EGL_BAD_PARAMETER);
+		LNTD_ASSERT(err_egl != EGL_BAD_SURFACE);
+		LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
 
 		switch (err_egl) {
 		case EGL_BAD_ALLOC:
-			return LINTED_ERROR_OUT_OF_MEMORY;
+			return LNTD_ERROR_OUT_OF_MEMORY;
 		}
 
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(false);
 	}
 	privates->context = context;
 	privates->has_egl_context = true;
@@ -896,53 +890,53 @@ static linted_error create_egl_context(struct privates *privates)
 	return 0;
 }
 
-static linted_error create_egl_surface(struct privates *privates)
+static lntd_error create_egl_surface(struct privates *privates)
 {
 	if (privates->has_egl_surface)
 		return 0;
 
 	if (!privates->has_window)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	EGLDisplay display = privates->display;
 	EGLConfig config = privates->config;
-	linted_gpu_x11_window window = privates->window;
+	lntd_gpu_x11_window window = privates->window;
 
 	EGLSurface surface =
 	    eglCreateWindowSurface(display, config, window, 0);
 	if (EGL_NO_SURFACE == surface) {
 		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-		LINTED_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
-		LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
-		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
+		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LNTD_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+		LNTD_ASSERT(err_egl != EGL_BAD_CONFIG);
+		LNTD_ASSERT(err_egl != EGL_BAD_MATCH);
 
 		switch (err_egl) {
 		case EGL_BAD_NATIVE_WINDOW:
-			return LINTED_ERROR_INVALID_PARAMETER;
+			return LNTD_ERROR_INVALID_PARAMETER;
 
 		case EGL_BAD_ALLOC:
-			return LINTED_ERROR_OUT_OF_MEMORY;
+			return LNTD_ERROR_OUT_OF_MEMORY;
 		}
 
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(false);
 	}
 
 	if (EGL_FALSE == eglSurfaceAttrib(display, surface,
 	                                  EGL_SWAP_BEHAVIOR,
 	                                  EGL_BUFFER_DESTROYED)) {
 		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-		LINTED_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
-		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
+		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LNTD_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
+		LNTD_ASSERT(err_egl != EGL_BAD_MATCH);
 
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(false);
 	}
 
 	privates->surface = surface;
@@ -951,12 +945,12 @@ static linted_error create_egl_surface(struct privates *privates)
 	return 0;
 }
 
-static linted_error make_current(struct privates *privates)
+static lntd_error make_current(struct privates *privates)
 {
 	if (privates->has_current_context)
 		return 0;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	err = create_egl_context(privates);
 	if (err != 0)
@@ -975,25 +969,25 @@ static linted_error make_current(struct privates *privates)
 
 		EGLint err_egl = eglGetError();
 
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 
 		/* Shouldn't Happen */
 
-		LINTED_ASSERT(err_egl != EGL_BAD_ACCESS);
-		LINTED_ASSERT(err_egl != EGL_BAD_CONTEXT);
-		LINTED_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LINTED_ASSERT(err_egl != EGL_BAD_MATCH);
-		LINTED_ASSERT(err_egl != EGL_BAD_PARAMETER);
-		LINTED_ASSERT(err_egl != EGL_BAD_SURFACE);
-		LINTED_ASSERT(err_egl != EGL_NOT_INITIALIZED);
+		LNTD_ASSERT(err_egl != EGL_BAD_ACCESS);
+		LNTD_ASSERT(err_egl != EGL_BAD_CONTEXT);
+		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
+		LNTD_ASSERT(err_egl != EGL_BAD_MATCH);
+		LNTD_ASSERT(err_egl != EGL_BAD_PARAMETER);
+		LNTD_ASSERT(err_egl != EGL_BAD_SURFACE);
+		LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
 
 		/* Don't Apply */
-		LINTED_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
-		LINTED_ASSERT(err_egl != EGL_BAD_CONFIG);
+		LNTD_ASSERT(err_egl != EGL_BAD_CURRENT_SURFACE);
+		LNTD_ASSERT(err_egl != EGL_BAD_CONFIG);
 
 		switch (err_egl) {
 		default:
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 
 		/* Maybe the current surface or context can
 		 * become invalidated somehow? */
@@ -1001,12 +995,12 @@ static linted_error make_current(struct privates *privates)
 		case EGL_BAD_NATIVE_PIXMAP:
 		case EGL_BAD_NATIVE_WINDOW:
 			if (0 == err)
-				err = LINTED_ERROR_INVALID_PARAMETER;
+				err = LNTD_ERROR_INVALID_PARAMETER;
 			break;
 
 		case EGL_BAD_ALLOC:
 			if (0 == err)
-				err = LINTED_ERROR_OUT_OF_MEMORY;
+				err = LNTD_ERROR_OUT_OF_MEMORY;
 			break;
 		}
 	}
@@ -1015,14 +1009,14 @@ static linted_error make_current(struct privates *privates)
 
 	if (EGL_FALSE == eglSwapInterval(display, 1)) {
 		EGLint err_egl = eglGetError();
-		LINTED_ASSUME(err_egl != EGL_SUCCESS);
+		LNTD_ASSUME(err_egl != EGL_SUCCESS);
 		switch (err_egl) {
 		case EGL_NOT_INITIALIZED:
 		case EGL_BAD_ALLOC:
-			err = LINTED_ERROR_OUT_OF_MEMORY;
+			err = LNTD_ERROR_OUT_OF_MEMORY;
 			return err;
 		default:
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(false);
 		}
 	}
 
@@ -1030,13 +1024,13 @@ static linted_error make_current(struct privates *privates)
 	return 0;
 }
 
-static linted_error setup_gl(struct privates *privates,
-                             struct gl *restrict gl)
+static lntd_error setup_gl(struct privates *privates,
+                           struct gl *restrict gl)
 {
 	if (privates->has_setup_gl)
 		return 0;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	err = make_current(privates);
 	if (err != 0)
@@ -1141,9 +1135,9 @@ static linted_error setup_gl(struct privates *privates,
 	gl->AttachShader(program, fragment_shader);
 	gl->DeleteShader(fragment_shader);
 
-	gl->ShaderSource(
-	    fragment_shader, 1U,
-	    (GLchar const **)&linted_assets_fragment_shader, 0);
+	gl->ShaderSource(fragment_shader, 1U,
+	                 (GLchar const **)&lntd_assets_fragment_shader,
+	                 0);
 	gl->CompileShader(fragment_shader);
 
 	GLint fragment_is_valid;
@@ -1154,7 +1148,7 @@ static linted_error setup_gl(struct privates *privates,
 		fragment_is_valid = xx;
 	}
 	if (!fragment_is_valid) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 
 		size_t info_log_length;
 		{
@@ -1167,17 +1161,17 @@ static linted_error setup_gl(struct privates *privates,
 		GLchar *info_log;
 		{
 			void *xx;
-			linted_error mem_err =
-			    linted_mem_alloc(&xx, info_log_length);
+			lntd_error mem_err =
+			    lntd_mem_alloc(&xx, info_log_length);
 			if (mem_err != 0)
 				goto cleanup_program;
 			info_log = xx;
 		}
 		gl->GetShaderInfoLog(fragment_shader, info_log_length,
 		                     0, info_log);
-		linted_log(LINTED_LOG_ERROR, "invalid shader: %s",
-		           info_log);
-		linted_mem_free(info_log);
+		lntd_log(LNTD_LOG_ERROR, "invalid shader: %s",
+		         info_log);
+		lntd_mem_free(info_log);
 	}
 
 	flush_gl_errors(privates, gl);
@@ -1190,7 +1184,7 @@ static linted_error setup_gl(struct privates *privates,
 	gl->DeleteShader(vertex_shader);
 
 	gl->ShaderSource(vertex_shader, 1U,
-	                 (GLchar const **)&linted_assets_vertex_shader,
+	                 (GLchar const **)&lntd_assets_vertex_shader,
 	                 0);
 	gl->CompileShader(vertex_shader);
 
@@ -1201,7 +1195,7 @@ static linted_error setup_gl(struct privates *privates,
 		vertex_is_valid = xx;
 	}
 	if (!vertex_is_valid) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 
 		size_t info_log_length = 0;
 		{
@@ -1214,8 +1208,8 @@ static linted_error setup_gl(struct privates *privates,
 		GLchar *info_log;
 		{
 			void *xx;
-			linted_error mem_err =
-			    linted_mem_alloc(&xx, info_log_length);
+			lntd_error mem_err =
+			    lntd_mem_alloc(&xx, info_log_length);
 			if (mem_err != 0)
 				goto cleanup_program;
 			info_log = xx;
@@ -1223,9 +1217,9 @@ static linted_error setup_gl(struct privates *privates,
 
 		gl->GetShaderInfoLog(vertex_shader, info_log_length, 0,
 		                     info_log);
-		linted_log(LINTED_LOG_ERROR, "invalid shader: %s",
-		           info_log);
-		linted_mem_free(info_log);
+		lntd_log(LNTD_LOG_ERROR, "invalid shader: %s",
+		         info_log);
+		lntd_mem_free(info_log);
 		goto cleanup_program;
 	}
 	gl->LinkProgram(program);
@@ -1239,7 +1233,7 @@ static linted_error setup_gl(struct privates *privates,
 		program_is_valid = xx;
 	}
 	if (!program_is_valid) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 
 		size_t info_log_length;
 		{
@@ -1252,8 +1246,8 @@ static linted_error setup_gl(struct privates *privates,
 		GLchar *info_log;
 		{
 			void *xx;
-			linted_error mem_err =
-			    linted_mem_alloc(&xx, info_log_length);
+			lntd_error mem_err =
+			    lntd_mem_alloc(&xx, info_log_length);
 			if (mem_err != 0)
 				goto cleanup_program;
 			info_log = xx;
@@ -1261,9 +1255,9 @@ static linted_error setup_gl(struct privates *privates,
 
 		gl->GetProgramInfoLog(program, info_log_length, 0,
 		                      info_log);
-		linted_log(LINTED_LOG_ERROR, "invalid program: %s",
-		           info_log);
-		linted_mem_free(info_log);
+		lntd_log(LNTD_LOG_ERROR, "invalid program: %s",
+		         info_log);
+		lntd_mem_free(info_log);
 		goto cleanup_program;
 	}
 
@@ -1272,7 +1266,7 @@ static linted_error setup_gl(struct privates *privates,
 	GLuint index_buffer;
 	{
 		GLuint xx[3U];
-		gl->GenBuffers(LINTED_ARRAY_SIZE(xx), xx);
+		gl->GenBuffers(LNTD_ARRAY_SIZE(xx), xx);
 		vertex_buffer = xx[0U];
 		normal_buffer = xx[1U];
 		index_buffer = xx[2U];
@@ -1286,14 +1280,14 @@ static linted_error setup_gl(struct privates *privates,
 
 	GLint maybe_vertex = gl->GetAttribLocation(program, "vertex");
 	if (maybe_vertex < 0) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 		goto cleanup_buffers;
 	}
 	GLuint vertex = maybe_vertex;
 
 	GLint maybe_normal = gl->GetAttribLocation(program, "normal");
 	if (maybe_normal < 0) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 		goto cleanup_buffers;
 	}
 	GLuint normal = maybe_normal;
@@ -1303,26 +1297,26 @@ static linted_error setup_gl(struct privates *privates,
 
 	gl->BindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 	gl->VertexAttribPointer(
-	    vertex, LINTED_ARRAY_SIZE(linted_assets_vertices[0U]),
-	    GL_FLOAT, false, 0, 0);
+	    vertex, LNTD_ARRAY_SIZE(lntd_assets_vertices[0U]), GL_FLOAT,
+	    false, 0, 0);
 
 	gl->BindBuffer(GL_ARRAY_BUFFER, normal_buffer);
 	gl->VertexAttribPointer(
-	    normal, LINTED_ARRAY_SIZE(linted_assets_normals[0U]),
-	    GL_FLOAT, false, 0, 0);
+	    normal, LNTD_ARRAY_SIZE(lntd_assets_normals[0U]), GL_FLOAT,
+	    false, 0, 0);
 	gl->BindBuffer(GL_ARRAY_BUFFER, 0);
 
 	gl->BindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 	gl->BufferData(GL_ARRAY_BUFFER,
-	               linted_assets_size *
-	                   sizeof linted_assets_vertices[0U],
-	               linted_assets_vertices, GL_STATIC_DRAW);
+	               lntd_assets_size *
+	                   sizeof lntd_assets_vertices[0U],
+	               lntd_assets_vertices, GL_STATIC_DRAW);
 
 	gl->BindBuffer(GL_ARRAY_BUFFER, normal_buffer);
 	gl->BufferData(GL_ARRAY_BUFFER,
-	               linted_assets_size *
-	                   sizeof linted_assets_normals[0U],
-	               linted_assets_normals, GL_STATIC_DRAW);
+	               lntd_assets_size *
+	                   sizeof lntd_assets_normals[0U],
+	               lntd_assets_normals, GL_STATIC_DRAW);
 	gl->BindBuffer(GL_ARRAY_BUFFER, 0);
 
 	gl->UseProgram(program);
@@ -1331,9 +1325,9 @@ static linted_error setup_gl(struct privates *privates,
 
 	gl->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 	gl->BufferData(GL_ELEMENT_ARRAY_BUFFER,
-	               3U * linted_assets_indices_size *
-	                   sizeof linted_assets_indices[0U],
-	               linted_assets_indices, GL_STATIC_DRAW);
+	               3U * lntd_assets_indices_size *
+	                   sizeof lntd_assets_indices[0U],
+	               lntd_assets_indices, GL_STATIC_DRAW);
 	/* Leave bound for DrawElements */
 
 	gl->ClearColor(0.94, 0.9, 1.0, 0.0);
@@ -1354,7 +1348,7 @@ static linted_error setup_gl(struct privates *privates,
 
 cleanup_buffers : {
 	GLuint xx[] = {vertex_buffer, normal_buffer, index_buffer};
-	gl->DeleteBuffers(LINTED_ARRAY_SIZE(xx), xx);
+	gl->DeleteBuffers(LNTD_ARRAY_SIZE(xx), xx);
 }
 
 cleanup_program:
@@ -1366,7 +1360,7 @@ cleanup_program:
 static void real_draw(struct privates *privates,
                       struct gl const *restrict gl)
 {
-	struct linted_gpu_update const *update = &privates->update;
+	struct lntd_gpu_update const *update = &privates->update;
 
 	unsigned width = privates->width;
 	unsigned height = privates->height;
@@ -1417,7 +1411,7 @@ static void real_draw(struct privates *privates,
 
 	gl->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 	          GL_STENCIL_BUFFER_BIT);
-	gl->DrawElements(GL_TRIANGLES, 3U * linted_assets_indices_size,
+	gl->DrawElements(GL_TRIANGLES, 3U * lntd_assets_indices_size,
 	                 GL_UNSIGNED_SHORT, 0);
 }
 
@@ -1430,8 +1424,8 @@ static void flush_gl_errors(struct privates *privates,
 	} while (error != GL_NO_ERROR);
 }
 
-static linted_error get_gl_error(struct privates *privates,
-                                 struct gl const *restrict gl)
+static lntd_error get_gl_error(struct privates *privates,
+                               struct gl const *restrict gl)
 {
 	/* Note that a single OpenGL call may return multiple errors
 	 * so we get them all and then return the most serious.
@@ -1472,15 +1466,15 @@ static linted_error get_gl_error(struct privates *privates,
 
 	/* An unknown type of error, could be anything */
 	if (unimplemented_error)
-		return LINTED_ERROR_UNIMPLEMENTED;
+		return LNTD_ERROR_UNIMPLEMENTED;
 
 	/* Fundamental logic error, very serious */
 	if (invalid_parameter)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	/* Runtime error */
 	if (out_of_memory)
-		return LINTED_ERROR_OUT_OF_MEMORY;
+		return LNTD_ERROR_OUT_OF_MEMORY;
 
 	return 0;
 }

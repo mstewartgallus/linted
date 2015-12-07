@@ -15,129 +15,127 @@
  */
 #include "config.h"
 
-#include "linted/locale.h"
+#include "lntd/locale.h"
 
-#include "linted/error.h"
-#include "linted/io.h"
-#include "linted/ko.h"
-#include "linted/mem.h"
-#include "linted/str.h"
+#include "lntd/error.h"
+#include "lntd/io.h"
+#include "lntd/ko.h"
+#include "lntd/mem.h"
+#include "lntd/str.h"
 
 #include <stddef.h>
 
-linted_error linted_locale_on_bad_option(linted_ko ko,
-                                         char const *process_name,
-                                         char const *bad_option)
+lntd_error lntd_locale_on_bad_option(lntd_ko ko,
+                                     char const *process_name,
+                                     char const *bad_option)
 {
-	linted_error err;
+	lntd_error err;
 
 	size_t size = 0U;
 	size_t capacity = 0U;
 	char *buffer = 0;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                process_name);
+	err = lntd_str_append_cstring(&buffer, &capacity, &size,
+	                              process_name);
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size, "\
+	err = lntd_str_append_cstring(&buffer, &capacity, &size, "\
 : unrecognized option '");
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                bad_option);
+	err = lntd_str_append_cstring(&buffer, &capacity, &size,
+	                              bad_option);
 	if (err != 0)
 		goto free_buffer;
 
-	err =
-	    linted_str_append_cstring(&buffer, &capacity, &size, "'\n");
+	err = lntd_str_append_cstring(&buffer, &capacity, &size, "'\n");
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_io_write_all(ko, 0, buffer, size);
+	err = lntd_io_write_all(ko, 0, buffer, size);
 	if (err != 0)
 		goto free_buffer;
 
 free_buffer:
-	linted_mem_free(buffer);
+	lntd_mem_free(buffer);
 	return err;
 }
 
-linted_error linted_locale_try_for_more_help(linted_ko ko,
-                                             char const *process_name,
-                                             char const *help_option)
+lntd_error lntd_locale_try_for_more_help(lntd_ko ko,
+                                         char const *process_name,
+                                         char const *help_option)
 {
-	linted_error err;
+	lntd_error err;
 
 	size_t size = 0U;
 	size_t capacity = 0U;
 	char *buffer = 0;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                "Try `");
+	err =
+	    lntd_str_append_cstring(&buffer, &capacity, &size, "Try `");
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                process_name);
+	err = lntd_str_append_cstring(&buffer, &capacity, &size,
+	                              process_name);
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size, " ");
+	err = lntd_str_append_cstring(&buffer, &capacity, &size, " ");
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                help_option);
+	err = lntd_str_append_cstring(&buffer, &capacity, &size,
+	                              help_option);
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size, "\
+	err = lntd_str_append_cstring(&buffer, &capacity, &size, "\
 ' for more information.\n");
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_io_write_all(ko, 0, buffer, size);
+	err = lntd_io_write_all(ko, 0, buffer, size);
 	if (err != 0)
 		goto free_buffer;
 
 free_buffer:
-	linted_mem_free(buffer);
+	lntd_mem_free(buffer);
 	return err;
 }
 
-linted_error linted_locale_version(linted_ko ko,
-                                   char const *package_string,
-                                   char const *copyright_year)
+lntd_error lntd_locale_version(lntd_ko ko, char const *package_string,
+                               char const *copyright_year)
 {
-	linted_error err;
+	lntd_error err;
 
 	size_t size = 0U;
 	size_t capacity = 0U;
 	char *buffer = 0;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                package_string);
+	err = lntd_str_append_cstring(&buffer, &capacity, &size,
+	                              package_string);
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                "\n\n");
+	err =
+	    lntd_str_append_cstring(&buffer, &capacity, &size, "\n\n");
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size, "\
+	err = lntd_str_append_cstring(&buffer, &capacity, &size, "\
 Copyright (C) ");
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size,
-	                                copyright_year);
+	err = lntd_str_append_cstring(&buffer, &capacity, &size,
+	                              copyright_year);
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_str_append_cstring(&buffer, &capacity, &size, "\
+	err = lntd_str_append_cstring(&buffer, &capacity, &size, "\
  Steven Stewart-Gallus\n\
 License Apache License 2 <http://www.apache.org/licenses/LICENSE-2.0>\n\
 This is free software, and you are welcome to redistribute it.\n\
@@ -145,11 +143,11 @@ There is NO WARRANTY, to the extent permitted by law.\n");
 	if (err != 0)
 		goto free_buffer;
 
-	err = linted_io_write_all(ko, 0, buffer, size);
+	err = lntd_io_write_all(ko, 0, buffer, size);
 	if (err != 0)
 		goto free_buffer;
 
 free_buffer:
-	linted_mem_free(buffer);
+	lntd_mem_free(buffer);
 	return err;
 }

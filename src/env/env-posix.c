@@ -17,11 +17,11 @@
 
 #include "config.h"
 
-#include "linted/env.h"
+#include "lntd/env.h"
 
-#include "linted/error.h"
-#include "linted/str.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/str.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -30,41 +30,41 @@
 
 static pthread_mutex_t mutex;
 
-linted_error linted_env_set(char const *key, char const *value,
-                            _Bool overwrite)
+lntd_error lntd_env_set(char const *key, char const *value,
+                        _Bool overwrite)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	err = pthread_mutex_lock(&mutex);
 	if (err != 0) {
-		LINTED_ASSERT(err != EDEADLK);
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(err != EDEADLK);
+		LNTD_ASSERT(false);
 	}
 
 	if (-1 == setenv(key, value, overwrite)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	}
 
 	{
-		linted_error unlock_err = pthread_mutex_unlock(&mutex);
+		lntd_error unlock_err = pthread_mutex_unlock(&mutex);
 		if (unlock_err != 0) {
-			LINTED_ASSERT(unlock_err != EPERM);
-			LINTED_ASSERT(false);
+			LNTD_ASSERT(unlock_err != EPERM);
+			LNTD_ASSERT(false);
 		}
 	}
 
 	return err;
 }
 
-linted_error linted_env_get(char const *key, char **valuep)
+lntd_error lntd_env_get(char const *key, char **valuep)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	err = pthread_mutex_lock(&mutex);
 	if (err != 0) {
-		LINTED_ASSERT(err != EDEADLK);
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(err != EDEADLK);
+		LNTD_ASSERT(false);
 	}
 
 	char *value_dup = 0;
@@ -75,17 +75,17 @@ linted_error linted_env_get(char const *key, char **valuep)
 
 	{
 		char *xx;
-		err = linted_str_dup(&xx, value);
+		err = lntd_str_dup(&xx, value);
 		if (err != 0)
 			goto unlock_mutex;
 		value_dup = xx;
 	}
 
 unlock_mutex : {
-	linted_error unlock_err = pthread_mutex_unlock(&mutex);
+	lntd_error unlock_err = pthread_mutex_unlock(&mutex);
 	if (unlock_err != 0) {
-		LINTED_ASSERT(unlock_err != EPERM);
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(unlock_err != EPERM);
+		LNTD_ASSERT(false);
 	}
 }
 

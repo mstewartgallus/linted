@@ -28,12 +28,12 @@ EXTRA_DIST+=\
   \
   include/fake-stdatomic/stdatomic.h\
   \
-  include/linted/execveat.h\
-  include/linted/rpc.h\
-  include/linted/prctl.h\
-  include/linted/ptrace.h\
-  include/linted/test.h\
-  include/linted/util.h
+  include/lntd/execveat.h\
+  include/lntd/rpc.h\
+  include/lntd/prctl.h\
+  include/lntd/ptrace.h\
+  include/lntd/test.h\
+  include/lntd/util.h
 
 include %C%/linted/Makefile.am
 include %C%/linted-init/Makefile.am

@@ -23,11 +23,11 @@
 
 #include "config.h"
 
-#include "linted/dir.h"
+#include "lntd/dir.h"
 
-linted_error linted_dir_create(linted_ko *kop, linted_ko dirko,
-                               char const *pathname,
-                               unsigned long flags, mode_t mode)
+lntd_error lntd_dir_create(lntd_ko *kop, lntd_ko dirko,
+                           char const *pathname, unsigned long flags,
+                           mode_t mode)
 {
-	return LINTED_ERROR_UNIMPLEMENTED;
+	return LNTD_ERROR_UNIMPLEMENTED;
 }

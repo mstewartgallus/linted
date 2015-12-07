@@ -17,17 +17,17 @@
 
 #include "config.h"
 
-#include "linted/spawn.h"
+#include "lntd/spawn.h"
 
-#include "linted/execveat.h"
-#include "linted/error.h"
-#include "linted/fifo.h"
-#include "linted/io.h"
-#include "linted/ko.h"
-#include "linted/mem.h"
-#include "linted/pid.h"
-#include "linted/prctl.h"
-#include "linted/util.h"
+#include "lntd/execveat.h"
+#include "lntd/error.h"
+#include "lntd/fifo.h"
+#include "lntd/io.h"
+#include "lntd/ko.h"
+#include "lntd/mem.h"
+#include "lntd/pid.h"
+#include "lntd/prctl.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -41,55 +41,55 @@
 
 extern char **environ;
 
-enum { LINTED_SIGNAL_HUP,
-       LINTED_SIGNAL_CHLD,
-       LINTED_SIGNAL_INT,
-       LINTED_SIGNAL_TERM,
-       LINTED_SIGNAL_QUIT,
+enum { LNTD_SIGNAL_HUP,
+       LNTD_SIGNAL_CHLD,
+       LNTD_SIGNAL_INT,
+       LNTD_SIGNAL_TERM,
+       LNTD_SIGNAL_QUIT,
        NUM_SIGS };
 
-static int const signals[NUM_SIGS] = {[LINTED_SIGNAL_HUP] = SIGHUP,
-                                      [LINTED_SIGNAL_CHLD] = SIGCHLD,
-                                      [LINTED_SIGNAL_INT] = SIGINT,
-                                      [LINTED_SIGNAL_QUIT] = SIGQUIT,
-                                      [LINTED_SIGNAL_TERM] = SIGTERM};
+static int const signals[NUM_SIGS] = {[LNTD_SIGNAL_HUP] = SIGHUP,
+                                      [LNTD_SIGNAL_CHLD] = SIGCHLD,
+                                      [LNTD_SIGNAL_INT] = SIGINT,
+                                      [LNTD_SIGNAL_QUIT] = SIGQUIT,
+                                      [LNTD_SIGNAL_TERM] = SIGTERM};
 
-struct linted_spawn_file_actions {
-	linted_ko new_stdin;
-	linted_ko new_stdout;
-	linted_ko new_stderr;
+struct lntd_spawn_file_actions {
+	lntd_ko new_stdin;
+	lntd_ko new_stdout;
+	lntd_ko new_stderr;
 	bool set_stdin : 1U;
 	bool set_stdout : 1U;
 	bool set_stderr : 1U;
 };
 
-struct linted_spawn_attr {
+struct lntd_spawn_attr {
 	bool die_on_parent_death : 1U;
 };
 
 struct fork_args {
 	sigset_t const *sigset;
-	struct linted_spawn_file_actions const *file_actions;
+	struct lntd_spawn_file_actions const *file_actions;
 	char const *const *argv;
 	char const *const *envp;
 	char const *binary;
-	linted_ko dirko;
-	linted_ko err_writer;
+	lntd_ko dirko;
+	lntd_ko err_writer;
 	bool die_on_parent_death : 1U;
 };
 
 static int fork_routine(void *args);
 static pid_t safe_vfork(int (*f)(void *), void *args);
-static linted_error duplicate_to(linted_ko new, linted_ko old);
+static lntd_error duplicate_to(lntd_ko new, lntd_ko old);
 
-linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
+lntd_error lntd_spawn_attr_init(struct lntd_spawn_attr **attrp)
 {
-	linted_error err;
-	struct linted_spawn_attr *attr;
+	lntd_error err;
+	struct lntd_spawn_attr *attr;
 
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *attr);
+		err = lntd_mem_alloc(&xx, sizeof *attr);
 		if (err != 0)
 			return err;
 		attr = xx;
@@ -100,26 +100,26 @@ linted_error linted_spawn_attr_init(struct linted_spawn_attr **attrp)
 	return 0;
 }
 
-void linted_spawn_attr_destroy(struct linted_spawn_attr *attr)
+void lntd_spawn_attr_destroy(struct lntd_spawn_attr *attr)
 {
-	linted_mem_free(attr);
+	lntd_mem_free(attr);
 }
 
-void linted_spawn_attr_set_die_on_parent_death(
-    struct linted_spawn_attr *attrp)
+void lntd_spawn_attr_set_die_on_parent_death(
+    struct lntd_spawn_attr *attrp)
 {
 	attrp->die_on_parent_death = true;
 }
 
-linted_error linted_spawn_file_actions_init(
-    struct linted_spawn_file_actions **file_actionsp)
+lntd_error lntd_spawn_file_actions_init(
+    struct lntd_spawn_file_actions **file_actionsp)
 {
-	linted_error err;
-	struct linted_spawn_file_actions *file_actions;
+	lntd_error err;
+	struct lntd_spawn_file_actions *file_actions;
 
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *file_actions);
+		err = lntd_mem_alloc(&xx, sizeof *file_actions);
 		if (err != 0)
 			return err;
 		file_actions = xx;
@@ -133,46 +133,46 @@ linted_error linted_spawn_file_actions_init(
 	return 0;
 }
 
-void linted_spawn_file_actions_set_stdin(
-    struct linted_spawn_file_actions *file_actions, linted_ko newko)
+void lntd_spawn_file_actions_set_stdin(
+    struct lntd_spawn_file_actions *file_actions, lntd_ko newko)
 {
 	file_actions->new_stdin = newko;
 	file_actions->set_stdin = true;
 }
 
-void linted_spawn_file_actions_set_stdout(
-    struct linted_spawn_file_actions *file_actions, linted_ko newko)
+void lntd_spawn_file_actions_set_stdout(
+    struct lntd_spawn_file_actions *file_actions, lntd_ko newko)
 {
 	file_actions->new_stdout = newko;
 	file_actions->set_stdout = true;
 }
 
-void linted_spawn_file_actions_set_stderr(
-    struct linted_spawn_file_actions *file_actions, linted_ko newko)
+void lntd_spawn_file_actions_set_stderr(
+    struct lntd_spawn_file_actions *file_actions, lntd_ko newko)
 {
 	file_actions->new_stderr = newko;
 	file_actions->set_stderr = true;
 }
 
-void linted_spawn_file_actions_destroy(
-    struct linted_spawn_file_actions *file_actions)
+void lntd_spawn_file_actions_destroy(
+    struct lntd_spawn_file_actions *file_actions)
 {
-	linted_mem_free(file_actions);
+	lntd_mem_free(file_actions);
 }
 
-linted_error
-linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
-             struct linted_spawn_file_actions const *file_actions,
-             struct linted_spawn_attr const *attr,
-             char const *const argv[], char const *const envp[])
+lntd_error
+lntd_spawn(lntd_pid *childp, lntd_ko dirko, char const *binary,
+           struct lntd_spawn_file_actions const *file_actions,
+           struct lntd_spawn_attr const *attr, char const *const argv[],
+           char const *const envp[])
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	if (LINTED_KO_CWD != dirko && dirko > INT_MAX)
+	if (LNTD_KO_CWD != dirko && dirko > INT_MAX)
 		return EBADF;
 
 	if ('/' == binary[0U])
-		dirko = LINTED_KO_CWD;
+		dirko = LNTD_KO_CWD;
 
 	sigset_t const *child_mask = 0;
 
@@ -181,12 +181,12 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 		die_on_parent_death = attr->die_on_parent_death;
 	}
 
-	linted_ko err_reader;
-	linted_ko err_writer;
+	lntd_ko err_reader;
+	lntd_ko err_writer;
 	{
-		linted_ko xx;
-		linted_ko yy;
-		err = linted_fifo_pair(&xx, &yy, 0);
+		lntd_ko xx;
+		lntd_ko yy;
+		err = lntd_fifo_pair(&xx, &yy, 0);
 		if (err != 0)
 			return err;
 		err_reader = xx;
@@ -203,24 +203,24 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 		    fcntl(err_writer, F_DUPFD_CLOEXEC, (long)greatest);
 		if (-1 == err_writer_copy) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			goto close_err_pipes;
 		}
 
-		linted_ko_close(err_writer);
+		lntd_ko_close(err_writer);
 
 		err_writer = err_writer_copy;
 	}
 
-	linted_ko dirko_copy;
+	lntd_ko dirko_copy;
 	bool dirko_copied = false;
-	if (LINTED_KO_CWD == dirko) {
-		dirko_copy = LINTED_KO_CWD;
+	if (LNTD_KO_CWD == dirko) {
+		dirko_copy = LNTD_KO_CWD;
 	} else if (file_actions != 0 && dirko < greatest) {
 		int fd = fcntl(dirko, F_DUPFD_CLOEXEC, (long)greatest);
 		if (-1 == fd) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			goto close_err_pipes;
 		}
 		dirko_copy = fd;
@@ -251,9 +251,9 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 		    .dirko = dirko_copy,
 		    .binary = binary};
 		child = safe_vfork(fork_routine, &fork_args);
-		LINTED_ASSERT(child != 0);
+		LNTD_ASSERT(child != 0);
 
-		linted_error mask_err =
+		lntd_error mask_err =
 		    pthread_sigmask(SIG_SETMASK, &sigset, 0);
 		if (0 == err)
 			err = mask_err;
@@ -261,10 +261,10 @@ linted_spawn(linted_pid *childp, linted_ko dirko, char const *binary,
 
 close_dirko_copy:
 	if (dirko_copied)
-		linted_ko_close(dirko_copy);
+		lntd_ko_close(dirko_copy);
 
 close_err_pipes : {
-	linted_error close_err = linted_ko_close(err_writer);
+	lntd_error close_err = lntd_ko_close(err_writer);
 	if (0 == err)
 		err = close_err;
 }
@@ -274,9 +274,8 @@ close_err_pipes : {
 
 	{
 		size_t xx;
-		linted_error yy;
-		err =
-		    linted_io_read_all(err_reader, &xx, &yy, sizeof yy);
+		lntd_error yy;
+		err = lntd_io_read_all(err_reader, &xx, &yy, sizeof yy);
 		if (err != 0)
 			goto close_err_reader;
 
@@ -284,12 +283,12 @@ close_err_pipes : {
 		 * occured */
 		if (xx == sizeof yy) {
 			err = yy;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 		}
 	}
 
 close_err_reader : {
-	linted_error close_err = linted_ko_close(err_reader);
+	lntd_error close_err = lntd_ko_close(err_reader);
 	if (0 == err)
 		err = close_err;
 }
@@ -303,20 +302,20 @@ close_err_reader : {
 	return 0;
 }
 
-LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
+LNTD_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 {
 	struct fork_args *args = arg;
 	sigset_t const *sigset = args->sigset;
-	struct linted_spawn_file_actions const *file_actions =
+	struct lntd_spawn_file_actions const *file_actions =
 	    args->file_actions;
-	linted_ko err_writer = args->err_writer;
+	lntd_ko err_writer = args->err_writer;
 	char const *const *argv = args->argv;
 	char const *const *envp = args->envp;
-	linted_ko dirko = args->dirko;
+	lntd_ko dirko = args->dirko;
 	char const *binary = args->binary;
 	bool die_on_parent_death = args->die_on_parent_death;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	/*
 	 * Get rid of signal handlers so that they can't be called
@@ -355,7 +354,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	{
 		sigset_t set;
 		sigemptyset(&set);
-		for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(signals);
+		for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(signals);
 		     ++ii) {
 			sigaddset(&set, signals[ii]);
 		}
@@ -365,9 +364,9 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 			goto fail;
 	}
 
-	linted_ko new_stdin;
-	linted_ko new_stdout;
-	linted_ko new_stderr;
+	lntd_ko new_stdin;
+	lntd_ko new_stdout;
+	lntd_ko new_stderr;
 	bool set_stdin = false;
 	bool set_stdout = false;
 	bool set_stderr = false;
@@ -388,7 +387,7 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	}
 
 	if (die_on_parent_death) {
-		err = linted_prctl_set_death_sig(SIGKILL);
+		err = lntd_prctl_set_death_sig(SIGKILL);
 		if (err != 0)
 			goto fail;
 	}
@@ -414,39 +413,39 @@ LINTED_NO_SANITIZE_ADDRESS static int fork_routine(void *arg)
 	if (0 == envp)
 		envp = (char const *const *)environ;
 
-	if (LINTED_KO_CWD == dirko || '/' == binary[0U]) {
+	if (LNTD_KO_CWD == dirko || '/' == binary[0U]) {
 		execve(binary, (char *const *)argv,
 		       (char *const *)envp);
 		err = errno;
 	} else {
-		err = linted_execveat(dirko, binary, (char **)argv,
-		                      (char **)envp, 0);
+		err = lntd_execveat(dirko, binary, (char **)argv,
+		                    (char **)envp, 0);
 	}
 
 fail : {
-	linted_error xx = err;
-	linted_io_write_all(err_writer, 0, &xx, sizeof xx);
+	lntd_error xx = err;
+	lntd_io_write_all(err_writer, 0, &xx, sizeof xx);
 }
 
 	return EXIT_FAILURE;
 }
 
-LINTED_NO_SANITIZE_ADDRESS
-static linted_error duplicate_to(linted_ko new, linted_ko old)
+LNTD_NO_SANITIZE_ADDRESS
+static lntd_error duplicate_to(lntd_ko new, lntd_ko old)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	if (new == old) {
 		int flags = fcntl(old, F_GETFD);
 		if (-1 == flags) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 
 		if (-1 == fcntl(new, F_SETFD, flags & ~FD_CLOEXEC)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 
@@ -472,13 +471,12 @@ static linted_error duplicate_to(linted_ko new, linted_ko old)
 
 	if (-1 == dup2(new, old)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	} else {
 		err = 0;
 	}
 
-	linted_error mask_err =
-	    pthread_sigmask(SIG_SETMASK, &sigset, 0);
+	lntd_error mask_err = pthread_sigmask(SIG_SETMASK, &sigset, 0);
 	if (0 == err)
 		err = mask_err;
 
@@ -488,7 +486,7 @@ static linted_error duplicate_to(linted_ko new, linted_ko old)
 /* Most compilers can't handle the weirdness of vfork so contain it in
  * a safe abstraction.
  */
-LINTED_NOINLINE LINTED_NOCLONE LINTED_NO_SANITIZE_ADDRESS static pid_t
+LNTD_NOINLINE LNTD_NOCLONE LNTD_NO_SANITIZE_ADDRESS static pid_t
 safe_vfork(int (*volatile f)(void *), void *volatile arg)
 {
 	pid_t child = vfork();

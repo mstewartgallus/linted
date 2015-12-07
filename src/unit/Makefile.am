@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libunit.la
-%C%_libunit_la_SOURCES=%D%/unit.c include/linted/unit.h
+%C%_libunit_la_SOURCES=%D%/unit.c include/lntd/unit.h
 %C%_libunit_la_LIBADD=\
   src/ko/libko.la\
   src/pid/libpid.la

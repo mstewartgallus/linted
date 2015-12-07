@@ -23,18 +23,18 @@
 
 #include "config.h"
 
-#include "linted/dir.h"
-#include "linted/error.h"
-#include "linted/file.h"
-#include "linted/io.h"
-#include "linted/ko.h"
-#include "linted/log.h"
-#include "linted/mem.h"
-#include "linted/path.h"
-#include "linted/start.h"
-#include "linted/str.h"
-#include "linted/utf.h"
-#include "linted/util.h"
+#include "lntd/dir.h"
+#include "lntd/error.h"
+#include "lntd/file.h"
+#include "lntd/io.h"
+#include "lntd/ko.h"
+#include "lntd/log.h"
+#include "lntd/mem.h"
+#include "lntd/path.h"
+#include "lntd/start.h"
+#include "lntd/str.h"
+#include "lntd/utf.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -95,7 +95,7 @@ static char const *const argstrs[] = {
         /**/ [NEWNS_ARG] = "--clone-newns",
         /**/ [NEWUTS_ARG] = "--clone-newuts"};
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
     .dont_init_signals = true,
     0};
@@ -104,11 +104,11 @@ static struct linted_start_config const linted_start_config = {
  * @todo Write stderr streams of the child to the system log.
  * @todo Pass full command line arguments to process.
  */
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err;
+	lntd_error err;
 
 	size_t arguments_length = argc;
 
@@ -140,7 +140,7 @@ static unsigned char linted_start_main(char const *const process_name,
 		char const *argument = argv[ii];
 
 		int arg = -1;
-		for (size_t jj = 0U; jj < LINTED_ARRAY_SIZE(argstrs);
+		for (size_t jj = 0U; jj < LNTD_ARRAY_SIZE(argstrs);
 		     ++jj) {
 			if (0 == strcmp(argument, argstrs[jj])) {
 				arg = jj;
@@ -244,20 +244,19 @@ static unsigned char linted_start_main(char const *const process_name,
 	}
 exit_loop:
 	if (!have_command) {
-		linted_log(LINTED_LOG_ERROR, "need command");
+		lntd_log(LNTD_LOG_ERROR, "need command");
 		return EXIT_FAILURE;
 	}
 
 	if (bad_option != 0) {
-		linted_log(LINTED_LOG_ERROR, "bad option: %s",
-		           bad_option);
+		lntd_log(LNTD_LOG_ERROR, "bad option: %s", bad_option);
 		return EXIT_FAILURE;
 	}
 
 	if ((fstab != 0 && 0 == chrootdir) ||
 	    (0 == fstab && chrootdir != 0)) {
-		linted_log(
-		    LINTED_LOG_ERROR,
+		lntd_log(
+		    LNTD_LOG_ERROR,
 		    "--chrootdir and --fstab are required together");
 		return EXIT_FAILURE;
 	}
@@ -282,17 +281,17 @@ exit_loop:
 	    {"--clone-newnet", clone_newnet},
 	    {"--clone-newns", clone_newns},
 	    {"--clone-newuts", clone_newuts}};
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(settings); ++ii) {
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(settings); ++ii) {
 		struct setting const *setting = &settings[ii];
 		char const *name = setting->name;
 		bool set = setting->set;
 
 		if (set) {
-			linted_log(LINTED_LOG_ERROR,
-			           "the option `%s' is not "
-			           "implemented on this "
-			           "platform",
-			           name);
+			lntd_log(LNTD_LOG_ERROR,
+			         "the option `%s' is not "
+			         "implemented on this "
+			         "platform",
+			         name);
 			return EXIT_FAILURE;
 		}
 	}
@@ -302,11 +301,10 @@ exit_loop:
 	char *command_base;
 	{
 		char *xx;
-		err = linted_path_base(&xx, command[0U]);
+		err = lntd_path_base(&xx, command[0U]);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_path_base: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_path_base: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		command_base = xx;
@@ -318,11 +316,10 @@ exit_loop:
 	char *binary_base;
 	{
 		char *xx;
-		err = linted_path_base(&xx, binary);
+		err = lntd_path_base(&xx, binary);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_path_base: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_path_base: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		binary_base = xx;
@@ -331,11 +328,10 @@ exit_loop:
 	wchar_t *binary_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(binary, &xx);
+		err = lntd_utf_1_to_2(binary, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_utf_1_to_2: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_utf_1_to_2: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		binary_utf2 = xx;
@@ -344,52 +340,50 @@ exit_loop:
 	wchar_t *binary_base_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(binary_base, &xx);
+		err = lntd_utf_1_to_2(binary_base, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_utf_1_to_2: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_utf_1_to_2: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		binary_base_utf2 = xx;
 	}
 
-	linted_ko monitor_handle;
-	linted_ko thread_handle;
+	lntd_ko monitor_handle;
+	lntd_ko thread_handle;
 	{
 		DWORD creation_flags = 0U;
 		STARTUPINFO startup_info = {0};
 
 		startup_info.cb = sizeof startup_info;
 		startup_info.dwFlags = STARTF_USESTDHANDLES;
-		startup_info.hStdInput = LINTED_KO_STDIN;
-		startup_info.hStdOutput = LINTED_KO_STDOUT;
-		startup_info.hStdError = LINTED_KO_STDERR;
+		startup_info.hStdInput = LNTD_KO_STDIN;
+		startup_info.hStdOutput = LNTD_KO_STDOUT;
+		startup_info.hStdError = LNTD_KO_STDERR;
 
 		PROCESS_INFORMATION process_information;
 		if (!CreateProcess(binary_utf2, binary_base_utf2, 0, 0,
 		                   false, creation_flags, 0, 0,
 		                   &startup_info,
 		                   &process_information)) {
-			linted_log(
-			    LINTED_LOG_ERROR, "CreateProcessW: %s",
-			    linted_error_string(
-			        HRESULT_FROM_WIN32(GetLastError())));
+			lntd_log(LNTD_LOG_ERROR, "CreateProcessW: %s",
+			         lntd_error_string(HRESULT_FROM_WIN32(
+			             GetLastError())));
 			return EXIT_FAILURE;
 		}
 		monitor_handle = process_information.hProcess;
 		thread_handle = process_information.hThread;
 	}
-	linted_ko_close(thread_handle);
+	lntd_ko_close(thread_handle);
 
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "spawning: %s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "spawning: %s",
+		         lntd_error_string(err));
 		return EXIT_FAILURE;
 	}
 
-	linted_ko_close(LINTED_KO_STDIN);
-	linted_ko_close(LINTED_KO_STDOUT);
+	lntd_ko_close(LNTD_KO_STDIN);
+	lntd_ko_close(LNTD_KO_STDOUT);
 
 	if (!wait)
 		return EXIT_SUCCESS;
@@ -399,20 +393,20 @@ exit_loop:
 		break;
 
 	case WAIT_FAILED:
-		linted_log(LINTED_LOG_ERROR, "WaitForSingleObject: %s",
-		           linted_error_string(
-		               HRESULT_FROM_WIN32(GetLastError())));
+		lntd_log(LNTD_LOG_ERROR, "WaitForSingleObject: %s",
+		         lntd_error_string(
+		             HRESULT_FROM_WIN32(GetLastError())));
 		return EXIT_FAILURE;
 
 	default:
-		LINTED_ASSERT(false);
+		LNTD_ASSERT(false);
 	}
 
 	DWORD xx;
 	if (!GetExitCodeProcess(monitor_handle, &xx)) {
-		linted_log(LINTED_LOG_ERROR, "GetExitCodeProcess: %s",
-		           linted_error_string(
-		               HRESULT_FROM_WIN32(GetLastError())));
+		lntd_log(LNTD_LOG_ERROR, "GetExitCodeProcess: %s",
+		         lntd_error_string(
+		             HRESULT_FROM_WIN32(GetLastError())));
 		return EXIT_FAILURE;
 	}
 	return xx;

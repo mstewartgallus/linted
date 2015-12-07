@@ -13,8 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LINTED_STDATOMIC_H
-#define LINTED_STDATOMIC_H
+#ifndef LNTD_STDATOMIC_H
+#define LNTD_STDATOMIC_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -138,4 +138,4 @@ _Bool atomic_flag_test_and_set_explicit(atomic_flag *flag,
 void atomic_flag_clear(atomic_flag *flag);
 _Bool atomic_flag_test_and_set(atomic_flag *flag);
 
-#endif /* LINTED_STDATOMIC_H */
+#endif /* LNTD_STDATOMIC_H */

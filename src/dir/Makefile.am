@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libdir.la
-%C%_libdir_la_SOURCES=include/linted/dir.h
+%C%_libdir_la_SOURCES=include/lntd/dir.h
 %C%_linted_LDLIBS=\
   src/ko/libko.la\
   src/path/libpath.la

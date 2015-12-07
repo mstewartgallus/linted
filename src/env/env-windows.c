@@ -25,12 +25,12 @@
 
 #include "config.h"
 
-#include "linted/env.h"
+#include "lntd/env.h"
 
-#include "linted/error.h"
-#include "linted/mem.h"
-#include "linted/utf.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/mem.h"
+#include "lntd/utf.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -44,15 +44,15 @@
 static void lock(void);
 static void unlock(void);
 
-linted_error linted_env_set(char const *key, char const *value,
-                            _Bool overwrite)
+lntd_error lntd_env_set(char const *key, char const *value,
+                        _Bool overwrite)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	wchar_t *key_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(key, &xx);
+		err = lntd_utf_1_to_2(key, &xx);
 		if (err != 0)
 			return err;
 		key_utf2 = xx;
@@ -61,7 +61,7 @@ linted_error linted_env_set(char const *key, char const *value,
 	wchar_t *value_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(value, &xx);
+		err = lntd_utf_1_to_2(value, &xx);
 		if (err != 0)
 			goto free_key;
 		value_utf2 = xx;
@@ -81,26 +81,26 @@ linted_error linted_env_set(char const *key, char const *value,
 	}
 
 	if (_wputenv_s(key_utf2, value_utf2) != 0)
-		err = LINTED_ERROR_OUT_OF_MEMORY;
+		err = LNTD_ERROR_OUT_OF_MEMORY;
 
 unlock:
 	unlock();
 
-	linted_mem_free(value_utf2);
+	lntd_mem_free(value_utf2);
 
 free_key:
-	linted_mem_free(key_utf2);
+	lntd_mem_free(key_utf2);
 	return err;
 }
 
-linted_error linted_env_get(char const *key, char **valuep)
+lntd_error lntd_env_get(char const *key, char **valuep)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	wchar_t *key_utf2;
 	{
 		wchar_t *xx;
-		err = linted_utf_1_to_2(key, &xx);
+		err = lntd_utf_1_to_2(key, &xx);
 		if (err != 0)
 			return err;
 		key_utf2 = xx;
@@ -123,7 +123,7 @@ linted_error linted_env_get(char const *key, char **valuep)
 			break;
 
 		default:
-			err = LINTED_ERROR_OUT_OF_MEMORY;
+			err = LNTD_ERROR_OUT_OF_MEMORY;
 			goto unlock;
 		}
 		buffer = xx;
@@ -132,7 +132,7 @@ linted_error linted_env_get(char const *key, char **valuep)
 unlock:
 	unlock();
 
-	linted_mem_free(key_utf2);
+	lntd_mem_free(key_utf2);
 
 	if (err != 0)
 		goto free_buffer;
@@ -142,7 +142,7 @@ unlock:
 		value = 0;
 	} else {
 		char *xx;
-		err = linted_utf_2_to_1(buffer, &xx);
+		err = lntd_utf_2_to_1(buffer, &xx);
 		if (err != 0)
 			goto free_buffer;
 		value = xx;
@@ -151,7 +151,7 @@ unlock:
 	*valuep = value;
 
 free_buffer:
-	linted_mem_free(buffer);
+	lntd_mem_free(buffer);
 
 	return err;
 }

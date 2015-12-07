@@ -17,16 +17,16 @@
 
 #include "config.h"
 
-#include "linted/admin.h"
-#include "linted/env.h"
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/log.h"
-#include "linted/mem.h"
-#include "linted/start.h"
-#include "linted/str.h"
-#include "linted/unit.h"
-#include "linted/util.h"
+#include "lntd/admin.h"
+#include "lntd/env.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
+#include "lntd/log.h"
+#include "lntd/mem.h"
+#include "lntd/start.h"
+#include "lntd/str.h"
+#include "lntd/unit.h"
+#include "lntd/util.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -42,55 +42,55 @@
 
 struct conf;
 
-static linted_error
+static lntd_error
 conf_system_default_limit_locks(struct conf *conf,
                                 int_least64_t *limitp);
-static linted_error
+static lntd_error
 conf_system_default_limit_memlock(struct conf *conf,
                                   int_least64_t *limitp);
-static linted_error
+static lntd_error
 conf_system_default_limit_msgqueue(struct conf *conf,
                                    int_least64_t *limitp);
-static linted_error
+static lntd_error
 conf_system_default_limit_nofile(struct conf *conf,
                                  int_least64_t *limitp);
 
-static linted_error conf_socket_listen_directory(struct conf *conf,
-                                                 char const **strp);
-static linted_error conf_socket_listen_file(struct conf *conf,
-                                            char const **strp);
-static linted_error conf_socket_listen_fifo(struct conf *conf,
-                                            char const **strp);
-static linted_error conf_socket_pipe_size(struct conf *conf,
-                                          int_least64_t *intp);
+static lntd_error conf_socket_listen_directory(struct conf *conf,
+                                               char const **strp);
+static lntd_error conf_socket_listen_file(struct conf *conf,
+                                          char const **strp);
+static lntd_error conf_socket_listen_fifo(struct conf *conf,
+                                          char const **strp);
+static lntd_error conf_socket_pipe_size(struct conf *conf,
+                                        int_least64_t *intp);
 
 static char const *const *conf_service_exec_start(struct conf *conf);
 static char const *const *
 conf_service_pass_environment(struct conf *conf);
 static char const *const *
-conf_service_x_linted_clone_flags(struct conf *conf);
+conf_service_x_lntd_clone_flags(struct conf *conf);
 
-static linted_error conf_service_timer_slack_nsec(struct conf *conf,
-                                                  int_least64_t *intp);
-static linted_error conf_service_priority(struct conf *conf,
-                                          int_least64_t *intp);
-static linted_error conf_service_limit_no_file(struct conf *conf,
-                                               int_least64_t *intp);
-static linted_error conf_service_limit_msgqueue(struct conf *conf,
+static lntd_error conf_service_timer_slack_nsec(struct conf *conf,
                                                 int_least64_t *intp);
-static linted_error conf_service_limit_locks(struct conf *conf,
+static lntd_error conf_service_priority(struct conf *conf,
+                                        int_least64_t *intp);
+static lntd_error conf_service_limit_no_file(struct conf *conf,
                                              int_least64_t *intp);
-static linted_error conf_service_limit_memlock(struct conf *conf,
-                                               int_least64_t *intp);
+static lntd_error conf_service_limit_msgqueue(struct conf *conf,
+                                              int_least64_t *intp);
+static lntd_error conf_service_limit_locks(struct conf *conf,
+                                           int_least64_t *intp);
+static lntd_error conf_service_limit_memlock(struct conf *conf,
+                                             int_least64_t *intp);
 
-static linted_error conf_service_type(struct conf *conf,
-                                      char const **strp);
-static linted_error conf_service_no_new_privileges(struct conf *conf,
-                                                   bool *boolp);
-static linted_error conf_service_x_linted_fstab(struct conf *conf,
-                                                char const **strp);
-static linted_error conf_service_working_directory(struct conf *conf,
-                                                   char const **strp);
+static lntd_error conf_service_type(struct conf *conf,
+                                    char const **strp);
+static lntd_error conf_service_no_new_privileges(struct conf *conf,
+                                                 bool *boolp);
+static lntd_error conf_service_x_lntd_fstab(struct conf *conf,
+                                            char const **strp);
+static lntd_error conf_service_working_directory(struct conf *conf,
+                                                 char const **strp);
 
 struct conf_db;
 struct conf;
@@ -99,44 +99,44 @@ typedef uint_fast64_t conf_section;
 
 struct conf_db;
 
-static linted_error conf_db_create(struct conf_db **dbp);
+static lntd_error conf_db_create(struct conf_db **dbp);
 static void conf_db_destroy(struct conf_db *db);
 
-static linted_error conf_db_add_conf(struct conf_db *db,
-                                     struct conf *conf);
+static lntd_error conf_db_add_conf(struct conf_db *db,
+                                   struct conf *conf);
 
 static size_t conf_db_size(struct conf_db *db);
 static struct conf *conf_db_get_conf(struct conf_db *db, size_t ii);
 
-static linted_error conf_create(struct conf **confp, char *file_name);
+static lntd_error conf_create(struct conf **confp, char *file_name);
 
-static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
-                                    char const *file_name);
+static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
+                                  char const *file_name);
 
 static void conf_put(struct conf *conf);
 
 static char const *conf_peek_name(struct conf *conf);
 
-static linted_error conf_add_section(struct conf *conf,
-                                     conf_section *sectionp,
-                                     char const *section_name);
+static lntd_error conf_add_section(struct conf *conf,
+                                   conf_section *sectionp,
+                                   char const *section_name);
 
-static linted_error conf_add_setting(struct conf *conf,
-                                     conf_section section,
-                                     char const *field,
-                                     char const *const *value);
+static lntd_error conf_add_setting(struct conf *conf,
+                                   conf_section section,
+                                   char const *field,
+                                   char const *const *value);
 
-enum { LINTED_SYSTEM_CONF_PATH, LINTED_UNIT_PATH };
+enum { LNTD_SYSTEM_CONF_PATH, LNTD_UNIT_PATH };
 
 static char const *const required_envs[] =
-    {[LINTED_SYSTEM_CONF_PATH] = "LINTED_SYSTEM_CONF_PATH",
-     [LINTED_UNIT_PATH] = "LINTED_UNIT_PATH"};
+    {[LNTD_SYSTEM_CONF_PATH] = "LINTED_SYSTEM_CONF_PATH",
+     [LNTD_UNIT_PATH] = "LINTED_UNIT_PATH"};
 
 struct startup {
 	char const *system_conf_path;
 	char const *unit_path;
-	linted_ko admin_in;
-	linted_ko admin_out;
+	lntd_ko admin_in;
+	lntd_ko admin_out;
 };
 
 struct system_conf {
@@ -146,16 +146,16 @@ struct system_conf {
 	int_least64_t *limit_memlock;
 };
 
-static linted_error startup_init(struct startup *startup,
-                                 char const *controller_path,
-                                 char const *updater_path,
-                                 char const *system_conf_path,
-                                 char const *unit_path);
+static lntd_error startup_init(struct startup *startup,
+                               char const *controller_path,
+                               char const *updater_path,
+                               char const *system_conf_path,
+                               char const *unit_path);
 
-static linted_error startup_destroy(struct startup *startup);
+static lntd_error startup_destroy(struct startup *startup);
 
-static linted_error startup_start(struct startup *startup);
-static linted_error startup_stop(struct startup *startup);
+static lntd_error startup_start(struct startup *startup);
+static lntd_error startup_stop(struct startup *startup);
 
 static char const *const default_envvars[] = {
     "MALLOC_CHECK_", "MALLOC_PERTURB_", "MANAGERPID", "USER", "LOGNAME",
@@ -164,78 +164,76 @@ static char const *const default_envvars[] = {
     "XDG_SEAT", "TERM", "LD_WARN", "LD_VERBOSE", "LD_DEBUG",
     "LD_DEBUG_OUTPUT", 0};
 
-static linted_error
+static lntd_error
 populate_conf_db(struct conf_db *conf_db,
-                 struct system_conf const *system_conf, linted_ko cwd,
+                 struct system_conf const *system_conf, lntd_ko cwd,
                  char const *unit_path);
-static linted_error populate_system_conf(struct conf_db *db,
-                                         linted_ko cwd,
-                                         char const *file_name);
-static linted_error
+static lntd_error populate_system_conf(struct conf_db *db, lntd_ko cwd,
+                                       char const *file_name);
+static lntd_error
 add_unit_dir_to_db(struct conf_db *db,
-                   struct system_conf const *system_conf, linted_ko cwd,
+                   struct system_conf const *system_conf, lntd_ko cwd,
                    char const *dir_name);
 
-static linted_error socket_activate(struct conf *conf,
-                                    linted_ko admin_in,
-                                    linted_ko admin_out);
+static lntd_error socket_activate(struct conf *conf, lntd_ko admin_in,
+                                  lntd_ko admin_out);
 
-static linted_error
+static lntd_error
 service_activate(struct system_conf const *system_conf,
-                 struct conf *conf, linted_ko admin_in,
-                 linted_ko admin_out);
+                 struct conf *conf, lntd_ko admin_in,
+                 lntd_ko admin_out);
 
 static size_t null_list_size(char const *const *list);
 
-static linted_error filter_envvars(char ***resultsp,
-                                   char const *const *allowed_envvars);
+static lntd_error filter_envvars(char ***resultsp,
+                                 char const *const *allowed_envvars);
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-startup", 0};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	if (argc != 3U) {
-		linted_log(LINTED_LOG_ERROR,
-		           "missing some of 2 file operands");
+		lntd_log(LNTD_LOG_ERROR,
+		         "missing some of 2 file operands");
 		return EXIT_FAILURE;
 	}
 
 	char const *system_conf_path;
 	char const *unit_path;
 	{
-		char *envs[LINTED_ARRAY_SIZE(required_envs)];
+		char *envs[LNTD_ARRAY_SIZE(required_envs)];
 		for (size_t ii = 0U;
-		     ii < LINTED_ARRAY_SIZE(required_envs); ++ii) {
+		     ii < LNTD_ARRAY_SIZE(required_envs); ++ii) {
 			char const *req = required_envs[ii];
 			char *value;
 			{
 				char *xx;
-				err = linted_env_get(req, &xx);
+				err = lntd_env_get(req, &xx);
 				if (err != 0) {
-					linted_log(
-					    LINTED_LOG_ERROR,
-					    "linted_env_get: %s",
-					    linted_error_string(err));
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "lntd_env_get: %s",
+					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
 				value = xx;
 			}
 			if (0 == value) {
-				linted_log(LINTED_LOG_ERROR,
-				           "%s is a required "
-				           "environment variable",
-				           req);
+				lntd_log(LNTD_LOG_ERROR,
+				         "%s is a required "
+				         "environment variable",
+				         req);
 				return EXIT_FAILURE;
 			}
 			envs[ii] = value;
 		}
-		system_conf_path = envs[LINTED_SYSTEM_CONF_PATH];
-		unit_path = envs[LINTED_UNIT_PATH];
+		system_conf_path = envs[LNTD_SYSTEM_CONF_PATH];
+		unit_path = envs[LNTD_UNIT_PATH];
 	}
 
 	char const *admin_in = argv[1U];
@@ -251,49 +249,48 @@ static unsigned char linted_start_main(char const *const process_name,
 	if (err != 0)
 		goto destroy_startup;
 
-	linted_error stop_err = startup_stop(&startup);
+	lntd_error stop_err = startup_stop(&startup);
 	if (0 == err)
 		err = stop_err;
 
 destroy_startup:
 	;
-	linted_error destroy_err = startup_destroy(&startup);
+	lntd_error destroy_err = startup_destroy(&startup);
 	if (0 == err)
 		err = destroy_err;
 
 log_error:
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR, "%s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "%s", lntd_error_string(err));
 		return EXIT_FAILURE;
 	}
 
 	return EXIT_SUCCESS;
 }
 
-static linted_error startup_init(struct startup *startup,
-                                 char const *admin_in_path,
-                                 char const *admin_out_path,
-                                 char const *system_conf_path,
-                                 char const *unit_path)
+static lntd_error startup_init(struct startup *startup,
+                               char const *admin_in_path,
+                               char const *admin_out_path,
+                               char const *system_conf_path,
+                               char const *unit_path)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	linted_admin_in admin_in;
+	lntd_admin_in admin_in;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, admin_in_path,
-		                     LINTED_KO_RDWR);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, admin_in_path,
+		                   LNTD_KO_RDWR);
 		if (err != 0)
 			return err;
 		admin_in = xx;
 	}
 
-	linted_admin_out admin_out;
+	lntd_admin_out admin_out;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, admin_out_path,
-		                     LINTED_KO_RDWR);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, admin_out_path,
+		                   LNTD_KO_RDWR);
 		if (err != 0)
 			goto close_admin_in;
 		admin_out = xx;
@@ -307,31 +304,31 @@ static linted_error startup_init(struct startup *startup,
 	return 0;
 
 close_admin_in:
-	linted_ko_close(admin_in);
+	lntd_ko_close(admin_in);
 
 	return err;
 }
 
-static linted_error startup_destroy(struct startup *startup)
+static lntd_error startup_destroy(struct startup *startup)
 {
-	linted_ko admin_in = startup->admin_in;
-	linted_ko admin_out = startup->admin_out;
+	lntd_ko admin_in = startup->admin_in;
+	lntd_ko admin_out = startup->admin_out;
 
-	linted_ko_close(admin_in);
+	lntd_ko_close(admin_in);
 
-	linted_ko_close(admin_out);
+	lntd_ko_close(admin_out);
 
 	return 0;
 }
 
-static linted_error startup_start(struct startup *startup)
+static lntd_error startup_start(struct startup *startup)
 {
 	char const *system_conf_path = startup->system_conf_path;
 	char const *unit_path = startup->unit_path;
-	linted_ko admin_in = startup->admin_in;
-	linted_ko admin_out = startup->admin_out;
+	lntd_ko admin_in = startup->admin_in;
+	lntd_ko admin_out = startup->admin_out;
 
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	struct conf_db *conf_db;
 	{
@@ -355,16 +352,16 @@ static linted_error startup_start(struct startup *startup)
 		char *file_name_dup;
 		{
 			char *xx;
-			err = linted_str_dup_len(&xx, start, len);
+			err = lntd_str_dup_len(&xx, start, len);
 			if (err != 0)
 				return err;
 			file_name_dup = xx;
 		}
 
-		err = populate_system_conf(conf_db, LINTED_KO_CWD,
+		err = populate_system_conf(conf_db, LNTD_KO_CWD,
 		                           file_name_dup);
 
-		linted_mem_free(file_name_dup);
+		lntd_mem_free(file_name_dup);
 
 		if (err != 0)
 			return err;
@@ -388,7 +385,7 @@ static linted_error startup_start(struct startup *startup)
 		}
 	}
 	if (0 == system_conf)
-		return LINTED_ERROR_FILE_NOT_FOUND;
+		return LNTD_ERROR_FILE_NOT_FOUND;
 
 	struct system_conf system_conf_struct = {0};
 
@@ -431,7 +428,7 @@ static linted_error startup_start(struct startup *startup)
 	}
 
 	err = populate_conf_db(conf_db, &system_conf_struct,
-	                       LINTED_KO_CWD, unit_path);
+	                       LNTD_KO_CWD, unit_path);
 	if (err != 0)
 		goto destroy_conf_db;
 
@@ -478,17 +475,17 @@ destroy_conf_db:
 	return err;
 }
 
-static linted_error startup_stop(struct startup *startup)
+static lntd_error startup_stop(struct startup *startup)
 {
 	return 0;
 }
 
-static linted_error
+static lntd_error
 populate_conf_db(struct conf_db *db,
-                 struct system_conf const *system_conf, linted_ko cwd,
+                 struct system_conf const *system_conf, lntd_ko cwd,
                  char const *unit_path)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	for (char const *dirstart = unit_path;;) {
 		char const *dirend = strchr(dirstart, ':');
@@ -503,7 +500,7 @@ populate_conf_db(struct conf_db *db,
 		char *dir_name;
 		{
 			char *xx;
-			err = linted_str_dup_len(&xx, dirstart, len);
+			err = lntd_str_dup_len(&xx, dirstart, len);
 			if (err != 0)
 				return err;
 			dir_name = xx;
@@ -512,7 +509,7 @@ populate_conf_db(struct conf_db *db,
 		err =
 		    add_unit_dir_to_db(db, system_conf, cwd, dir_name);
 
-		linted_mem_free(dir_name);
+		lntd_mem_free(dir_name);
 
 		if (err != 0)
 			return err;
@@ -526,19 +523,17 @@ populate_conf_db(struct conf_db *db,
 	return 0;
 }
 
-static linted_error populate_system_conf(struct conf_db *db,
-                                         linted_ko cwd,
-                                         char const *filename)
+static lntd_error populate_system_conf(struct conf_db *db, lntd_ko cwd,
+                                       char const *filename)
 {
-	linted_error err;
+	lntd_error err;
 
-	linted_ko conf_ko;
+	lntd_ko conf_ko;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, cwd, filename,
-		                     LINTED_KO_RDONLY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, cwd, filename, LNTD_KO_RDONLY);
 		/* Just treat as an empty file */
-		if (LINTED_ERROR_FILE_NOT_FOUND == err)
+		if (LNTD_ERROR_FILE_NOT_FOUND == err)
 			return 0;
 		if (err != 0)
 			return err;
@@ -548,7 +543,7 @@ static linted_error populate_system_conf(struct conf_db *db,
 	char *filename_dup;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, "system.conf");
+		err = lntd_str_dup(&xx, "system.conf");
 		if (err != 0)
 			goto close_ko;
 		filename_dup = xx;
@@ -559,7 +554,7 @@ static linted_error populate_system_conf(struct conf_db *db,
 		struct conf *xx;
 		err = conf_create(&xx, filename_dup);
 		if (err != 0) {
-			linted_mem_free(filename_dup);
+			lntd_mem_free(filename_dup);
 			goto close_ko;
 		}
 		conf = xx;
@@ -576,25 +571,25 @@ free_conf:
 		conf_put(conf);
 
 close_ko:
-	linted_ko_close(conf_ko);
+	lntd_ko_close(conf_ko);
 
 	return err;
 }
 
-static linted_error
+static lntd_error
 add_unit_dir_to_db(struct conf_db *db,
-                   struct system_conf const *system_conf, linted_ko cwd,
+                   struct system_conf const *system_conf, lntd_ko cwd,
                    char const *dir_name)
 {
-	linted_error err;
+	lntd_error err;
 
-	linted_ko units_ko;
+	lntd_ko units_ko;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, cwd, dir_name,
-		                     LINTED_KO_DIRECTORY);
+		lntd_ko xx;
+		err =
+		    lntd_ko_open(&xx, cwd, dir_name, LNTD_KO_DIRECTORY);
 		/* Just treat as an empty directory */
-		if (LINTED_ERROR_FILE_NOT_FOUND == err)
+		if (LNTD_ERROR_FILE_NOT_FOUND == err)
 			return 0;
 		if (err != 0)
 			return err;
@@ -604,12 +599,12 @@ add_unit_dir_to_db(struct conf_db *db,
 	DIR *units_dir = fdopendir(units_ko);
 	if (0 == units_dir) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 
-		linted_ko_close(units_ko);
+		lntd_ko_close(units_ko);
 	}
 
-	if (LINTED_ERROR_FILE_NOT_FOUND == err)
+	if (LNTD_ERROR_FILE_NOT_FOUND == err)
 		return 0;
 
 	if (err != 0)
@@ -639,7 +634,7 @@ add_unit_dir_to_db(struct conf_db *db,
 		char *name_copy;
 		{
 			char *xx;
-			err = linted_str_dup(&xx, name);
+			err = lntd_str_dup(&xx, name);
 			if (err != 0)
 				goto free_file_names;
 			name_copy = xx;
@@ -649,9 +644,9 @@ add_unit_dir_to_db(struct conf_db *db,
 		char **new_files;
 		{
 			void *xx;
-			err = linted_mem_realloc_array(
-			    &xx, files, new_files_count,
-			    sizeof files[0U]);
+			err = lntd_mem_realloc_array(&xx, files,
+			                             new_files_count,
+			                             sizeof files[0U]);
 			if (err != 0)
 				goto free_file_name;
 			new_files = xx;
@@ -663,7 +658,7 @@ add_unit_dir_to_db(struct conf_db *db,
 
 		if (err != 0) {
 		free_file_name:
-			linted_mem_free(name_copy);
+			lntd_mem_free(name_copy);
 			goto free_file_names;
 		}
 	}
@@ -671,18 +666,18 @@ add_unit_dir_to_db(struct conf_db *db,
 	for (size_t ii = 0U; ii < files_count; ++ii) {
 		char *file_name = files[ii];
 
-		linted_unit_type unit_type;
+		lntd_unit_type unit_type;
 		{
 			char const *dot = strchr(file_name, '.');
 
 			char const *suffix = dot + 1U;
 
 			if (0 == strcmp(suffix, "socket")) {
-				unit_type = LINTED_UNIT_TYPE_SOCKET;
+				unit_type = LNTD_UNIT_TYPE_SOCKET;
 			} else if (0 == strcmp(suffix, "service")) {
-				unit_type = LINTED_UNIT_TYPE_SERVICE;
+				unit_type = LNTD_UNIT_TYPE_SERVICE;
 			} else {
-				err = LINTED_ERROR_INVALID_PARAMETER;
+				err = LNTD_ERROR_INVALID_PARAMETER;
 				goto free_file_names;
 			}
 		}
@@ -698,11 +693,11 @@ add_unit_dir_to_db(struct conf_db *db,
 		files[ii] = 0;
 
 		switch (unit_type) {
-		case LINTED_UNIT_TYPE_SOCKET:
+		case LNTD_UNIT_TYPE_SOCKET:
 			/* Okay but we have no defaults for this */
 			break;
 
-		case LINTED_UNIT_TYPE_SERVICE: {
+		case LNTD_UNIT_TYPE_SERVICE: {
 			conf_section service;
 			{
 				conf_section xx;
@@ -720,8 +715,8 @@ add_unit_dir_to_db(struct conf_db *db,
 				goto close_unit_file;
 
 			if (system_conf->limit_no_file != 0) {
-				char limits
-				    [LINTED_NUMBER_TYPE_STRING_SIZE(
+				char
+				    limits[LNTD_NUMBER_TYPE_STRING_SIZE(
 				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_no_file);
@@ -733,8 +728,8 @@ add_unit_dir_to_db(struct conf_db *db,
 			}
 
 			if (system_conf->limit_locks != 0) {
-				char limits
-				    [LINTED_NUMBER_TYPE_STRING_SIZE(
+				char
+				    limits[LNTD_NUMBER_TYPE_STRING_SIZE(
 				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_locks);
@@ -747,8 +742,8 @@ add_unit_dir_to_db(struct conf_db *db,
 			}
 
 			if (system_conf->limit_msgqueue != 0) {
-				char limits
-				    [LINTED_NUMBER_TYPE_STRING_SIZE(
+				char
+				    limits[LNTD_NUMBER_TYPE_STRING_SIZE(
 				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_msgqueue);
@@ -762,8 +757,8 @@ add_unit_dir_to_db(struct conf_db *db,
 			}
 
 			if (system_conf->limit_memlock != 0) {
-				char limits
-				    [LINTED_NUMBER_TYPE_STRING_SIZE(
+				char
+				    limits[LNTD_NUMBER_TYPE_STRING_SIZE(
 				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
 				        *system_conf->limit_memlock);
@@ -794,24 +789,23 @@ add_unit_dir_to_db(struct conf_db *db,
 
 free_file_names:
 	for (size_t ii = 0U; ii < files_count; ++ii)
-		linted_mem_free(files[ii]);
-	linted_mem_free(files);
+		lntd_mem_free(files[ii]);
+	lntd_mem_free(files);
 
 	if (-1 == closedir(units_dir)) {
 		if (0 == err) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 		}
 	}
 
 	return err;
 }
 
-static linted_error socket_activate(struct conf *conf,
-                                    linted_ko admin_in,
-                                    linted_ko admin_out)
+static lntd_error socket_activate(struct conf *conf, lntd_ko admin_in,
+                                  lntd_ko admin_out)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	char const *file_name = conf_peek_name(conf);
 
@@ -820,8 +814,7 @@ static linted_error socket_activate(struct conf *conf,
 	char *unit_name;
 	{
 		char *xx;
-		err =
-		    linted_str_dup_len(&xx, file_name, dot - file_name);
+		err = lntd_str_dup_len(&xx, file_name, dot - file_name);
 		if (err != 0)
 			return err;
 		unit_name = xx;
@@ -868,73 +861,72 @@ static linted_error socket_activate(struct conf *conf,
 		fifo_size = xx;
 	}
 
-	linted_unit_socket_type socket_type;
+	lntd_unit_socket_type socket_type;
 	char const *path = 0;
 
 	if (listen_dir != 0) {
-		socket_type = LINTED_UNIT_SOCKET_TYPE_DIR;
+		socket_type = LNTD_UNIT_SOCKET_TYPE_DIR;
 		path = listen_dir;
 	}
 
 	if (listen_file != 0) {
 		if (path != 0)
-			return LINTED_ERROR_INVALID_PARAMETER;
-		socket_type = LINTED_UNIT_SOCKET_TYPE_FILE;
+			return LNTD_ERROR_INVALID_PARAMETER;
+		socket_type = LNTD_UNIT_SOCKET_TYPE_FILE;
 		path = listen_file;
 	}
 
 	if (listen_fifo != 0) {
 		if (path != 0)
-			return LINTED_ERROR_INVALID_PARAMETER;
-		socket_type = LINTED_UNIT_SOCKET_TYPE_FIFO;
+			return LNTD_ERROR_INVALID_PARAMETER;
+		socket_type = LNTD_UNIT_SOCKET_TYPE_FIFO;
 		path = listen_fifo;
 	}
 
 	if (0 == path)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (have_fifo_size) {
 		if (0 == listen_fifo)
-			return LINTED_ERROR_INVALID_PARAMETER;
+			return LNTD_ERROR_INVALID_PARAMETER;
 	}
 
 	{
-		struct linted_admin_request request = {0};
+		struct lntd_admin_request request = {0};
 
-		request.type = LINTED_ADMIN_ADD_SOCKET;
+		request.type = LNTD_ADMIN_ADD_SOCKET;
 
-		struct linted_admin_request_add_socket *xx =
-		    &request.linted_admin_request_u.add_socket;
+		struct lntd_admin_request_add_socket *xx =
+		    &request.lntd_admin_request_u.add_socket;
 
 		xx->name = (char *)unit_name;
 		xx->path = (char *)path;
 		xx->fifo_size = fifo_size;
 		xx->sock_type = socket_type;
 
-		err = linted_admin_in_send(admin_in, &request);
+		err = lntd_admin_in_send(admin_in, &request);
 	}
 	if (err != 0)
 		goto free_unit_name;
 
 	{
-		struct linted_admin_reply xx;
-		err = linted_admin_out_recv(admin_out, &xx);
+		struct lntd_admin_reply xx;
+		err = lntd_admin_out_recv(admin_out, &xx);
 		if (err != 0)
 			goto free_unit_name;
 	}
 
 free_unit_name:
-	linted_mem_free(unit_name);
+	lntd_mem_free(unit_name);
 
 	return err;
 }
 
-static linted_error
+static lntd_error
 service_activate(struct system_conf const *system_conf,
-                 struct conf *conf, linted_ko admin_in,
-                 linted_ko admin_out)
+                 struct conf *conf, lntd_ko admin_in, lntd_ko admin_out)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	char const *file_name = conf_peek_name(conf);
 
@@ -943,8 +935,7 @@ service_activate(struct system_conf const *system_conf,
 	char *unit_name;
 	{
 		char *xx;
-		err =
-		    linted_str_dup_len(&xx, file_name, dot - file_name);
+		err = lntd_str_dup_len(&xx, file_name, dot - file_name);
 		if (err != 0)
 			return err;
 		unit_name = xx;
@@ -954,7 +945,7 @@ service_activate(struct system_conf const *system_conf,
 	char const *const *env_whitelist =
 	    conf_service_pass_environment(conf);
 	char const *const *clone_flags =
-	    conf_service_x_linted_clone_flags(conf);
+	    conf_service_x_lntd_clone_flags(conf);
 
 	char const *type;
 	{
@@ -977,7 +968,7 @@ service_activate(struct system_conf const *system_conf,
 	char const *fstab;
 	{
 		char const *xx = 0;
-		err = conf_service_x_linted_fstab(conf, &xx);
+		err = conf_service_x_lntd_fstab(conf, &xx);
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		fstab = xx;
@@ -1085,12 +1076,12 @@ service_activate(struct system_conf const *system_conf,
 	if (0 == type || 0 == strcmp("simple", type)) {
 		/* simple type of service */
 	} else {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 		goto free_unit_name;
 	}
 
 	if (0 == command) {
-		err = LINTED_ERROR_INVALID_PARAMETER;
+		err = LNTD_ERROR_INVALID_PARAMETER;
 		goto free_unit_name;
 	}
 
@@ -1116,7 +1107,7 @@ service_activate(struct system_conf const *system_conf,
 			} else if (0 == strcmp("CLONE_NEWUTS", flag)) {
 				clone_newuts = true;
 			} else {
-				return LINTED_ERROR_INVALID_PARAMETER;
+				return LNTD_ERROR_INVALID_PARAMETER;
 			}
 		}
 	}
@@ -1126,7 +1117,7 @@ service_activate(struct system_conf const *system_conf,
 	} else if (0 == strcmp("simple", type)) {
 		/* simple type of service */
 	} else {
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 	}
 
 	char **envvars;
@@ -1144,26 +1135,26 @@ service_activate(struct system_conf const *system_conf,
 	char *service_name_setting;
 	{
 		char *xx;
-		err = linted_str_format(&xx, "LINTED_SERVICE=%s",
-		                        unit_name);
+		err = lntd_str_format(&xx, "LINTED_SERVICE=%s",
+		                      unit_name);
 		if (err != 0)
 			goto free_envvars;
 		service_name_setting = xx;
 	}
 
 	size_t new_size = envvars_size + 2U;
-	LINTED_ASSERT(new_size > 0U);
+	LNTD_ASSERT(new_size > 0U);
 	{
 		void *xx;
-		err = linted_mem_realloc_array(&xx, envvars, new_size,
-		                               sizeof envvars[0U]);
+		err = lntd_mem_realloc_array(&xx, envvars, new_size,
+		                             sizeof envvars[0U]);
 		if (err != 0)
 			goto envvar_allocate_failed;
 		envvars = xx;
 		goto envvar_allocate_succeeded;
 	}
 envvar_allocate_failed:
-	linted_mem_free(service_name_setting);
+	lntd_mem_free(service_name_setting);
 	goto free_envvars;
 
 envvar_allocate_succeeded:
@@ -1179,12 +1170,12 @@ envvar_allocate_succeeded:
 		chdir_path = "";
 
 	{
-		struct linted_admin_request request = {0};
+		struct lntd_admin_request request = {0};
 
-		request.type = LINTED_ADMIN_ADD_UNIT;
+		request.type = LNTD_ADMIN_ADD_UNIT;
 
-		struct linted_admin_request_add_unit *xx =
-		    &request.linted_admin_request_u.add_unit;
+		struct lntd_admin_request_add_unit *xx =
+		    &request.lntd_admin_request_u.add_unit;
 
 		xx->timer_slack_nsec =
 		    has_timer_slack_nsec ? &timer_slack_nsec : 0;
@@ -1217,26 +1208,26 @@ envvar_allocate_succeeded:
 		    null_list_size(environment);
 		xx->environment.environment_val = (char **)environment;
 
-		err = linted_admin_in_send(admin_in, &request);
+		err = lntd_admin_in_send(admin_in, &request);
 	}
 	if (err != 0)
 		goto free_envvars;
 
 	{
-		struct linted_admin_reply xx;
-		err = linted_admin_out_recv(admin_out, &xx);
+		struct lntd_admin_reply xx;
+		err = lntd_admin_out_recv(admin_out, &xx);
 		if (err != 0)
 			goto free_envvars;
 	}
 
 free_envvars:
 	for (size_t ii = 0U; ii < envvars_size; ++ii) {
-		linted_mem_free(envvars[ii]);
+		lntd_mem_free(envvars[ii]);
 	}
-	linted_mem_free(envvars);
+	lntd_mem_free(envvars);
 
 free_unit_name:
-	linted_mem_free(unit_name);
+	lntd_mem_free(unit_name);
 
 	return err;
 }
@@ -1252,11 +1243,11 @@ static size_t null_list_size(char const *const *list)
 }
 extern char **environ;
 
-static linted_error filter_envvars(char ***result_envvarsp,
-                                   char const *const *allowed_envvars)
+static lntd_error filter_envvars(char ***result_envvarsp,
+                                 char const *const *allowed_envvars)
 {
 	char **result_envvars;
-	linted_error err;
+	lntd_error err;
 
 	if (0 == allowed_envvars) {
 		char const *const *envs = (char const *const *)environ;
@@ -1265,7 +1256,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 		{
 			void *xx;
-			err = linted_mem_alloc_array(
+			err = lntd_mem_alloc_array(
 			    &xx, size + 1U, sizeof result_envvars[0U]);
 			if (err != 0)
 				return err;
@@ -1273,14 +1264,14 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		}
 
 		for (size_t ii = 0U; ii < size; ++ii) {
-			err = linted_str_dup(&result_envvars[ii],
-			                     envs[ii]);
+			err =
+			    lntd_str_dup(&result_envvars[ii], envs[ii]);
 			if (err != 0) {
 				for (size_t jj = 0; jj <= ii; ++jj) {
-					linted_mem_free(
+					lntd_mem_free(
 					    result_envvars[jj]);
 				}
-				linted_mem_free(result_envvars);
+				lntd_mem_free(result_envvars);
 				return err;
 			}
 		}
@@ -1292,9 +1283,9 @@ static linted_error filter_envvars(char ***result_envvarsp,
 	size_t allowed_envvars_size = null_list_size(allowed_envvars);
 	{
 		void *xx;
-		err = linted_mem_alloc_array(&xx,
-		                             allowed_envvars_size + 1U,
-		                             sizeof result_envvars[0U]);
+		err =
+		    lntd_mem_alloc_array(&xx, allowed_envvars_size + 1U,
+		                         sizeof result_envvars[0U]);
 		if (err != 0)
 			return err;
 		result_envvars = xx;
@@ -1307,7 +1298,7 @@ static linted_error filter_envvars(char ***result_envvarsp,
 		char *envvar_value;
 		{
 			char *xx;
-			err = linted_env_get(envvar_name, &xx);
+			err = lntd_env_get(envvar_name, &xx);
 			if (err != 0)
 				goto free_result_envvars;
 			envvar_value = xx;
@@ -1317,11 +1308,11 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 		++result_envvars_size;
 
-		err = linted_str_format(
+		err = lntd_str_format(
 		    &result_envvars[result_envvars_size - 1U], "%s=%s",
 		    envvar_name, envvar_value);
 
-		linted_mem_free(envvar_value);
+		lntd_mem_free(envvar_value);
 
 		if (err != 0)
 			goto free_result_envvars;
@@ -1334,17 +1325,17 @@ static linted_error filter_envvars(char ***result_envvarsp,
 
 free_result_envvars:
 	for (size_t ii = 0U; ii < result_envvars_size; ++ii)
-		linted_mem_free(result_envvars[ii]);
-	linted_mem_free(result_envvars);
+		lntd_mem_free(result_envvars[ii]);
+	lntd_mem_free(result_envvars);
 	return err;
 }
 
 static size_t string_list_size(char const *const *list);
 
-static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
-                                    char const *file_name)
+static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
+                                  char const *file_name)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	char *line_buffer = 0;
 	size_t line_capacity = 0U;
@@ -1352,11 +1343,11 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 	conf_section current_section;
 	bool has_current_section = false;
 
-	linted_ko conf_fd;
+	lntd_ko conf_fd;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, dir_ko, file_name,
-		                     LINTED_KO_RDONLY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, dir_ko, file_name,
+		                   LNTD_KO_RDONLY);
 		if (err != 0)
 			return err;
 		conf_fd = xx;
@@ -1365,9 +1356,9 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 	FILE *conf_file = fdopen(conf_fd, "r");
 	if (0 == conf_file) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 
-		linted_ko_close(conf_fd);
+		lntd_ko_close(conf_fd);
 
 		return err;
 	}
@@ -1409,16 +1400,16 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 		/* A section start */
 		case '[': {
 			if (line_buffer[line_size - 1U] != ']') {
-				err = LINTED_ERROR_INVALID_PARAMETER;
+				err = LNTD_ERROR_INVALID_PARAMETER;
 				break;
 			}
 
 			char *section_name;
 			{
 				char *xx;
-				err = linted_str_dup_len(
-				    &xx, line_buffer + 1U,
-				    line_size - 2U);
+				err = lntd_str_dup_len(&xx,
+				                       line_buffer + 1U,
+				                       line_size - 2U);
 				if (err != 0)
 					break;
 				section_name = xx;
@@ -1435,13 +1426,13 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 			has_current_section = true;
 
 		free_section_name:
-			linted_mem_free(section_name);
+			lntd_mem_free(section_name);
 			break;
 		}
 
 		default: {
 			if (!has_current_section) {
-				err = LINTED_ERROR_INVALID_PARAMETER;
+				err = LNTD_ERROR_INVALID_PARAMETER;
 				break;
 			}
 
@@ -1459,7 +1450,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 				case '\t':
 					if (0U == ii) {
 						err =
-						    LINTED_ERROR_INVALID_PARAMETER;
+						    LNTD_ERROR_INVALID_PARAMETER;
 						break;
 					}
 
@@ -1469,7 +1460,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 
 				case '\n':
 					err =
-					    LINTED_ERROR_INVALID_PARAMETER;
+					    LNTD_ERROR_INVALID_PARAMETER;
 					break;
 
 				default:
@@ -1494,7 +1485,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 
 				default:
 					err =
-					    LINTED_ERROR_INVALID_PARAMETER;
+					    LNTD_ERROR_INVALID_PARAMETER;
 					break;
 				}
 				if (err != 0)
@@ -1503,7 +1494,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 			if (err != 0)
 				break;
 
-			err = LINTED_ERROR_INVALID_PARAMETER;
+			err = LNTD_ERROR_INVALID_PARAMETER;
 			break;
 
 		found_equal:
@@ -1514,8 +1505,8 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 			char *field;
 			{
 				void *xx;
-				err = linted_mem_alloc(&xx,
-				                       field_len + 1U);
+				err =
+				    lntd_mem_alloc(&xx, field_len + 1U);
 				if (err != 0)
 					break;
 				field = xx;
@@ -1527,8 +1518,8 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 			char *value;
 			{
 				void *xx;
-				err = linted_mem_alloc(&xx,
-				                       value_len + 1U);
+				err =
+				    lntd_mem_alloc(&xx, value_len + 1U);
 				if (err != 0)
 					goto free_field;
 				value = xx;
@@ -1542,7 +1533,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 			case WRDE_BADCHAR:
 			case WRDE_CMDSUB:
 			case WRDE_SYNTAX:
-				err = LINTED_ERROR_INVALID_PARAMETER;
+				err = LNTD_ERROR_INVALID_PARAMETER;
 				break;
 
 			case WRDE_NOSPACE:
@@ -1550,7 +1541,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 				break;
 			}
 
-			linted_mem_free(value);
+			lntd_mem_free(value);
 
 			if (err != 0)
 				goto free_field;
@@ -1562,7 +1553,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 			wordfree(&expr);
 
 		free_field:
-			linted_mem_free(field);
+			lntd_mem_free(field);
 
 			if (err != 0)
 				break;
@@ -1570,7 +1561,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 		}
 	}
 
-	linted_mem_free(line_buffer);
+	lntd_mem_free(line_buffer);
 
 	if (err != 0)
 		conf_put(conf);
@@ -1578,7 +1569,7 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 	if (EOF == fclose(conf_file)) {
 		if (0 == err) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 		}
 	}
 
@@ -1588,28 +1579,23 @@ static linted_error conf_parse_file(struct conf *conf, linted_ko dir_ko,
 static char const *const *
 conf_find(struct conf *conf, char const *section, char const *field);
 
-static linted_error conf_find_str(struct conf *conf,
-                                  char const *section,
-                                  char const *field, char const **strp);
+static lntd_error conf_find_str(struct conf *conf, char const *section,
+                                char const *field, char const **strp);
 
-static linted_error conf_find_int(struct conf *conf,
-                                  char const *section,
-                                  char const *field,
-                                  int_least64_t *intp);
+static lntd_error conf_find_int(struct conf *conf, char const *section,
+                                char const *field, int_least64_t *intp);
 
-static linted_error conf_find_bool(struct conf *conf,
-                                   char const *section,
-                                   char const *field, _Bool *boolp);
+static lntd_error conf_find_bool(struct conf *conf, char const *section,
+                                 char const *field, _Bool *boolp);
 
-static linted_error
-conf_system_default_limit_locks(struct conf *conf,
-                                int_least64_t *limitp)
+static lntd_error conf_system_default_limit_locks(struct conf *conf,
+                                                  int_least64_t *limitp)
 {
 	return conf_find_int(conf, "Manager", "DefaultLimitLOCKS",
 	                     limitp);
 }
 
-static linted_error
+static lntd_error
 conf_system_default_limit_memlock(struct conf *conf,
                                   int_least64_t *limitp)
 {
@@ -1617,7 +1603,7 @@ conf_system_default_limit_memlock(struct conf *conf,
 	                     limitp);
 }
 
-static linted_error
+static lntd_error
 conf_system_default_limit_msgqueue(struct conf *conf,
                                    int_least64_t *limitp)
 {
@@ -1625,7 +1611,7 @@ conf_system_default_limit_msgqueue(struct conf *conf,
 	                     limitp);
 }
 
-static linted_error
+static lntd_error
 conf_system_default_limit_nofile(struct conf *conf,
                                  int_least64_t *limitp)
 {
@@ -1633,26 +1619,26 @@ conf_system_default_limit_nofile(struct conf *conf,
 	                     limitp);
 }
 
-static linted_error conf_socket_listen_directory(struct conf *conf,
-                                                 char const **strp)
+static lntd_error conf_socket_listen_directory(struct conf *conf,
+                                               char const **strp)
 {
 	return conf_find_str(conf, "Socket", "ListenDirectory", strp);
 }
 
-static linted_error conf_socket_listen_file(struct conf *conf,
-                                            char const **strp)
+static lntd_error conf_socket_listen_file(struct conf *conf,
+                                          char const **strp)
 {
 	return conf_find_str(conf, "Socket", "ListenFile", strp);
 }
 
-static linted_error conf_socket_listen_fifo(struct conf *conf,
-                                            char const **strp)
+static lntd_error conf_socket_listen_fifo(struct conf *conf,
+                                          char const **strp)
 {
 	return conf_find_str(conf, "Socket", "ListenFIFO", strp);
 }
 
-static linted_error conf_socket_pipe_size(struct conf *conf,
-                                          int_least64_t *intp)
+static lntd_error conf_socket_pipe_size(struct conf *conf,
+                                        int_least64_t *intp)
 {
 	return conf_find_int(conf, "Socket", "PipeSize", intp);
 }
@@ -1667,60 +1653,60 @@ conf_service_pass_environment(struct conf *conf)
 	return conf_find(conf, "Service", "PassEnvironment");
 }
 static char const *const *
-conf_service_x_linted_clone_flags(struct conf *conf)
+conf_service_x_lntd_clone_flags(struct conf *conf)
 {
 	return conf_find(conf, "Service", "X-LintedCloneFlags");
 }
 
-static linted_error conf_service_timer_slack_nsec(struct conf *conf,
-                                                  int_least64_t *intp)
+static lntd_error conf_service_timer_slack_nsec(struct conf *conf,
+                                                int_least64_t *intp)
 {
 	return conf_find_int(conf, "Service", "TimerSlackNSec", intp);
 }
-static linted_error conf_service_priority(struct conf *conf,
-                                          int_least64_t *intp)
+static lntd_error conf_service_priority(struct conf *conf,
+                                        int_least64_t *intp)
 {
 	return conf_find_int(conf, "Service", "Nice", intp);
 }
-static linted_error conf_service_limit_no_file(struct conf *conf,
-                                               int_least64_t *intp)
+static lntd_error conf_service_limit_no_file(struct conf *conf,
+                                             int_least64_t *intp)
 {
 	return conf_find_int(conf, "Service", "LimitNOFILE", intp);
 }
-static linted_error conf_service_limit_msgqueue(struct conf *conf,
-                                                int_least64_t *intp)
+static lntd_error conf_service_limit_msgqueue(struct conf *conf,
+                                              int_least64_t *intp)
 {
 	return conf_find_int(conf, "Service", "LimitMSGQUEUE", intp);
 }
-static linted_error conf_service_limit_locks(struct conf *conf,
-                                             int_least64_t *intp)
+static lntd_error conf_service_limit_locks(struct conf *conf,
+                                           int_least64_t *intp)
 {
 	return conf_find_int(conf, "Service", "LimitLOCKS", intp);
 }
-static linted_error conf_service_limit_memlock(struct conf *conf,
-                                               int_least64_t *intp)
+static lntd_error conf_service_limit_memlock(struct conf *conf,
+                                             int_least64_t *intp)
 {
 	return conf_find_int(conf, "Service", "LimitMEMLOCK", intp);
 }
 
-static linted_error conf_service_type(struct conf *conf,
-                                      char const **strp)
+static lntd_error conf_service_type(struct conf *conf,
+                                    char const **strp)
 {
 	return conf_find_str(conf, "Service", "Type", strp);
 }
-static linted_error conf_service_no_new_privileges(struct conf *conf,
-                                                   bool *boolp)
+static lntd_error conf_service_no_new_privileges(struct conf *conf,
+                                                 bool *boolp)
 {
 	return conf_find_bool(conf, "Service", "NoNewPrivileges",
 	                      boolp);
 }
-static linted_error conf_service_x_linted_fstab(struct conf *conf,
-                                                char const **strp)
+static lntd_error conf_service_x_lntd_fstab(struct conf *conf,
+                                            char const **strp)
 {
 	return conf_find_str(conf, "Service", "X-LintedFstab", strp);
 }
-static linted_error conf_service_working_directory(struct conf *conf,
-                                                   char const **strp)
+static lntd_error conf_service_working_directory(struct conf *conf,
+                                                 char const **strp)
 {
 	return conf_find_str(conf, "Service", "WorkingDirectory", strp);
 }
@@ -1732,12 +1718,12 @@ struct conf_db {
 
 static size_t string_hash(char const *str);
 
-static linted_error conf_db_create(struct conf_db **dbp)
+static lntd_error conf_db_create(struct conf_db **dbp)
 {
 	struct conf_db *db;
 	{
 		void *xx;
-		linted_error err = linted_mem_alloc(&xx, sizeof *db);
+		lntd_error err = lntd_mem_alloc(&xx, sizeof *db);
 		if (err != 0)
 			return err;
 		db = xx;
@@ -1758,13 +1744,13 @@ static void conf_db_destroy(struct conf_db *db)
 
 	for (size_t ii = 0U; ii < size; ++ii)
 		conf_put(confs[ii]);
-	linted_mem_free(confs);
+	lntd_mem_free(confs);
 
-	linted_mem_free(db);
+	lntd_mem_free(db);
 }
 
-static linted_error conf_db_add_conf(struct conf_db *db,
-                                     struct conf *conf)
+static lntd_error conf_db_add_conf(struct conf_db *db,
+                                   struct conf *conf)
 {
 	struct conf **confs = db->confs;
 	size_t confs_size = db->size;
@@ -1773,7 +1759,7 @@ static linted_error conf_db_add_conf(struct conf_db *db,
 	struct conf **new_confs;
 	{
 		void *xx;
-		linted_error err = linted_mem_realloc_array(
+		lntd_error err = lntd_mem_realloc_array(
 		    &xx, confs, new_confs_size, sizeof confs[0U]);
 		if (err != 0)
 			return err;
@@ -1820,14 +1806,14 @@ struct conf_setting_bucket {
 	struct conf_setting *settings;
 };
 
-static linted_error conf_create(struct conf **confp, char *name)
+static lntd_error conf_create(struct conf **confp, char *name)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	struct conf *conf;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *conf);
+		err = lntd_mem_alloc(&xx, sizeof *conf);
 		if (err != 0)
 			return err;
 		conf = xx;
@@ -1867,11 +1853,11 @@ static void conf_put(struct conf *conf)
 
 		free_sections(sections, sections_size);
 
-		linted_mem_free(sections);
+		lntd_mem_free(sections);
 	}
 
-	linted_mem_free(conf->name);
-	linted_mem_free(conf);
+	lntd_mem_free(conf->name);
+	lntd_mem_free(conf);
 }
 
 static char const *conf_peek_name(struct conf *conf)
@@ -1921,17 +1907,17 @@ static void free_sections(struct conf_section *sections,
 
 			free_settings(settings, settings_size);
 
-			linted_mem_free(settings);
+			lntd_mem_free(settings);
 		}
-		linted_mem_free(section->name);
+		lntd_mem_free(section->name);
 	}
 }
 
-static linted_error conf_add_section(struct conf *conf,
-                                     conf_section *sectionp,
-                                     char const *section_name)
+static lntd_error conf_add_section(struct conf *conf,
+                                   conf_section *sectionp,
+                                   char const *section_name)
 {
-	linted_error err;
+	lntd_error err;
 
 	struct conf_section_bucket *buckets = conf->buckets;
 
@@ -1966,7 +1952,7 @@ static linted_error conf_add_section(struct conf *conf,
 	char *section_name_dup;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, section_name);
+		err = lntd_str_dup(&xx, section_name);
 		if (err != 0)
 			return err;
 		section_name_dup = xx;
@@ -1976,9 +1962,9 @@ static linted_error conf_add_section(struct conf *conf,
 	struct conf_section *new_sections;
 	{
 		void *xx;
-		err = linted_mem_realloc_array(&xx, sections,
-		                               new_sections_size,
-		                               sizeof sections[0U]);
+		err = lntd_mem_realloc_array(&xx, sections,
+		                             new_sections_size,
+		                             sizeof sections[0U]);
 		if (err != 0)
 			goto free_section_name;
 		new_sections = xx;
@@ -2000,7 +1986,7 @@ static linted_error conf_add_section(struct conf *conf,
 	return 0;
 
 free_section_name:
-	linted_mem_free(section_name_dup);
+	lntd_mem_free(section_name_dup);
 	return err;
 }
 
@@ -2014,12 +2000,12 @@ static void free_settings(struct conf_setting *settings,
 {
 	for (size_t ww = 0U; ww < settings_size; ++ww) {
 		struct conf_setting *setting = &settings[ww];
-		linted_mem_free(setting->field);
+		lntd_mem_free(setting->field);
 
 		for (char **value = setting->value; *value != 0;
 		     ++value)
-			linted_mem_free(*value);
-		linted_mem_free(setting->value);
+			lntd_mem_free(*value);
+		lntd_mem_free(setting->value);
 	}
 }
 
@@ -2077,9 +2063,8 @@ static char const *const *conf_find(struct conf *conf,
 	return (char const *const *)settings[setting_index].value;
 }
 
-static linted_error conf_find_str(struct conf *conf,
-                                  char const *section,
-                                  char const *field, char const **strp)
+static lntd_error conf_find_str(struct conf *conf, char const *section,
+                                char const *field, char const **strp)
 {
 	char const *const *strs = conf_find(conf, section, field);
 	if (0 == strs)
@@ -2087,19 +2072,17 @@ static linted_error conf_find_str(struct conf *conf,
 
 	char const *str = strs[0U];
 	if (0 == str)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (strs[1U] != 0)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	*strp = str;
 	return 0;
 }
 
-static linted_error conf_find_int(struct conf *conf,
-                                  char const *section,
-                                  char const *field,
-                                  int_least64_t *intp)
+static lntd_error conf_find_int(struct conf *conf, char const *section,
+                                char const *field, int_least64_t *intp)
 {
 	char const *const *strs = conf_find(conf, section, field);
 	if (0 == strs)
@@ -2107,18 +2090,17 @@ static linted_error conf_find_int(struct conf *conf,
 
 	char const *str = strs[0U];
 	if (0 == str)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (strs[1U] != 0)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	*intp = atoi(str);
 	return 0;
 }
 
-static linted_error conf_find_bool(struct conf *conf,
-                                   char const *section,
-                                   char const *field, _Bool *boolp)
+static lntd_error conf_find_bool(struct conf *conf, char const *section,
+                                 char const *field, _Bool *boolp)
 {
 	char const *const *strs = conf_find(conf, section, field);
 	if (0 == strs)
@@ -2126,10 +2108,10 @@ static linted_error conf_find_bool(struct conf *conf,
 
 	char const *str = strs[0U];
 	if (0 == str)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	if (strs[1U] != 0)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	static char const *const yes_strs[] = {"1", "yes", "true",
 	                                       "on"};
@@ -2137,33 +2119,33 @@ static linted_error conf_find_bool(struct conf *conf,
 	                                      "off"};
 
 	bool result;
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(yes_strs); ++ii) {
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(yes_strs); ++ii) {
 		if (0 == strcmp(str, yes_strs[ii])) {
 			result = true;
 			goto return_result;
 		}
 	}
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(no_strs); ++ii) {
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(no_strs); ++ii) {
 		if (0 == strcmp(str, no_strs[ii])) {
 			result = false;
 			goto return_result;
 		}
 	}
 
-	return LINTED_ERROR_INVALID_PARAMETER;
+	return LNTD_ERROR_INVALID_PARAMETER;
 
 return_result:
 	*boolp = result;
 	return 0;
 }
 
-static linted_error
-conf_add_setting(struct conf *conf, conf_section section,
-                 char const *field,
-                 char const *const *additional_values)
+static lntd_error conf_add_setting(struct conf *conf,
+                                   conf_section section,
+                                   char const *field,
+                                   char const *const *additional_values)
 {
-	linted_error err;
+	lntd_error err;
 
 	struct conf_setting_bucket *buckets =
 	    conf->buckets[section_id_hash(section)]
@@ -2198,13 +2180,13 @@ conf_add_setting(struct conf *conf, conf_section section,
 		char **setting_values = setting->value;
 
 		if (0U == additional_values_len) {
-			linted_mem_free(setting_field);
+			lntd_mem_free(setting_field);
 
 			for (size_t ii = 0U; setting_values[ii] != 0;
 			     ++ii)
-				linted_mem_free(setting_values[ii]);
+				lntd_mem_free(setting_values[ii]);
 
-			linted_mem_free(setting_values);
+			lntd_mem_free(setting_values);
 
 			bucket->settings_size = settings_size - 1U;
 			memcpy(bucket->settings + found_field,
@@ -2221,7 +2203,7 @@ conf_add_setting(struct conf *conf, conf_section section,
 			char **new_value;
 			{
 				void *xx;
-				err = linted_mem_alloc_array(
+				err = lntd_mem_alloc_array(
 				    &xx, new_value_len + 1U,
 				    sizeof additional_values[0U]);
 				if (err != 0)
@@ -2238,16 +2220,16 @@ conf_add_setting(struct conf *conf, conf_section section,
 				char *copy;
 				{
 					char *xx;
-					err = linted_str_dup(
+					err = lntd_str_dup(
 					    &xx, additional_values[ii]);
 					if (err != 0) {
 						for (; ii != 0; --ii)
-							linted_mem_free(
+							lntd_mem_free(
 							    new_value
 							        [ii -
 							         1U]);
 
-						linted_mem_free(
+						lntd_mem_free(
 						    new_value);
 						return err;
 					}
@@ -2259,7 +2241,7 @@ conf_add_setting(struct conf *conf, conf_section section,
 
 			new_value[new_value_len] = 0;
 
-			linted_mem_free(setting_values);
+			lntd_mem_free(setting_values);
 
 			setting->field = setting_field;
 			setting->value = new_value;
@@ -2271,7 +2253,7 @@ have_not_found_field:
 	char *field_dup;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, field);
+		err = lntd_str_dup(&xx, field);
 		if (err != 0)
 			return err;
 		field_dup = xx;
@@ -2280,7 +2262,7 @@ have_not_found_field:
 	char **value_copy;
 	{
 		void *xx;
-		err = linted_mem_alloc_array(
+		err = lntd_mem_alloc_array(
 		    &xx, additional_values_len + 1U,
 		    sizeof additional_values[0U]);
 		if (err != 0)
@@ -2292,8 +2274,8 @@ have_not_found_field:
 		char *copy;
 		{
 			char *xx;
-			err = linted_str_dup(&xx,
-			                     additional_values[values]);
+			err = lntd_str_dup(&xx,
+			                   additional_values[values]);
 			if (err != 0)
 				goto free_value_copy;
 			copy = xx;
@@ -2306,13 +2288,13 @@ have_not_found_field:
 	struct conf_setting *new_settings;
 	{
 		void *xx;
-		err = linted_mem_realloc_array(&xx, settings,
-		                               new_settings_size,
-		                               sizeof settings[0U]);
+		err = lntd_mem_realloc_array(&xx, settings,
+		                             new_settings_size,
+		                             sizeof settings[0U]);
 		if (err != 0) {
 			for (size_t ii = 0U; value_copy[ii] != 0; ++ii)
-				linted_mem_free(value_copy[ii]);
-			linted_mem_free(value_copy);
+				lntd_mem_free(value_copy[ii]);
+			lntd_mem_free(value_copy);
 
 			return err;
 		}
@@ -2328,11 +2310,11 @@ have_not_found_field:
 
 free_value_copy:
 	for (size_t jj = 0U; jj < values; ++jj)
-		linted_mem_free(value_copy[jj]);
-	linted_mem_free(value_copy);
+		lntd_mem_free(value_copy[jj]);
+	lntd_mem_free(value_copy);
 
 free_field_dup:
-	linted_mem_free(field_dup);
+	lntd_mem_free(field_dup);
 	return err;
 }
 

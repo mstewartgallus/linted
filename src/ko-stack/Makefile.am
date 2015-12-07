@@ -16,4 +16,4 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/libkostack.la
-%C%_libkostack_la_SOURCES=%D%/ko-stack.c include/linted/ko-stack.h
+%C%_libkostack_la_SOURCES=%D%/ko-stack.c include/lntd/ko-stack.h

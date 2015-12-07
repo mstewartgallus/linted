@@ -17,13 +17,13 @@
 
 #include "config.h"
 
-#include "linted/execveat.h"
-#include "linted/error.h"
-#include "linted/ko.h"
-#include "linted/log.h"
-#include "linted/pid.h"
-#include "linted/start.h"
-#include "linted/util.h"
+#include "lntd/execveat.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
+#include "lntd/log.h"
+#include "lntd/pid.h"
+#include "lntd/start.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-enter",
     .dont_init_signals = true,
     0};
@@ -46,105 +46,99 @@ static struct linted_start_config const linted_start_config = {
 static char const *const namespaces[] = {"user", "mnt", "pid", "ipc",
                                          "net"};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	if (argc < 2U)
 		return EXIT_FAILURE;
 
-	linted_ko sh_ko;
+	lntd_ko sh_ko;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, "/bin/sh", 0);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, "/bin/sh", 0);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_open: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_ko_open: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		sh_ko = xx;
 	}
 
-	linted_pid pid = atoi(argv[1U]);
+	lntd_pid pid = atoi(argv[1U]);
 
 	{
 		char proc_path[sizeof "/proc/" - 1U +
-		               LINTED_NUMBER_TYPE_STRING_SIZE(pid_t) +
+		               LNTD_NUMBER_TYPE_STRING_SIZE(pid_t) +
 		               1U];
 		sprintf(proc_path, "/proc/%" PRIuMAX "",
 		        (uintmax_t)pid);
-		err = linted_ko_change_directory(proc_path);
+		err = lntd_ko_change_directory(proc_path);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_change_directory: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR,
+			         "lntd_ko_change_directory: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
 
-	linted_ko ns;
+	lntd_ko ns;
 	{
-		linted_ko xx;
-		err = linted_ko_open(&xx, LINTED_KO_CWD, "ns",
-		                     LINTED_KO_DIRECTORY);
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, LNTD_KO_CWD, "ns",
+		                   LNTD_KO_DIRECTORY);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_open: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_ko_open: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		ns = xx;
 	}
 
-	linted_ko fds[LINTED_ARRAY_SIZE(namespaces)];
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(namespaces); ++ii) {
-		linted_ko xx;
-		err = linted_ko_open(&xx, ns, namespaces[ii], 0);
+	lntd_ko fds[LNTD_ARRAY_SIZE(namespaces)];
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(namespaces); ++ii) {
+		lntd_ko xx;
+		err = lntd_ko_open(&xx, ns, namespaces[ii], 0);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_ko_open: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR, "lntd_ko_open: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 
 		fds[ii] = xx;
 	}
 
-	err = linted_ko_change_directory("root");
+	err = lntd_ko_change_directory("root");
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR,
-		           "linted_ko_change_directory: %s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "lntd_ko_change_directory: %s",
+		         lntd_error_string(err));
 		return EXIT_FAILURE;
 	}
 	/* Open all the fds at once so that one can enter spaces that
 	 * lack /proc.
 	 */
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(namespaces); ++ii) {
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(namespaces); ++ii) {
 		if (-1 == setns(fds[ii], 0)) {
 			err = errno;
-			LINTED_ASSUME(err != 0);
-			linted_log(LINTED_LOG_ERROR, "setns: %s",
-			           linted_error_string(err));
+			LNTD_ASSUME(err != 0);
+			lntd_log(LNTD_LOG_ERROR, "setns: %s",
+			         lntd_error_string(err));
 		}
 	}
 
-	err = linted_ko_change_directory("/");
+	err = lntd_ko_change_directory("/");
 	if (err != 0) {
-		linted_log(LINTED_LOG_ERROR,
-		           "linted_ko_change_directory: %s",
-		           linted_error_string(err));
+		lntd_log(LNTD_LOG_ERROR, "lntd_ko_change_directory: %s",
+		         lntd_error_string(err));
 		return EXIT_FAILURE;
 	}
 
 	static const char *args[] = {"/bin/sh", 0};
-	err = linted_execveat(sh_ko, "", (char **)args, environ,
-	                      AT_EMPTY_PATH);
+	err = lntd_execveat(sh_ko, "", (char **)args, environ,
+	                    AT_EMPTY_PATH);
 
-	linted_log(LINTED_LOG_ERROR, "execve: %s",
-	           linted_error_string(err));
+	lntd_log(LNTD_LOG_ERROR, "execve: %s", lntd_error_string(err));
 	return EXIT_FAILURE;
 }

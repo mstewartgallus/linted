@@ -25,18 +25,18 @@
 
 #include "config.h"
 
-#include "linted/pid.h"
+#include "lntd/pid.h"
 
-#include "linted/async.h"
-#include "linted/mem.h"
-#include "linted/util.h"
+#include "lntd/async.h"
+#include "lntd/mem.h"
+#include "lntd/util.h"
 
 #include <signal.h>
 #include <sys/types.h>
 
 #include <windows.h>
 
-linted_pid linted_pid_get_pid(void)
+lntd_pid lntd_pid_get_pid(void)
 {
 	return GetCurrentProcessId();
 }
@@ -60,7 +60,7 @@ static LONG CALLBACK exception_handler(EXCEPTION_POINTERS *infop);
  * @todo Get Window's thread name setting to work on GCC which doesn't
  * support SEH.
  */
-linted_error linted_pid_name(char const *name)
+lntd_error lntd_pid_name(char const *name)
 {
 
 	THREADNAME_INFO info = {0};

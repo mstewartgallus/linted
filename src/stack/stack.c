@@ -15,42 +15,42 @@
  */
 #include "config.h"
 
-#include "linted/stack.h"
+#include "lntd/stack.h"
 
-#include "linted/error.h"
-#include "linted/mem.h"
-#include "linted/node.h"
-#include "linted/sched.h"
-#include "linted/trigger.h"
+#include "lntd/error.h"
+#include "lntd/mem.h"
+#include "lntd/node.h"
+#include "lntd/sched.h"
+#include "lntd/trigger.h"
 
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdint.h>
 
-typedef _Atomic(struct linted_node *) atomic_node;
+typedef _Atomic(struct lntd_node *) atomic_node;
 
-struct linted_stack {
+struct lntd_stack {
 	atomic_node inbox;
-	struct linted_trigger inbox_filled;
+	struct lntd_trigger inbox_filled;
 
-	char __padding[64U - sizeof(struct linted_trigger)];
+	char __padding[64U - sizeof(struct lntd_trigger)];
 
-	struct linted_node *outbox;
+	struct lntd_node *outbox;
 };
 
-static inline void refresh_node(struct linted_node *node)
+static inline void refresh_node(struct lntd_node *node)
 {
 	node->next = 0;
 }
 
-linted_error linted_stack_create(struct linted_stack **stackp)
+lntd_error lntd_stack_create(struct lntd_stack **stackp)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	struct linted_stack *stack;
+	struct lntd_stack *stack;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *stack);
+		err = lntd_mem_alloc(&xx, sizeof *stack);
 		if (err != 0)
 			return err;
 		stack = xx;
@@ -60,25 +60,24 @@ linted_error linted_stack_create(struct linted_stack **stackp)
 	stack->inbox = ptr;
 	stack->outbox = 0;
 
-	linted_trigger_create(&stack->inbox_filled);
+	lntd_trigger_create(&stack->inbox_filled);
 
 	*stackp = stack;
 
 	return 0;
 }
 
-void linted_stack_destroy(struct linted_stack *stack)
+void lntd_stack_destroy(struct lntd_stack *stack)
 {
-	linted_trigger_destroy(&stack->inbox_filled);
+	lntd_trigger_destroy(&stack->inbox_filled);
 
-	linted_mem_free(stack);
+	lntd_mem_free(stack);
 }
 
-void linted_stack_send(struct linted_stack *stack,
-                       struct linted_node *node)
+void lntd_stack_send(struct lntd_stack *stack, struct lntd_node *node)
 {
 	for (;;) {
-		struct linted_node *next = atomic_load_explicit(
+		struct lntd_node *next = atomic_load_explicit(
 		    &stack->inbox, memory_order_relaxed);
 
 		node->next = next;
@@ -91,16 +90,15 @@ void linted_stack_send(struct linted_stack *stack,
 			break;
 		}
 
-		linted_sched_light_yield();
+		lntd_sched_light_yield();
 	}
 
-	linted_trigger_set(&stack->inbox_filled);
+	lntd_trigger_set(&stack->inbox_filled);
 }
 
-void linted_stack_recv(struct linted_stack *stack,
-                       struct linted_node **nodep)
+void lntd_stack_recv(struct lntd_stack *stack, struct lntd_node **nodep)
 {
-	struct linted_node *ret = atomic_exchange_explicit(
+	struct lntd_node *ret = atomic_exchange_explicit(
 	    &stack->inbox, 0, memory_order_relaxed);
 	if (ret != 0)
 		goto put_on_outbox;
@@ -118,20 +116,20 @@ void linted_stack_recv(struct linted_stack *stack,
 			if (ret != 0)
 				goto put_on_outbox;
 
-			linted_sched_light_yield();
+			lntd_sched_light_yield();
 		}
 
-		linted_trigger_wait(&stack->inbox_filled);
+		lntd_trigger_wait(&stack->inbox_filled);
 	}
 
 put_on_outbox:
 	atomic_thread_fence(memory_order_acquire);
 
-	struct linted_node *start = ret->next;
+	struct lntd_node *start = ret->next;
 	if (start != 0) {
-		struct linted_node *end = start;
+		struct lntd_node *end = start;
 		for (;;) {
-			struct linted_node *next = end->next;
+			struct lntd_node *next = end->next;
 			if (0 == next)
 				break;
 			end = next;
@@ -146,10 +144,10 @@ give_node:
 	*nodep = ret;
 }
 
-linted_error linted_stack_try_recv(struct linted_stack *stack,
-                                   struct linted_node **nodep)
+lntd_error lntd_stack_try_recv(struct lntd_stack *stack,
+                               struct lntd_node **nodep)
 {
-	struct linted_node *ret = atomic_exchange_explicit(
+	struct lntd_node *ret = atomic_exchange_explicit(
 	    &stack->inbox, 0, memory_order_relaxed);
 	if (ret != 0)
 		goto put_on_outbox;
@@ -164,11 +162,11 @@ linted_error linted_stack_try_recv(struct linted_stack *stack,
 put_on_outbox:
 	atomic_thread_fence(memory_order_acquire);
 
-	struct linted_node *start = ret->next;
+	struct lntd_node *start = ret->next;
 	if (start != 0) {
-		struct linted_node *end = start;
+		struct lntd_node *end = start;
 		for (;;) {
-			struct linted_node *next = end->next;
+			struct lntd_node *next = end->next;
 			if (0 == next)
 				break;
 			end = next;

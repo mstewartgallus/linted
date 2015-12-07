@@ -16,6 +16,6 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libxcb.la
 
-%C%_libxcb_la_SOURCES=%D%/xcb.c include/linted/xcb.h
+%C%_libxcb_la_SOURCES=%D%/xcb.c include/lntd/xcb.h
 %C%_libxcb_la_LIBADD=$(XCB_LIBS)
 %C%_libxcb_la_CPPFLAGS=$(XCB_FLAGS) $(AM_CPPFLAGS)

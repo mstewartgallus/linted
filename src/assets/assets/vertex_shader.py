@@ -26,7 +26,7 @@ def output():
 
     return Template("""#include "config.h"
 
-#include "linted/assets.h"
+#include "lntd/assets.h"
 
-char const * const linted_assets_vertex_shader = $vertex_shader;
+char const * const lntd_assets_vertex_shader = $vertex_shader;
 """).substitute(vertex_shader=vertex_shader)

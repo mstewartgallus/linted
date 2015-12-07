@@ -23,10 +23,10 @@
 
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/mem.h"
-#include "linted/utf.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/mem.h"
+#include "lntd/utf.h"
+#include "lntd/util.h"
 
 #include <limits.h>
 #include <string.h>
@@ -36,9 +36,9 @@ static char const invalid_error_string[] = "invalid error number";
 static char const out_of_memory_string[] =
     "cannot print error, out of memory";
 
-char const *linted_error_string(linted_error err_to_print)
+char const *lntd_error_string(lntd_error err_to_print)
 {
-	linted_error err;
+	lntd_error err;
 
 	if (FACILITY_WINDOWS == HRESULT_FACILITY(err_to_print))
 		err_to_print = HRESULT_CODE(err_to_print);
@@ -51,7 +51,7 @@ char const *linted_error_string(linted_error err_to_print)
 	                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 	                  (void *)&message, 0, 0)) {
 		err = HRESULT_FROM_WIN32(GetLastError());
-		if (LINTED_ERROR_OUT_OF_MEMORY == err)
+		if (LNTD_ERROR_OUT_OF_MEMORY == err)
 			return out_of_memory_string;
 		return invalid_error_string;
 	}
@@ -59,7 +59,7 @@ char const *linted_error_string(linted_error err_to_print)
 	char *buffer;
 	{
 		char *xx;
-		err = linted_utf_2_to_1(message, &xx);
+		err = lntd_utf_2_to_1(message, &xx);
 		if (err != 0)
 			goto free_message;
 		buffer = xx;
@@ -72,7 +72,7 @@ free_message:
 	return out_of_memory_string;
 }
 
-void linted_error_string_free(char const *str)
+void lntd_error_string_free(char const *str)
 {
 	if (invalid_error_string == str)
 		return;
@@ -80,5 +80,5 @@ void linted_error_string_free(char const *str)
 	if (out_of_memory_string == str)
 		return;
 
-	linted_mem_free((char *)str);
+	lntd_mem_free((char *)str);
 }

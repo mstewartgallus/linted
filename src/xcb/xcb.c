@@ -15,10 +15,10 @@
  */
 #include "config.h"
 
-#include "linted/xcb.h"
+#include "lntd/xcb.h"
 
-#include "linted/error.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <xcb/xcb.h>
@@ -42,7 +42,7 @@
 #define BadLength 16
 #define BadImplementation 17
 
-linted_error linted_xcb_conn_error(xcb_connection_t *connection)
+lntd_error lntd_xcb_conn_error(xcb_connection_t *connection)
 {
 	switch (xcb_connection_has_error(connection)) {
 	case 0:
@@ -52,23 +52,23 @@ linted_error linted_xcb_conn_error(xcb_connection_t *connection)
 		return EPROTO;
 
 	case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
-		return LINTED_ERROR_UNIMPLEMENTED;
+		return LNTD_ERROR_UNIMPLEMENTED;
 
 	case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
-		return LINTED_ERROR_OUT_OF_MEMORY;
+		return LNTD_ERROR_OUT_OF_MEMORY;
 
 	case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	case XCB_CONN_CLOSED_PARSE_ERR:
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	default:
-		LINTED_ASSUME_UNREACHABLE();
+		LNTD_ASSUME_UNREACHABLE();
 	}
 }
 
-linted_error linted_xcb_error(xcb_generic_error_t *error)
+lntd_error lntd_xcb_error(xcb_generic_error_t *error)
 {
 	switch (error->error_code) {
 	case Success:
@@ -88,18 +88,18 @@ linted_error linted_xcb_error(xcb_generic_error_t *error)
 	case BadIDChoice:
 	case BadName:
 	case BadLength:
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
 	case BadAccess:
-		return LINTED_ERROR_PERMISSION;
+		return LNTD_ERROR_PERMISSION;
 
 	case BadAlloc:
-		return LINTED_ERROR_OUT_OF_MEMORY;
+		return LNTD_ERROR_OUT_OF_MEMORY;
 
 	case BadImplementation:
-		return LINTED_ERROR_UNIMPLEMENTED;
+		return LNTD_ERROR_UNIMPLEMENTED;
 
 	default:
-		return LINTED_ERROR_UNIMPLEMENTED;
+		return LNTD_ERROR_UNIMPLEMENTED;
 	}
 }

@@ -15,56 +15,56 @@
  */
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/log.h"
-#include "linted/node.h"
-#include "linted/stack.h"
-#include "linted/start.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/log.h"
+#include "lntd/node.h"
+#include "lntd/stack.h"
+#include "lntd/start.h"
+#include "lntd/util.h"
 
 #include <stddef.h>
 #include <stdlib.h>
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-stack-test"};
 
-static unsigned char linted_start_main(char const *process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
-	struct linted_stack *stack;
+	struct lntd_stack *stack;
 	{
-		struct linted_stack *xx;
-		err = linted_stack_create(&xx);
+		struct lntd_stack *xx;
+		err = lntd_stack_create(&xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_stack_create: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR,
+			         "lntd_stack_create: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 		stack = xx;
 	}
 
-	static struct linted_node nodes[20U];
+	static struct lntd_node nodes[20U];
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(nodes); ++ii) {
-		linted_stack_send(stack, &nodes[ii]);
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(nodes); ++ii) {
+		lntd_stack_send(stack, &nodes[ii]);
 	}
 
-	for (size_t ii = 0U; ii < LINTED_ARRAY_SIZE(nodes); ++ii) {
-		struct linted_node *xx;
-		err = linted_stack_try_recv(stack, &xx);
+	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(nodes); ++ii) {
+		struct lntd_node *xx;
+		err = lntd_stack_try_recv(stack, &xx);
 		if (err != 0) {
-			linted_log(LINTED_LOG_ERROR,
-			           "linted_stack_try_recv: %s",
-			           linted_error_string(err));
+			lntd_log(LNTD_LOG_ERROR,
+			         "lntd_stack_try_recv: %s",
+			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
 	}
 
-	linted_stack_destroy(stack);
+	lntd_stack_destroy(stack);
 
 	return EXIT_SUCCESS;
 }

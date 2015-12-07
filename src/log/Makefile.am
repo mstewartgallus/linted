@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 
 noinst_LTLIBRARIES+=%D%/liblog.la
-%C%_liblog_la_SOURCES=include/linted/log.h
+%C%_liblog_la_SOURCES=include/lntd/log.h
 %C%_liblog_la_LIBADD=\
   src/io/libio.la
 

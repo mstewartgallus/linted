@@ -18,7 +18,7 @@ noinst_LTLIBRARIES+=%D%/libupdater.la
 
 %C%_libupdater_la_SOURCES=\
   %D%/updater.c\
-  include/linted/updater.h
+  include/lntd/updater.h
 
 %C%_libupdater_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libupdater_la_LIBADD=\

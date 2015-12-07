@@ -17,41 +17,41 @@
 
 #include "config.h"
 
-#include "linted/window.h"
+#include "lntd/window.h"
 
-#include "linted/async.h"
-#include "linted/error.h"
-#include "linted/io.h"
-#include "linted/ko.h"
-#include "linted/mem.h"
-#include "linted/mem.h"
-#include "linted/rpc.h"
-#include "linted/util.h"
+#include "lntd/async.h"
+#include "lntd/error.h"
+#include "lntd/io.h"
+#include "lntd/ko.h"
+#include "lntd/mem.h"
+#include "lntd/mem.h"
+#include "lntd/rpc.h"
+#include "lntd/util.h"
 
 #include <errno.h>
 #include <signal.h>
 #include <stdint.h>
 #include <unistd.h>
 
-struct linted_window_task_notify {
-	struct linted_io_task_write *parent;
+struct lntd_window_task_notify {
+	struct lntd_io_task_write *parent;
 	void *data;
 };
 
-struct linted_window_task_watch {
-	struct linted_io_task_read *parent;
+struct lntd_window_task_watch {
+	struct lntd_io_task_read *parent;
 	void *data;
 	char dummy[1U];
 };
 
 static const char dummy[1U];
 
-linted_error linted_window_write(linted_window window, uint_fast32_t in)
+lntd_error lntd_window_write(lntd_window window, uint_fast32_t in)
 {
-	linted_error err;
+	lntd_error err;
 
-	char buf[LINTED_RPC_UINT32_SIZE];
-	linted_rpc_pack_uint32(in, buf);
+	char buf[LNTD_RPC_UINT32_SIZE];
+	lntd_rpc_pack_uint32(in, buf);
 
 	/*
 	 * From POSIX
@@ -73,10 +73,10 @@ linted_error linted_window_write(linted_window window, uint_fast32_t in)
 
 	if (-1 == pwrite(window, buf, sizeof buf, 0U)) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	}
 
-	linted_error restore_err =
+	lntd_error restore_err =
 	    pthread_sigmask(SIG_SETMASK, &oldset, 0);
 	if (0 == err)
 		err = restore_err;
@@ -101,12 +101,11 @@ linted_error linted_window_write(linted_window window, uint_fast32_t in)
 	return err;
 }
 
-linted_error linted_window_read(linted_window window,
-                                uint_fast32_t *outp)
+lntd_error lntd_window_read(lntd_window window, uint_fast32_t *outp)
 {
-	linted_error err;
+	lntd_error err;
 
-	char buf[LINTED_RPC_UINT32_SIZE];
+	char buf[LNTD_RPC_UINT32_SIZE];
 
 	sigset_t oldset;
 	sigfillset(&oldset);
@@ -118,10 +117,10 @@ linted_error linted_window_read(linted_window window,
 	ssize_t bytes = pread(window, buf, sizeof buf, 0U);
 	if (-1 == bytes) {
 		err = errno;
-		LINTED_ASSUME(err != 0);
+		LNTD_ASSUME(err != 0);
 	}
 
-	linted_error restore_err =
+	lntd_error restore_err =
 	    pthread_sigmask(SIG_SETMASK, &oldset, 0);
 	if (0 == err)
 		err = restore_err;
@@ -132,27 +131,27 @@ linted_error linted_window_read(linted_window window,
 	if (bytes != sizeof buf)
 		return EPROTO;
 
-	*outp = linted_rpc_unpack_uint32(buf);
+	*outp = lntd_rpc_unpack_uint32(buf);
 	return 0;
 }
 
-linted_error
-linted_window_task_watch_create(struct linted_window_task_watch **taskp,
-                                void *data)
+lntd_error
+lntd_window_task_watch_create(struct lntd_window_task_watch **taskp,
+                              void *data)
 {
-	linted_error err;
-	struct linted_window_task_watch *task;
+	lntd_error err;
+	struct lntd_window_task_watch *task;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *task);
+		err = lntd_mem_alloc(&xx, sizeof *task);
 		if (err != 0)
 			return err;
 		task = xx;
 	}
-	struct linted_io_task_read *parent;
+	struct lntd_io_task_read *parent;
 	{
-		struct linted_io_task_read *xx;
-		err = linted_io_task_read_create(&xx, task);
+		struct lntd_io_task_read *xx;
+		err = lntd_io_task_read_create(&xx, task);
 		if (err != 0)
 			goto free_task;
 		parent = xx;
@@ -162,55 +161,54 @@ linted_window_task_watch_create(struct linted_window_task_watch **taskp,
 	*taskp = task;
 	return 0;
 free_task:
-	linted_mem_free(task);
+	lntd_mem_free(task);
 	return err;
 }
 
-void linted_window_task_watch_destroy(
-    struct linted_window_task_watch *task)
+void lntd_window_task_watch_destroy(struct lntd_window_task_watch *task)
 {
-	linted_io_task_read_destroy(task->parent);
-	linted_mem_free(task);
+	lntd_io_task_read_destroy(task->parent);
+	lntd_mem_free(task);
 }
 
-struct linted_async_task *
-linted_window_task_watch_prepare(struct linted_window_task_watch *task,
-                                 union linted_async_ck task_ck,
-                                 void *userstate, linted_ko notifier)
+struct lntd_async_task *
+lntd_window_task_watch_prepare(struct lntd_window_task_watch *task,
+                               union lntd_async_ck task_ck,
+                               void *userstate, lntd_ko notifier)
 {
-	return linted_io_task_read_prepare(
+	return lntd_io_task_read_prepare(
 	    task->parent, task_ck, userstate, notifier, task->dummy,
 	    sizeof task->dummy);
 }
 
-struct linted_async_task *
-linted_window_task_watch_to_async(struct linted_window_task_watch *task)
+struct lntd_async_task *
+lntd_window_task_watch_to_async(struct lntd_window_task_watch *task)
 {
-	return linted_io_task_read_to_async(task->parent);
+	return lntd_io_task_read_to_async(task->parent);
 }
 
-void *
-linted_window_task_watch_data(struct linted_window_task_watch *task)
+void *lntd_window_task_watch_data(struct lntd_window_task_watch *task)
 {
 	return task->data;
 }
 
-linted_error linted_window_task_notify_create(
-    struct linted_window_task_notify **taskp, void *data)
+lntd_error
+lntd_window_task_notify_create(struct lntd_window_task_notify **taskp,
+                               void *data)
 {
-	linted_error err;
-	struct linted_window_task_notify *task;
+	lntd_error err;
+	struct lntd_window_task_notify *task;
 	{
 		void *xx;
-		err = linted_mem_alloc(&xx, sizeof *task);
+		err = lntd_mem_alloc(&xx, sizeof *task);
 		if (err != 0)
 			return err;
 		task = xx;
 	}
-	struct linted_io_task_write *parent;
+	struct lntd_io_task_write *parent;
 	{
-		struct linted_io_task_write *xx;
-		err = linted_io_task_write_create(&xx, task);
+		struct lntd_io_task_write *xx;
+		err = lntd_io_task_write_create(&xx, task);
 		if (err != 0)
 			goto free_task;
 		parent = xx;
@@ -220,34 +218,34 @@ linted_error linted_window_task_notify_create(
 	*taskp = task;
 	return 0;
 free_task:
-	linted_mem_free(task);
+	lntd_mem_free(task);
 	return err;
 }
 
-void linted_window_task_notify_destroy(
-    struct linted_window_task_notify *task)
+void lntd_window_task_notify_destroy(
+    struct lntd_window_task_notify *task)
 {
-	linted_io_task_write_destroy(task->parent);
-	linted_mem_free(task);
+	lntd_io_task_write_destroy(task->parent);
+	lntd_mem_free(task);
 }
 
-struct linted_async_task *linted_window_task_notify_prepare(
-    struct linted_window_task_notify *task,
-    union linted_async_ck task_ck, void *userstate, linted_ko notifier)
+struct lntd_async_task *
+lntd_window_task_notify_prepare(struct lntd_window_task_notify *task,
+                                union lntd_async_ck task_ck,
+                                void *userstate, lntd_ko notifier)
 {
-	return linted_io_task_write_prepare(task->parent, task_ck,
-	                                    userstate, notifier, dummy,
-	                                    sizeof dummy);
+	return lntd_io_task_write_prepare(task->parent, task_ck,
+	                                  userstate, notifier, dummy,
+	                                  sizeof dummy);
 }
 
-struct linted_async_task *linted_window_task_notify_to_async(
-    struct linted_window_task_notify *task)
+struct lntd_async_task *
+lntd_window_task_notify_to_async(struct lntd_window_task_notify *task)
 {
-	return linted_io_task_write_to_async(task->parent);
+	return lntd_io_task_write_to_async(task->parent);
 }
 
-void *
-linted_window_task_notify_data(struct linted_window_task_notify *task)
+void *lntd_window_task_notify_data(struct lntd_window_task_notify *task)
 {
 	return task->data;
 }

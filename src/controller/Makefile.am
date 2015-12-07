@@ -18,7 +18,7 @@ noinst_LTLIBRARIES+=%D%/libcontroller.la
 
 %C%_libcontroller_la_SOURCES=\
   %D%/controller.c\
-  include/linted/controller.h
+  include/lntd/controller.h
 %C%_libcontroller_la_CPPFLAGS=-I$(builddir)/%D% $(AM_CPPFLAGS)
 %C%_libcontroller_la_LIBADD=\
   %D%/librpc.la\

@@ -23,13 +23,13 @@
 
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/file.h"
-#include "linted/util.h"
+#include "lntd/error.h"
+#include "lntd/file.h"
+#include "lntd/util.h"
 
-linted_error linted_file_create(linted_ko *kop, linted_ko dirko,
-                                char const *pathname,
-                                unsigned long flags, mode_t mode)
+lntd_error lntd_file_create(lntd_ko *kop, lntd_ko dirko,
+                            char const *pathname, unsigned long flags,
+                            mode_t mode)
 {
-	return LINTED_ERROR_UNIMPLEMENTED;
+	return LNTD_ERROR_UNIMPLEMENTED;
 }

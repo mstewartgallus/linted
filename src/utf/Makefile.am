@@ -18,4 +18,4 @@ noinst_LTLIBRARIES+=%D%/libutf.la
 
 %C%_libutf_la_SOURCES=\
   %D%/utf.c\
-  include/linted/utf.h
+  include/lntd/utf.h

@@ -17,7 +17,7 @@
 noinst_LTLIBRARIES+=%D%/libassets.la
 
 %C%_libassets_la_SOURCES=\
-  include/linted/assets.h\
+  include/lntd/assets.h\
   %D%/fragment_shader.c\
   %D%/vertex_shader.c\
   %D%/assets.c

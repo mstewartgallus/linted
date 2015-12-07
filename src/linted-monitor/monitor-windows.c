@@ -23,33 +23,32 @@
 
 #include "config.h"
 
-#include "linted/error.h"
-#include "linted/log.h"
-#include "linted/start.h"
+#include "lntd/error.h"
+#include "lntd/log.h"
+#include "lntd/start.h"
 
 #include <stdlib.h>
 #include <windows.h>
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-monitor", 0};
 
-static unsigned char linted_start_main(char const *process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	for (;;) {
 		MSG message = {0};
 		if (!GetMessage(&message, 0, 0, 0)) {
 			err = HRESULT_FROM_WIN32(GetLastError());
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 
-			char const *error_str =
-			    linted_error_string(err);
-			linted_log(LINTED_LOG_ERROR, "GetMessage: %s",
-			           error_str);
-			linted_error_string_free(error_str);
+			char const *error_str = lntd_error_string(err);
+			lntd_log(LNTD_LOG_ERROR, "GetMessage: %s",
+			         error_str);
+			lntd_error_string_free(error_str);
 		}
 	}
 

@@ -23,27 +23,27 @@
 
 #include "config.h"
 
-#include "linted/fifo.h"
+#include "lntd/fifo.h"
 
-#include "linted/error.h"
+#include "lntd/error.h"
 
 #include <windows.h>
 
-linted_error linted_fifo_pair(linted_fifo *readerp,
-                              linted_fifo *writerp, unsigned long flags)
+lntd_error lntd_fifo_pair(lntd_fifo *readerp, lntd_fifo *writerp,
+                          unsigned long flags)
 {
 	if (flags != 0)
-		return LINTED_ERROR_INVALID_PARAMETER;
+		return LNTD_ERROR_INVALID_PARAMETER;
 
-	linted_ko reader;
-	linted_ko writer;
+	lntd_ko reader;
+	lntd_ko writer;
 	{
 		HANDLE xx;
 		HANDLE yy;
 		if (!CreatePipe(&xx, &yy, 0, 4096U)) {
-			linted_error err =
+			lntd_error err =
 			    HRESULT_FROM_WIN32(GetLastError());
-			LINTED_ASSUME(err != 0);
+			LNTD_ASSUME(err != 0);
 			return err;
 		}
 		reader = xx;
@@ -55,9 +55,9 @@ linted_error linted_fifo_pair(linted_fifo *readerp,
 	return 0;
 }
 
-linted_error linted_fifo_create(linted_fifo *kop, linted_ko dirko,
-                                char const *pathname,
-                                unsigned long flags, mode_t mode)
+lntd_error lntd_fifo_create(lntd_fifo *kop, lntd_ko dirko,
+                            char const *pathname, unsigned long flags,
+                            mode_t mode)
 {
-	return LINTED_ERROR_UNIMPLEMENTED;
+	return LNTD_ERROR_UNIMPLEMENTED;
 }

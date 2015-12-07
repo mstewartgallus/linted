@@ -16,7 +16,7 @@
 # permissions and limitations under the License.
 noinst_LTLIBRARIES+=%D%/libpid.la
 
-%C%_libpid_la_SOURCES=include/linted/pid.h
+%C%_libpid_la_SOURCES=include/lntd/pid.h
 
 if POSIX_API
 %C%_libpid_la_SOURCES+=%D%/pid-posix.c

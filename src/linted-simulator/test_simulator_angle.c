@@ -17,8 +17,8 @@
 
 #include "sim.h"
 
-#include "linted/start.h"
-#include "linted/test.h"
+#include "lntd/start.h"
+#include "lntd/test.h"
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -42,53 +42,52 @@
  * |    |    |   -|-   |
  */
 
-static struct linted_start_config const linted_start_config = {
+static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-simulator-test", 0};
 
-static unsigned char linted_start_main(char const *const process_name,
-                                       size_t argc,
-                                       char const *const argv[])
+static unsigned char lntd_start_main(char const *const process_name,
+                                     size_t argc,
+                                     char const *const argv[])
 {
 	{
 		sim_angle zero = SIM_ANGLE(0U, 4U);
 		sim_int sin_zero = sim_sin(zero);
 		if (sin_zero != 0) {
-			LINTED_TEST_FAILURE("sim_sin(zero)"
-			                    " == %" SIM_Id "\n",
-			                    sin_zero);
+			LNTD_TEST_FAILURE("sim_sin(zero)"
+			                  " == %" SIM_Id "\n",
+			                  sin_zero);
 		}
 
 		sim_angle quarter = SIM_ANGLE(1U, 4U);
 		sim_int sin_quarter = sim_sin(quarter);
 		if (sin_quarter != SIM_INT_MAX) {
-			LINTED_TEST_FAILURE("sim_sin(quarter) == "
-			                    "%" SIM_Id "\n",
-			                    sin_quarter);
+			LNTD_TEST_FAILURE("sim_sin(quarter) == "
+			                  "%" SIM_Id "\n",
+			                  sin_quarter);
 		}
 
 		sim_angle half = SIM_ANGLE(1U, 2U);
 		sim_int sin_half = sim_sin(half);
 		if (sin_half != 0) {
-			LINTED_TEST_FAILURE("sim_sin(half)"
-			                    " == %" SIM_Id "\n",
-			                    sin_half);
+			LNTD_TEST_FAILURE("sim_sin(half)"
+			                  " == %" SIM_Id "\n",
+			                  sin_half);
 		}
 
 		sim_angle three_quarters = SIM_ANGLE(3U, 4U);
 		sim_int sin_three_quarters = sim_sin(three_quarters);
 		if (sin_three_quarters != -SIM_INT_MAX) {
-			LINTED_TEST_FAILURE("sim_sin(three_"
-			                    "quarters) == %" SIM_Id
-			                    "\n",
-			                    sin_three_quarters);
+			LNTD_TEST_FAILURE("sim_sin(three_"
+			                  "quarters) == %" SIM_Id "\n",
+			                  sin_three_quarters);
 		}
 
 		sim_angle full = SIM_ANGLE(1U, 1U);
 		sim_int sin_full = sim_sin(full);
 		if (sin_full != 0) {
-			LINTED_TEST_FAILURE("sim_sin(full)"
-			                    " == %" SIM_Id "\n",
-			                    sin_full);
+			LNTD_TEST_FAILURE("sim_sin(full)"
+			                  " == %" SIM_Id "\n",
+			                  sin_full);
 		}
 	}
 
@@ -96,42 +95,41 @@ static unsigned char linted_start_main(char const *const process_name,
 		sim_angle zero = SIM_ANGLE(0U, 4U);
 		sim_int cos_zero = sim_cos(zero);
 		if (cos_zero != SIM_INT_MAX) {
-			LINTED_TEST_FAILURE("sim_cos(zero)"
-			                    " == %" SIM_Id "\n",
-			                    cos_zero);
+			LNTD_TEST_FAILURE("sim_cos(zero)"
+			                  " == %" SIM_Id "\n",
+			                  cos_zero);
 		}
 
 		sim_angle quarter = SIM_ANGLE(1U, 4U);
 		sim_int cos_quarter = sim_cos(quarter);
 		if (cos_quarter != 0) {
-			LINTED_TEST_FAILURE("sim_cos(quarter) == "
-			                    "%" SIM_Id "\n",
-			                    cos_quarter);
+			LNTD_TEST_FAILURE("sim_cos(quarter) == "
+			                  "%" SIM_Id "\n",
+			                  cos_quarter);
 		}
 
 		sim_angle half = SIM_ANGLE(1U, 2U);
 		sim_int cos_half = sim_cos(half);
 		if (cos_half != -SIM_INT_MAX) {
-			LINTED_TEST_FAILURE("sim_cos(half)"
-			                    " == %" SIM_Id "\n",
-			                    cos_half);
+			LNTD_TEST_FAILURE("sim_cos(half)"
+			                  " == %" SIM_Id "\n",
+			                  cos_half);
 		}
 
 		sim_angle three_quarters = SIM_ANGLE(3U, 4U);
 		sim_int cos_three_quarters = sim_cos(three_quarters);
 		if (cos_three_quarters != 0) {
-			LINTED_TEST_FAILURE("sim_cos(three_"
-			                    "quarters) == %" SIM_Id
-			                    "\n",
-			                    cos_three_quarters);
+			LNTD_TEST_FAILURE("sim_cos(three_"
+			                  "quarters) == %" SIM_Id "\n",
+			                  cos_three_quarters);
 		}
 
 		sim_angle full = SIM_ANGLE(1U, 1U);
 		sim_int cos_full = sim_cos(full);
 		if (cos_full != SIM_INT_MAX) {
-			LINTED_TEST_FAILURE("sim_cos(full)"
-			                    " == %" SIM_Id "\n",
-			                    cos_full);
+			LNTD_TEST_FAILURE("sim_cos(full)"
+			                  " == %" SIM_Id "\n",
+			                  cos_full);
 		}
 	}
 

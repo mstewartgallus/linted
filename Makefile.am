@@ -108,7 +108,7 @@ mostlyclean-local:
 
 .PHONY: indent
 indent:
-	find $(srcdir)/src $(srcdir)/include/linted  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -name '*.[ch]' -exec \
+	find $(srcdir)/src $(srcdir)/include/lntd  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -name '*.[ch]' -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
 .PHONY: list-programs

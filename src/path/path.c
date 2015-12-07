@@ -17,26 +17,26 @@
 
 #include "config.h"
 
-#include "linted/env.h"
-#include "linted/error.h"
-#include "linted/log.h"
-#include "linted/mem.h"
-#include "linted/str.h"
+#include "lntd/env.h"
+#include "lntd/error.h"
+#include "lntd/log.h"
+#include "lntd/mem.h"
+#include "lntd/str.h"
 
 #include <errno.h>
 #include <libgen.h>
 #include <stddef.h>
 #include <string.h>
 
-linted_error linted_path_package_runtime_dir(char **packagep)
+lntd_error lntd_path_package_runtime_dir(char **packagep)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	char *runtime_dir_path = 0;
 
 	{
 		char *xx;
-		err = linted_env_get("XDG_RUNTIME_DIR", &xx);
+		err = lntd_env_get("XDG_RUNTIME_DIR", &xx);
 		if (err != 0)
 			return err;
 		runtime_dir_path = xx;
@@ -46,7 +46,7 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 
 	{
 		char *xx;
-		err = linted_env_get("TMPDIR", &xx);
+		err = lntd_env_get("TMPDIR", &xx);
 		if (err != 0)
 			return err;
 		runtime_dir_path = xx;
@@ -56,7 +56,7 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 
 	{
 		char *xx;
-		err = linted_env_get("TEMP", &xx);
+		err = lntd_env_get("TEMP", &xx);
 		if (err != 0)
 			return err;
 		runtime_dir_path = xx;
@@ -66,7 +66,7 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 
 	{
 		char *xx;
-		err = linted_env_get("TMP", &xx);
+		err = lntd_env_get("TMP", &xx);
 		if (err != 0)
 			return err;
 		runtime_dir_path = xx;
@@ -74,38 +74,38 @@ linted_error linted_path_package_runtime_dir(char **packagep)
 	if (runtime_dir_path != 0)
 		goto got_runtime_dir_fallback;
 
-	err = linted_str_format(packagep, "%s/%s", "/tmp",
-	                        PACKAGE_TARNAME);
+	err =
+	    lntd_str_format(packagep, "%s/%s", "/tmp", PACKAGE_TARNAME);
 	if (err != 0)
 		return err;
 
-	linted_log(LINTED_LOG_WARNING,
-	           "%s not set, falling back to runtime directory %s",
-	           "XDG_RUNTIME_DIR", "/tmp");
+	lntd_log(LNTD_LOG_WARNING,
+	         "%s not set, falling back to runtime directory %s",
+	         "XDG_RUNTIME_DIR", "/tmp");
 	return 0;
 
 got_runtime_dir_fallback:
-	linted_log(LINTED_LOG_WARNING,
-	           "%s not set, falling back to runtime directory %s",
-	           "XDG_RUNTIME_DIR", runtime_dir_path);
+	lntd_log(LNTD_LOG_WARNING,
+	         "%s not set, falling back to runtime directory %s",
+	         "XDG_RUNTIME_DIR", runtime_dir_path);
 
 got_runtime_dir_path:
-	err = linted_str_format(packagep, "%s/%s", runtime_dir_path,
-	                        PACKAGE_TARNAME);
+	err = lntd_str_format(packagep, "%s/%s", runtime_dir_path,
+	                      PACKAGE_TARNAME);
 
-	linted_mem_free(runtime_dir_path);
+	lntd_mem_free(runtime_dir_path);
 
 	return err;
 }
 
-linted_error linted_path_package_data_home(char **packagep)
+lntd_error lntd_path_package_data_home(char **packagep)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	char *data_home_path;
 	{
 		char *xx;
-		err = linted_env_get("XDG_DATA_HOME", &xx);
+		err = lntd_env_get("XDG_DATA_HOME", &xx);
 		if (err != 0)
 			return err;
 		data_home_path = xx;
@@ -113,10 +113,10 @@ linted_error linted_path_package_data_home(char **packagep)
 	if (0 == data_home_path)
 		goto fallback;
 
-	err = linted_str_format(packagep, "%s/%s", data_home_path,
-	                        PACKAGE_TARNAME);
+	err = lntd_str_format(packagep, "%s/%s", data_home_path,
+	                      PACKAGE_TARNAME);
 
-	linted_mem_free(data_home_path);
+	lntd_mem_free(data_home_path);
 
 	return err;
 
@@ -125,7 +125,7 @@ fallback:
 	char *home_path;
 	{
 		char *xx;
-		err = linted_env_get("HOME", &xx);
+		err = lntd_env_get("HOME", &xx);
 		if (err != 0)
 			return err;
 		home_path = xx;
@@ -133,22 +133,22 @@ fallback:
 	if (0 == home_path)
 		return EACCES;
 
-	err = linted_str_format(packagep, "%s/%s", home_path,
-	                        "local/share");
+	err = lntd_str_format(packagep, "%s/%s", home_path,
+	                      "local/share");
 
-	linted_mem_free(home_path);
+	lntd_mem_free(home_path);
 
 	return err;
 }
 
-linted_error linted_path_base(char **basep, char const *str)
+lntd_error lntd_path_base(char **basep, char const *str)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	char *str_dup;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, str);
+		err = lntd_str_dup(&xx, str);
 		if (err != 0)
 			return err;
 		str_dup = xx;
@@ -166,9 +166,9 @@ linted_error linted_path_base(char **basep, char const *str)
 
 	{
 		void *xx;
-		err = linted_mem_realloc(&xx, str_dup, base_len + 1U);
+		err = lntd_mem_realloc(&xx, str_dup, base_len + 1U);
 		if (err != 0) {
-			linted_mem_free(str_dup);
+			lntd_mem_free(str_dup);
 			return err;
 		}
 		str_dup = xx;
@@ -178,14 +178,14 @@ linted_error linted_path_base(char **basep, char const *str)
 	return 0;
 }
 
-linted_error linted_path_dir(char **dirp, char const *str)
+lntd_error lntd_path_dir(char **dirp, char const *str)
 {
-	linted_error err = 0;
+	lntd_error err = 0;
 
 	char *str_dup;
 	{
 		char *xx;
-		err = linted_str_dup(&xx, str);
+		err = lntd_str_dup(&xx, str);
 		if (err != 0)
 			return err;
 		str_dup = xx;
@@ -203,9 +203,9 @@ linted_error linted_path_dir(char **dirp, char const *str)
 
 	{
 		void *xx;
-		err = linted_mem_realloc(&xx, str_dup, dir_len + 1U);
+		err = lntd_mem_realloc(&xx, str_dup, dir_len + 1U);
 		if (err != 0) {
-			linted_mem_free(str_dup);
+			lntd_mem_free(str_dup);
 			return err;
 		}
 		str_dup = xx;
