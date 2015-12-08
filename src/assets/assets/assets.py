@@ -21,6 +21,7 @@ def output():
     def process_mesh(objct, indices, normals, vertices):
         mesh = objct.data
         matrix = objct.matrix_world
+        normal_matrix = matrix.inverted().transposed()
 
         old_vertices_length = len(vertices)
 
@@ -29,7 +30,9 @@ def output():
                                               for index in polygon.vertices]))
 
         for vertex in mesh.vertices:
-            x_norm, y_norm, z_norm = vertex.normal.to_tuple()
+            world_normal = normal_matrix * vertex.normal
+            world_normal.normalize()
+            x_norm, y_norm, z_norm = world_normal.to_tuple()
             x, y, z = (matrix * vertex.co).to_tuple()
             normals.append(Array(3, GLfloat)((GLfloat(x_norm), GLfloat(y_norm), GLfloat(z_norm))))
             vertices.append(Array(3, GLfloat)((GLfloat(x), GLfloat(y), GLfloat(z))))

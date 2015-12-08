@@ -14,7 +14,6 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-
 precision highp float;
 
 uniform vec3 eye_vertex;
@@ -50,13 +49,13 @@ void main()
 
     vec3 impact = ambient_light + (impact_angle + specular) * light_colour;
 
-#if defined VIEW_NORMALS
-    vec3 value = normalize(linted_varying_normal);
-#else
     vec3 value = impact / compute_decay_factor(eye_vertex, -linted_varying_vertex);
-#endif
 
+#if defined VIEW_NORMALS
+    vec3 gamma_correct_value = linted_varying_normal;
+#else
     vec3 gamma_correct_value = pow(value, vec3(1.0 / 2.2));
+#endif
 
     linted_fragment_color = vec4(gamma_correct_value, 1.0);
 }
