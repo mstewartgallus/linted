@@ -33,7 +33,7 @@ struct lntd_stack {
 	atomic_node inbox;
 	struct lntd_trigger inbox_filled;
 
-	char __padding[64U - sizeof(struct lntd_trigger)];
+	char __padding[64U - sizeof(struct lntd_trigger) % 64U];
 
 	struct lntd_node *outbox;
 };
@@ -60,7 +60,7 @@ lntd_error lntd_stack_create(struct lntd_stack **stackp)
 	stack->inbox = ptr;
 	stack->outbox = 0;
 
-	lntd_trigger_create(&stack->inbox_filled);
+	lntd_trigger_create(&stack->inbox_filled, 0);
 
 	*stackp = stack;
 

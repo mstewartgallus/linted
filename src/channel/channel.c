@@ -47,7 +47,7 @@ lntd_error lntd_channel_create(struct lntd_channel **channelp)
 
 	atomic_voidptr ptr = ATOMIC_VAR_INIT((void *)0);
 	channel->value = ptr;
-	lntd_trigger_create(&channel->filled);
+	lntd_trigger_create(&channel->filled, 0);
 
 	*channelp = channel;
 

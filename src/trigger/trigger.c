@@ -24,6 +24,7 @@
 
 #include <errno.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -33,14 +34,23 @@
 #include <linux/futex.h>
 #endif
 
-static lntd_error wait_until_different(atomic_int const *uaddr,
-                                       int val);
-static lntd_error hint_wakeup(atomic_int const *uaddr);
+static lntd_error wait_until_different(atomic_int const *uaddr, int val,
+                                       bool is_local);
+static lntd_error hint_wakeup(atomic_int const *uaddr, bool is_local);
 
-void lntd_trigger_create(struct lntd_trigger *trigger)
+lntd_error lntd_trigger_create(struct lntd_trigger *trigger,
+                               unsigned long flags)
 {
+	if ((flags & ~LNTD_TRIGGER_PSHARED) != 0)
+		return LNTD_ERROR_INVALID_PARAMETER;
+
+	bool shared = (flags & LNTD_TRIGGER_PSHARED) != 0;
+
 	atomic_int zero = ATOMIC_VAR_INIT(0);
 	trigger->_triggered = zero;
+	trigger->_process_local = !shared;
+
+	return 0;
 }
 
 void lntd_trigger_destroy(struct lntd_trigger *trigger)
@@ -49,16 +59,20 @@ void lntd_trigger_destroy(struct lntd_trigger *trigger)
 
 void lntd_trigger_set(struct lntd_trigger *trigger)
 {
+	bool is_local = trigger->_process_local;
+
 	atomic_thread_fence(memory_order_release);
 
 	atomic_store_explicit(&trigger->_triggered, 1,
 	                      memory_order_relaxed);
-	hint_wakeup(&trigger->_triggered);
+	hint_wakeup(&trigger->_triggered, is_local);
 }
 
 void lntd_trigger_wait(struct lntd_trigger *trigger)
 {
-	wait_until_different(&trigger->_triggered, 0);
+	bool is_local = trigger->_process_local;
+
+	wait_until_different(&trigger->_triggered, 0, is_local);
 
 	atomic_store_explicit(&trigger->_triggered, 0,
 	                      memory_order_release);
@@ -68,23 +82,26 @@ void lntd_trigger_wait(struct lntd_trigger *trigger)
 
 #if defined HAVE_POSIX_API
 static lntd_error futex_wait(atomic_int const *uaddr, int val,
-                             struct timespec const *timeout);
+                             struct timespec const *timeout,
+                             bool is_local);
 static lntd_error futex_wake(unsigned *restrict wokeupp,
-                             atomic_int const *uaddr, int val);
+                             atomic_int const *uaddr, int val,
+                             bool is_local);
 
 static inline lntd_error wait_until_different(atomic_int const *uaddr,
-                                              int val)
+                                              int val, bool is_local)
 {
-	return futex_wait(uaddr, val, NULL);
+	return futex_wait(uaddr, val, NULL, is_local);
 }
 
-static inline lntd_error hint_wakeup(atomic_int const *uaddr)
+static inline lntd_error hint_wakeup(atomic_int const *uaddr,
+                                     bool is_local)
 {
-	return futex_wake(NULL, uaddr, 1);
+	return futex_wake(NULL, uaddr, 1, is_local);
 }
 #else
 static inline lntd_error wait_until_different(atomic_int const *uaddr,
-                                              int val)
+                                              int val, bool is_local)
 {
 	for (;;) {
 		if (atomic_load_explicit(uaddr, memory_order_relaxed) !=
@@ -104,11 +121,13 @@ static inline lntd_error hint_wakeup(atomic_int const *uaddr)
 
 #if defined HAVE_POSIX_API
 static inline lntd_error futex_wait(atomic_int const *uaddr, int val,
-                                    struct timespec const *timeout)
+                                    struct timespec const *timeout,
+                                    bool is_local)
 {
-	int xx =
-	    syscall(__NR_futex, (intptr_t)uaddr, (intptr_t)FUTEX_WAIT,
-	            (intptr_t)val, (intptr_t)timeout);
+	int xx = syscall(
+	    __NR_futex, (intptr_t)uaddr,
+	    (intptr_t)(is_local ? FUTEX_WAIT_PRIVATE : FUTEX_WAIT),
+	    (intptr_t)val, (intptr_t)timeout);
 	if (xx < 0) {
 		return errno;
 	}
@@ -117,10 +136,13 @@ static inline lntd_error futex_wait(atomic_int const *uaddr, int val,
 }
 
 static inline lntd_error futex_wake(unsigned *restrict wokeupp,
-                                    atomic_int const *uaddr, int val)
+                                    atomic_int const *uaddr, int val,
+                                    bool is_local)
 {
-	int xx = syscall(__NR_futex, (intptr_t)uaddr,
-	                 (intptr_t)FUTEX_WAKE, (intptr_t)val);
+	int xx = syscall(
+	    __NR_futex, (intptr_t)uaddr,
+	    (intptr_t)(is_local ? FUTEX_WAKE_PRIVATE : FUTEX_WAKE),
+	    (intptr_t)val);
 	if (xx < 0) {
 		return errno;
 	}

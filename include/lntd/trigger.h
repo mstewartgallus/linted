@@ -16,13 +16,20 @@
 #ifndef LNTD_TRIGGER_H
 #define LNTD_TRIGGER_H
 
+#include "lntd/error.h"
+
 #include <stdatomic.h>
+
+#define LNTD_TRIGGER_PSHARED 1U
 
 struct lntd_trigger {
 	atomic_int _triggered;
+	char __padding[64U - sizeof(atomic_int) % 64U];
+	_Bool _process_local : 1U;
 };
 
-void lntd_trigger_create(struct lntd_trigger *trigger);
+lntd_error lntd_trigger_create(struct lntd_trigger *trigger,
+                               unsigned long flags);
 void lntd_trigger_destroy(struct lntd_trigger *trigger);
 
 void lntd_trigger_set(struct lntd_trigger *trigger);
