@@ -2027,10 +2027,22 @@ static char const *const allowed_syscalls =
     "execve,"
     "brk,"
     "access,"
+
     "mmap,"
+    "mmap2,"
+
+    "set_thread_area,"
+    "time,"
+    "gettimeofday,"
+    "clock_gettime,"
+
     "open,"
+
     "stat,"
+    "stat64,"
     "fstat,"
+    "fstat64,"
+
     "close,"
     "read,"
     "mprotect,"
@@ -2041,7 +2053,10 @@ static char const *const allowed_syscalls =
     "futex,"
     "rt_sigaction,"
     "rt_sigprocmask,"
+
     "getrlimit,"
+    "ugetrlimit,"
+
     "clone,"
     "openat,"
     "exit,"
@@ -2049,55 +2064,88 @@ static char const *const allowed_syscalls =
     "restart_syscall,"
 
     /* Not common */
-    "socket,"
-    "connect,"
     "pipe2,"
     "pause,"
+
     "lseek,"
-    "sendto,"
+    "_llseek,"
+
     "prctl,"
     "eventfd2,"
+
     "fcntl,"
+    "fcntl64,"
+
     "epoll_create1,"
     "epoll_ctl,"
     "epoll_wait,"
     "readlink,"
-    "getpeername,"
     "clock_nanosleep,"
     "write,"
     "umask,"
     "uname,"
     "mkdir,"
     "poll,"
+
     "ftruncate,"
+    "ftruncate64,"
+
     "writev,"
+
     "getdents,"
-    "recvfrom,"
+    "getdents64,"
+
     "statfs,"
-    "recvmsg,"
+
     "pwrite64,"
-    "geteuid,"
+
     "getuid,"
+    "getuid32,"
+
+    "geteuid,"
+    "geteuid32,"
+
     "kill,"
     "rt_sigtimedwait,"
     "unlink,"
+
     "getgid,"
+    "getgid32,"
+
     "getegid,"
-    "shutdown,"
+    "getegid32,"
+
     "fchown,"
+    "fchown32,"
+
     "madvise,"
     "ioctl,"
     "pread64,"
     "sched_yield,"
     "fchmod,"
+
     "lstat,"
+    "lstat64,"
+
+    "socketcall,"
+    "connect,"
+    "socket,"
+    "getpeername,"
     "setsockopt,"
-    "tgkill,"
-    "rt_sigreturn,"
     "getsockopt,"
     "getsockname,"
-    "ppoll,"
-    "sendmsg"
+    "recvfrom,"
+    "recvmsg,"
+    "sendto,"
+    "sendmsg,"
+    "shutdown,"
+
+    "tgkill,"
+
+    "rt_sigreturn,"
+    "sigreturn,"
+
+    "ppoll"
 
 #if 0
     "clock_gettime,"
