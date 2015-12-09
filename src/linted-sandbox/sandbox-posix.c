@@ -87,6 +87,7 @@ enum { STOP_OPTIONS,
        FSTAB,
        WAITER,
        SECCOMP_FILTER,
+       SECCOMP_NATIVE,
        NEWUSER_ARG,
        NEWPID_ARG,
        NEWIPC_ARG,
@@ -127,6 +128,7 @@ static char const *const argstrs[NUM_OPTIONS] = {
         /**/ [FSTAB] = "--fstab",
         /**/ [WAITER] = "--waiter",
         /**/ [SECCOMP_FILTER] = "--seccomp-filter",
+        /**/ [SECCOMP_NATIVE] = "--seccomp-arch-native",
         /**/ [NEWUSER_ARG] = "--clone-newuser",
         /**/ [NEWPID_ARG] = "--clone-newpid",
         /**/ [NEWIPC_ARG] = "--clone-newipc",
@@ -161,6 +163,7 @@ static uint_least8_t opt_types[NUM_OPTIONS] = {
         /**/ [FSTAB] = OPT_TYPE_STRING,
         /**/ [WAITER] = OPT_TYPE_STRING,
         /**/ [SECCOMP_FILTER] = OPT_TYPE_STRING,
+        /**/ [SECCOMP_NATIVE] = OPT_TYPE_FLAG,
         /**/ [NEWUSER_ARG] = OPT_TYPE_FLAG,
         /**/ [NEWPID_ARG] = OPT_TYPE_FLAG,
         /**/ [NEWIPC_ARG] = OPT_TYPE_FLAG,
@@ -254,6 +257,8 @@ static unsigned char lntd_start_main(char const *const process_name,
 	bool clone_newns;
 	bool clone_newuts;
 
+	bool seccomp_native;
+
 	char const *limit_no_file_str;
 	char const *limit_locks_str;
 	char const *limit_msgqueue_str;
@@ -324,6 +329,8 @@ static unsigned char lntd_start_main(char const *const process_name,
 		clone_newnet = opt_values[NEWNET_ARG].flag;
 		clone_newns = opt_values[NEWNS_ARG].flag;
 		clone_newuts = opt_values[NEWUTS_ARG].flag;
+
+		seccomp_native = opt_values[SECCOMP_NATIVE].flag;
 
 		limit_no_file_str = opt_values[RLIMIT_NOFILE].string;
 		limit_locks_str = opt_values[LIMIT_LOCKS].string;
@@ -835,7 +842,7 @@ static unsigned char lntd_start_main(char const *const process_name,
 	}
 
 	scmp_filter_ctx *seccomp_context = 0;
-	if (seccomp_filter_str != 0) {
+	if (seccomp_native || seccomp_filter_str != 0) {
 		seccomp_context = seccomp_init(SCMP_ACT_KILL);
 		if (0 == seccomp_context) {
 			lntd_log(LNTD_LOG_ERROR, "seccomp_init: %s",
@@ -843,56 +850,63 @@ static unsigned char lntd_start_main(char const *const process_name,
 			return EXIT_FAILURE;
 		}
 
-		char const *start = seccomp_filter_str;
-		for (;;) {
-			char *end = strchr(start, ',');
-			size_t size;
-			if (0 == end) {
-				size = strlen(start);
-			} else {
-				size = end - start;
-			}
+		if (0 == seccomp_filter_str) {
+			seccomp_reset(seccomp_context, SCMP_ACT_ALLOW);
+		} else {
+			char const *start = seccomp_filter_str;
+			for (;;) {
+				char *end = strchr(start, ',');
+				size_t size;
+				if (0 == end) {
+					size = strlen(start);
+				} else {
+					size = end - start;
+				}
 
-			char *syscall_str;
-			{
-				char *xx;
-				err =
-				    lntd_str_dup_len(&xx, start, size);
+				char *syscall_str;
+				{
+					char *xx;
+					err = lntd_str_dup_len(
+					    &xx, start, size);
+					if (err != 0) {
+						lntd_log(
+						    LNTD_LOG_ERROR,
+						    "lntd_str_dup: %s",
+						    lntd_error_string(
+						        err));
+						return EXIT_FAILURE;
+					}
+					syscall_str = xx;
+				}
+				start = end + 1U;
+
+				int sysno =
+				    seccomp_syscall_resolve_name(
+				        syscall_str);
+				if (__NR_SCMP_ERROR == sysno) {
+					lntd_log(LNTD_LOG_ERROR,
+					         "seccomp_syscall_"
+					         "resolve_name: %s",
+					         syscall_str);
+					return EXIT_FAILURE;
+				}
+
+				lntd_mem_free(syscall_str);
+
+				err = -seccomp_rule_add(seccomp_context,
+				                        SCMP_ACT_ALLOW,
+				                        sysno, 0);
 				if (err != 0) {
 					lntd_log(
 					    LNTD_LOG_ERROR,
-					    "lntd_str_dup: %s",
+					    "seccomp_rule_add: %s",
 					    lntd_error_string(err));
 					return EXIT_FAILURE;
 				}
-				syscall_str = xx;
+
+				if (0 == end)
+					break;
 			}
-			start = end + 1U;
-
-			int sysno =
-			    seccomp_syscall_resolve_name(syscall_str);
-			if (__NR_SCMP_ERROR == sysno) {
-				lntd_log(
-				    LNTD_LOG_ERROR,
-				    "seccomp_syscall_resolve_name: %s",
-				    syscall_str);
-				return EXIT_FAILURE;
-			}
-
-			lntd_mem_free(syscall_str);
-
-			err =
-			    -seccomp_rule_add(seccomp_context,
-			                      SCMP_ACT_ALLOW, sysno, 0);
-			if (err != 0) {
-				lntd_log(LNTD_LOG_ERROR,
-				         "seccomp_rule_add: %s",
-				         lntd_error_string(err));
-				return EXIT_FAILURE;
-			}
-
-			if (0 == end)
-				break;
 		}
 	}
 

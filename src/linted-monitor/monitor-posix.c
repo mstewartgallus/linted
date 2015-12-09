@@ -1843,6 +1843,7 @@ spawn_service:
 		    {"--priority", prio_str, has_priority},
 		    {"--seccomp-filter", allowed_syscalls,
 		     no_new_privs},
+		    {"--seccomp-arch-native", 0, true},
 		    {"--clone-newuser", 0, clone_newuser},
 		    {"--clone-newpid", 0, clone_newpid},
 		    {"--clone-newipc", 0, clone_newipc},
