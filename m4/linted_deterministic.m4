@@ -48,9 +48,28 @@ AC_SUBST([linted_LDFLAGS_DETERMINISTIC])
 dnl
 [CC="env PWD=/proc/self/cwd ${CC}"]
 dnl
-[RANLIB="${RANLIB} -D"]
-dnl
-[AR_FLAGS="crD"]
+AC_MSG_CHECKING([for ar flag D])
+touch lib.test
+if "${AR}" crD lib.test.a lib.test
+then
+	[AR_FLAGS='crD']
+	rm lib.test.a
+        AC_MSG_RESULT([D])
+else
+	[AR_FLAGS='']
+        AC_MSG_RESULT([no])
+fi
+touch lib.test
+"${AR}" cr lib.test.a lib.test
+AC_MSG_CHECKING([for ranlib flag -D])
+if "${RANLIB}" -D lib.test.a
+then
+	[RANLIB="${RANLIB} -D"]
+        AC_MSG_RESULT([-D])
+else
+        AC_MSG_RESULT([no])
+fi
+rm lib.test lib.test.a
 AC_SUBST([AR_FLAGS])
 dnl
 ])
