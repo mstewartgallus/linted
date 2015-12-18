@@ -35,6 +35,7 @@ dnl
 AC_SUBST([linted_CFLAGS_META])
 dnl
 LINTED_CHECK_LDFLAGS([linted_LDFLAGS_META],[dnl
+	[-Wl,-plugin-opt=also-emit-llvm]
 ])
 dnl
 AC_SUBST([linted_LDFLAGS_META])
