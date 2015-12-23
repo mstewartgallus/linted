@@ -14,8 +14,8 @@
  * permissions and limitations under the License.
  */
 #include "async.h"
-#include "error.h"
-#include "ko.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
 
 #include <assert.h>
 #include <limits.h>

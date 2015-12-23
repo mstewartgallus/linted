@@ -24,8 +24,6 @@ EXTRA_DIST+=\
   %D%/LntdAsyncReader.nc\
   %D%/LntdAsyncTimer.nc\
   %D%/LntdAsyncWriter.nc\
-  %D%/LntdKoM.nc\
-  %D%/LntdKo.nc\
   %D%/LntdLogger.nc\
   %D%/LntdMainLoop.nc\
   %D%/LntdNonblockPool.nc\
@@ -46,12 +44,10 @@ MOSTLYCLEANFILES+=%D%/%C%_linted_simulator.c
 %C%_linted_simulator_SOURCES=\
   %D%/%C%_linted_simulator.c\
   %D%/async.h\
-  %D%/bool.h\
-  %D%/error.h\
-  %D%/ko.h
+  %D%/bool.h
 
 %C%_linted_simulator_LDADD=\
-  -lm
+  -lm src/ko/libko.la
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service
@@ -68,16 +64,12 @@ endif
   %D%/LntdConfig.nc\
   %D%/async.h\
   %D%/bool.h\
-  %D%/error.h\
-  %D%/ko.h\
   %D%/LntdAsyncCommand.nc\
   %D%/LntdAsyncIdle.nc\
   %D%/LntdAsyncPoller.nc\
   %D%/LntdAsyncReader.nc\
   %D%/LntdAsyncTimer.nc\
   %D%/LntdAsyncWriter.nc\
-  %D%/LntdKoM.nc\
-  %D%/LntdKo.nc\
   %D%/LntdLogger.nc\
   %D%/LntdMainLoop.nc\
   %D%/LntdNonblockPool.nc\
@@ -92,4 +84,6 @@ endif
   %D%/LntdStart.nc\
   %D%/LntdStdioLogger.nc\
   %D%/LntdStdio.nc
-	$(linted_V_NESCC) env NESCPATH=$(abs_srcdir)/%D% $(NESCC) $(CFLAGS) $(CPPFLAGS) -fnesc-separator='__' -D_GNU_SOURCE=1 -conly -S -fnesc-cfile=$@ -Wnesc-all -Wnesc-error $<
+	$(linted_V_NESCC) env NESCPATH=$(abs_srcdir)/%D% $(NESCC) -gcc=$(CPP)\
+	  $(%C%_linted_simulator_CFLAGS) $(CFLAGS) $(%C%_linted_simulator_CPPFLAGS) $(CPPFLAGS)\
+	  -fnesc-separator='__' -D_GNU_SOURCE=1 -conly -S -fnesc-cfile=$@ -Wnesc-all -Wnesc-error $<

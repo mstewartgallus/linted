@@ -23,7 +23,6 @@ implementation
 	components LntdStartM;
 	components LntdSimulator;
 	components LntdPoolStdio;
-	components LntdKoM;
 
 	components new LntdNonblockPool(uniqueCount(LNTD_ASYNC_COMMAND))
 	    as Pool;
@@ -37,7 +36,6 @@ implementation
 	LntdSimulator.LntdStart->LntdStartM;
 
 	LntdSimulator.LntdMainLoop->Pool;
-	LntdSimulator.LntdKo->LntdKoM;
 	LntdSimulator.LntdStdio->LntdPoolStdio;
 	LntdSimulator.LntdLogger->Logger;
 

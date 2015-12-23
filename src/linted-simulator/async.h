@@ -17,8 +17,8 @@
 #define LNTD_ASYNC_H
 
 #include "bool.h"
-#include "error.h"
-#include "ko.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
 
 #include <stddef.h>
 #include <stdint.h>

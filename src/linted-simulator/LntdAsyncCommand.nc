@@ -15,7 +15,7 @@
  */
 #include "async.h"
 #include "bool.h"
-#include "error.h"
+#include "lntd/error.h"
 
 #include <assert.h>
 #include <stdio.h>

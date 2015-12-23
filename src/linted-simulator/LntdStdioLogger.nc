@@ -13,8 +13,7 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#include "ko.h"
-#include "logger.h"
+#include "lntd/logger.h"
 
 #include <assert.h>
 #include <stdio.h>

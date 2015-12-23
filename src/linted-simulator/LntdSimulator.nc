@@ -13,8 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#include "error.h"
-#include "ko.h"
+#include "lntd/error.h"
+#include "lntd/ko.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -48,7 +48,6 @@
 
 module LntdSimulator
 {
-	uses interface LntdKo;
 	uses interface LntdMainLoop;
 	uses interface LntdLogger;
 	uses interface LntdStdio;
@@ -179,9 +178,8 @@ implementation
 
 		{
 			lntd_ko xx;
-			err = call LntdKo.open(&xx, LNTD_KO_CWD,
-			                       updater_path,
-			                       LNTD_KO_RDWR);
+			err = lntd_ko_open(&xx, LNTD_KO_CWD,
+			                   updater_path, LNTD_KO_RDWR);
 			if (err != 0) {
 				finish(err);
 				return;
@@ -191,9 +189,9 @@ implementation
 
 		{
 			lntd_ko xx;
-			err = call LntdKo.open(&xx, LNTD_KO_CWD,
-			                       controller_path,
-			                       LNTD_KO_RDWR);
+			err =
+			    lntd_ko_open(&xx, LNTD_KO_CWD,
+			                 controller_path, LNTD_KO_RDWR);
 			if (err != 0) {
 				finish(err);
 				return;
@@ -222,8 +220,8 @@ implementation
 
 	event int LntdMainLoop.shutdown(lntd_error err)
 	{
-		call LntdKo.close(update_ko);
-		call LntdKo.close(controller_ko);
+		lntd_ko_close(update_ko);
+		Lntd_ko_close(controller_ko);
 
 		if (err != 0)
 			return EXIT_FAILURE;
