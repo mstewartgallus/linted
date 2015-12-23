@@ -22,10 +22,10 @@
 #include <stdint.h>
 
 #if defined HAVE_POSIX_API
-typedef uintmax_t lntd_pid;
+typedef uintmax_t lntd_proc;
 #else
 /* `DWORD`s are 32-bit unsigned integers */
-typedef uint_fast32_t lntd_pid;
+typedef uint_fast32_t lntd_proc;
 #endif
 
 /**
@@ -36,8 +36,8 @@ typedef uint_fast32_t lntd_pid;
 
 #define LNTD_PID_COMM_MAX 16U
 
-struct lntd_pid_stat {
-	lntd_pid pid;
+struct lntd_proc_stat {
+	lntd_proc pid;
 	char comm[LNTD_PID_COMM_MAX + 1U];
 	char state;
 	int ppid;
@@ -83,9 +83,9 @@ struct lntd_pid_stat {
 	long cguest_time;
 };
 
-lntd_error lntd_pid_kill(lntd_pid pid, int signo);
-lntd_error lntd_pid_terminate(lntd_pid pid);
-lntd_error lntd_pid_continue(lntd_pid pid);
+lntd_error lntd_proc_kill(lntd_proc pid, int signo);
+lntd_error lntd_proc_terminate(lntd_proc pid);
+lntd_error lntd_proc_continue(lntd_proc pid);
 
 /**
  * @warning The `comm` field is attacker controllable. See
@@ -95,14 +95,14 @@ lntd_error lntd_pid_continue(lntd_pid pid);
  *          nondisplayable characters or even terminal control
  * sequences.
  */
-lntd_error lntd_pid_stat(lntd_pid pid, struct lntd_pid_stat *buf);
-lntd_error lntd_pid_children(lntd_pid pid, lntd_pid **childrenp,
-                             size_t *lenp);
+lntd_error lntd_proc_stat(lntd_proc pid, struct lntd_proc_stat *buf);
+lntd_error lntd_proc_children(lntd_proc pid, lntd_proc **childrenp,
+                              size_t *lenp);
 
-lntd_pid lntd_pid_get_pid(void);
+lntd_proc lntd_proc_get_pid(void);
 
-lntd_error lntd_pid_from_str(char const *str, lntd_pid *pidp);
+lntd_error lntd_proc_from_str(char const *str, lntd_proc *pidp);
 
-lntd_error lntd_pid_name(char const *name);
+lntd_error lntd_proc_name(char const *name);
 
 #endif /* LNTD_PID_H */

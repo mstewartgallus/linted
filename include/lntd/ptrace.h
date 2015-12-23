@@ -17,7 +17,7 @@
 #define LNTD_PTRACE_H
 
 #include "lntd/error.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/util.h"
 
 #include <stdint.h>
@@ -26,19 +26,19 @@
 #include <sys/ptrace.h>
 #endif
 
-static inline lntd_error lntd_ptrace_detach(lntd_pid pid, int signo);
-static inline lntd_error lntd_ptrace_setoptions(lntd_pid pid,
+static inline lntd_error lntd_ptrace_detach(lntd_proc pid, int signo);
+static inline lntd_error lntd_ptrace_setoptions(lntd_proc pid,
                                                 unsigned options);
-static inline lntd_error lntd_ptrace_geteventmsg(lntd_pid pid,
+static inline lntd_error lntd_ptrace_geteventmsg(lntd_proc pid,
                                                  unsigned long *msg);
-static inline lntd_error lntd_ptrace_getsiginfo(lntd_pid pid,
+static inline lntd_error lntd_ptrace_getsiginfo(lntd_proc pid,
                                                 void *infop);
-static inline lntd_error lntd_ptrace_seize(lntd_pid pid,
+static inline lntd_error lntd_ptrace_seize(lntd_proc pid,
                                            uint_fast32_t options);
-static inline lntd_error lntd_ptrace_cont(lntd_pid pid, int signo);
+static inline lntd_error lntd_ptrace_cont(lntd_proc pid, int signo);
 
 #ifdef PT_DETACH
-static inline lntd_error lntd_ptrace_detach(lntd_pid pid, int signo)
+static inline lntd_error lntd_ptrace_detach(lntd_proc pid, int signo)
 {
 	lntd_error err;
 
@@ -54,7 +54,7 @@ static inline lntd_error lntd_ptrace_detach(lntd_pid pid, int signo)
 #endif
 
 #ifdef PT_SETOPTIONS
-static inline lntd_error lntd_ptrace_setoptions(lntd_pid pid,
+static inline lntd_error lntd_ptrace_setoptions(lntd_proc pid,
                                                 unsigned options)
 {
 	lntd_error err;
@@ -71,7 +71,7 @@ static inline lntd_error lntd_ptrace_setoptions(lntd_pid pid,
 #endif
 
 #ifdef PT_GETEVENTMSG
-static inline lntd_error lntd_ptrace_geteventmsg(lntd_pid pid,
+static inline lntd_error lntd_ptrace_geteventmsg(lntd_proc pid,
                                                  unsigned long *msg)
 {
 	lntd_error err;
@@ -88,7 +88,7 @@ static inline lntd_error lntd_ptrace_geteventmsg(lntd_pid pid,
 #endif
 
 #ifdef PT_GETSIGINFO
-static inline lntd_error lntd_ptrace_getsiginfo(lntd_pid pid,
+static inline lntd_error lntd_ptrace_getsiginfo(lntd_proc pid,
                                                 void *infop)
 {
 	lntd_error err;
@@ -104,7 +104,7 @@ static inline lntd_error lntd_ptrace_getsiginfo(lntd_pid pid,
 #endif
 
 #ifdef PTRACE_SEIZE
-static inline lntd_error lntd_ptrace_seize(lntd_pid pid,
+static inline lntd_error lntd_ptrace_seize(lntd_proc pid,
                                            uint_fast32_t options)
 {
 	lntd_error err;
@@ -121,7 +121,7 @@ static inline lntd_error lntd_ptrace_seize(lntd_pid pid,
 #endif
 
 #ifdef PT_CONTINUE
-static inline lntd_error lntd_ptrace_cont(lntd_pid pid, int signo)
+static inline lntd_error lntd_ptrace_cont(lntd_proc pid, int signo)
 {
 	lntd_error err;
 

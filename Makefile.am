@@ -108,7 +108,7 @@ mostlyclean-local:
 
 .PHONY: indent
 indent:
-	find $(srcdir)/src $(srcdir)/include/lntd  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -name '*.[ch]' -exec \
+	find $(srcdir)/src $(srcdir)/include/lntd  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -\( -name '*.[ch]' -o -name '*.nc' -\) -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
 .PHONY: list-programs
@@ -135,6 +135,11 @@ linted_V_WINDRES = $(linted_v_WINDRES_@AM_V@)
 linted_v_WINDRES_ = $(linted_v_WINDRES_@AM_DEFAULT_V@)
 linted_v_WINDRES_0 = @echo "  WINDRES " $@;
 linted_v_WINDRES_1 =
+
+linted_V_NESCC = $(linted_v_NESCC_@AM_V@)
+linted_v_NESCC_ = $(linted_v_NESCC_@AM_DEFAULT_V@)
+linted_v_NESCC_0 = @echo "  NESCC   " $@;
+linted_v_NESCC_1 =
 
 include docs/Makefile.am
 include scripts/Makefile.am

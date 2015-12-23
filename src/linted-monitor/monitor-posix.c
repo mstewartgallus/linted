@@ -29,7 +29,7 @@
 #include "lntd/log.h"
 #include "lntd/mem.h"
 #include "lntd/path.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/ptrace.h"
 #include "lntd/sched.h"
 #include "lntd/signal.h"
@@ -91,7 +91,7 @@ struct monitor {
 	struct lntd_io_task_read *kill_read_task;
 	struct lntd_async_pool *pool;
 	struct lntd_unit_db *unit_db;
-	lntd_pid manager_pid;
+	lntd_proc manager_pid;
 	lntd_ko kill_fifo;
 	lntd_admin_in admin_in;
 	lntd_admin_out admin_out;
@@ -102,7 +102,7 @@ struct monitor {
 static lntd_error
 monitor_init(struct monitor *monitor, lntd_ko admin_in,
              lntd_ko admin_out, lntd_ko kill_fifo, lntd_ko cwd,
-             lntd_pid manager_pid, struct lntd_async_pool *pool,
+             lntd_proc manager_pid, struct lntd_async_pool *pool,
              char const *process_name, char const *startup,
              char const *sandbox, char const *waiter);
 
@@ -145,29 +145,29 @@ on_add_socket(struct monitor *monitor,
               struct lntd_admin_reply_add_socket *reply);
 
 static lntd_error
-on_status_request(lntd_pid manager_pid,
+on_status_request(lntd_proc manager_pid,
                   struct lntd_admin_request_status const *request,
                   struct lntd_admin_reply_status *reply);
 static lntd_error
-on_stop_request(lntd_pid manager_pid,
+on_stop_request(lntd_proc manager_pid,
                 struct lntd_admin_request_stop const *request,
                 struct lntd_admin_reply_stop *reply);
 
 static lntd_error on_child_stopped(char const *process_name,
-                                   lntd_pid pid);
+                                   lntd_proc pid);
 
 static lntd_error on_child_trapped(struct monitor *monitor,
-                                   lntd_pid pid, int exit_status,
+                                   lntd_proc pid, int exit_status,
                                    struct lntd_unit_db *unit_db);
 static lntd_error on_child_signaled(char const *process_name,
-                                    lntd_pid pid, int exit_status);
-static lntd_error on_child_about_to_clone(lntd_pid pid);
+                                    lntd_proc pid, int exit_status);
+static lntd_error on_child_about_to_clone(lntd_proc pid);
 static lntd_error on_child_about_to_exit(struct monitor *monitor,
                                          bool time_to_exit,
-                                         lntd_pid pid,
+                                         lntd_proc pid,
                                          struct lntd_unit_db *unit_db);
 static lntd_error
-on_child_ptrace_event_stopped(char const *process_name, lntd_pid pid,
+on_child_ptrace_event_stopped(char const *process_name, lntd_proc pid,
                               int exit_status);
 
 static lntd_error service_activate(struct monitor *monitor,
@@ -176,9 +176,9 @@ lntd_error socket_activate(struct lntd_unit_socket *unit);
 
 static size_t null_list_size(char const *const *list);
 
-static lntd_error service_children_terminate(lntd_pid pid);
+static lntd_error service_children_terminate(lntd_proc pid);
 
-static lntd_error pid_is_child_of(lntd_pid parent, lntd_pid child,
+static lntd_error pid_is_child_of(lntd_proc parent, lntd_proc child,
                                   bool *isp);
 static lntd_error dup_array(char const *const *strs, size_t strs_size,
                             char ***strsp);
@@ -229,13 +229,13 @@ static unsigned char lntd_start_main(char const *process_name,
 		waiter = envs[LNTD_WAITER];
 	}
 
-	lntd_pid manager_pid;
+	lntd_proc manager_pid;
 	{
-		lntd_pid yy;
-		err = lntd_pid_from_str(manager_pid_str, &yy);
+		lntd_proc yy;
+		err = lntd_proc_from_str(manager_pid_str, &yy);
 		if (err != 0) {
 			lntd_log(LNTD_LOG_ERROR,
-			         "lntd_pid_from_str: %s",
+			         "lntd_proc_from_str: %s",
 			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
@@ -483,7 +483,7 @@ destroy_pool:
 static lntd_error
 monitor_init(struct monitor *monitor, lntd_ko admin_in,
              lntd_ko admin_out, lntd_ko kill_fifo, lntd_ko cwd,
-             lntd_pid manager_pid, struct lntd_async_pool *pool,
+             lntd_proc manager_pid, struct lntd_async_pool *pool,
              char const *process_name, char const *startup,
              char const *sandbox, char const *waiter)
 {
@@ -737,7 +737,7 @@ static lntd_error monitor_on_admin_in_read(
 	struct lntd_async_pool *pool = monitor->pool;
 	struct lntd_admin_out_task_send *write_task =
 	    monitor->write_task;
-	lntd_pid manager_pid = monitor->manager_pid;
+	lntd_proc manager_pid = monitor->manager_pid;
 	lntd_ko admin_out = monitor->admin_out;
 
 	/* Assume the other end did something bad and don't exit with
@@ -843,7 +843,7 @@ monitor_on_kill_read(struct monitor *monitor,
 {
 	struct lntd_async_pool *pool = monitor->pool;
 	struct lntd_unit_db *unit_db = monitor->unit_db;
-	lntd_pid manager_pid = monitor->manager_pid;
+	lntd_proc manager_pid = monitor->manager_pid;
 	lntd_ko kill_fifo = monitor->kill_fifo;
 
 	if (LNTD_ERROR_CANCELLED == err)
@@ -862,9 +862,9 @@ monitor_on_kill_read(struct monitor *monitor,
 		if (type != LNTD_UNIT_TYPE_SERVICE)
 			continue;
 
-		lntd_pid pid;
+		lntd_proc pid;
 		{
-			lntd_pid xx;
+			lntd_proc xx;
 			lntd_error pid_err =
 			    lntd_unit_pid(&xx, manager_pid, name);
 			if (ESRCH == pid_err)
@@ -877,7 +877,7 @@ monitor_on_kill_read(struct monitor *monitor,
 			pid = xx;
 		}
 
-		lntd_error kill_err = lntd_pid_kill(pid, SIGTERM);
+		lntd_error kill_err = lntd_proc_kill(pid, SIGTERM);
 		if (kill_err != ESRCH) {
 			LNTD_ASSERT(kill_err !=
 			            LNTD_ERROR_INVALID_PARAMETER);
@@ -905,7 +905,7 @@ static lntd_error on_sigchld(struct monitor *monitor)
 	lntd_error err = 0;
 
 	for (;;) {
-		lntd_pid pid;
+		lntd_proc pid;
 		int exit_status;
 		int exit_code;
 		{
@@ -959,7 +959,7 @@ static lntd_error on_sigchld(struct monitor *monitor)
 static lntd_error on_death_sig(struct monitor *monitor, int signo)
 {
 	struct lntd_unit_db *unit_db = monitor->unit_db;
-	lntd_pid manager_pid = monitor->manager_pid;
+	lntd_proc manager_pid = monitor->manager_pid;
 
 	lntd_error err = 0;
 
@@ -974,9 +974,9 @@ static lntd_error on_death_sig(struct monitor *monitor, int signo)
 		if (type != LNTD_UNIT_TYPE_SERVICE)
 			continue;
 
-		lntd_pid pid;
+		lntd_proc pid;
 		{
-			lntd_pid xx;
+			lntd_proc xx;
 			lntd_error pid_err =
 			    lntd_unit_pid(&xx, manager_pid, name);
 			if (ESRCH == pid_err)
@@ -988,7 +988,7 @@ static lntd_error on_death_sig(struct monitor *monitor, int signo)
 			}
 			pid = xx;
 		}
-		lntd_error kill_err = lntd_pid_kill(pid, signo);
+		lntd_error kill_err = lntd_proc_kill(pid, signo);
 		if (kill_err != ESRCH) {
 			LNTD_ASSERT(kill_err !=
 			            LNTD_ERROR_INVALID_PARAMETER);
@@ -1003,7 +1003,7 @@ static lntd_error on_death_sig(struct monitor *monitor, int signo)
 }
 
 static lntd_error on_child_trapped(struct monitor *monitor,
-                                   lntd_pid pid, int exit_status,
+                                   lntd_proc pid, int exit_status,
                                    struct lntd_unit_db *unit_db)
 {
 	bool time_to_exit = monitor->time_to_exit;
@@ -1035,7 +1035,7 @@ static lntd_error on_child_trapped(struct monitor *monitor,
 }
 
 static lntd_error on_child_stopped(char const *process_name,
-                                   lntd_pid pid)
+                                   lntd_proc pid)
 {
 	lntd_error err = 0;
 
@@ -1045,7 +1045,7 @@ static lntd_error on_child_stopped(char const *process_name,
 	if (0 == err)
 		err = seize_err;
 
-	lntd_error kill_err = lntd_pid_continue(pid);
+	lntd_error kill_err = lntd_proc_continue(pid);
 	if (0 == err)
 		err = kill_err;
 
@@ -1053,14 +1053,14 @@ static lntd_error on_child_stopped(char const *process_name,
 }
 
 static lntd_error on_child_signaled(char const *process_name,
-                                    lntd_pid pid, int signo)
+                                    lntd_proc pid, int signo)
 {
 	lntd_error err = 0;
 
 	bool is_sigchld = SIGCHLD == signo;
 
 	int child_code;
-	lntd_pid child_pid;
+	lntd_proc child_pid;
 	int child_signo;
 	int child_status;
 	int child_errno;
@@ -1143,12 +1143,12 @@ static lntd_error on_child_signaled(char const *process_name,
 }
 
 static lntd_error
-on_child_ptrace_event_stopped(char const *process_name, lntd_pid pid,
+on_child_ptrace_event_stopped(char const *process_name, lntd_proc pid,
                               int exit_status)
 {
 	lntd_error err = 0;
 
-	lntd_pid self = lntd_pid_get_pid();
+	lntd_proc self = lntd_proc_get_pid();
 
 	bool is_child;
 	{
@@ -1186,7 +1186,7 @@ continue_process:
 
 static lntd_error on_child_about_to_exit(struct monitor *monitor,
                                          bool time_to_exit,
-                                         lntd_pid pid,
+                                         lntd_proc pid,
                                          struct lntd_unit_db *unit_db)
 {
 
@@ -1256,7 +1256,7 @@ detach_from_process:
 }
 
 /* A sandbox creator is creating a sandbox */
-static lntd_error on_child_about_to_clone(lntd_pid pid)
+static lntd_error on_child_about_to_clone(lntd_proc pid)
 {
 	return lntd_ptrace_detach(pid, 0);
 }
@@ -1499,7 +1499,7 @@ free_name:
 }
 
 static lntd_error
-on_status_request(lntd_pid manager_pid,
+on_status_request(lntd_proc manager_pid,
                   struct lntd_admin_request_status const *request,
                   struct lntd_admin_reply_status *reply)
 {
@@ -1530,7 +1530,7 @@ reply:
 }
 
 static lntd_error
-on_stop_request(lntd_pid manager_pid,
+on_stop_request(lntd_proc manager_pid,
                 struct lntd_admin_request_stop const *request,
                 struct lntd_admin_reply_stop *reply)
 {
@@ -1539,9 +1539,9 @@ on_stop_request(lntd_pid manager_pid,
 
 	char const *unit_name = request->name;
 
-	lntd_pid pid;
+	lntd_proc pid;
 	{
-		lntd_pid xx;
+		lntd_proc xx;
 		err = lntd_unit_pid(&xx, manager_pid, unit_name);
 		if (err != 0)
 			goto pid_find_failure;
@@ -1554,7 +1554,7 @@ pid_find_failure:
 	goto reply;
 
 found_pid:
-	err = lntd_pid_terminate(pid);
+	err = lntd_proc_terminate(pid);
 	LNTD_ASSERT(err != LNTD_ERROR_INVALID_PARAMETER);
 	if (err != 0) {
 		if (ESRCH == err)
@@ -1573,16 +1573,16 @@ reply:
 	return 0;
 }
 
-static lntd_error service_children_terminate(lntd_pid pid)
+static lntd_error service_children_terminate(lntd_proc pid)
 {
 	lntd_error err = 0;
 
-	lntd_pid *children;
+	lntd_proc *children;
 	size_t len;
 	{
-		lntd_pid *xx;
+		lntd_proc *xx;
 		size_t yy;
-		err = lntd_pid_children(pid, &xx, &yy);
+		err = lntd_proc_children(pid, &xx, &yy);
 		if (err != 0)
 			return err;
 		children = xx;
@@ -1590,7 +1590,7 @@ static lntd_error service_children_terminate(lntd_pid pid)
 	}
 
 	for (size_t ii = 0U; ii < len; ++ii) {
-		err = lntd_pid_terminate(children[ii]);
+		err = lntd_proc_terminate(children[ii]);
 		if (err != 0)
 			goto free_children;
 	}
@@ -1608,15 +1608,15 @@ static size_t null_list_size(char const *const *list)
 			return ii;
 }
 
-static lntd_error pid_is_child_of(lntd_pid parent, lntd_pid child,
+static lntd_error pid_is_child_of(lntd_proc parent, lntd_proc child,
                                   bool *isp)
 {
 	lntd_error err;
 
-	lntd_pid ppid;
+	lntd_proc ppid;
 	{
-		struct lntd_pid_stat xx;
-		err = lntd_pid_stat(child, &xx);
+		struct lntd_proc_stat xx;
+		err = lntd_proc_stat(child, &xx);
 		if (err != 0)
 			return err;
 		ppid = xx.ppid;
@@ -1641,7 +1641,7 @@ static lntd_error service_activate(struct monitor *monitor,
 	char const *process_name = monitor->process_name;
 	char const *sandbox = monitor->sandbox;
 	char const *waiter = monitor->waiter;
-	lntd_pid manager_pid = monitor->manager_pid;
+	lntd_proc manager_pid = monitor->manager_pid;
 	lntd_ko cwd = monitor->cwd;
 
 	char const *unit_name = unit->name;
@@ -1652,9 +1652,9 @@ static lntd_error service_activate(struct monitor *monitor,
 	if (!check)
 		goto spawn_service;
 
-	lntd_pid child;
+	lntd_proc child;
 	{
-		lntd_pid xx;
+		lntd_proc xx;
 		err = lntd_unit_pid(&xx, manager_pid, unit_name);
 		if (err != 0)
 			goto service_not_found;
@@ -2146,7 +2146,10 @@ static char const *const allowed_syscalls =
     "rt_sigreturn,"
     "sigreturn,"
 
-    "ppoll"
+    "ppoll,"
+
+    "timerfd_create,"
+    "timerfd_settime"
 
 #if 0
     "clock_gettime,"

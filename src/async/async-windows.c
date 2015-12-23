@@ -29,7 +29,7 @@
 
 #include "lntd/io.h"
 #include "lntd/mem.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/channel.h"
 #include "lntd/node.h"
 #include "lntd/sched.h"
@@ -592,7 +592,7 @@ static void worker_pool_destroy(struct worker_pool *pool)
 
 static DWORD WINAPI master_worker_routine(void *arg)
 {
-	lntd_pid_name("async-worker-master");
+	lntd_proc_name("async-worker-master");
 
 	struct worker_pool *pool = arg;
 
@@ -655,7 +655,7 @@ static DWORD WINAPI master_worker_routine(void *arg)
 
 static DWORD WINAPI worker_routine(void *arg)
 {
-	lntd_pid_name("async-worker");
+	lntd_proc_name("async-worker");
 
 	struct worker *worker = arg;
 
@@ -900,7 +900,7 @@ static void wait_manager_destroy(struct wait_manager *manager)
 
 static DWORD WINAPI master_poller_routine(void *arg)
 {
-	lntd_pid_name("async-poller-master");
+	lntd_proc_name("async-poller-master");
 
 	struct wait_manager *pool = arg;
 
@@ -964,7 +964,7 @@ static DWORD WINAPI master_poller_routine(void *arg)
 
 static DWORD WINAPI poller_routine(void *arg)
 {
-	lntd_pid_name("async-poller");
+	lntd_proc_name("async-poller");
 
 	struct poller *poller = arg;
 

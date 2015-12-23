@@ -18,7 +18,7 @@
 
 #include "lntd/error.h"
 #include "lntd/ko.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 
 /**
  * @file
@@ -48,7 +48,7 @@ void lntd_spawn_file_actions_set_stderr(
     struct lntd_spawn_file_actions *file_actions, lntd_ko newko);
 
 lntd_error
-lntd_spawn(lntd_pid *childp, lntd_ko dirko, char const *path,
+lntd_spawn(lntd_proc *childp, lntd_ko dirko, char const *path,
            struct lntd_spawn_file_actions const *file_actions,
            struct lntd_spawn_attr const *attr, char const *const argv[],
            char const *const envp[]);

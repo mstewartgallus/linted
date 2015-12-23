@@ -17,7 +17,7 @@
 
 #include "config.h"
 
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 
 #include "lntd/error.h"
 #include "lntd/ko.h"
@@ -49,7 +49,7 @@
 	          << (uintmax_t)(sizeof(pid_t) * CHAR_BIT - 1U)) -     \
 	         1U))
 
-lntd_error lntd_pid_kill(lntd_pid pid, int signo)
+lntd_error lntd_proc_kill(lntd_proc pid, int signo)
 {
 	if (pid < 1)
 		return LNTD_ERROR_INVALID_PARAMETER;
@@ -65,24 +65,24 @@ lntd_error lntd_pid_kill(lntd_pid pid, int signo)
 	return 0;
 }
 
-lntd_error lntd_pid_terminate(lntd_pid pid)
+lntd_error lntd_proc_terminate(lntd_proc pid)
 {
-	return lntd_pid_kill(pid, SIGKILL);
+	return lntd_proc_kill(pid, SIGKILL);
 }
 
-lntd_error lntd_pid_continue(lntd_pid pid)
+lntd_error lntd_proc_continue(lntd_proc pid)
 {
-	return lntd_pid_kill(pid, SIGCONT);
+	return lntd_proc_kill(pid, SIGCONT);
 }
 
-lntd_error lntd_pid_stat(lntd_pid pid, struct lntd_pid_stat *buf)
+lntd_error lntd_proc_stat(lntd_proc pid, struct lntd_proc_stat *buf)
 {
 	lntd_error err = 0;
 
 	lntd_ko stat_ko;
 	{
 		char path[sizeof "/proc/" - 1U +
-		          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
+		          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_proc) +
 		          sizeof "/stat" - 1U + 1U];
 		if (-1 == sprintf(path, "/proc/%" PRIuMAX "/stat",
 		                  (uintmax_t)pid)) {
@@ -131,7 +131,7 @@ lntd_error lntd_pid_stat(lntd_pid pid, struct lntd_pid_stat *buf)
 
 	/* If some fields are missing just leave them to be zero */
 	{
-		lntd_pid xx;
+		lntd_proc xx;
 		if (EOF == sscanf(line, "%" PRIuMAX " (" /* pid */
 		                  ,
 		                  &xx)) {
@@ -153,10 +153,10 @@ lntd_error lntd_pid_stat(lntd_pid pid, struct lntd_pid_stat *buf)
 	memcpy(buf->comm, start, end - start);
 
 	{
-		lntd_pid ppid;
-		lntd_pid pgrp;
-		lntd_pid session;
-		lntd_pid tpgid;
+		lntd_proc ppid;
+		lntd_proc pgrp;
+		lntd_proc session;
+		lntd_proc tpgid;
 		if (EOF ==
 		    sscanf(end, ")\n"
 		                "%c\n"           /* state */
@@ -244,15 +244,15 @@ free_line:
 /**
  * @bug Only obtains children of the main thread.
  */
-lntd_error lntd_pid_children(lntd_pid pid, lntd_pid **childrenp,
-                             size_t *lenp)
+lntd_error lntd_proc_children(lntd_proc pid, lntd_proc **childrenp,
+                              size_t *lenp)
 {
 	lntd_error err = 0;
 
 	lntd_ko task_ko;
 	{
 		char path[sizeof "/proc/" - 1U +
-		          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
+		          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_proc) +
 		          sizeof "/task" - 1U + 1U];
 		if (-1 == sprintf(path, "/proc/%" PRIuMAX "/task",
 		                  (uintmax_t)pid)) {
@@ -307,7 +307,7 @@ lntd_error lntd_pid_children(lntd_pid pid, lntd_pid **childrenp,
 			tasks = xx;
 		}
 
-		char path[LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
+		char path[LNTD_NUMBER_TYPE_STRING_SIZE(lntd_proc) +
 		          sizeof "/children" - 1U + 1U];
 		if (-1 == sprintf(path, "%s/children", name)) {
 			err = errno;
@@ -345,7 +345,7 @@ lntd_error lntd_pid_children(lntd_pid pid, lntd_pid **childrenp,
 	}
 
 	size_t num_children = 0U;
-	lntd_pid *children = 0;
+	lntd_proc *children = 0;
 
 	char *buf = 0;
 	size_t buf_size = 0U;
@@ -381,7 +381,7 @@ lntd_error lntd_pid_children(lntd_pid pid, lntd_pid **childrenp,
 
 		for (;;) {
 			errno = 0;
-			lntd_pid child = strtol(start, 0, 10);
+			lntd_proc child = strtol(start, 0, 10);
 			err = errno;
 			if (err != 0)
 				goto free_buf;
@@ -435,16 +435,16 @@ close_tasks:
 	return err;
 }
 
-lntd_pid lntd_pid_get_pid(void)
+lntd_proc lntd_proc_get_pid(void)
 {
 	return getpid();
 }
 
-lntd_error lntd_pid_from_str(char const *str, lntd_pid *pidp)
+lntd_error lntd_proc_from_str(char const *str, lntd_proc *pidp)
 {
 	size_t digits_count = strlen(str);
 
-	lntd_pid pid;
+	lntd_proc pid;
 
 	if ('0' == str[0U]) {
 		pid = 0;
@@ -475,17 +475,17 @@ write_pid:
 }
 
 #if defined HAVE_PTHREAD_SETNAME_NP
-lntd_error lntd_pid_name(char const *name)
+lntd_error lntd_proc_name(char const *name)
 {
 	return pthread_setname_np(pthread_self(), name);
 }
 #elif defined HAVE_SYS_PRCTL_H
-lntd_error lntd_pid_name(char const *name)
+lntd_error lntd_proc_name(char const *name)
 {
 	return lntd_prctl_set_name(name);
 }
 #else
-lntd_error lntd_pid_name(char const *name)
+lntd_error lntd_proc_name(char const *name)
 {
 	return 0;
 }

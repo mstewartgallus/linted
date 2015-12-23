@@ -22,7 +22,7 @@
 #include "lntd/gpu.h"
 #include "lntd/log.h"
 #include "lntd/mem.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/sched.h"
 #include "lntd/util.h"
 
@@ -577,7 +577,7 @@ static void *gpu_routine(void *arg)
 {
 	lntd_error err = 0;
 
-	lntd_pid_name("gpu-renderer");
+	lntd_proc_name("gpu-renderer");
 
 	struct lntd_gpu_context *gpu_context = arg;
 	struct command_queue *command_queue =

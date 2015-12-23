@@ -22,7 +22,7 @@ noinst_LTLIBRARIES+=%D%/libasync.la
   src/ko/libko.la\
   src/channel/libchannel.la\
   src/stack/libstack.la\
-  src/pid/libpid.la
+  src/proc/libproc.la
 
 if POSIX_API
 %C%_libasync_la_SOURCES+=%D%/async-posix.c

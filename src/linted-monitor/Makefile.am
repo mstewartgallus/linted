@@ -35,7 +35,7 @@ if POSIX_API
   src/io/libio.la\
   src/ko/libko.la\
   src/path/libpath.la\
-  src/pid/libpid.la\
+  src/proc/libproc.la\
   src/sched/libsched.la\
   src/signal/libsignal.la\
   src/spawn/libspawn.la\

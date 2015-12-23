@@ -25,7 +25,7 @@
 #include "lntd/io.h"
 #include "lntd/ko.h"
 #include "lntd/mem.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/prctl.h"
 #include "lntd/util.h"
 
@@ -161,7 +161,7 @@ void lntd_spawn_file_actions_destroy(
 }
 
 lntd_error
-lntd_spawn(lntd_pid *childp, lntd_ko dirko, char const *binary,
+lntd_spawn(lntd_proc *childp, lntd_ko dirko, char const *binary,
            struct lntd_spawn_file_actions const *file_actions,
            struct lntd_spawn_attr const *attr, char const *const argv[],
            char const *const envp[])

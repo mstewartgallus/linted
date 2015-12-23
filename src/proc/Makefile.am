@@ -14,14 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
-noinst_LTLIBRARIES+=%D%/libpid.la
+noinst_LTLIBRARIES+=%D%/libproc.la
 
-%C%_libpid_la_SOURCES=include/lntd/pid.h
+%C%_libproc_la_SOURCES=include/lntd/proc.h
 
 if POSIX_API
-%C%_libpid_la_SOURCES+=%D%/pid-posix.c
+%C%_libproc_la_SOURCES+=%D%/proc-posix.c
 endif
 
 if WINDOWS_API
-%C%_libpid_la_SOURCES+=%D%/pid-windows.c
+%C%_libproc_la_SOURCES+=%D%/proc-windows.c
 endif

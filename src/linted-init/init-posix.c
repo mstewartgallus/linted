@@ -23,7 +23,7 @@
 #include "lntd/ko.h"
 #include "lntd/log.h"
 #include "lntd/path.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/prctl.h"
 #include "lntd/signal.h"
 #include "lntd/spawn.h"
@@ -126,9 +126,9 @@ static unsigned char lntd_start_main(char const *process_name,
 		                     "%s: spawning %s\n", process_name,
 		                     monitor_base);
 
-		lntd_pid child;
+		lntd_proc child;
 		{
-			lntd_pid xx;
+			lntd_proc xx;
 			err = lntd_spawn(
 			    &xx, LNTD_KO_CWD, monitor, 0, attr,
 			    (char const *const[]){monitor_base, 0}, 0);
@@ -142,7 +142,7 @@ static unsigned char lntd_start_main(char const *process_name,
 		}
 		monitor_pid = child;
 
-		lntd_pid pid;
+		lntd_proc pid;
 		int code;
 		int status;
 		for (;;) {
@@ -206,7 +206,7 @@ static void delegate_signal(int signo)
 
 	/* All signals are blocked here. */
 
-	lntd_pid the_pid = monitor_pid;
+	lntd_proc the_pid = monitor_pid;
 	if (the_pid > 0U) {
 		/* If WNOHANG was specified in options and there were
 		 * no children in a waitable state, then waitid()

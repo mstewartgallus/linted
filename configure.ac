@@ -400,6 +400,10 @@ LINTED_PROG_PYTHON3
 AS_IF([test -z "${PYTHON3}"],[
  AC_MSG_ERROR([Unable to find a Python 3 program interpreter])
 ])
+LINTED_TOOL_NESCC
+AS_IF([test -z "${NESCC}"],[
+ AC_MSG_ERROR([Unable to find a Nesc compiler])
+])
 dnl
 LINTED_PROG_CLANG_FORMAT
 LINTED_PROG_VALGRIND

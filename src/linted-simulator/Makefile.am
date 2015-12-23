@@ -16,36 +16,80 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-simulator
 
-%C%_linted_simulator_SOURCES=%D%/simulator.c %D%/sim.h
+EXTRA_DIST+=\
+  %D%/LntdConfig.nc\
+  %D%/LntdAsyncCommand.nc\
+  %D%/LntdAsyncIdle.nc\
+  %D%/LntdAsyncPoller.nc\
+  %D%/LntdAsyncReader.nc\
+  %D%/LntdAsyncTimer.nc\
+  %D%/LntdAsyncWriter.nc\
+  %D%/LntdKoM.nc\
+  %D%/LntdKo.nc\
+  %D%/LntdLogger.nc\
+  %D%/LntdMainLoop.nc\
+  %D%/LntdNonblockPool.nc\
+  %D%/LntdPoolIdle.nc\
+  %D%/LntdPoolPoller.nc\
+  %D%/LntdPoolReader.nc\
+  %D%/LntdPoolStdio.nc\
+  %D%/LntdPoolTimer.nc\
+  %D%/LntdPoolWriter.nc\
+  %D%/LntdSimulator.nc\
+  %D%/LntdStartM.nc\
+  %D%/LntdStart.nc\
+  %D%/LntdStdioLogger.nc\
+  %D%/LntdStdio.nc
+
+BUILT_SOURCES+=%D%/%C%_linted_simulator.c
+MOSTLYCLEANFILES+=%D%/%C%_linted_simulator.c
+%C%_linted_simulator_SOURCES=\
+  %D%/%C%_linted_simulator.c\
+  %D%/async.h\
+  %D%/bool.h\
+  %D%/error.h\
+  %D%/ko.h
+
 %C%_linted_simulator_LDADD=\
-  -lm\
-  src/start/libstart.la\
-  \
-  src/async/libasync.la\
-  src/error/liberror.la\
-  src/io/libio.la\
-  src/ko/libko.la\
-  src/log/liblog.la\
-  src/sched/libsched.la\
-  \
-  src/controller/libcontroller.la\
-  src/updater/libupdater.la
+  -lm
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service
-
-TESTS+=%D%/test_simulator_angle
-
-check_PROGRAMS+=%D%/test_simulator_angle
-%C%_test_simulator_angle_SOURCES=%D%/test_simulator_angle.c
-%C%_test_simulator_angle_LDADD=\
-  -lm\
-  src/async/libasync.la\
-  src/io/libio.la\
-  src/start/libstart.la
 
 if WINDOWS_API
 %C%_linted_simulator_SOURCES+=%D%/resources.rc %D%/simulator.manifest
 %C%_linted_simulator_LDADD+=%D%/resources.$(OBJEXT)
 %D%/resources.$(OBJEXT): %D%/simulator.manifest
 endif
+
+%C%_linted_simulator_CFLAGS=$(AM_CFLAGS) $(linted_CFLAGS_NO_WARN)
+
+%D%/%C%_linted_simulator.c: \
+  %D%/LntdConfig.nc\
+  %D%/async.h\
+  %D%/bool.h\
+  %D%/error.h\
+  %D%/ko.h\
+  %D%/LntdAsyncCommand.nc\
+  %D%/LntdAsyncIdle.nc\
+  %D%/LntdAsyncPoller.nc\
+  %D%/LntdAsyncReader.nc\
+  %D%/LntdAsyncTimer.nc\
+  %D%/LntdAsyncWriter.nc\
+  %D%/LntdKoM.nc\
+  %D%/LntdKo.nc\
+  %D%/LntdLogger.nc\
+  %D%/LntdMainLoop.nc\
+  %D%/LntdNonblockPool.nc\
+  %D%/LntdPoolIdle.nc\
+  %D%/LntdPoolPoller.nc\
+  %D%/LntdPoolReader.nc\
+  %D%/LntdPoolStdio.nc\
+  %D%/LntdPoolTimer.nc\
+  %D%/LntdPoolWriter.nc\
+  %D%/LntdSimulator.nc\
+  %D%/LntdStartM.nc\
+  %D%/LntdStart.nc\
+  %D%/LntdStdioLogger.nc\
+  %D%/LntdStdio.nc
+	$(linted_V_NESCC) env NESCPATH=$(abs_srcdir)/%D% $(NESCC) $(CFLAGS) $(CPPFLAGS) -fnesc-separator='__' -D_GNU_SOURCE=1 -conly -S -fnesc-cfile=$@ -Wnesc-all -Wnesc-error $<

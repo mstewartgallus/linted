@@ -21,7 +21,7 @@
 #include "lntd/error.h"
 #include "lntd/ko.h"
 #include "lntd/log.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/start.h"
 #include "lntd/util.h"
 
@@ -67,7 +67,7 @@ static unsigned char lntd_start_main(char const *const process_name,
 		sh_ko = xx;
 	}
 
-	lntd_pid pid = atoi(argv[1U]);
+	lntd_proc pid = atoi(argv[1U]);
 
 	{
 		char proc_path[sizeof "/proc/" - 1U +

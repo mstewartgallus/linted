@@ -38,7 +38,7 @@
 #include "lntd/locale.h"
 #include "lntd/log.h"
 #include "lntd/path.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/start.h"
 #include "lntd/util.h"
 
@@ -174,10 +174,10 @@ static unsigned char lntd_start_main(char const *const process_name,
 		}
 	}
 
-	lntd_pid self = lntd_pid_get_pid();
+	lntd_proc self = lntd_proc_get_pid();
 
 	{
-		char pid_str[LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
+		char pid_str[LNTD_NUMBER_TYPE_STRING_SIZE(lntd_proc) +
 		             1U];
 		sprintf(pid_str, "%" PRIuMAX, (uintmax_t)self);
 

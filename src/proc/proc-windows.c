@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 
 #include "lntd/async.h"
 #include "lntd/mem.h"
@@ -36,7 +36,7 @@
 
 #include <windows.h>
 
-lntd_pid lntd_pid_get_pid(void)
+lntd_proc lntd_proc_get_pid(void)
 {
 	return GetCurrentProcessId();
 }
@@ -60,7 +60,7 @@ static LONG CALLBACK exception_handler(EXCEPTION_POINTERS *infop);
  * @todo Get Window's thread name setting to work on GCC which doesn't
  * support SEH.
  */
-lntd_error lntd_pid_name(char const *name)
+lntd_error lntd_proc_name(char const *name)
 {
 
 	THREADNAME_INFO info = {0};

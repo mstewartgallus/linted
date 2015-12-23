@@ -17,7 +17,7 @@
 #define LNTD_UNIT_H
 
 #include "lntd/error.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/sched.h"
 
 #include <stddef.h>
@@ -58,9 +58,9 @@ struct lntd_unit *
 lntd_unit_db_get_unit_by_name(struct lntd_unit_db *unit,
                               char const *name);
 
-lntd_error lntd_unit_name(lntd_pid pid,
+lntd_error lntd_unit_name(lntd_proc pid,
                           char name[static LNTD_UNIT_NAME_MAX + 1U]);
-lntd_error lntd_unit_pid(lntd_pid *pidp, lntd_pid manager_pid,
+lntd_error lntd_unit_pid(lntd_proc *pidp, lntd_proc manager_pid,
                          char const *name);
 
 struct lntd_unit_socket {

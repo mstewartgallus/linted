@@ -20,7 +20,7 @@
 #include "lntd/error.h"
 #include "lntd/ko.h"
 #include "lntd/mem.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/unit.h"
 #include "lntd/util.h"
 
@@ -126,7 +126,7 @@ lntd_unit_db_get_unit_by_name(struct lntd_unit_db *units,
 	return 0;
 }
 
-lntd_error lntd_unit_name(lntd_pid pid,
+lntd_error lntd_unit_name(lntd_proc pid,
                           char name[static LNTD_UNIT_NAME_MAX + 1U])
 {
 	lntd_error err;
@@ -134,7 +134,7 @@ lntd_error lntd_unit_name(lntd_pid pid,
 	memset(name, 0, LNTD_UNIT_NAME_MAX + 1U);
 
 	char path[sizeof "/proc/" - 1U +
-	          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_pid) +
+	          LNTD_NUMBER_TYPE_STRING_SIZE(lntd_proc) +
 	          sizeof "/environ" - 1U + 1U];
 	if (-1 == sprintf(path, "/proc/%" PRIuMAX "/environ",
 	                  (uintmax_t)pid)) {
@@ -225,17 +225,17 @@ free_buf:
 	return err;
 }
 
-lntd_error lntd_unit_pid(lntd_pid *pidp, lntd_pid manager_pid,
+lntd_error lntd_unit_pid(lntd_proc *pidp, lntd_proc manager_pid,
                          char const *name)
 {
 	lntd_error err = 0;
 
-	lntd_pid *children;
+	lntd_proc *children;
 	size_t len;
 	{
-		lntd_pid *xx;
+		lntd_proc *xx;
 		size_t yy;
-		err = lntd_pid_children(manager_pid, &xx, &yy);
+		err = lntd_proc_children(manager_pid, &xx, &yy);
 		if (err != 0)
 			return err;
 		children = xx;
@@ -244,7 +244,7 @@ lntd_error lntd_unit_pid(lntd_pid *pidp, lntd_pid manager_pid,
 	if (0U == len)
 		return ESRCH;
 
-	lntd_pid child;
+	lntd_proc child;
 	bool found_child = false;
 	for (size_t ii = 0U; ii < len; ++ii) {
 		child = children[ii];

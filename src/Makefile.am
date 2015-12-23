@@ -79,7 +79,7 @@ include %C%/locale/Makefile.am
 include %C%/log/Makefile.am
 include %C%/mem/Makefile.am
 include %C%/path/Makefile.am
-include %C%/pid/Makefile.am
+include %C%/proc/Makefile.am
 include %C%/sched/Makefile.am
 include %C%/signal/Makefile.am
 include %C%/stack/Makefile.am

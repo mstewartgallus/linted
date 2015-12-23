@@ -28,7 +28,7 @@ bin_PROGRAMS+=%D%/linted
   src/locale/liblocale.la\
   src/log/liblog.la\
   src/path/libpath.la\
-  src/pid/libpid.la\
+  src/proc/libproc.la\
   \
   src/start/libstart.la
 

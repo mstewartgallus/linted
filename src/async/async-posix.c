@@ -26,7 +26,7 @@
 #include "lntd/channel.h"
 #include "lntd/ko-stack.h"
 #include "lntd/node.h"
-#include "lntd/pid.h"
+#include "lntd/proc.h"
 #include "lntd/sched.h"
 #include "lntd/signal.h"
 #include "lntd/stack.h"
@@ -739,7 +739,7 @@ static void *master_worker_routine(void *arg)
 {
 	LNTD_ASSERT_NOT_NULL(arg);
 
-	lntd_pid_name("async-worker-master");
+	lntd_proc_name("async-worker-master");
 
 	struct worker_pool *pool = arg;
 
@@ -808,7 +808,7 @@ static void *worker_routine(void *arg)
 {
 	LNTD_ASSERT_NOT_NULL(arg);
 
-	lntd_pid_name("async-worker");
+	lntd_proc_name("async-worker");
 
 	struct worker *worker = arg;
 
@@ -1017,7 +1017,7 @@ static void *master_poller_routine(void *arg)
 
 	pthread_t self = pthread_self();
 
-	lntd_pid_name("async-poller");
+	lntd_proc_name("async-poller");
 
 	struct wait_manager *pool = arg;
 
