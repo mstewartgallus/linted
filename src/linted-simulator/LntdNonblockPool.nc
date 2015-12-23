@@ -13,6 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#include "config.h"
+
 #include "async.h"
 
 #include <assert.h>
@@ -30,7 +32,8 @@
 #include <ucontext.h>
 #include <unistd.h>
 
-#define ARRAY_SIZE(...) (sizeof(__VA_ARGS__) / sizeof(__VA_ARGS__)[0U])
+// #define ARRAY_SIZE(...) (sizeof (__VA_ARGS__) / sizeof
+// (__VA_ARGS__)[0U])
 
 typedef uint8_t lntd_nonblock_pool_id;
 

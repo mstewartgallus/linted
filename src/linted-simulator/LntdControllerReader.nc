@@ -15,9 +15,30 @@
  */
 #include "config.h"
 
-interface LntdAsyncIdle
+#include "lntd/error.h"
+#include "lntd/ko.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+struct lntd_controller_reader_input {
+	int_least32_t z_tilt;
+	int_least32_t x_tilt;
+
+	bool left : 1U;
+	bool right : 1U;
+	bool forward : 1U;
+	bool back : 1U;
+
+	bool jumping : 1U;
+};
+
+interface LntdControllerReader
 {
-	command void execute(void);
-	command void cancel(void);
-	event void idle_done(lntd_error err);
+	command void start(lntd_ko ko);
+	command void stop(void);
+
+	event void read_input(
+	    lntd_error err,
+	    struct lntd_controller_reader_input const *input);
 }

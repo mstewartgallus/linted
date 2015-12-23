@@ -13,7 +13,10 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#define LNTD_ASYNC_COMMAND "LntdAsyncCommand"
+#include "config.h"
+
+#define LNTD_ASYNC_COMMAND                                             \
+	"LntdAsyncCommand-6d5734b0-1474-4a28-945e-8ca970fc2a58"
 
 configuration LntdConfig
 {
@@ -29,7 +32,7 @@ implementation
 
 	components new LntdStdioLogger() as Logger;
 
-	components new LntdPoolReader() as Reader;
+	components new LntdControllerReaderM() as ControllerReader;
 	components new LntdPoolWriter() as Writer;
 	components new LntdPoolTimer() as Timer;
 
@@ -40,7 +43,7 @@ implementation
 	LntdSimulator.LntdLogger->Logger;
 
 	LntdSimulator.Timer->Timer;
-	LntdSimulator.Reader->Reader;
+	LntdSimulator.ControllerReader->ControllerReader;
 	LntdSimulator.Writer->Writer;
 
 	LntdSimulator.start->Pool.main;
@@ -54,7 +57,7 @@ implementation
 
 	Timer.LntdAsyncCommand->Pool
 	    .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];
-	Reader.LntdAsyncCommand->Pool
+	ControllerReader.LntdAsyncCommand->Pool
 	    .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];
 	Writer.LntdAsyncCommand->Pool
 	    .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];

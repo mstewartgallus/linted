@@ -13,6 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#include "config.h"
+
 #include "lntd/error.h"
 #include "lntd/ko.h"
 
@@ -54,7 +56,7 @@ module LntdSimulator
 	uses interface LntdStart;
 
 	uses interface LntdAsyncTimer as Timer;
-	uses interface LntdAsyncReader as Reader;
+	uses interface LntdControllerReader as ControllerReader;
 	uses interface LntdAsyncWriter as Writer;
 
 	uses event int start(int argc, char **argv);
@@ -74,19 +76,6 @@ implementation
 	struct differentiable {
 		sim_int value;
 		sim_int old;
-	};
-
-	nx_struct control_input
-	{
-		nx_int32_t z_tilt;
-		nx_int32_t x_tilt;
-
-		nx_int32_t left;
-		nx_int32_t right;
-		nx_int32_t forward;
-		nx_int32_t back;
-
-		nx_int32_t jumping;
 	};
 
 	nx_struct update
@@ -114,7 +103,6 @@ implementation
 
 	struct timespec next_tick;
 	uint64_t tick = 0U;
-	nx_struct control_input control_input;
 	nx_struct update update;
 
 	bool pending_update;
@@ -205,9 +193,7 @@ implementation
 		z_rotation = SIM_ANGLE(0U, 1U);
 		x_rotation = SIM_ANGLE(3U, 16U);
 
-		call Reader.execute(controller_ko,
-		                    (char *)&control_input,
-		                    sizeof control_input);
+		call ControllerReader.start(controller_ko);
 
 		if (-1 == clock_gettime(CLOCK_MONOTONIC, &next_tick)) {
 			finish(errno);
@@ -221,7 +207,7 @@ implementation
 	event int LntdMainLoop.shutdown(lntd_error err)
 	{
 		lntd_ko_close(update_ko);
-		Lntd_ko_close(controller_ko);
+		lntd_ko_close(controller_ko);
 
 		if (err != 0)
 			return EXIT_FAILURE;
@@ -261,7 +247,9 @@ implementation
 		call Timer.execute(&next_tick);
 	}
 
-	event void Reader.read_done(lntd_error err, size_t bytes_read)
+	event void ControllerReader.read_input(
+	    lntd_error err,
+	    struct lntd_controller_reader_input const *input)
 	{
 		int_fast32_t z_tilt;
 		int_fast32_t x_tilt;
@@ -277,20 +265,16 @@ implementation
 			finish(err);
 			return;
 		}
-		if (bytes_read != sizeof control_input) {
-			finish(EPROTO);
-			return;
-		}
 
-		z_tilt = control_input.z_tilt;
-		x_tilt = control_input.x_tilt;
+		z_tilt = input->z_tilt;
+		x_tilt = input->x_tilt;
 
-		left = control_input.left;
-		right = control_input.right;
-		forward = control_input.forward;
-		back = control_input.back;
+		left = input->left;
+		right = input->right;
+		forward = input->forward;
+		back = input->back;
 
-		jumping = control_input.jumping;
+		jumping = input->jumping;
 
 		look_sideways = z_tilt;
 		look_up_or_down = -x_tilt;
@@ -299,10 +283,6 @@ implementation
 		retreat_or_go_forth = back - forward;
 
 		jump_up = jumping;
-
-		call Reader.execute(controller_ko,
-		                    (char *)&control_input,
-		                    sizeof control_input);
 	}
 
 	event void Writer.write_done(lntd_error err)
@@ -462,7 +442,7 @@ implementation
 	void cancelall(void)
 	{
 		call Timer.cancel();
-		call Reader.cancel();
+		call ControllerReader.stop();
 		call Writer.cancel();
 	}
 

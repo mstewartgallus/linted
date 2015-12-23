@@ -15,9 +15,24 @@
  */
 #include "config.h"
 
-interface LntdAsyncIdle
+#include "lntd/error.h"
+#include "lntd/ko.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+generic configuration LntdControllerReaderM()
 {
-	command void execute(void);
-	command void cancel(void);
-	event void idle_done(lntd_error err);
+	provides interface LntdControllerReader;
+	uses interface LntdAsyncCommand;
+}
+implementation
+{
+	components new LntdControllerReaderImpl() as ControllerReader;
+	components new LntdPoolReader() as Reader;
+
+	LntdControllerReader = ControllerReader;
+
+	ControllerReader.LntdAsyncReader->Reader;
+	Reader.LntdAsyncCommand = LntdAsyncCommand;
 }

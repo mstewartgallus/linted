@@ -24,6 +24,9 @@ EXTRA_DIST+=\
   %D%/LntdAsyncReader.nc\
   %D%/LntdAsyncTimer.nc\
   %D%/LntdAsyncWriter.nc\
+  %D%/LntdControllerReader.nc\
+  %D%/LntdControllerReaderImpl.nc\
+  %D%/LntdControllerReaderM.nc\
   %D%/LntdLogger.nc\
   %D%/LntdMainLoop.nc\
   %D%/LntdNonblockPool.nc\
@@ -39,10 +42,8 @@ EXTRA_DIST+=\
   %D%/LntdStdioLogger.nc\
   %D%/LntdStdio.nc
 
-BUILT_SOURCES+=%D%/%C%_linted_simulator.c
-MOSTLYCLEANFILES+=%D%/%C%_linted_simulator.c
 %C%_linted_simulator_SOURCES=\
-  %D%/%C%_linted_simulator.c\
+  %D%/simulator.c\
   %D%/async.h\
   %D%/bool.h
 
@@ -60,7 +61,8 @@ endif
 
 %C%_linted_simulator_CFLAGS=$(AM_CFLAGS) $(linted_CFLAGS_NO_WARN)
 
-%D%/%C%_linted_simulator.c: \
+MOSTLYCLEANFILES+=%D%/simulator.c
+%D%/simulator.c: \
   %D%/LntdConfig.nc\
   %D%/async.h\
   %D%/bool.h\
@@ -70,6 +72,9 @@ endif
   %D%/LntdAsyncReader.nc\
   %D%/LntdAsyncTimer.nc\
   %D%/LntdAsyncWriter.nc\
+  %D%/LntdControllerReader.nc\
+  %D%/LntdControllerReaderImpl.nc\
+  %D%/LntdControllerReaderM.nc\
   %D%/LntdLogger.nc\
   %D%/LntdMainLoop.nc\
   %D%/LntdNonblockPool.nc\
@@ -84,6 +89,6 @@ endif
   %D%/LntdStart.nc\
   %D%/LntdStdioLogger.nc\
   %D%/LntdStdio.nc
-	$(linted_V_NESCC) env NESCPATH=$(abs_srcdir)/%D% $(NESCC) -gcc=$(CPP)\
-	  $(%C%_linted_simulator_CFLAGS) $(CFLAGS) $(%C%_linted_simulator_CPPFLAGS) $(CPPFLAGS)\
+	$(linted_V_NESCC) env NESCPATH=$(abs_srcdir)/%D% $(NESCC)\
+	  -I$(srcdir)/include -I$(builddir) $(%C%_linted_simulator_CPPFLAGS) $(CPPFLAGS)\
 	  -fnesc-separator='__' -D_GNU_SOURCE=1 -conly -S -fnesc-cfile=$@ -Wnesc-all -Wnesc-error $<

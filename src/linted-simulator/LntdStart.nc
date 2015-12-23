@@ -13,6 +13,8 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#include "config.h"
+
 interface LntdStart
 {
 	event int main(int argc, char **argv);
