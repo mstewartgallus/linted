@@ -19,7 +19,6 @@
 #include "lntd/error.h"
 #include "lntd/ko.h"
 
-#include <assert.h>
 #include <limits.h>
 
 generic module LntdPollerP()

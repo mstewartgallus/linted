@@ -15,7 +15,6 @@
  */
 #include "config.h"
 
-#include "async.h"
 #include "lntd/error.h"
 #include "lntd/ko.h"
 

@@ -18,6 +18,7 @@
 #include "async.h"
 #include "lntd/error.h"
 #include "lntd/ko.h"
+#include "lntd/util.h"
 
 #include <limits.h>
 #include <stddef.h>
@@ -40,7 +41,7 @@ implementation
 	{
 		lntd_error err = 0;
 
-		assert(!in_progress);
+		LNTD_ASSERT(!in_progress);
 
 		in_progress = true;
 

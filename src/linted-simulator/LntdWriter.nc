@@ -24,6 +24,7 @@ interface LntdWriter
 {
 	command void execute(lntd_ko ko, char const *bytes,
 	                     size_t size);
-	command void cancel(void);
 	event void write_done(lntd_error err);
+
+	command void cancel(void);
 }

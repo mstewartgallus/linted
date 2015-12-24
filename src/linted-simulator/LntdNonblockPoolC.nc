@@ -16,8 +16,8 @@
 #include "config.h"
 
 #include "async.h"
+#include "lntd/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <libgen.h>
 #include <pthread.h>
@@ -36,6 +36,7 @@
 #define ARRAY_SIZE(...) (sizeof(__VA_ARGS__) / sizeof(__VA_ARGS__)[0U])
 #endif
 
+typedef uint8_t lntd_task_id;
 typedef uint8_t lntd_nonblock_pool_id;
 
 #define MAXCMDS uniqueCount(LNTD_ASYNC_COMMAND)
@@ -47,7 +48,7 @@ module LntdNonblockPoolC
 {
 	uses interface LntdLogger;
 
-	provides interface LntdTask[uint8_t task_id];
+	provides interface LntdTask[lntd_task_id task_id];
 	provides interface LntdAsyncCommand[lntd_nonblock_pool_id id];
 	provides interface LntdMainLoop;
 }
@@ -55,14 +56,14 @@ implementation
 {
 	struct taskstate {
 		struct taskstate *next;
-		uint8_t task_id;
+		lntd_task_id task_id;
 		bool is_pending;
 	};
 
 	struct cmd {
 		lntd_async_cmd_type type;
 		struct cmd *next;
-		void *child;
+		void *data;
 		lntd_nonblock_pool_id id;
 		lntd_error err;
 		bool in_use : 1U;
@@ -102,7 +103,7 @@ implementation
 	void push_cmd(struct cmd * *stack, struct cmd * cmd);
 	struct cmd *pop_cmd(struct cmd * *stack);
 
-	command bool LntdTask.post_task[uint8_t task_id](void)
+	command bool LntdTask.post_task[lntd_task_id task_id](void)
 	{
 		struct taskstate *taskstate = &tasks[task_id];
 
@@ -119,18 +120,18 @@ implementation
 	}
 
 	command void LntdAsyncCommand.execute[lntd_nonblock_pool_id id](
-	    lntd_async_cmd_type type, void *child)
+	    lntd_async_cmd_type type, void *data)
 	{
 		struct cmd *cmd;
 
-		assert(id < MAXCMDS);
+		LNTD_ASSERT(id < MAXCMDS);
 
 		cmd = &cmds[id];
 
-		assert(!cmd->in_use);
+		LNTD_ASSERT(!cmd->in_use);
 
 		cmd->type = type;
-		cmd->child = child;
+		cmd->data = data;
 
 		cmd->have_waiter = false;
 		cmd->cancelled = false;
@@ -152,14 +153,14 @@ implementation
 	{
 		struct cmd *cmd;
 
-		assert(id < MAXCMDS);
+		LNTD_ASSERT(id < MAXCMDS);
 
 		cmd = &cmds[id];
 
-		assert(!cmd->in_use);
+		LNTD_ASSERT(!cmd->in_use);
 
 		cmd->type = type;
-		cmd->child = data;
+		cmd->data = data;
 
 		cmd->cancelled = false;
 		cmd->id = id;
@@ -176,7 +177,7 @@ implementation
 		}
 		waiter = 0;
 
-		cmd->child = 0;
+		cmd->data = 0;
 		cmd->have_waiter = false;
 		cmd->in_use = false;
 
@@ -283,11 +284,11 @@ implementation
 
 			cmd = pop_cmd(&cmd_queue);
 			if (cmd != 0) {
-				void *child;
+				void *data;
 				lntd_nonblock_pool_id id;
 
 				id = cmd->id;
-				child = cmd->child;
+				data = cmd->data;
 
 				if (cmd->cancelled) {
 					finish_cmd(cmd, id, ECANCELED);
@@ -298,9 +299,10 @@ implementation
 				case LNTD_ASYNC_CMD_TYPE_WRITE: {
 					struct lntd_async_cmd_write *w;
 
-					w = child;
+					w = data;
 
-					assert(-1 == pollfds[id].fd);
+					LNTD_ASSERT(-1 ==
+					            pollfds[id].fd);
 					pollfds[id].fd = w->ko;
 					pollfds[id].events = POLLOUT;
 					pollcmds[id] = cmd;
@@ -312,7 +314,7 @@ implementation
 					uint_fast64_t events;
 					short pollflags;
 
-					p = child;
+					p = data;
 
 					events = p->events;
 
@@ -325,7 +327,8 @@ implementation
 					    0)
 						pollflags |= POLLOUT;
 
-					assert(-1 == pollfds[id].fd);
+					LNTD_ASSERT(-1 ==
+					            pollfds[id].fd);
 					pollfds[id].fd = p->ko;
 					pollfds[id].events = pollflags;
 					pollcmds[id] = cmd;
@@ -336,7 +339,7 @@ implementation
 					struct lntd_async_cmd_timer *p;
 					struct itimerspec spec;
 
-					p = child;
+					p = data;
 
 					spec.it_interval.tv_sec = 0;
 					spec.it_interval.tv_nsec = 0;
@@ -352,7 +355,8 @@ implementation
 						break;
 					}
 
-					assert(-1 == pollfds[id].fd);
+					LNTD_ASSERT(-1 ==
+					            pollfds[id].fd);
 					pollfds[id].fd = p->ko;
 					pollfds[id].events = POLLIN;
 					pollcmds[id] = cmd;
@@ -362,9 +366,10 @@ implementation
 				case LNTD_ASYNC_CMD_TYPE_READ: {
 					struct lntd_async_cmd_read *r;
 
-					r = child;
+					r = data;
 
-					assert(-1 == pollfds[id].fd);
+					LNTD_ASSERT(-1 ==
+					            pollfds[id].fd);
 					pollfds[id].fd = r->ko;
 					pollfds[id].events = POLLIN;
 					pollcmds[id] = cmd;
@@ -377,7 +382,7 @@ implementation
 				}
 
 				default:
-					assert(0);
+					LNTD_ASSERT(0);
 				}
 				continue;
 			}
@@ -438,7 +443,7 @@ implementation
 					ssize_t ret;
 					size_t bytes_wrote = 0;
 
-					w = cmd->child;
+					w = cmd->data;
 
 					ret = write(w->ko,
 					            w->bytes + w->size -
@@ -482,7 +487,7 @@ implementation
 						revents |=
 						    LNTD_ASYNC_POLLER_OUT;
 
-					p = cmd->child;
+					p = cmd->data;
 
 					p->revents = revents;
 
@@ -498,7 +503,7 @@ implementation
 					lntd_nonblock_pool_id overrun;
 					lntd_error err = 0;
 
-					p = cmd->child;
+					p = cmd->data;
 
 					if (-1 ==
 					    read(p->ko, &overrun,
@@ -526,7 +531,7 @@ implementation
 					ssize_t ret;
 					size_t bytes_read = 0;
 
-					w = cmd->child;
+					w = cmd->data;
 
 					ret = read(w->ko,
 					           w->bytes + w->size -
@@ -560,7 +565,7 @@ implementation
 				}
 
 				default:
-					assert(0);
+					LNTD_ASSERT(0);
 				}
 
 				--nfds;
@@ -585,10 +590,10 @@ implementation
 		cmd->in_use = false;
 		cmd->id = id;
 		cmd->err = err;
-		cmd->child = 0;
+		cmd->data = 0;
 
 		if (cmd->have_waiter) {
-			assert(0 == waiter);
+			LNTD_ASSERT(0 == waiter);
 			waiter = cmd;
 		} else {
 			push_cmd(&finish_queue, cmd);
@@ -600,11 +605,13 @@ default event
 	void LntdAsyncCommand.done[lntd_nonblock_pool_id id](
 	    lntd_error err)
 	{
+		LNTD_CRASH_FAST();
 	}
 
 default event
-	void LntdTask.run_task[uint8_t id](void)
+	void LntdTask.run_task[lntd_task_id id](void)
 	{
+		LNTD_CRASH_FAST();
 	}
 
 	void handle_sigint(int signo)
@@ -677,7 +684,7 @@ default event
 	size_t get_page_size(void)
 	{
 		long size = sysconf(_SC_PAGE_SIZE);
-		assert(size >= 0);
+		LNTD_ASSERT(size >= 0);
 		return size;
 	}
 

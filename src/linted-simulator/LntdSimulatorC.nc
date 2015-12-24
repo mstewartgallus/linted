@@ -17,8 +17,8 @@
 
 #include "lntd/error.h"
 #include "lntd/ko.h"
+#include "lntd/util.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
@@ -509,8 +509,8 @@ implementation
 	{
 		sim_uint result;
 
-		assert(max._value <= SIM_UINT_MAX / 2U);
-		assert(min._value <= SIM_UINT_MAX / 2U);
+		LNTD_ASSERT(max._value <= SIM_UINT_MAX / 2U);
+		LNTD_ASSERT(min._value <= SIM_UINT_MAX / 2U);
 
 		result =
 		    (theta._value + sign * (int_fast64_t)phi._value) %

@@ -18,8 +18,8 @@
 #include "async.h"
 #include "lntd/error.h"
 #include "lntd/ko.h"
+#include "lntd/util.h"
 
-#include <assert.h>
 #include <sys/timerfd.h>
 #include <sys/types.h>
 
@@ -39,7 +39,7 @@ implementation
 
 	command void LntdTimer.execute(struct timespec const *req)
 	{
-		assert(!in_progress);
+		LNTD_ASSERT(!in_progress);
 
 		in_progress = true;
 

@@ -16,8 +16,8 @@
 #include "config.h"
 
 #include "logger.h"
+#include "lntd/util.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <syslog.h>
 
@@ -32,7 +32,7 @@ implementation
 
 	command void LntdLogger.init(char const *ident)
 	{
-		assert(myident == 0);
+		LNTD_ASSERT(myident == 0);
 
 		if (0 == (myident = strdup(ident))) {
 			/* Just silently fail */
@@ -47,7 +47,7 @@ implementation
 	{
 		char *fullstr;
 
-		assert(LNTD_LOGGER_ERROR == level);
+		LNTD_ASSERT(LNTD_LOGGER_ERROR == level);
 
 		{
 			char *xx;

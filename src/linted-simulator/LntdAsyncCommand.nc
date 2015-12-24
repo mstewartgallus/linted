@@ -16,23 +16,17 @@
 #include "config.h"
 
 #include "async.h"
-#include "bool.h"
 #include "lntd/error.h"
-
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 
 enum { LNTD_ASYNC_POLLER_IN = 1, LNTD_ASYNC_POLLER_OUT = 1 << 1 };
 
 interface LntdAsyncCommand
 {
 	command void execute(lntd_async_cmd_type type, void *data);
+	event void done(lntd_error err);
+
 	command void cancel(void);
 
 	command lntd_error
 	execute_sync(lntd_async_cmd_type type, void *data);
-
-	event void done(lntd_error err);
 }
