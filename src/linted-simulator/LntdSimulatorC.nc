@@ -56,7 +56,7 @@ module LntdSimulatorC
 
 	uses interface LntdTimer as Timer;
 	uses interface LntdControllerReader as ControllerReader;
-	uses interface LntdWriter as Writer;
+	uses interface LntdUpdateWriter as UpdateWriter;
 }
 implementation
 {
@@ -75,16 +75,6 @@ implementation
 		sim_int old;
 	};
 
-	nx_struct update
-	{
-		nx_int32_t x_position;
-		nx_int32_t y_position;
-		nx_int32_t z_position;
-
-		nx_uint32_t z_rotation;
-		nx_uint32_t x_rotation;
-	};
-
 	sim_int look_sideways;
 	sim_int look_up_or_down;
 
@@ -100,7 +90,6 @@ implementation
 
 	struct timespec next_tick;
 	uint64_t tick = 0U;
-	nx_struct update update;
 
 	bool pending_update;
 	bool is_updating;
@@ -277,7 +266,7 @@ implementation
 		jump_up = jumping;
 	}
 
-	event void Writer.write_done(lntd_error err)
+	event void UpdateWriter.write_done(lntd_error err)
 	{
 		if (err != 0) {
 			finish(err);
@@ -291,14 +280,7 @@ implementation
 
 	void maybe_update(void)
 	{
-		if (is_updating)
-			return;
-
-		if (!pending_update)
-			return;
-
-		is_updating = true;
-		pending_update = false;
+		struct lntd_update_writer_update update;
 
 		update.x_position = position[0U].value;
 		update.y_position = position[1U].value;
@@ -307,8 +289,7 @@ implementation
 		update.z_rotation = z_rotation._value;
 		update.x_rotation = x_rotation._value;
 
-		call Writer.execute(update_ko, (char const *)&update,
-		                    sizeof update);
+		call UpdateWriter.write(update_ko, &update);
 	}
 
 	lntd_error simulate_tick(void)
@@ -435,7 +416,7 @@ implementation
 	{
 		call Timer.cancel();
 		call ControllerReader.stop();
-		call Writer.cancel();
+		call UpdateWriter.cancel();
 	}
 
 	void finish(lntd_error err)

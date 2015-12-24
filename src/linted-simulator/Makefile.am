@@ -42,6 +42,9 @@ EXTRA_DIST+=\
   %D%/LntdTimerC.nc\
   %D%/LntdTimer.nc\
   %D%/LntdTimerP.nc\
+  %D%/LntdUpdateWriterC.nc\
+  %D%/LntdUpdateWriter.nc\
+  %D%/LntdUpdateWriterP.nc\
   %D%/LntdWriterC.nc\
   %D%/LntdWriter.nc\
   %D%/LntdWriterP.nc
@@ -94,6 +97,9 @@ MOSTLYCLEANFILES+=%D%/simulator.c
   %D%/LntdTimerC.nc\
   %D%/LntdTimer.nc\
   %D%/LntdTimerP.nc\
+  %D%/LntdUpdateWriterC.nc\
+  %D%/LntdUpdateWriter.nc\
+  %D%/LntdUpdateWriterP.nc\
   %D%/LntdWriterC.nc\
   %D%/LntdWriter.nc\
   %D%/LntdWriterP.nc\

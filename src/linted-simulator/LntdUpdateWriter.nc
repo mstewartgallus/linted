@@ -15,16 +15,27 @@
  */
 #include "config.h"
 
-generic configuration LntdControllerReaderC()
-{
-	provides interface LntdControllerReader;
-}
-implementation
-{
-	components new LntdControllerReaderP() as ControllerReader;
-	components new LntdReaderC() as Reader;
+#include "lntd/error.h"
+#include "lntd/ko.h"
 
-	LntdControllerReader = ControllerReader;
+#include <stddef.h>
+#include <stdint.h>
 
-	ControllerReader.LntdReader->Reader;
+struct lntd_update_writer_update {
+	int_least32_t x_position;
+	int_least32_t y_position;
+	int_least32_t z_position;
+
+	uint_least32_t z_rotation;
+	uint_least32_t x_rotation;
+};
+
+interface LntdUpdateWriter
+{
+	command void write(
+	    lntd_ko updater,
+	    struct lntd_update_writer_update const *update);
+	event void write_done(lntd_error err);
+
+	command void cancel(void);
 }

@@ -15,16 +15,16 @@
  */
 #include "config.h"
 
-generic configuration LntdControllerReaderC()
+generic configuration LntdUpdateWriterC()
 {
-	provides interface LntdControllerReader;
+	provides interface LntdUpdateWriter;
 }
 implementation
 {
-	components new LntdControllerReaderP() as ControllerReader;
-	components new LntdReaderC() as Reader;
+	components new LntdUpdateWriterP() as UpdateWriter;
+	components new LntdWriterC() as Writer;
 
-	LntdControllerReader = ControllerReader;
+	LntdUpdateWriter = UpdateWriter;
 
-	ControllerReader.LntdReader->Reader;
+	UpdateWriter.LntdWriter->Writer;
 }
