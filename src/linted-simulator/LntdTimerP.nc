@@ -19,6 +19,7 @@
 #include "lntd/error.h"
 #include "lntd/ko.h"
 
+#include <assert.h>
 #include <sys/timerfd.h>
 #include <sys/types.h>
 
@@ -30,16 +31,25 @@ generic module LntdTimerP()
 implementation
 {
 	struct lntd_async_cmd_timer cmd;
+	lntd_error last_error;
 	bool have_ko = false;
+	bool in_progress = false;
+
+	task void timer_error_handler(void);
 
 	command void LntdTimer.execute(struct timespec const *req)
 	{
+		assert(!in_progress);
+
+		in_progress = true;
+
 		if (!have_ko) {
 			int tfd =
 			    timerfd_create(CLOCK_MONOTONIC,
 			                   TFD_NONBLOCK | TFD_CLOEXEC);
 			if (-1 == tfd) {
-				signal LntdTimer.tick_done(errno);
+				last_error = errno;
+				post timer_error_handler();
 				return;
 			}
 			cmd.ko = tfd;
@@ -59,6 +69,13 @@ implementation
 
 	event void LntdAsyncCommand.done(lntd_error err)
 	{
+		in_progress = false;
 		signal LntdTimer.tick_done(err);
+	}
+
+	task void timer_error_handler(void)
+	{
+		in_progress = false;
+		signal LntdTimer.tick_done(last_error);
 	}
 }

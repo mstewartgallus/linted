@@ -32,22 +32,33 @@
 #include <ucontext.h>
 #include <unistd.h>
 
-// #define ARRAY_SIZE(...) (sizeof (__VA_ARGS__) / sizeof
-// (__VA_ARGS__)[0U])
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(...) (sizeof(__VA_ARGS__) / sizeof(__VA_ARGS__)[0U])
+#endif
 
 typedef uint8_t lntd_nonblock_pool_id;
 
 #define MAXCMDS uniqueCount(LNTD_ASYNC_COMMAND)
+#define MAXTASKS                                                       \
+	uniqueCount(                                                   \
+	    "LntdScheduler-5167a5c7-2eb2-43cc-8e58-b0c6be0012c8")
 
 module LntdNonblockPoolC
 {
 	uses interface LntdLogger;
 
+	provides interface LntdTask[uint8_t task_id];
 	provides interface LntdAsyncCommand[lntd_nonblock_pool_id id];
 	provides interface LntdMainLoop;
 }
 implementation
 {
+	struct taskstate {
+		struct taskstate *next;
+		uint8_t task_id;
+		bool is_pending;
+	};
+
 	struct cmd {
 		lntd_async_cmd_type type;
 		struct cmd *next;
@@ -69,10 +80,12 @@ implementation
 
 	volatile sig_atomic_t sigint_received;
 
+	struct taskstate *pending_tasks = 0;
 	struct cmd *waiter = 0;
 	struct cmd *finish_queue = 0;
 	struct cmd *cmd_queue = 0;
 
+	struct taskstate tasks[MAXTASKS];
 	struct cmd cmds[MAXCMDS];
 	struct pollfd pollfds[MAXCMDS];
 	struct cmd *pollcmds[MAXCMDS];
@@ -88,6 +101,22 @@ implementation
 
 	void push_cmd(struct cmd * *stack, struct cmd * cmd);
 	struct cmd *pop_cmd(struct cmd * *stack);
+
+	command bool LntdTask.post_task[uint8_t task_id](void)
+	{
+		struct taskstate *taskstate = &tasks[task_id];
+
+		if (taskstate->is_pending)
+			return 1;
+
+		taskstate->task_id = task_id;
+		taskstate->is_pending = true;
+
+		taskstate->next = pending_tasks;
+		pending_tasks = taskstate;
+
+		return 0;
+	}
 
 	command void LntdAsyncCommand.execute[lntd_nonblock_pool_id id](
 	    lntd_async_cmd_type type, void *child)
@@ -573,6 +602,11 @@ default event
 	{
 	}
 
+default event
+	void LntdTask.run_task[uint8_t id](void)
+	{
+	}
+
 	void handle_sigint(int signo)
 	{
 		sigint_received = true;
@@ -586,6 +620,20 @@ default event
 			struct cmd *cmd;
 
 			swapcontext(&user_context, &io_context);
+
+			{
+				struct taskstate *taskstate =
+				    pending_tasks;
+				if (taskstate != 0) {
+					pending_tasks = taskstate->next;
+
+					taskstate->is_pending = false;
+
+					signal LntdTask.run_task
+					    [taskstate->task_id]();
+					continue;
+				}
+			}
 
 			if (sigint_received) {
 				sigint_received = false;

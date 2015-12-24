@@ -94,6 +94,7 @@ MOSTLYCLEANFILES+=%D%/simulator.c
   %D%/LntdStdioC.nc\
   %D%/LntdStdio.nc\
   %D%/LntdStdioP.nc\
+  %D%/LntdTask.nc\
   %D%/LntdTimerC.nc\
   %D%/LntdTimer.nc\
   %D%/LntdTimerP.nc\
@@ -109,4 +110,4 @@ MOSTLYCLEANFILES+=%D%/simulator.c
   %D%/logger.h
 	$(linted_V_NESCC) env NESCPATH=$(abs_srcdir)/%D% $(NESCC)\
 	  -I$(srcdir)/include -I$(builddir) $(%C%_linted_simulator_CPPFLAGS) $(CPPFLAGS)\
-	  -fnesc-separator='__' -D_GNU_SOURCE=1 -conly -S -fnesc-cfile=$@ -Wnesc-all -Wnesc-error $<
+	  -fnesc-scheduler=LntdNonblockPoolC,LntdScheduler-5167a5c7-2eb2-43cc-8e58-b0c6be0012c8,LntdTask,LntdTask,run_task,post_task -fnesc-separator='__' -D_GNU_SOURCE=1 -conly -S -fnesc-cfile=$@ -Wnesc-all -Wnesc-error $<
