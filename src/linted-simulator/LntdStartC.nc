@@ -15,9 +15,14 @@
  */
 #include "config.h"
 
-interface LntdAsyncIdle
+module LntdStartC
 {
-	command void execute(void);
-	command void cancel(void);
-	event void idle_done(lntd_error err);
+	provides interface LntdStart;
+}
+implementation
+{
+	int main(int argc, char **argv) @C() @spontaneous()
+	{
+		return signal LntdStart.main(argc, argv);
+	}
 }

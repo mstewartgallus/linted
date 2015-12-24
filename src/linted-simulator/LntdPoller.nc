@@ -18,12 +18,11 @@
 #include "lntd/error.h"
 #include "lntd/ko.h"
 
-#include <stddef.h>
+#include <stdint.h>
 
-interface LntdAsyncWriter
+interface LntdPoller
 {
-	command void execute(lntd_ko ko, char const *bytes,
-	                     size_t size);
+	command void execute(lntd_ko ko, uint_fast64_t events);
 	command void cancel(void);
-	event void write_done(lntd_error err);
+	event void poll_done(lntd_error err, uint_fast64_t revents);
 }

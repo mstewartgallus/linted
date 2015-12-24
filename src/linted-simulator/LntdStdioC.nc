@@ -22,7 +22,7 @@
 #include <limits.h>
 #include <stddef.h>
 
-module LntdPoolStdio
+module LntdStdioC
 {
 	uses interface LntdAsyncCommand;
 	provides interface LntdStdio;

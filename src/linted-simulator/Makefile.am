@@ -19,28 +19,28 @@ pkglibexec_PROGRAMS+=%D%/linted-simulator
 EXTRA_DIST+=\
   %D%/LntdConfig.nc\
   %D%/LntdAsyncCommand.nc\
-  %D%/LntdAsyncIdle.nc\
-  %D%/LntdAsyncPoller.nc\
-  %D%/LntdAsyncReader.nc\
-  %D%/LntdAsyncTimer.nc\
-  %D%/LntdAsyncWriter.nc\
+  %D%/LntdControllerReaderC.nc\
   %D%/LntdControllerReader.nc\
-  %D%/LntdControllerReaderImpl.nc\
-  %D%/LntdControllerReaderM.nc\
+  %D%/LntdControllerReaderP.nc\
+  %D%/LntdIdlerC.nc\
+  %D%/LntdIdler.nc\
+  %D%/LntdLoggerC.nc\
   %D%/LntdLogger.nc\
   %D%/LntdMainLoop.nc\
   %D%/LntdNonblockPool.nc\
-  %D%/LntdPoolIdle.nc\
-  %D%/LntdPoolPoller.nc\
-  %D%/LntdPoolReader.nc\
-  %D%/LntdPoolStdio.nc\
-  %D%/LntdPoolTimer.nc\
-  %D%/LntdPoolWriter.nc\
-  %D%/LntdSimulator.nc\
-  %D%/LntdStartM.nc\
+  %D%/LntdPollerC.nc\
+  %D%/LntdPoller.nc\
+  %D%/LntdReaderC.nc\
+  %D%/LntdReader.nc\
+  %D%/LntdSimulatorC.nc\
+  %D%/LntdStartC.nc\
   %D%/LntdStart.nc\
-  %D%/LntdStdioLogger.nc\
-  %D%/LntdStdio.nc
+  %D%/LntdStdioC.nc\
+  %D%/LntdStdio.nc\
+  %D%/LntdTimerC.nc\
+  %D%/LntdTimer.nc\
+  %D%/LntdWriterC.nc\
+  %D%/LntdWriter.nc
 
 %C%_linted_simulator_SOURCES=\
   %D%/simulator.c\
@@ -70,28 +70,28 @@ MOSTLYCLEANFILES+=%D%/simulator.c
   %D%/bool.h\
   %D%/logger.h\
   %D%/LntdAsyncCommand.nc\
-  %D%/LntdAsyncIdle.nc\
-  %D%/LntdAsyncPoller.nc\
-  %D%/LntdAsyncReader.nc\
-  %D%/LntdAsyncTimer.nc\
-  %D%/LntdAsyncWriter.nc\
+  %D%/LntdControllerReaderC.nc\
   %D%/LntdControllerReader.nc\
-  %D%/LntdControllerReaderImpl.nc\
-  %D%/LntdControllerReaderM.nc\
+  %D%/LntdControllerReaderP.nc\
+  %D%/LntdIdlerC.nc\
+  %D%/LntdIdler.nc\
+  %D%/LntdLoggerC.nc\
   %D%/LntdLogger.nc\
   %D%/LntdMainLoop.nc\
   %D%/LntdNonblockPool.nc\
-  %D%/LntdPoolIdle.nc\
-  %D%/LntdPoolPoller.nc\
-  %D%/LntdPoolReader.nc\
-  %D%/LntdPoolStdio.nc\
-  %D%/LntdPoolTimer.nc\
-  %D%/LntdPoolWriter.nc\
-  %D%/LntdSimulator.nc\
-  %D%/LntdStartM.nc\
+  %D%/LntdPollerC.nc\
+  %D%/LntdPoller.nc\
+  %D%/LntdReaderC.nc\
+  %D%/LntdReader.nc\
+  %D%/LntdSimulatorC.nc\
+  %D%/LntdStartC.nc\
   %D%/LntdStart.nc\
-  %D%/LntdStdioLogger.nc\
-  %D%/LntdStdio.nc
+  %D%/LntdStdioC.nc\
+  %D%/LntdStdio.nc\
+  %D%/LntdTimerC.nc\
+  %D%/LntdTimer.nc\
+  %D%/LntdWriterC.nc\
+  %D%/LntdWriter.nc
 	$(linted_V_NESCC) env NESCPATH=$(abs_srcdir)/%D% $(NESCC)\
 	  -I$(srcdir)/include -I$(builddir) $(%C%_linted_simulator_CPPFLAGS) $(CPPFLAGS)\
 	  -fnesc-separator='__' -D_GNU_SOURCE=1 -conly -S -fnesc-cfile=$@ -Wnesc-all -Wnesc-error $<

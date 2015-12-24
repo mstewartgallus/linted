@@ -21,10 +21,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-generic module LntdControllerReaderImpl()
+generic module LntdControllerReaderP()
 {
 	provides interface LntdControllerReader;
-	uses interface LntdAsyncReader;
+	uses interface LntdReader;
 }
 implementation
 {
@@ -47,18 +47,17 @@ implementation
 	command void LntdControllerReader.start(lntd_ko the_ko)
 	{
 		ko = the_ko;
-		call LntdAsyncReader.execute(the_ko,
-		                             (char *)&control_input,
-		                             sizeof control_input);
+		call LntdReader.execute(the_ko, (char *)&control_input,
+		                        sizeof control_input);
 	}
 
 	command void LntdControllerReader.stop(void)
 	{
-		call LntdAsyncReader.cancel();
+		call LntdReader.cancel();
 	}
 
-	event void LntdAsyncReader.read_done(lntd_error err,
-	                                     size_t bytes_read)
+	event void LntdReader.read_done(lntd_error err,
+	                                size_t bytes_read)
 	{
 		if (ECANCELED == err)
 			return;
@@ -91,7 +90,7 @@ implementation
 			                                       &input);
 		}
 
-		call LntdAsyncReader.execute(ko, (char *)&control_input,
-		                             sizeof control_input);
+		call LntdReader.execute(ko, (char *)&control_input,
+		                        sizeof control_input);
 	}
 }

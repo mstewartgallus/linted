@@ -19,49 +19,46 @@
 #include "lntd/error.h"
 #include "lntd/ko.h"
 
-#include <limits.h>
-#include <stddef.h>
+#include <sys/timerfd.h>
+#include <sys/types.h>
 
-generic module LntdPoolWriter()
+generic module LntdTimerC()
 {
 	uses interface LntdAsyncCommand;
-	provides interface LntdAsyncWriter;
+	provides interface LntdTimer;
 }
 implementation
 {
-	struct lntd_async_cmd_write cmd;
+	struct lntd_async_cmd_timer cmd;
+	bool have_ko = false;
 
-	command void LntdAsyncWriter.execute(
-	    lntd_ko ko, char const *bytes, size_t size)
+	command void LntdTimer.execute(struct timespec const *req)
 	{
-		lntd_error err = 0;
-
-		if (ko > INT_MAX) {
-			err = EINVAL;
-			goto signal_error;
+		if (!have_ko) {
+			int tfd =
+			    timerfd_create(CLOCK_MONOTONIC,
+			                   TFD_NONBLOCK | TFD_CLOEXEC);
+			if (-1 == tfd) {
+				signal LntdTimer.tick_done(errno);
+				return;
+			}
+			cmd.ko = tfd;
+			have_ko = true;
 		}
 
-		cmd.ko = ko;
-		cmd.bytes = bytes;
-		cmd.size = size;
+		cmd.request = *req;
 
-		cmd.bytes_left = size;
-
-		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_WRITE,
+		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_TIMER,
 		                              &cmd);
-		return;
-
-	signal_error:
-		signal LntdAsyncWriter.write_done(err);
 	}
 
-	command void LntdAsyncWriter.cancel(void)
+	command void LntdTimer.cancel(void)
 	{
 		call LntdAsyncCommand.cancel();
 	}
 
 	event void LntdAsyncCommand.done(lntd_error err)
 	{
-		signal LntdAsyncWriter.write_done(err);
+		signal LntdTimer.tick_done(err);
 	}
 }

@@ -16,12 +16,23 @@
 #include "config.h"
 
 #include "lntd/error.h"
+#include "lntd/ko.h"
 
-struct timespec;
+#include <stddef.h>
+#include <stdint.h>
 
-interface LntdAsyncTimer
+generic configuration LntdControllerReaderC()
 {
-	command void execute(struct timespec const *req);
-	command void cancel(void);
-	event void tick_done(lntd_error err);
+	provides interface LntdControllerReader;
+	uses interface LntdAsyncCommand;
+}
+implementation
+{
+	components new LntdControllerReaderP() as ControllerReader;
+	components new LntdReaderC() as Reader;
+
+	LntdControllerReader = ControllerReader;
+
+	ControllerReader.LntdReader->Reader;
+	Reader.LntdAsyncCommand = LntdAsyncCommand;
 }

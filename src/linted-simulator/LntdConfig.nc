@@ -23,36 +23,36 @@ configuration LntdConfig
 }
 implementation
 {
-	components LntdStartM;
-	components LntdSimulator;
-	components LntdPoolStdio;
+	components LntdStartC;
+	components LntdSimulatorC;
+	components LntdStdioC;
 
 	components new LntdNonblockPool(uniqueCount(LNTD_ASYNC_COMMAND))
 	    as Pool;
 
-	components new LntdStdioLogger() as Logger;
+	components new LntdLoggerC() as Logger;
 
-	components new LntdControllerReaderM() as ControllerReader;
-	components new LntdPoolWriter() as Writer;
-	components new LntdPoolTimer() as Timer;
+	components new LntdControllerReaderC() as ControllerReader;
+	components new LntdWriterC() as Writer;
+	components new LntdTimerC() as Timer;
 
-	LntdSimulator.LntdStart->LntdStartM;
+	LntdSimulatorC.LntdStart->LntdStartC;
 
-	LntdSimulator.LntdMainLoop->Pool;
-	LntdSimulator.LntdStdio->LntdPoolStdio;
-	LntdSimulator.LntdLogger->Logger;
+	LntdSimulatorC.LntdMainLoop->Pool;
+	LntdSimulatorC.LntdStdio->LntdStdioC;
+	LntdSimulatorC.LntdLogger->Logger;
 
-	LntdSimulator.Timer->Timer;
-	LntdSimulator.ControllerReader->ControllerReader;
-	LntdSimulator.Writer->Writer;
+	LntdSimulatorC.Timer->Timer;
+	LntdSimulatorC.ControllerReader->ControllerReader;
+	LntdSimulatorC.Writer->Writer;
 
-	LntdSimulator.start->Pool.main;
+	LntdSimulatorC.start->Pool.main;
 
 	Pool.LntdLogger->Logger;
 
-	Logger.LntdStdio->LntdPoolStdio;
+	Logger.LntdStdio->LntdStdioC;
 
-	LntdPoolStdio.LntdAsyncCommand->Pool
+	LntdStdioC.LntdAsyncCommand->Pool
 	    .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];
 
 	Timer.LntdAsyncCommand->Pool

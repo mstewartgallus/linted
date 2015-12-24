@@ -15,14 +15,14 @@
  */
 #include "config.h"
 
-module LntdStartM
+#include "lntd/error.h"
+#include "lntd/ko.h"
+
+#include <stddef.h>
+
+interface LntdReader
 {
-	provides interface LntdStart;
-}
-implementation
-{
-	int main(int argc, char **argv) @C() @spontaneous()
-	{
-		return signal LntdStart.main(argc, argv);
-	}
+	command void execute(lntd_ko ko, char *bytes, size_t size);
+	command void cancel(void);
+	event void read_done(lntd_error err, size_t bytes_read);
 }

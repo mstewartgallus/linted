@@ -20,9 +20,10 @@
 
 #include <stddef.h>
 
-interface LntdAsyncReader
+interface LntdWriter
 {
-	command void execute(lntd_ko ko, char *bytes, size_t size);
+	command void execute(lntd_ko ko, char const *bytes,
+	                     size_t size);
 	command void cancel(void);
-	event void read_done(lntd_error err, size_t bytes_read);
+	event void write_done(lntd_error err);
 }

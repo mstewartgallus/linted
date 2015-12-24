@@ -16,13 +16,12 @@
 #include "config.h"
 
 #include "lntd/error.h"
-#include "lntd/ko.h"
 
-#include <stdint.h>
+struct timespec;
 
-interface LntdAsyncPoller
+interface LntdTimer
 {
-	command void execute(lntd_ko ko, uint_fast64_t events);
+	command void execute(struct timespec const *req);
 	command void cancel(void);
-	event void poll_done(lntd_error err, uint_fast64_t revents);
+	event void tick_done(lntd_error err);
 }

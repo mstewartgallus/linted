@@ -15,28 +15,9 @@
  */
 #include "config.h"
 
-#include "async.h"
-
-generic module LntdPoolIdle()
+interface LntdIdler
 {
-	uses interface LntdAsyncCommand;
-	provides interface LntdAsyncIdle;
-}
-implementation
-{
-	command void LntdAsyncIdle.execute(void)
-	{
-		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_IDLE,
-		                              0);
-	}
-
-	command void LntdAsyncIdle.cancel(void)
-	{
-		call LntdAsyncCommand.cancel();
-	}
-
-	event void LntdAsyncCommand.done(lntd_error err)
-	{
-		signal LntdAsyncIdle.idle_done(err);
-	}
+	command void execute(void);
+	command void cancel(void);
+	event void idle_done(lntd_error err);
 }

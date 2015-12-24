@@ -16,49 +16,27 @@
 #include "config.h"
 
 #include "async.h"
-#include "lntd/error.h"
-#include "lntd/ko.h"
 
-#include <sys/timerfd.h>
-#include <sys/types.h>
-
-generic module LntdPoolTimer()
+generic module LntdIdlerC()
 {
 	uses interface LntdAsyncCommand;
-	provides interface LntdAsyncTimer;
+	provides interface LntdIdler;
 }
 implementation
 {
-	struct lntd_async_cmd_timer cmd;
-	bool have_ko = false;
-
-	command void LntdAsyncTimer.execute(struct timespec const *req)
+	command void LntdIdler.execute(void)
 	{
-		if (!have_ko) {
-			int tfd =
-			    timerfd_create(CLOCK_MONOTONIC,
-			                   TFD_NONBLOCK | TFD_CLOEXEC);
-			if (-1 == tfd) {
-				signal LntdAsyncTimer.tick_done(errno);
-				return;
-			}
-			cmd.ko = tfd;
-			have_ko = true;
-		}
-
-		cmd.request = *req;
-
-		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_TIMER,
-		                              &cmd);
+		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_IDLE,
+		                              0);
 	}
 
-	command void LntdAsyncTimer.cancel(void)
+	command void LntdIdler.cancel(void)
 	{
 		call LntdAsyncCommand.cancel();
 	}
 
 	event void LntdAsyncCommand.done(lntd_error err)
 	{
-		signal LntdAsyncTimer.tick_done(err);
+		signal LntdIdler.idle_done(err);
 	}
 }

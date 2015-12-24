@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <syslog.h>
 
-generic module LntdStdioLogger()
+generic module LntdLoggerC()
 {
 	provides interface LntdLogger;
 	uses interface LntdStdio;

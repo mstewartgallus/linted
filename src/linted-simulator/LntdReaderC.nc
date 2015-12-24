@@ -22,17 +22,17 @@
 #include <limits.h>
 #include <stddef.h>
 
-generic module LntdPoolReader()
+generic module LntdReaderC()
 {
 	uses interface LntdAsyncCommand;
-	provides interface LntdAsyncReader;
+	provides interface LntdReader;
 }
 implementation
 {
 	struct lntd_async_cmd_read cmd;
 
-	command void LntdAsyncReader.execute(lntd_ko ko, char *bytes,
-	                                     size_t size)
+	command void LntdReader.execute(lntd_ko ko, char *bytes,
+	                                size_t size)
 	{
 		lntd_error err = 0;
 
@@ -52,17 +52,17 @@ implementation
 		return;
 
 	signal_error:
-		signal LntdAsyncReader.read_done(err, 0);
+		signal LntdReader.read_done(err, 0);
 	}
 
-	command void LntdAsyncReader.cancel(void)
+	command void LntdReader.cancel(void)
 	{
 		call LntdAsyncCommand.cancel();
 	}
 
 	event void LntdAsyncCommand.done(lntd_error err)
 	{
-		signal LntdAsyncReader.read_done(
-		    err, cmd.size - cmd.bytes_left);
+		signal LntdReader.read_done(err,
+		                            cmd.size - cmd.bytes_left);
 	}
 }

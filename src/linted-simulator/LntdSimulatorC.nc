@@ -48,16 +48,16 @@
 #define ROTATION_SPEED 512U
 #define DEAD_ZONE (SIM_UINT_MAX / 8)
 
-module LntdSimulator
+module LntdSimulatorC
 {
 	uses interface LntdMainLoop;
 	uses interface LntdLogger;
 	uses interface LntdStdio;
 	uses interface LntdStart;
 
-	uses interface LntdAsyncTimer as Timer;
+	uses interface LntdTimer as Timer;
 	uses interface LntdControllerReader as ControllerReader;
-	uses interface LntdAsyncWriter as Writer;
+	uses interface LntdWriter as Writer;
 
 	uses event int start(int argc, char **argv);
 }
