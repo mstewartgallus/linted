@@ -45,10 +45,12 @@ EXTRA_DIST+=\
 %C%_linted_simulator_SOURCES=\
   %D%/simulator.c\
   %D%/async.h\
-  %D%/bool.h
+  %D%/bool.h\
+  %D%/logger.h
 
 %C%_linted_simulator_LDADD=\
-  -lm src/ko/libko.la
+  -lm\
+   src/ko/libko.la
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service
@@ -66,6 +68,7 @@ MOSTLYCLEANFILES+=%D%/simulator.c
   %D%/LntdConfig.nc\
   %D%/async.h\
   %D%/bool.h\
+  %D%/logger.h\
   %D%/LntdAsyncCommand.nc\
   %D%/LntdAsyncIdle.nc\
   %D%/LntdAsyncPoller.nc\
