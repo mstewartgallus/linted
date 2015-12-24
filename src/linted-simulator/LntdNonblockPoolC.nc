@@ -54,15 +54,22 @@ module LntdNonblockPoolC
 }
 implementation
 {
-	struct taskstate {
-		struct taskstate *next;
-		lntd_task_id task_id;
+	enum { TASK, COMMAND, SIGNAL };
+	struct node {
+		struct node *next;
+		unsigned char type;
 		bool is_pending;
 	};
 
+	struct taskstate {
+		struct node node;
+		lntd_task_id task_id;
+	};
+
 	struct cmd {
-		lntd_async_cmd_type type;
+		struct node node;
 		struct cmd *next;
+		lntd_async_cmd_type type;
 		void *data;
 		lntd_nonblock_pool_id id;
 		lntd_error err;
@@ -81,11 +88,11 @@ implementation
 
 	volatile sig_atomic_t sigint_received;
 
-	struct taskstate *pending_tasks = 0;
 	struct cmd *waiter = 0;
-	struct cmd *finish_queue = 0;
+	struct node *event_queue = 0;
 	struct cmd *cmd_queue = 0;
 
+	struct node sigint_node;
 	struct taskstate tasks[MAXTASKS];
 	struct cmd cmds[MAXCMDS];
 	struct pollfd pollfds[MAXCMDS];
@@ -98,25 +105,23 @@ implementation
 	void finish_cmd(struct cmd * cmd, lntd_nonblock_pool_id id,
 	                lntd_error err);
 
-	void boot_routine(size_t argc, char const *const *argv);
+	void user_mainloop_routine(size_t argc,
+	                           char const *const *argv);
 
 	void push_cmd(struct cmd * *stack, struct cmd * cmd);
 	struct cmd *pop_cmd(struct cmd * *stack);
+
+	bool push_node(struct node * *stack, struct node * cmd,
+	               unsigned char type);
+	struct node *pop_node(struct node * *stack);
 
 	command bool LntdTask.post_task[lntd_task_id task_id](void)
 	{
 		struct taskstate *taskstate = &tasks[task_id];
 
-		if (taskstate->is_pending)
-			return 1;
-
 		taskstate->task_id = task_id;
-		taskstate->is_pending = true;
 
-		taskstate->next = pending_tasks;
-		pending_tasks = taskstate;
-
-		return 0;
+		return push_node(&event_queue, &taskstate->node, TASK);
 	}
 
 	command void LntdAsyncCommand.execute[lntd_nonblock_pool_id id](
@@ -266,13 +271,20 @@ implementation
 		user_context.uc_stack.ss_size = useable_stack_size;
 		user_context.uc_link = &io_context;
 		sigdelset(&user_context.uc_sigmask, SIGINT);
-		makecontext(&user_context, (void (*)(void))boot_routine,
-		            2, argc, (char const *const *)argv);
+		makecontext(&user_context,
+		            (void (*)(void))user_mainloop_routine, 2,
+		            argc, (char const *const *)argv);
 
 		for (;;) {
 			int nfds;
 			size_t ii;
 			struct cmd *cmd;
+
+			if (sigint_received) {
+				sigint_received = false;
+				push_node(&event_queue, &sigint_node,
+				          SIGNAL);
+			}
 
 			/* Poll for events to trigger */
 			swapcontext(&io_context, &user_context);
@@ -596,7 +608,7 @@ implementation
 			LNTD_ASSERT(0 == waiter);
 			waiter = cmd;
 		} else {
-			push_cmd(&finish_queue, cmd);
+			push_node(&event_queue, &cmd->node, COMMAND);
 		}
 		cmd->have_waiter = false;
 	}
@@ -619,52 +631,46 @@ default event
 		sigint_received = true;
 	}
 
-	void boot_routine(size_t argc, char const *const *argv)
+	void user_mainloop_routine(size_t argc, char const *const *argv)
 	{
 		signal LntdMainLoop.boot(argc, argv);
 
 		for (;;) {
-			struct cmd *cmd;
+			struct node *node;
 
 			swapcontext(&user_context, &io_context);
 
-			{
-				struct taskstate *taskstate =
-				    pending_tasks;
-				if (taskstate != 0) {
-					pending_tasks = taskstate->next;
+			node = pop_node(&event_queue);
+			if (0 == node)
+				continue;
 
-					taskstate->is_pending = false;
+			switch (node->type) {
+			case TASK: {
+				struct taskstate *taskstate;
 
-					signal LntdTask.run_task
-					    [taskstate->task_id]();
-					continue;
-				}
+				taskstate = (void *)node;
+				signal LntdTask
+				    .run_task[taskstate->task_id]();
+				continue;
 			}
 
-			if (sigint_received) {
-				sigint_received = false;
+			case COMMAND: {
+				struct cmd *cmd;
+
+				cmd = (void *)node;
+				cmd->in_use = false;
+
+				signal LntdAsyncCommand.done[cmd->id](
+				    cmd->err);
+				continue;
+			}
+
+			case SIGNAL:
 				signal LntdMainLoop.recv_cancel();
 				continue;
-			}
 
-			if (waiter != 0) {
-				cmd = waiter;
-				cmd->have_waiter = false;
-				waiter = 0;
-
-				cmd->in_use = false;
-				signal LntdAsyncCommand.done[cmd->id](
-				    cmd->err);
-				continue;
-			}
-
-			cmd = pop_cmd(&finish_queue);
-			if (cmd != 0) {
-				cmd->in_use = false;
-				signal LntdAsyncCommand.done[cmd->id](
-				    cmd->err);
-				continue;
+			default:
+				LNTD_CRASH_FAST();
 			}
 		}
 	}
@@ -705,5 +711,35 @@ default event
 		*stack = cmd->next;
 
 		return cmd;
+	}
+
+	bool push_node(struct node * *stack, struct node * node,
+	               unsigned char type)
+	{
+		if (node->is_pending)
+			return 1;
+
+		node->type = type;
+		node->is_pending = true;
+
+		node->next = *stack;
+		*stack = node;
+
+		return 0;
+	}
+
+	struct node *pop_node(struct node * *stack)
+	{
+		struct node *node;
+
+		node = *stack;
+		if (0 == node)
+			return 0;
+
+		node->is_pending = false;
+
+		*stack = node->next;
+
+		return node;
 	}
 }
