@@ -24,7 +24,6 @@
 generic configuration LntdControllerReaderC()
 {
 	provides interface LntdControllerReader;
-	uses interface LntdAsyncCommand;
 }
 implementation
 {
@@ -34,5 +33,4 @@ implementation
 	LntdControllerReader = ControllerReader;
 
 	ControllerReader.LntdReader->Reader;
-	Reader.LntdAsyncCommand = LntdAsyncCommand;
 }

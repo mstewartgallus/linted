@@ -15,57 +15,14 @@
  */
 #include "config.h"
 
-#include "async.h"
-#include "lntd/error.h"
-#include "lntd/ko.h"
-
-#include <assert.h>
-#include <limits.h>
-
-generic module LntdPoolPoller()
+generic configuration LntdPollerC()
 {
-	uses interface LntdAsyncCommand;
-	provides interface LntdAsyncPoller;
+	provides interface LntdPoller;
 }
 implementation
 {
-	struct lntd_async_cmd_poll cmd;
-
-	command void LntdAsyncPoller.execute(lntd_ko ko,
-	                                     uint_fast64_t events)
-	{
-		lntd_error err = 0;
-
-		if ((events &
-		     ~(LNTD_ASYNC_POLLER_IN | LNTD_ASYNC_POLLER_OUT)) !=
-		    0) {
-			err = EINVAL;
-			goto signal_error;
-		}
-
-		if (ko > INT_MAX) {
-			err = EINVAL;
-			goto signal_error;
-		}
-
-		cmd.ko = ko;
-		cmd.events = events;
-
-		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_POLL,
-		                              &cmd);
-		return;
-
-	signal_error:
-		signal LntdAsyncPoller.poll_done(err, 0);
-	}
-
-	command void LntdAsyncPoller.cancel(void)
-	{
-		call LntdAsyncCommand.cancel();
-	}
-
-	event void LntdAsyncCommand.done(lntd_error err)
-	{
-		signal LntdAsyncPoller.poll_done(err, cmd.revents);
-	}
+	components new LntdAsyncCommandC();
+	components new LntdPollerP();
+	LntdPoller = LntdPollerP;
+	LntdPollerP.LntdAsyncCommand->LntdAsyncCommandC;
 }

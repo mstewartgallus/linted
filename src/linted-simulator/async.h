@@ -56,4 +56,7 @@ struct lntd_async_cmd_timer {
 	lntd_ko ko;
 };
 
+#define LNTD_ASYNC_COMMAND                                             \
+	"LntdAsyncCommand-6d5734b0-1474-4a28-945e-8ca970fc2a58"
+
 #endif /* LNTD_ASYNC_H */

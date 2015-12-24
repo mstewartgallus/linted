@@ -15,53 +15,14 @@
  */
 #include "config.h"
 
-#include "async.h"
-#include "lntd/error.h"
-#include "lntd/ko.h"
-
-#include <limits.h>
-#include <stddef.h>
-
-generic module LntdWriterC()
+generic configuration LntdWriterC()
 {
-	uses interface LntdAsyncCommand;
 	provides interface LntdWriter;
 }
 implementation
 {
-	struct lntd_async_cmd_write cmd;
-
-	command void LntdWriter.execute(lntd_ko ko, char const *bytes,
-	                                size_t size)
-	{
-		lntd_error err = 0;
-
-		if (ko > INT_MAX) {
-			err = EINVAL;
-			goto signal_error;
-		}
-
-		cmd.ko = ko;
-		cmd.bytes = bytes;
-		cmd.size = size;
-
-		cmd.bytes_left = size;
-
-		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_WRITE,
-		                              &cmd);
-		return;
-
-	signal_error:
-		signal LntdWriter.write_done(err);
-	}
-
-	command void LntdWriter.cancel(void)
-	{
-		call LntdAsyncCommand.cancel();
-	}
-
-	event void LntdAsyncCommand.done(lntd_error err)
-	{
-		signal LntdWriter.write_done(err);
-	}
+	components new LntdAsyncCommandC();
+	components new LntdWriterP();
+	LntdWriter = LntdWriterP;
+	LntdWriterP.LntdAsyncCommand->LntdAsyncCommandC;
 }

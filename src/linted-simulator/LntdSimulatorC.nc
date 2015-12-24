@@ -53,13 +53,10 @@ module LntdSimulatorC
 	uses interface LntdMainLoop;
 	uses interface LntdLogger;
 	uses interface LntdStdio;
-	uses interface LntdStart;
 
 	uses interface LntdTimer as Timer;
 	uses interface LntdControllerReader as ControllerReader;
 	uses interface LntdWriter as Writer;
-
-	uses event int start(int argc, char **argv);
 }
 implementation
 {
@@ -139,11 +136,6 @@ implementation
 	sim_int sim_isatadd(sim_int x, sim_int y);
 
 	sim_int saturate(int_fast64_t x);
-
-	event int LntdStart.main(int argc, char **argv)
-	{
-		return signal start(argc, argv);
-	}
 
 	event void LntdMainLoop.boot(size_t argc,
 	                             char const *const *argv)

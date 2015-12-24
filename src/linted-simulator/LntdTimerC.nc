@@ -15,50 +15,14 @@
  */
 #include "config.h"
 
-#include "async.h"
-#include "lntd/error.h"
-#include "lntd/ko.h"
-
-#include <sys/timerfd.h>
-#include <sys/types.h>
-
-generic module LntdTimerC()
+generic configuration LntdTimerC()
 {
-	uses interface LntdAsyncCommand;
 	provides interface LntdTimer;
 }
 implementation
 {
-	struct lntd_async_cmd_timer cmd;
-	bool have_ko = false;
-
-	command void LntdTimer.execute(struct timespec const *req)
-	{
-		if (!have_ko) {
-			int tfd =
-			    timerfd_create(CLOCK_MONOTONIC,
-			                   TFD_NONBLOCK | TFD_CLOEXEC);
-			if (-1 == tfd) {
-				signal LntdTimer.tick_done(errno);
-				return;
-			}
-			cmd.ko = tfd;
-			have_ko = true;
-		}
-
-		cmd.request = *req;
-
-		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_TIMER,
-		                              &cmd);
-	}
-
-	command void LntdTimer.cancel(void)
-	{
-		call LntdAsyncCommand.cancel();
-	}
-
-	event void LntdAsyncCommand.done(lntd_error err)
-	{
-		signal LntdTimer.tick_done(err);
-	}
+	components new LntdAsyncCommandC();
+	components new LntdTimerP();
+	LntdTimer = LntdTimerP;
+	LntdTimerP.LntdAsyncCommand->LntdAsyncCommandC;
 }

@@ -37,11 +37,12 @@
 
 typedef uint8_t lntd_nonblock_pool_id;
 
-generic module LntdNonblockPool(size_t maxcmds)
+#define MAXCMDS uniqueCount(LNTD_ASYNC_COMMAND)
+
+module LntdNonblockPoolC
 {
 	uses interface LntdLogger;
 
-	provides event int main(int argc, char **argv);
 	provides interface LntdAsyncCommand[lntd_nonblock_pool_id id];
 	provides interface LntdMainLoop;
 }
@@ -72,9 +73,9 @@ implementation
 	struct cmd *finish_queue = 0;
 	struct cmd *cmd_queue = 0;
 
-	struct cmd cmds[maxcmds];
-	struct pollfd pollfds[maxcmds];
-	struct cmd *pollcmds[maxcmds];
+	struct cmd cmds[MAXCMDS];
+	struct pollfd pollfds[MAXCMDS];
+	struct cmd *pollcmds[MAXCMDS];
 
 	size_t get_default_stack_size(void);
 	size_t get_page_size(void);
@@ -93,7 +94,7 @@ implementation
 	{
 		struct cmd *cmd;
 
-		assert(id < maxcmds);
+		assert(id < MAXCMDS);
 
 		cmd = &cmds[id];
 
@@ -122,7 +123,7 @@ implementation
 	{
 		struct cmd *cmd;
 
-		assert(id < maxcmds);
+		assert(id < MAXCMDS);
 
 		cmd = &cmds[id];
 
@@ -159,7 +160,7 @@ implementation
 		exit_status = status;
 	}
 
-	event int main(int argc, char **argv)
+	int main(int argc, char **argv) @C() @spontaneous()
 	{
 		size_t stack_size;
 		size_t page_size;

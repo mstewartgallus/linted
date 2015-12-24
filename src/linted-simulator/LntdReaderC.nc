@@ -15,54 +15,14 @@
  */
 #include "config.h"
 
-#include "async.h"
-#include "lntd/error.h"
-#include "lntd/ko.h"
-
-#include <limits.h>
-#include <stddef.h>
-
-generic module LntdReaderC()
+generic configuration LntdReaderC()
 {
-	uses interface LntdAsyncCommand;
 	provides interface LntdReader;
 }
 implementation
 {
-	struct lntd_async_cmd_read cmd;
-
-	command void LntdReader.execute(lntd_ko ko, char *bytes,
-	                                size_t size)
-	{
-		lntd_error err = 0;
-
-		if (ko > INT_MAX) {
-			err = EINVAL;
-			goto signal_error;
-		}
-
-		cmd.ko = ko;
-		cmd.bytes = bytes;
-		cmd.size = size;
-
-		cmd.bytes_left = size;
-
-		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_READ,
-		                              &cmd);
-		return;
-
-	signal_error:
-		signal LntdReader.read_done(err, 0);
-	}
-
-	command void LntdReader.cancel(void)
-	{
-		call LntdAsyncCommand.cancel();
-	}
-
-	event void LntdAsyncCommand.done(lntd_error err)
-	{
-		signal LntdReader.read_done(err,
-		                            cmd.size - cmd.bytes_left);
-	}
+	components new LntdAsyncCommandC();
+	components new LntdReaderP();
+	LntdReader = LntdReaderP;
+	LntdReaderP.LntdAsyncCommand->LntdAsyncCommandC;
 }

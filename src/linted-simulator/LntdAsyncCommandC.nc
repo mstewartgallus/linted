@@ -15,14 +15,17 @@
  */
 #include "config.h"
 
-module LntdStartC
+#include "async.h"
+
+generic configuration LntdAsyncCommandC()
 {
-	provides interface LntdStart;
+	provides interface LntdAsyncCommand;
 }
 implementation
 {
-	int main(int argc, char **argv) @C() @spontaneous()
-	{
-		return signal LntdStart.main(argc, argv);
-	}
+	components LntdNonblockPoolC;
+
+	LntdAsyncCommand =
+	    LntdNonblockPoolC
+	        .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];
 }

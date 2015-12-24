@@ -46,4 +46,3 @@ BUILT_SOURCES+=%D%/updater.h
 MOSTLYCLEANFILES+=%D%/updater.h
 %D%/updater.h: %D%/updater.x
 	$(linted_V_RPCGEN) $(RPCGEN) -N -h $< > $@
-

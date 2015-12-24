@@ -15,20 +15,14 @@
  */
 #include "config.h"
 
-#define LNTD_ASYNC_COMMAND                                             \
-	"LntdAsyncCommand-6d5734b0-1474-4a28-945e-8ca970fc2a58"
-
 configuration LntdConfig
 {
 }
 implementation
 {
-	components LntdStartC;
 	components LntdSimulatorC;
 	components LntdStdioC;
-
-	components new LntdNonblockPool(uniqueCount(LNTD_ASYNC_COMMAND))
-	    as Pool;
+	components LntdNonblockPoolC;
 
 	components new LntdLoggerC() as Logger;
 
@@ -36,9 +30,7 @@ implementation
 	components new LntdWriterC() as Writer;
 	components new LntdTimerC() as Timer;
 
-	LntdSimulatorC.LntdStart->LntdStartC;
-
-	LntdSimulatorC.LntdMainLoop->Pool;
+	LntdSimulatorC.LntdMainLoop->LntdNonblockPoolC;
 	LntdSimulatorC.LntdStdio->LntdStdioC;
 	LntdSimulatorC.LntdLogger->Logger;
 
@@ -46,19 +38,7 @@ implementation
 	LntdSimulatorC.ControllerReader->ControllerReader;
 	LntdSimulatorC.Writer->Writer;
 
-	LntdSimulatorC.start->Pool.main;
-
-	Pool.LntdLogger->Logger;
+	LntdNonblockPoolC.LntdLogger->Logger;
 
 	Logger.LntdStdio->LntdStdioC;
-
-	LntdStdioC.LntdAsyncCommand->Pool
-	    .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];
-
-	Timer.LntdAsyncCommand->Pool
-	    .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];
-	ControllerReader.LntdAsyncCommand->Pool
-	    .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];
-	Writer.LntdAsyncCommand->Pool
-	    .LntdAsyncCommand[unique(LNTD_ASYNC_COMMAND)];
 }
