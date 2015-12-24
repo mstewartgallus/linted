@@ -59,7 +59,7 @@ implementation
 	event void LntdReader.read_done(lntd_error err,
 	                                size_t bytes_read)
 	{
-		if (ECANCELED == err)
+		if (LNTD_ERROR_CANCELLED == err)
 			return;
 
 		if (err != 0) {

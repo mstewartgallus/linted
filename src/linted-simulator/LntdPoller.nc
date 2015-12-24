@@ -23,6 +23,7 @@
 interface LntdPoller
 {
 	command void execute(lntd_ko ko, uint_fast64_t events);
-	command void cancel(void);
 	event void poll_done(lntd_error err, uint_fast64_t revents);
+
+	command void cancel(void);
 }

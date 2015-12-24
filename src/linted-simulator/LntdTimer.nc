@@ -22,6 +22,7 @@ struct timespec;
 interface LntdTimer
 {
 	command void execute(struct timespec const *req);
-	command void cancel(void);
 	event void tick_done(lntd_error err);
+
+	command void cancel(void);
 }

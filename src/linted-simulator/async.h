@@ -59,4 +59,9 @@ struct lntd_async_cmd_timer {
 #define LNTD_ASYNC_COMMAND                                             \
 	"LntdAsyncCommand-6d5734b0-1474-4a28-945e-8ca970fc2a58"
 
+enum { LNTD_ASYNC_POLLER_IN = 1, LNTD_ASYNC_POLLER_OUT = 1 << 1 };
+
+typedef uint_least8_t lntd_async_command_id;
+typedef uint_least8_t lntd_task_id;
+
 #endif /* LNTD_ASYNC_H */

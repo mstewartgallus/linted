@@ -18,6 +18,7 @@
 interface LntdIdler
 {
 	command void execute(void);
-	command void cancel(void);
 	event void idle_done(lntd_error err);
+
+	command void cancel(void);
 }

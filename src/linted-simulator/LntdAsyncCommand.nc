@@ -18,8 +18,6 @@
 #include "async.h"
 #include "lntd/error.h"
 
-enum { LNTD_ASYNC_POLLER_IN = 1, LNTD_ASYNC_POLLER_OUT = 1 << 1 };
-
 interface LntdAsyncCommand
 {
 	command void execute(lntd_async_cmd_type type, void *data);

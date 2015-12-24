@@ -32,13 +32,6 @@
 #include <ucontext.h>
 #include <unistd.h>
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(...) (sizeof(__VA_ARGS__) / sizeof(__VA_ARGS__)[0U])
-#endif
-
-typedef uint8_t lntd_task_id;
-typedef uint8_t lntd_nonblock_pool_id;
-
 #define MAXCMDS uniqueCount(LNTD_ASYNC_COMMAND)
 #define MAXTASKS                                                       \
 	uniqueCount(                                                   \
@@ -49,7 +42,7 @@ module LntdNonblockPoolC
 	uses interface LntdLogger;
 
 	provides interface LntdTask[lntd_task_id task_id];
-	provides interface LntdAsyncCommand[lntd_nonblock_pool_id id];
+	provides interface LntdAsyncCommand[lntd_async_command_id id];
 	provides interface LntdMainLoop;
 }
 implementation
@@ -71,7 +64,7 @@ implementation
 		struct cmd *next;
 		lntd_async_cmd_type type;
 		void *data;
-		lntd_nonblock_pool_id id;
+		lntd_async_command_id id;
 		lntd_error err;
 		bool in_use : 1U;
 		bool have_waiter : 1U;
@@ -102,7 +95,7 @@ implementation
 	size_t get_page_size(void);
 
 	void handle_sigint(int signo);
-	void finish_cmd(struct cmd * cmd, lntd_nonblock_pool_id id,
+	void finish_cmd(struct cmd * cmd, lntd_async_command_id id,
 	                lntd_error err);
 
 	void user_mainloop_routine(size_t argc,
@@ -124,7 +117,7 @@ implementation
 		return push_node(&event_queue, &taskstate->node, TASK);
 	}
 
-	command void LntdAsyncCommand.execute[lntd_nonblock_pool_id id](
+	command void LntdAsyncCommand.execute[lntd_async_command_id id](
 	    lntd_async_cmd_type type, void *data)
 	{
 		struct cmd *cmd;
@@ -146,14 +139,14 @@ implementation
 		push_cmd(&cmd_queue, cmd);
 	}
 
-	command void LntdAsyncCommand.cancel[lntd_nonblock_pool_id id](
+	command void LntdAsyncCommand.cancel[lntd_async_command_id id](
 	    void)
 	{
 		cmds[id].cancelled = true;
 	}
 
 	command lntd_error
-	    LntdAsyncCommand.execute_sync[lntd_nonblock_pool_id id](
+	    LntdAsyncCommand.execute_sync[lntd_async_command_id id](
 	        lntd_async_cmd_type type, void *data)
 	{
 		struct cmd *cmd;
@@ -225,7 +218,8 @@ implementation
 		{
 			size_t ii;
 
-			for (ii = 0U; ii < ARRAY_SIZE(pollfds); ++ii) {
+			for (ii = 0U; ii < LNTD_ARRAY_SIZE(pollfds);
+			     ++ii) {
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
 			}
@@ -297,13 +291,15 @@ implementation
 			cmd = pop_cmd(&cmd_queue);
 			if (cmd != 0) {
 				void *data;
-				lntd_nonblock_pool_id id;
+				lntd_async_command_id id;
 
 				id = cmd->id;
 				data = cmd->data;
 
 				if (cmd->cancelled) {
-					finish_cmd(cmd, id, ECANCELED);
+					finish_cmd(
+					    cmd, id,
+					    LNTD_ERROR_CANCELLED);
 					continue;
 				}
 
@@ -402,7 +398,8 @@ implementation
 			{
 				size_t ii;
 				bool cancelled_a_poller = false;
-				for (ii = 0U; ii < ARRAY_SIZE(pollcmds);
+				for (ii = 0U;
+				     ii < LNTD_ARRAY_SIZE(pollcmds);
 				     ++ii) {
 					struct cmd *cmd;
 
@@ -416,8 +413,9 @@ implementation
 						pollfds[ii].fd = -1;
 						pollfds[ii].events = 0;
 						pollcmds[ii] = 0;
-						finish_cmd(cmd, cmd->id,
-						           ECANCELED);
+						finish_cmd(
+						    cmd, cmd->id,
+						    LNTD_ERROR_CANCELLED);
 						continue;
 					}
 				}
@@ -425,8 +423,8 @@ implementation
 					continue;
 			}
 
-			nfds = ppoll(pollfds, ARRAY_SIZE(pollfds), 0,
-			             &listen_to_signals);
+			nfds = ppoll(pollfds, LNTD_ARRAY_SIZE(pollfds),
+			             0, &listen_to_signals);
 			if (-1 == nfds) {
 				if (EINTR == errno) {
 					continue;
@@ -435,7 +433,8 @@ implementation
 				goto exit_mainloop;
 			}
 
-			for (ii = 0U; ii < ARRAY_SIZE(pollfds); ++ii) {
+			for (ii = 0U; ii < LNTD_ARRAY_SIZE(pollfds);
+			     ++ii) {
 				short revents;
 				struct cmd *cmd;
 
@@ -512,7 +511,7 @@ implementation
 
 				case LNTD_ASYNC_CMD_TYPE_TIMER: {
 					struct lntd_async_cmd_timer *p;
-					lntd_nonblock_pool_id overrun;
+					lntd_async_command_id overrun;
 					lntd_error err = 0;
 
 					p = cmd->data;
@@ -596,7 +595,7 @@ implementation
 		return signal LntdMainLoop.shutdown(status);
 	}
 
-	void finish_cmd(struct cmd * cmd, lntd_nonblock_pool_id id,
+	void finish_cmd(struct cmd * cmd, lntd_async_command_id id,
 	                lntd_error err)
 	{
 		cmd->in_use = false;
@@ -614,7 +613,7 @@ implementation
 	}
 
 default event
-	void LntdAsyncCommand.done[lntd_nonblock_pool_id id](
+	void LntdAsyncCommand.done[lntd_async_command_id id](
 	    lntd_error err)
 	{
 		LNTD_CRASH_FAST();

@@ -23,8 +23,7 @@ implementation
 	components LntdSimulatorC;
 	components LntdStdioC;
 	components LntdNonblockPoolC;
-
-	components new LntdLoggerC() as Logger;
+	components LntdLoggerC;
 
 	components new LntdControllerReaderC() as ControllerReader;
 	components new LntdUpdateWriterC() as UpdateWriter;
@@ -32,13 +31,13 @@ implementation
 
 	LntdSimulatorC.LntdMainLoop->LntdNonblockPoolC;
 	LntdSimulatorC.LntdStdio->LntdStdioC;
-	LntdSimulatorC.LntdLogger->Logger;
+	LntdSimulatorC.LntdLogger->LntdLoggerC;
 
 	LntdSimulatorC.Timer->Timer;
 	LntdSimulatorC.ControllerReader->ControllerReader;
 	LntdSimulatorC.UpdateWriter->UpdateWriter;
 
-	LntdNonblockPoolC.LntdLogger->Logger;
+	LntdNonblockPoolC.LntdLogger->LntdLoggerC;
 
-	Logger.LntdStdio->LntdStdioC;
+	LntdLoggerC.LntdStdio->LntdStdioC;
 }

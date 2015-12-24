@@ -28,10 +28,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(...) (sizeof(__VA_ARGS__) / sizeof(__VA_ARGS__)[0U])
-#endif
-
 /* Deliberately overflow in cases such as 1/1 */
 #define SIM_ANGLE(X, Y)                                                \
 	(sim_angle)                                                    \
@@ -205,7 +201,7 @@ implementation
 
 	event void Timer.tick_done(lntd_error err)
 	{
-		if (ECANCELED == err) {
+		if (LNTD_ERROR_CANCELLED == err) {
 			finish(0);
 			return;
 		}
@@ -297,7 +293,7 @@ implementation
 	lntd_error simulate_tick(void)
 	{
 		struct differentiable *positions = position;
-		size_t dimensions = ARRAY_SIZE(position);
+		size_t dimensions = LNTD_ARRAY_SIZE(position);
 
 		sim_int x = strafe;
 		sim_int y = retreat_or_go_forth;
