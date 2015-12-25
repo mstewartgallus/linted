@@ -41,11 +41,11 @@ include %C%/linted-monitor/Makefile.am
 
 include %C%/linted-window/Makefile.am
 include %C%/linted-audio/Makefile.am
+include %C%/linted-simulator/Makefile.am
 
 if WINDOWS_API
 else
 include %C%/linted-drawer/Makefile.am
-include %C%/linted-simulator/Makefile.am
 include %C%/linted-gui/Makefile.am
 
 include %C%/linted-sandbox/Makefile.am

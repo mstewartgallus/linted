@@ -23,7 +23,7 @@
 #include <sys/timerfd.h>
 #include <sys/types.h>
 
-generic module LntdTimerP()
+generic module LntdTimerLinuxP()
 {
 	uses interface LntdAsyncCommand;
 	provides interface LntdTimer;

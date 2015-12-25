@@ -15,23 +15,49 @@
  */
 #include "config.h"
 
-configuration LntdLoggerC
+#include "logger.h"
+#include "lntd/util.h"
+
+#include <stdio.h>
+#include <string.h>
+
+module LntdLoggerWindowsP
 {
 	provides interface LntdLogger;
 	uses interface LntdStdio;
 }
 implementation
 {
+	char const *myident = 0;
 
-#if defined HAVE_WINDOWS_API
-	components LntdLoggerWindowsP as Logger;
-#elif defined HAVE_POSIX_API
-	components LntdLoggerPosixP as Logger;
-#else
-#error Unsupported platform
-#endif
+	command void LntdLogger.init(char const *ident)
+	{
+		LNTD_ASSERT(myident == 0);
 
-	LntdLogger = Logger;
+		if (0 == (myident = strdup(ident))) {
+			/* Just silently fail */
+			return;
+		}
+	}
 
-	Logger.LntdStdio = LntdStdio;
+	command void LntdLogger.log(lntd_logger_level level,
+	                            char const *buf)
+	{
+		char *fullstr;
+
+		LNTD_ASSERT(LNTD_LOGGER_ERROR == level);
+
+		{
+			char *xx;
+			if (-1 ==
+			    asprintf(&xx, "%s: %s\n", myident, buf))
+				return;
+			fullstr = xx;
+		}
+
+		call LntdStdio.write(LNTD_KO_STDERR, fullstr,
+		                     strlen(fullstr));
+
+		free(fullstr);
+	}
 }

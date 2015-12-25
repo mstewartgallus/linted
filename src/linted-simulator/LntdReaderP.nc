@@ -31,21 +31,12 @@ generic module LntdReaderP()
 implementation
 {
 	struct lntd_async_cmd_read cmd;
-	lntd_error last_error;
 	bool in_progress;
-
-	task void signal_error(void);
 
 	command void LntdReader.execute(lntd_ko ko, char *bytes,
 	                                size_t size)
 	{
-		lntd_error err = 0;
 		LNTD_ASSERT(!in_progress);
-
-		if (ko > INT_MAX) {
-			err = EINVAL;
-			goto signal_error;
-		}
 
 		cmd.ko = ko;
 		cmd.bytes = bytes;
@@ -55,11 +46,6 @@ implementation
 
 		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_READ,
 		                              &cmd);
-		return;
-
-	signal_error:
-		last_error = err;
-		post signal_error();
 	}
 
 	command void LntdReader.cancel(void)
@@ -71,13 +57,6 @@ implementation
 	{
 		in_progress = false;
 		signal LntdReader.read_done(err,
-		                            cmd.size - cmd.bytes_left);
-	}
-
-	task void signal_error(void)
-	{
-		in_progress = false;
-		signal LntdReader.read_done(last_error,
 		                            cmd.size - cmd.bytes_left);
 	}
 }

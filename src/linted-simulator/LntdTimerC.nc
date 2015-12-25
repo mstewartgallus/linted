@@ -22,7 +22,16 @@ generic configuration LntdTimerC()
 implementation
 {
 	components new LntdAsyncCommandC();
-	components new LntdTimerP();
-	LntdTimer = LntdTimerP;
-	LntdTimerP.LntdAsyncCommand->LntdAsyncCommandC;
+
+#if defined HAVE_WINDOWS_API
+	components new LntdTimerWindowsP() as Timer;
+#elif defined HAVE_POSIX_API
+	components new LntdTimerLinuxP() as Timer;
+#else
+#error Unsupported platform
+#endif
+
+	LntdTimer = Timer;
+
+	Timer.LntdAsyncCommand->LntdAsyncCommandC;
 }

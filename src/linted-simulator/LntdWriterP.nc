@@ -31,10 +31,7 @@ generic module LntdWriterP()
 implementation
 {
 	struct lntd_async_cmd_write cmd;
-	lntd_error last_error;
 	bool in_progress;
-
-	task void signal_error(void);
 
 	command void LntdWriter.execute(lntd_ko ko, char const *bytes,
 	                                size_t size)
@@ -45,11 +42,6 @@ implementation
 
 		in_progress = true;
 
-		if (ko > INT_MAX) {
-			err = EINVAL;
-			goto signal_error;
-		}
-
 		cmd.ko = ko;
 		cmd.bytes = bytes;
 		cmd.size = size;
@@ -58,11 +50,6 @@ implementation
 
 		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_WRITE,
 		                              &cmd);
-		return;
-
-	signal_error:
-		last_error = err;
-		post signal_error();
 	}
 
 	command void LntdWriter.cancel(void)
@@ -74,11 +61,5 @@ implementation
 	{
 		in_progress = false;
 		signal LntdWriter.write_done(err);
-	}
-
-	task void signal_error(void)
-	{
-		in_progress = false;
-		signal LntdWriter.write_done(last_error);
 	}
 }

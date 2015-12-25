@@ -15,23 +15,27 @@
  */
 #include "config.h"
 
-configuration LntdLoggerC
+#include "lntd/util.h"
+
+generic module LntdTimerWindowsP()
 {
-	provides interface LntdLogger;
-	uses interface LntdStdio;
+	uses interface LntdAsyncCommand;
+	provides interface LntdTimer;
 }
 implementation
 {
+	command void LntdTimer.execute(struct timespec const *req)
+	{
+		LNTD_CRASH_FAST();
+	}
 
-#if defined HAVE_WINDOWS_API
-	components LntdLoggerWindowsP as Logger;
-#elif defined HAVE_POSIX_API
-	components LntdLoggerPosixP as Logger;
-#else
-#error Unsupported platform
-#endif
+	command void LntdTimer.cancel(void)
+	{
+		LNTD_CRASH_FAST();
+	}
 
-	LntdLogger = Logger;
-
-	Logger.LntdStdio = LntdStdio;
+	event void LntdAsyncCommand.done(lntd_error err)
+	{
+		LNTD_CRASH_FAST();
+	}
 }

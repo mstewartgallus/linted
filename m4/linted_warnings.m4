@@ -81,6 +81,8 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_NO_WARN],[
         [-Wno-all]dnl
         [-Wno-extra]dnl
         [-Wno-unused]dnl
+        [-Wno-pedantic]dnl
+        [-Wno-error=pedantic]dnl
 ])
 AC_SUBST([linted_CFLAGS_NO_WARN])
 ])

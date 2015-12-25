@@ -44,9 +44,6 @@ implementation
 
 		char *buf;
 
-		if (ko > INT_MAX)
-			return EINVAL;
-
 		buf = malloc(size);
 		if (0 == buf) {
 			return errno;
@@ -85,9 +82,6 @@ implementation
 		char *newlinestr;
 		lntd_error err;
 
-		if (ko > INT_MAX)
-			return EINVAL;
-
 		strsize = strlen(str);
 		newlinestr = malloc(strsize + 1U);
 		if (0 == newlinestr) {
@@ -123,9 +117,6 @@ implementation
 		struct lntd_async_cmd_read cmd = {0};
 		lntd_error err;
 
-		if (ko > INT_MAX)
-			return EINVAL;
-
 		cmd.ko = ko;
 		cmd.bytes = bytes;
 		cmd.size = size;
@@ -143,9 +134,6 @@ implementation
 	lntd_error my_write(lntd_ko ko, char const *bytes, size_t size)
 	{
 		struct lntd_async_cmd_write cmd = {0};
-
-		if (ko > INT_MAX)
-			return EINVAL;
 
 		cmd.ko = ko;
 		cmd.bytes = bytes;

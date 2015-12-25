@@ -113,7 +113,8 @@ static inline lntd_error wait_until_different(atomic_int const *uaddr,
 	atomic_thread_fence(memory_order_acquire);
 }
 
-static inline lntd_error hint_wakeup(atomic_int const *uaddr)
+static inline lntd_error hint_wakeup(atomic_int const *uaddr,
+                                     bool is_local)
 {
 	return 0;
 }

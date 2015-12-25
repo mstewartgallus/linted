@@ -27,8 +27,12 @@ EXTRA_DIST+=\
   %D%/LntdIdler.nc\
   %D%/LntdLoggerC.nc\
   %D%/LntdLogger.nc\
+  %D%/LntdLoggerPosixP.nc\
+  %D%/LntdLoggerWindowsP.nc\
   %D%/LntdMainLoop.nc\
   %D%/LntdNonblockPoolC.nc\
+  %D%/LntdNonblockPoolLinuxP.nc\
+  %D%/LntdNonblockPoolWindowsP.nc\
   %D%/LntdPollerC.nc\
   %D%/LntdPoller.nc\
   %D%/LntdPollerP.nc\
@@ -41,7 +45,8 @@ EXTRA_DIST+=\
   %D%/LntdStdioP.nc\
   %D%/LntdTimerC.nc\
   %D%/LntdTimer.nc\
-  %D%/LntdTimerP.nc\
+  %D%/LntdTimerLinuxP.nc\
+  %D%/LntdTimerWindowsP.nc\
   %D%/LntdUpdateWriterC.nc\
   %D%/LntdUpdateWriter.nc\
   %D%/LntdUpdateWriterP.nc\
@@ -70,7 +75,10 @@ endif
 
 %C%_linted_simulator_CFLAGS=$(AM_CFLAGS) $(linted_CFLAGS_NO_WARN)
 
+%C%_linted_simulator_task_unique=LntdTask-5167a5c7-2eb2-43cc-8e58-b0c6be0012c8
+
 MOSTLYCLEANFILES+=%D%/simulator.c
+BUILT_SOURCES+=%D%/simulator.c
 %D%/simulator.c: \
   %D%/LntdConfig.nc\
   %D%/LntdAsyncCommandC.nc\
@@ -82,8 +90,12 @@ MOSTLYCLEANFILES+=%D%/simulator.c
   %D%/LntdIdler.nc\
   %D%/LntdLoggerC.nc\
   %D%/LntdLogger.nc\
+  %D%/LntdLoggerPosixP.nc\
+  %D%/LntdLoggerWindowsP.nc\
   %D%/LntdMainLoop.nc\
   %D%/LntdNonblockPoolC.nc\
+  %D%/LntdNonblockPoolLinuxP.nc\
+  %D%/LntdNonblockPoolWindowsP.nc\
   %D%/LntdPollerC.nc\
   %D%/LntdPoller.nc\
   %D%/LntdPollerP.nc\
@@ -97,7 +109,8 @@ MOSTLYCLEANFILES+=%D%/simulator.c
   %D%/LntdTask.nc\
   %D%/LntdTimerC.nc\
   %D%/LntdTimer.nc\
-  %D%/LntdTimerP.nc\
+  %D%/LntdTimerLinuxP.nc\
+  %D%/LntdTimerWindowsP.nc\
   %D%/LntdUpdateWriterC.nc\
   %D%/LntdUpdateWriter.nc\
   %D%/LntdUpdateWriterP.nc\
@@ -108,6 +121,16 @@ MOSTLYCLEANFILES+=%D%/simulator.c
   %D%/async.h\
   %D%/bool.h\
   %D%/logger.h
-	$(linted_V_NESCC) env NESCPATH=$(abs_srcdir)/%D% $(NESCC)\
-	  -I$(srcdir)/include -I$(builddir) $(%C%_linted_simulator_CPPFLAGS) $(CPPFLAGS)\
-	  -fnesc-scheduler=LntdNonblockPoolC,LntdScheduler-5167a5c7-2eb2-43cc-8e58-b0c6be0012c8,LntdTask,LntdTask,run_task,post_task -fnesc-separator='__' -D_GNU_SOURCE=1 -conly -S -fnesc-cfile=$@ -Wnesc-all -Wnesc-error $<
+	$(linted_V_NESCC) $(NESCC)\
+	  -fnesc-path=$(abs_srcdir)/%D%\
+	  -fnesc-gcc=$(CC)\
+	  -I$(srcdir)/include -I$(builddir)\
+	  -D__restrict__=\
+	  $(%C%_linted_simulator_CPPFLAGS) $(CPPFLAGS)\
+	  -DLNTD_TASK_UNIQUE='"$(%C%_linted_simulator_task_unique)"'\
+	  -fnesc-scheduler=LntdNonblockPoolC,$(%C%_linted_simulator_task_unique),LntdTask,LntdTask,run_task,post_task\
+	  -D_GNU_SOURCE=1\
+	  -conly -S -fnesc-cfile=$@\
+	  -Wnesc-all -Wnesc-error\
+	  $<
+	test -f $@
