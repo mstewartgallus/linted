@@ -34,15 +34,15 @@ typedef unsigned char lntd_async_cmd_type;
 struct lntd_async_cmd_write {
 	char const *bytes;
 	size_t size;
-	lntd_ko ko;
 	size_t bytes_left;
+	lntd_ko ko;
 };
 
 struct lntd_async_cmd_read {
 	char *bytes;
 	size_t size;
-	lntd_ko ko;
 	size_t bytes_left;
+	lntd_ko ko;
 };
 
 struct lntd_async_cmd_poll {

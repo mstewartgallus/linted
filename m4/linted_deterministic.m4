@@ -29,9 +29,6 @@ dnl
 AS_IF([test "x${enable_deterministic}" != "xno"], [
 dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_DETERMINISTIC],[
-dnl     A horrible, ugly, no-good hack
-	[-Wno-builtin-macro-redefined]dnl
-	[-D__FILE__=0]dnl
 dnl
 	[-fno-working-directory]dnl
 dnl

@@ -36,8 +36,6 @@ implementation
 	command void LntdWriter.execute(lntd_ko ko, char const *bytes,
 	                                size_t size)
 	{
-		lntd_error err = 0;
-
 		LNTD_ASSERT(!in_progress);
 
 		in_progress = true;

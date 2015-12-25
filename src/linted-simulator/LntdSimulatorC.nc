@@ -82,7 +82,7 @@ implementation
 
 	bool jump_up;
 
-	struct differentiable position[3U];
+	struct differentiable positions[3U];
 
 	sim_angle z_rotation;
 	sim_angle x_rotation;
@@ -109,7 +109,7 @@ implementation
 	sim_int downscale(sim_int x, sim_int y);
 	sim_uint absolute(sim_int x);
 	sim_int min_int(sim_int x, sim_int y);
-	sim_int sign(sim_int x);
+	sim_int find_sign(sim_int x);
 
 	sim_angle sim_angle_add(int sign, sim_angle theta,
 	                        sim_angle phi);
@@ -167,8 +167,8 @@ implementation
 			controller_ko = xx;
 		}
 
-		position[1U].value = 10 * 1024;
-		position[1U].old = 10 * 1024;
+		positions[1U].value = 10 * 1024;
+		positions[1U].old = 10 * 1024;
 
 		z_rotation = SIM_ANGLE(0U, 1U);
 		x_rotation = SIM_ANGLE(3U, 16U);
@@ -281,9 +281,9 @@ implementation
 	{
 		struct lntd_update_writer_update update;
 
-		update.x_position = position[0U].value;
-		update.y_position = position[1U].value;
-		update.z_position = position[2U].value;
+		update.x_position = positions[0U].value;
+		update.y_position = positions[1U].value;
+		update.z_position = positions[2U].value;
 
 		update.z_rotation = z_rotation._value;
 		update.x_rotation = x_rotation._value;
@@ -293,8 +293,7 @@ implementation
 
 	lntd_error simulate_tick(void)
 	{
-		struct differentiable *positions = position;
-		size_t dimensions = LNTD_ARRAY_SIZE(position);
+		size_t dimensions = LNTD_ARRAY_SIZE(positions);
 
 		sim_int x = strafe;
 		sim_int y = retreat_or_go_forth;
@@ -367,7 +366,7 @@ implementation
 				friction =
 				    min_int(absolute(guess_velocity),
 				            mu) *
-				    -sign(guess_velocity);
+				    -find_sign(guess_velocity);
 
 				new_velocity = sim_isatadd(
 				    guess_velocity, friction);
@@ -441,14 +440,14 @@ implementation
 		sim_angle increment = SIM_ANGLE(1, ROTATION_SPEED);
 
 		return sim_angle_add((absolute(tilt) > DEAD_ZONE) *
-		                         sign(tilt),
+		                         find_sign(tilt),
 		                     rotation, increment);
 	}
 
 	sim_angle tilt_clamped_rotation(sim_angle rotation,
 	                                sim_int tilt)
 	{
-		sim_int tilt_sign = sign(tilt);
+		sim_int tilt_sign = find_sign(tilt);
 
 		sim_angle minimum = SIM_ANGLE(3U, 16U);
 		sim_angle maximum = SIM_ANGLE(5U, 16U);
@@ -472,7 +471,7 @@ implementation
 		return x < y ? x : y;
 	}
 
-	sim_int sign(sim_int x)
+	sim_int find_sign(sim_int x)
 	{
 		return x > 0 ? 1 : 0 == x ? 0 : -1;
 	}

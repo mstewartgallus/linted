@@ -60,12 +60,12 @@ implementation
 	struct cmd {
 		struct node node;
 		struct cmd *next;
-		lntd_async_cmd_type type;
 		void *data;
 		lntd_error err;
-		bool in_use : 1U;
-		bool have_waiter : 1U;
-		bool cancelled : 1U;
+		lntd_async_cmd_type type;
+		unsigned in_use : 1U;
+		unsigned have_waiter : 1U;
+		unsigned cancelled : 1U;
 	};
 
 	ucontext_t io_context;

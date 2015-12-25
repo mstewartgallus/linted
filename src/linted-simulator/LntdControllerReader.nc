@@ -27,12 +27,12 @@ struct lntd_controller_reader_input {
 	int_least32_t z_tilt;
 	int_least32_t x_tilt;
 
-	bool left : 1U;
-	bool right : 1U;
-	bool forward : 1U;
-	bool back : 1U;
+	unsigned left : 1U;
+	unsigned right : 1U;
+	unsigned forward : 1U;
+	unsigned back : 1U;
 
-	bool jumping : 1U;
+	unsigned jumping : 1U;
 };
 
 interface LntdControllerReader

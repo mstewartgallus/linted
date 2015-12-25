@@ -55,14 +55,24 @@ EXTRA_DIST+=\
   %D%/LntdWriterP.nc
 
 %C%_linted_simulator_SOURCES=\
-  %D%/simulator.c\
   %D%/async.h\
   %D%/bool.h\
   %D%/logger.h
 
+%C%_linted_simulator_CFLAGS=\
+  $(linted_CFLAGS_LANGUAGE)\
+  $(linted_CFLAGS_DETERMINISTIC)\
+  $(linted_CFLAGS_OPTIMIZE)\
+  $(linted_CFLAGS_HARDEN)\
+  $(linted_CFLAGS_DEBUG)\
+  $(linted_CFLAGS_DEBUG_INFO)\
+  $(linted_CFLAGS_META)\
+  $(linted_CFLAGS_WARNINGS)
+
 %C%_linted_simulator_LDADD=\
   -lm\
-   src/ko/libko.la
+  src/ko/libko.la\
+  %D%/simulator.o
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service
@@ -72,8 +82,6 @@ if WINDOWS_API
 %C%_linted_simulator_LDADD+=%D%/resources.$(OBJEXT)
 %D%/resources.$(OBJEXT): %D%/simulator.manifest
 endif
-
-%C%_linted_simulator_CFLAGS=$(AM_CFLAGS) $(linted_CFLAGS_NO_WARN)
 
 %C%_linted_simulator_task_unique=LntdTask-5167a5c7-2eb2-43cc-8e58-b0c6be0012c8
 
@@ -123,14 +131,18 @@ BUILT_SOURCES+=%D%/simulator.c
   %D%/logger.h
 	$(linted_V_NESCC) $(NESCC)\
 	  -fnesc-path=$(abs_srcdir)/%D%\
-	  -fnesc-gcc=$(CC)\
 	  -I$(srcdir)/include -I$(builddir)\
 	  -D__restrict__=\
-	  $(%C%_linted_simulator_CPPFLAGS) $(CPPFLAGS)\
+	  \
 	  -DLNTD_TASK_UNIQUE='"$(%C%_linted_simulator_task_unique)"'\
 	  -fnesc-scheduler=LntdNonblockPoolC,$(%C%_linted_simulator_task_unique),LntdTask,LntdTask,run_task,post_task\
 	  -D_GNU_SOURCE=1\
-	  -conly -S -fnesc-cfile=$@\
+	  -P\
+	  -c\
+	  -s -E -fnesc-cfile=$@\
 	  -Wnesc-all -Wnesc-error\
 	  $<
 	test -f $@
+
+%D%/simulator.o: %D%/simulator.c
+	$(AM_V_CC) $(CC) $(%C%_linted_simulator_CFLAGS) $(CFLAGS) -c -o $@ $^

@@ -26,6 +26,11 @@ AC_ARG_ENABLE(
 dnl
 AS_IF([test "x${enable_warnings}" != "xno"], [
 dnl
+LINTED_CHECK_CFLAGS([linted_CFLAGS_WARNINGS_PEDANTIC],[
+        [-pedantic]dnl
+])
+AC_SUBST([linted_CFLAGS_WARNINGS_PEDANTIC])
+dnl
 LINTED_CHECK_CFLAGS([linted_CFLAGS_WARNINGS],[
         [-Qunused-arguments]dnl
         [-Werror=unknown-warning-option]dnl
