@@ -15,6 +15,8 @@
  */
 #include "config.h"
 
+#include "bool.h"
+
 #include "lntd/error.h"
 #include "lntd/ko.h"
 
