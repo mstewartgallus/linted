@@ -72,6 +72,8 @@ EXTRA_DIST+=\
 %C%_linted_simulator_LDADD=\
   -lm\
   src/ko/libko.la\
+  src/ko-stack/libkostack.la\
+  src/stack/libstack.la\
   %D%/simulator.o
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
@@ -132,6 +134,7 @@ BUILT_SOURCES+=%D%/simulator.c
 	$(linted_V_NESCC) $(NESCC)\
 	  -fnesc-path=$(abs_srcdir)/%D%\
 	  -I$(srcdir)/include -I$(builddir)\
+	  $(%C%_linted_simulator_CPPFLAGS) $(AM_CPPFLAGS) $(CPPFLAGS)\
 	  -D__restrict__=\
 	  \
 	  -DLNTD_TASK_UNIQUE='"$(%C%_linted_simulator_task_unique)"'\

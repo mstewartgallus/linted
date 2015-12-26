@@ -16,11 +16,15 @@
 #include "config.h"
 
 #include "async.h"
+#include "lntd/node.h"
+#include "lntd/ko-stack.h"
+#include "lntd/stack.h"
 #include "lntd/util.h"
 
 #include <errno.h>
 #include <libgen.h>
 #include <pthread.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,7 +33,6 @@
 #include <sys/poll.h>
 #include <sys/timerfd.h>
 #include <sys/types.h>
-#include <ucontext.h>
 #include <unistd.h>
 
 #define MAXCMDS uniqueCount(LNTD_ASYNC_COMMAND)
@@ -46,45 +49,44 @@ module LntdNonblockPoolLinuxP
 implementation
 {
 	enum { TASK, COMMAND, SIGNAL };
-	struct node {
-		struct node *next;
+	struct myevent {
+		struct lntd_node node;
 		unsigned char type;
 		bool is_pending;
 	};
 
 	struct taskstate {
-		struct node node;
+		struct myevent myevent;
 		lntd_task_id task_id;
 	};
 
 	struct cmd {
-		struct node node;
-		struct cmd *next;
+		struct myevent myevent;
 		void *data;
 		lntd_error err;
 		lntd_async_cmd_type type;
-		unsigned finished : 1U;
+		volatile uint32_t finished;
 		unsigned in_use : 1U;
 		unsigned have_waiter : 1U;
 		unsigned cancelled : 1U;
 	};
 
-	ucontext_t io_context;
-	ucontext_t user_context;
+	size_t global_argc;
+	char const *const *global_argv;
 
 	sigset_t listen_to_signals;
 
-	bool time_to_exit;
-	lntd_error exit_status;
-
 	volatile sig_atomic_t sigint_received;
 
-	struct cmd *cmd_queue = 0;
-	struct node *event_queue = 0;
+	struct lntd_ko_stack *cmd_queue = 0;
+	struct lntd_stack *event_queue = 0;
 
-	struct node sigint_node;
+	struct cmd exit_node;
+	struct myevent sigint_node;
 	struct taskstate tasks[MAXTASKS];
-	struct pollfd pollfds[MAXCMDS];
+	struct pollfd pollfds[1U + MAXCMDS];
+
+	bool time_to_exit;
 
 	size_t get_default_stack_size(void);
 	size_t get_page_size(void);
@@ -95,18 +97,17 @@ implementation
 	void handle_sigint(int signo);
 	void finish_cmd(lntd_async_command_id id, lntd_error err);
 
-	void user_mainloop_routine(size_t argc,
-	                           char const *const *argv);
+	void *user_mainloop_routine(void *);
 
 	struct cmd *get_cmd(lntd_async_command_id id);
 	lntd_async_command_id get_cmd_id(struct cmd const *cmd);
 
-	void push_cmd(struct cmd * *stack, struct cmd * cmd);
-	struct cmd *pop_cmd(struct cmd * *stack);
+	void push_cmd(struct lntd_ko_stack * stack, struct cmd * cmd);
+	struct cmd *pop_cmd(struct lntd_ko_stack * stack);
 
-	bool push_node(struct node * *stack, struct node * cmd,
-	               unsigned char type);
-	struct node *pop_node(struct node * *stack);
+	bool push_event(struct lntd_stack * stack, struct myevent * cmd,
+	                unsigned char type);
+	struct myevent *pop_event(struct lntd_stack * stack);
 
 	command bool LntdTask.post_task[lntd_task_id task_id](void)
 	{
@@ -114,7 +115,8 @@ implementation
 
 		taskstate->task_id = task_id;
 
-		return push_node(&event_queue, &taskstate->node, TASK);
+		return push_event(event_queue, &taskstate->myevent,
+		                  TASK);
 	}
 
 	command void LntdAsyncCommand.execute[lntd_async_command_id id](
@@ -134,7 +136,7 @@ implementation
 		cmd->cancelled = false;
 		cmd->in_use = true;
 
-		push_cmd(&cmd_queue, cmd);
+		push_cmd(cmd_queue, cmd);
 	}
 
 	command void LntdAsyncCommand.cancel[lntd_async_command_id id](
@@ -161,11 +163,10 @@ implementation
 		cmd->in_use = true;
 		cmd->have_waiter = true;
 
-		push_cmd(&cmd_queue, cmd);
+		push_cmd(cmd_queue, cmd);
 
 		for (;;) {
-			swapcontext(&user_context, &io_context);
-
+			sched_yield();
 			if (cmd->finished)
 				break;
 		}
@@ -179,8 +180,7 @@ implementation
 
 	command void LntdMainLoop.exit(lntd_error status)
 	{
-		time_to_exit = true;
-		exit_status = status;
+		push_cmd(cmd_queue, &exit_node);
 	}
 
 	int main(int argc, char **argv) @C() @spontaneous()
@@ -221,6 +221,17 @@ implementation
 			}
 		}
 
+		err = lntd_ko_stack_create(&cmd_queue);
+		if (err != 0)
+			return EXIT_FAILURE;
+
+		err = lntd_stack_create(&event_queue);
+		if (err != 0)
+			return EXIT_FAILURE;
+
+		pollfds[0U].fd = lntd_ko_stack_ko(cmd_queue);
+		pollfds[0U].events = POLLIN;
+
 		useable_stack_size = get_default_stack_size();
 		page_size = get_page_size();
 
@@ -256,38 +267,33 @@ implementation
 			sigaction(SIGINT, &act, &old_action);
 		}
 
-		getcontext(&user_context);
-		user_context.uc_stack.ss_sp = stack_start;
-		user_context.uc_stack.ss_size = useable_stack_size;
-		user_context.uc_link = &io_context;
-		sigdelset(&user_context.uc_sigmask, SIGINT);
-		makecontext(&user_context,
-		            (void (*)(void))user_mainloop_routine, 2,
-		            argc, (char const *const *)argv);
+		global_argc = argc;
+		global_argv = (char const *const *)argv;
+		{
+			pthread_t xx;
+			err = pthread_create(&xx, 0,
+			                     user_mainloop_routine, 0);
+			if (err != 0)
+				return EXIT_FAILURE;
+		}
 
 		for (;;) {
-			/* Poll for events to trigger */
-			swapcontext(&io_context, &user_context);
-
-			if (sigint_received) {
-				sigint_received = false;
-				push_node(&event_queue, &sigint_node,
-				          SIGNAL);
-				continue;
-			}
-
 			if (time_to_exit) {
-				status = exit_status;
+				status = 0;
 				goto exit_mainloop;
 			}
 
-			if (handle_command())
+			if (sigint_received) {
+				sigint_received = false;
+				push_event(event_queue, &sigint_node,
+				           SIGNAL);
 				continue;
+			}
 
 			{
 				size_t ii;
 				bool cancelled_a_poller = false;
-				for (ii = 0U;
+				for (ii = 1U;
 				     ii < LNTD_ARRAY_SIZE(pollfds);
 				     ++ii) {
 					struct cmd *cmd;
@@ -295,7 +301,7 @@ implementation
 					if (-1 == pollfds[ii].fd)
 						continue;
 
-					cmd = get_cmd(ii);
+					cmd = get_cmd(ii - 1);
 
 					if (cmd->cancelled) {
 						cancelled_a_poller =
@@ -303,7 +309,7 @@ implementation
 						pollfds[ii].fd = -1;
 						pollfds[ii].events = 0;
 						finish_cmd(
-						    ii,
+						    ii - 1,
 						    LNTD_ERROR_CANCELLED);
 						continue;
 					}
@@ -314,7 +320,7 @@ implementation
 
 			err = poll_for_io();
 			if (err != 0) {
-				exit_status = EXIT_FAILURE;
+				status = EXIT_FAILURE;
 				goto exit_mainloop;
 			}
 		}
@@ -326,140 +332,174 @@ implementation
 
 		munmap(stack, stack_size);
 
-		return signal LntdMainLoop.shutdown(status);
+		exit(signal LntdMainLoop.shutdown(status));
 	}
 
 	bool handle_command(void)
 	{
-		struct cmd *cmd;
-		void *data;
-		lntd_async_command_id id;
-		short events;
-		int fd;
 		lntd_error err = 0;
+		lntd_ko wait_ko;
+		bool got_at_least_one = false;
 
-		cmd = pop_cmd(&cmd_queue);
-		if (0 == cmd)
-			return false;
+		wait_ko = lntd_ko_stack_ko(cmd_queue);
 
-		id = get_cmd_id(cmd);
-		data = cmd->data;
-
-		if (cmd->cancelled) {
-			err = LNTD_ERROR_CANCELLED;
-			goto finish_command;
-		}
-
-		switch (cmd->type) {
-		case LNTD_ASYNC_CMD_TYPE_WRITE: {
-			struct lntd_async_cmd_write *w;
-			lntd_ko ko;
-
-			w = data;
-			ko = w->ko;
-
-			if (ko > INT_MAX) {
-				err = LNTD_ERROR_INVALID_PARAMETER;
-				goto finish_command;
-			}
-
-			fd = ko;
-			events = POLLOUT;
-			goto poll_command;
-		}
-
-		case LNTD_ASYNC_CMD_TYPE_POLL: {
-			struct lntd_async_cmd_poll *p;
-			lntd_ko ko;
-			short trans_events;
-
-			p = data;
-
-			trans_events = p->events;
-			ko = p->ko;
-
-			if (ko > INT_MAX) {
-				err = LNTD_ERROR_INVALID_PARAMETER;
-				goto finish_command;
-			}
-
-			events = 0;
-			if ((trans_events & LNTD_ASYNC_POLLER_IN) != 0)
-				events |= POLLIN;
-			if ((trans_events & LNTD_ASYNC_POLLER_OUT) != 0)
-				events |= POLLOUT;
-
-			fd = ko;
-			goto poll_command;
-		}
-
-		case LNTD_ASYNC_CMD_TYPE_TIMER: {
-			struct lntd_async_cmd_timer *p;
-			struct itimerspec spec;
-			lntd_ko ko;
-
-			p = data;
-
-			ko = p->ko;
-
-			if (ko > INT_MAX) {
-				err = LNTD_ERROR_INVALID_PARAMETER;
-				goto finish_command;
-			}
-
-			spec.it_interval.tv_sec = 0;
-			spec.it_interval.tv_nsec = 0;
-
-			spec.it_value = p->request;
-
-			if (-1 == timerfd_settime(ko, TFD_TIMER_ABSTIME,
-			                          &spec, 0)) {
+		for (;;) {
+			uint64_t xx;
+			if (-1 == read(wait_ko, &xx, sizeof xx)) {
 				err = errno;
+				LNTD_ASSERT(err != 0);
+				if (EINTR == err)
+					continue;
+				if (EAGAIN == err)
+					break;
+				LNTD_ASSERT(0);
+			}
+			break;
+		}
+
+		for (;;) {
+			struct cmd *cmd;
+			void *data;
+			lntd_async_command_id id;
+			short events;
+			int fd;
+
+			cmd = pop_cmd(cmd_queue);
+			if (0 == cmd)
+				break;
+
+			if (cmd == &exit_node) {
+				time_to_exit = true;
+				return true;
+			}
+
+			got_at_least_one = true;
+
+			id = get_cmd_id(cmd);
+			data = cmd->data;
+
+			if (cmd->cancelled) {
+				err = LNTD_ERROR_CANCELLED;
 				goto finish_command;
 			}
 
-			fd = p->ko;
-			events = POLLIN;
-			goto poll_command;
-		}
+			switch (cmd->type) {
+			case LNTD_ASYNC_CMD_TYPE_WRITE: {
+				struct lntd_async_cmd_write *w;
+				lntd_ko ko;
 
-		case LNTD_ASYNC_CMD_TYPE_READ: {
-			struct lntd_async_cmd_read *r;
-			lntd_ko ko;
+				w = data;
+				ko = w->ko;
 
-			r = data;
+				if (ko > INT_MAX) {
+					err =
+					    LNTD_ERROR_INVALID_PARAMETER;
+					goto finish_command;
+				}
 
-			ko = r->ko;
-
-			if (ko > INT_MAX) {
-				err = LNTD_ERROR_INVALID_PARAMETER;
-				goto finish_command;
+				fd = ko;
+				events = POLLOUT;
+				goto poll_command;
 			}
 
-			fd = r->ko;
-			events = POLLIN;
-			goto poll_command;
+			case LNTD_ASYNC_CMD_TYPE_POLL: {
+				struct lntd_async_cmd_poll *p;
+				lntd_ko ko;
+				short trans_events;
+
+				p = data;
+
+				trans_events = p->events;
+				ko = p->ko;
+
+				if (ko > INT_MAX) {
+					err =
+					    LNTD_ERROR_INVALID_PARAMETER;
+					goto finish_command;
+				}
+
+				events = 0;
+				if ((trans_events &
+				     LNTD_ASYNC_POLLER_IN) != 0)
+					events |= POLLIN;
+				if ((trans_events &
+				     LNTD_ASYNC_POLLER_OUT) != 0)
+					events |= POLLOUT;
+
+				fd = ko;
+				goto poll_command;
+			}
+
+			case LNTD_ASYNC_CMD_TYPE_TIMER: {
+				struct lntd_async_cmd_timer *p;
+				struct itimerspec spec;
+				lntd_ko ko;
+
+				p = data;
+
+				ko = p->ko;
+
+				if (ko > INT_MAX) {
+					err =
+					    LNTD_ERROR_INVALID_PARAMETER;
+					goto finish_command;
+				}
+
+				spec.it_interval.tv_sec = 0;
+				spec.it_interval.tv_nsec = 0;
+
+				spec.it_value = p->request;
+
+				if (-1 == timerfd_settime(
+				              ko, TFD_TIMER_ABSTIME,
+				              &spec, 0)) {
+					err = errno;
+					goto finish_command;
+				}
+
+				fd = p->ko;
+				events = POLLIN;
+				goto poll_command;
+			}
+
+			case LNTD_ASYNC_CMD_TYPE_READ: {
+				struct lntd_async_cmd_read *r;
+				lntd_ko ko;
+
+				r = data;
+
+				ko = r->ko;
+
+				if (ko > INT_MAX) {
+					err =
+					    LNTD_ERROR_INVALID_PARAMETER;
+					goto finish_command;
+				}
+
+				fd = r->ko;
+				events = POLLIN;
+				goto poll_command;
+			}
+
+			case LNTD_ASYNC_CMD_TYPE_IDLE:
+				err = 0;
+				goto finish_command;
+
+			default:
+				LNTD_ASSERT(0);
+			}
+
+		finish_command:
+			finish_cmd(id, err);
+			continue;
+
+		poll_command:
+			LNTD_ASSERT(-1 == pollfds[1U + id].fd);
+			pollfds[1U + id].fd = fd;
+			pollfds[1U + id].events = events;
+			continue;
 		}
-
-		case LNTD_ASYNC_CMD_TYPE_IDLE:
-			err = 0;
-			goto finish_command;
-
-		default:
-			LNTD_ASSERT(0);
-		}
-
-		return true;
-
-	finish_command:
-		finish_cmd(id, err);
-		return true;
-
-	poll_command:
-		LNTD_ASSERT(-1 == pollfds[id].fd);
-		pollfds[id].fd = fd;
-		pollfds[id].events = events;
-		return true;
+		return got_at_least_one;
 	}
 
 	lntd_error poll_for_io(void)
@@ -482,6 +522,7 @@ implementation
 		for (ii = 0U; ii < LNTD_ARRAY_SIZE(pollfds); ++ii) {
 			short revents;
 			struct cmd *cmd;
+			lntd_async_command_id id;
 
 			revents = pollfds[ii].revents;
 
@@ -491,7 +532,13 @@ implementation
 			if ((revents & POLLNVAL) != 0)
 				continue;
 
-			cmd = get_cmd(ii);
+			if (0U == ii) {
+				handle_command();
+				continue;
+			}
+
+			id = ii - 1U;
+			cmd = get_cmd(id);
 			switch (cmd->type) {
 			case LNTD_ASYNC_CMD_TYPE_WRITE: {
 				struct lntd_async_cmd_write *w;
@@ -522,7 +569,7 @@ implementation
 
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
-				finish_cmd(ii, err);
+				finish_cmd(id, err);
 				break;
 			}
 
@@ -544,7 +591,7 @@ implementation
 
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
-				finish_cmd(ii, 0);
+				finish_cmd(id, 0);
 				break;
 			}
 
@@ -570,7 +617,7 @@ implementation
 
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
-				finish_cmd(ii, 0);
+				finish_cmd(id, 0);
 				break;
 			}
 
@@ -607,11 +654,13 @@ implementation
 
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
-				finish_cmd(ii, err);
+				finish_cmd(id, err);
 				break;
 			}
 
 			default:
+				fprintf(stderr, "FOO: %lu %lu\n", ii,
+				        cmd->type);
 				LNTD_ASSERT(0);
 			}
 
@@ -635,7 +684,7 @@ implementation
 		cmd->data = 0;
 
 		if (!cmd->have_waiter) {
-			push_node(&event_queue, &cmd->node, COMMAND);
+			push_event(event_queue, &cmd->myevent, COMMAND);
 		}
 		cmd->have_waiter = false;
 	}
@@ -658,24 +707,20 @@ default event
 		sigint_received = true;
 	}
 
-	void user_mainloop_routine(size_t argc, char const *const *argv)
+	void *user_mainloop_routine(void *foo)
 	{
-		signal LntdMainLoop.boot(argc, argv);
+		signal LntdMainLoop.boot(global_argc, global_argv);
 
 		for (;;) {
-			struct node *node;
+			struct myevent *myevent;
 
-			swapcontext(&user_context, &io_context);
+			myevent = pop_event(event_queue);
 
-			node = pop_node(&event_queue);
-			if (0 == node)
-				continue;
-
-			switch (node->type) {
+			switch (myevent->type) {
 			case TASK: {
 				struct taskstate *taskstate;
 
-				taskstate = (void *)node;
+				taskstate = (void *)myevent;
 				signal LntdTask
 				    .run_task[taskstate->task_id]();
 				continue;
@@ -684,7 +729,7 @@ default event
 			case COMMAND: {
 				struct cmd *cmd;
 
-				cmd = (void *)node;
+				cmd = (void *)myevent;
 				cmd->in_use = false;
 
 				signal LntdAsyncCommand
@@ -721,53 +766,41 @@ default event
 		return size;
 	}
 
-	void push_cmd(struct cmd * *stack, struct cmd * cmd)
+	void push_cmd(struct lntd_ko_stack * stack, struct cmd * cmd)
 	{
-		cmd->next = *stack;
-		*stack = cmd;
+		lntd_ko_stack_send(stack, &cmd->myevent.node);
 	}
 
-	struct cmd *pop_cmd(struct cmd * *stack)
+	struct cmd *pop_cmd(struct lntd_ko_stack * stack)
 	{
-		struct cmd *cmd;
-
-		cmd = *stack;
-		if (0 == cmd)
+		struct lntd_node *node;
+		if (EAGAIN == lntd_ko_stack_try_recv(stack, &node))
 			return 0;
-
-		*stack = cmd->next;
-
-		return cmd;
+		return (void *)node;
 	}
 
-	bool push_node(struct node * *stack, struct node * node,
-	               unsigned char type)
+	bool push_event(struct lntd_stack * stack,
+	                struct myevent * myevent, unsigned char type)
 	{
-		if (node->is_pending)
+		if (myevent->is_pending)
 			return 1;
 
-		node->type = type;
-		node->is_pending = true;
+		myevent->type = type;
+		myevent->is_pending = true;
 
-		node->next = *stack;
-		*stack = node;
+		lntd_stack_send(stack, &myevent->node);
 
 		return 0;
 	}
 
-	struct node *pop_node(struct node * *stack)
+	struct myevent *pop_event(struct lntd_stack * stack)
 	{
-		struct node *node;
+		struct lntd_node *node;
+		lntd_stack_recv(stack, &node);
 
-		node = *stack;
-		if (0 == node)
-			return 0;
+		((struct myevent *)node)->is_pending = false;
 
-		node->is_pending = false;
-
-		*stack = node->next;
-
-		return node;
+		return (void *)node;
 	}
 
 	struct cmd cmds[MAXCMDS];
