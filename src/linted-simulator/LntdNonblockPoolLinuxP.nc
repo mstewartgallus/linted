@@ -88,9 +88,6 @@ implementation
 
 	bool time_to_exit;
 
-	size_t get_default_stack_size(void);
-	size_t get_page_size(void);
-
 	bool handle_command(void);
 	lntd_error poll_for_io(void);
 
@@ -185,14 +182,9 @@ implementation
 
 	int main(int argc, char **argv) @C() @spontaneous()
 	{
-		size_t stack_size;
-		size_t page_size;
 		int status;
 		struct sigaction old_action;
 		char const *program_name;
-		char *stack;
-		char *stack_start;
-		size_t useable_stack_size;
 		lntd_error err = 0;
 
 		program_name = argv[0U];
@@ -231,25 +223,6 @@ implementation
 
 		pollfds[0U].fd = lntd_ko_stack_ko(cmd_queue);
 		pollfds[0U].events = POLLIN;
-
-		useable_stack_size = get_default_stack_size();
-		page_size = get_page_size();
-
-		stack_size = useable_stack_size + 2U * page_size;
-
-		stack = mmap(0, stack_size, PROT_READ | PROT_WRITE,
-		             MAP_PRIVATE | MAP_ANONYMOUS |
-		                 MAP_GROWSDOWN | MAP_STACK,
-		             -1, 0);
-		if (0 == stack) {
-			return EXIT_FAILURE;
-		}
-
-		mprotect(stack, page_size, PROT_NONE);
-		mprotect(stack + page_size + useable_stack_size,
-		         page_size, PROT_NONE);
-
-		stack_start = stack + page_size;
 
 		{
 			sigset_t signals;
@@ -329,8 +302,6 @@ implementation
 		sigaction(SIGINT, &old_action, 0);
 
 		pthread_sigmask(SIG_SETMASK, &listen_to_signals, 0);
-
-		munmap(stack, stack_size);
 
 		exit(signal LntdMainLoop.shutdown(status));
 	}
@@ -659,8 +630,6 @@ implementation
 			}
 
 			default:
-				fprintf(stderr, "FOO: %lu %lu\n", ii,
-				        cmd->type);
 				LNTD_ASSERT(0);
 			}
 
@@ -745,25 +714,6 @@ default event
 				LNTD_CRASH_FAST();
 			}
 		}
-	}
-
-	size_t get_default_stack_size(void)
-	{
-		pthread_attr_t attr;
-		size_t stack_size;
-
-		pthread_attr_init(&attr);
-		pthread_attr_getstacksize(&attr, &stack_size);
-		pthread_attr_destroy(&attr);
-
-		return stack_size;
-	}
-
-	size_t get_page_size(void)
-	{
-		long size = sysconf(_SC_PAGE_SIZE);
-		LNTD_ASSERT(size >= 0);
-		return size;
 	}
 
 	void push_cmd(struct lntd_ko_stack * stack, struct cmd * cmd)
