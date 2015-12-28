@@ -17,47 +17,10 @@
 pkglibexec_PROGRAMS+=%D%/linted-simulator
 
 EXTRA_DIST+=\
-  %D%/LntdConfig.nc\
-  %D%/LntdAsyncCommandC.nc\
-  %D%/LntdAsyncCommand.nc\
-  %D%/LntdControllerReaderC.nc\
-  %D%/LntdControllerReader.nc\
-  %D%/LntdControllerReaderP.nc\
-  %D%/LntdIdlerC.nc\
-  %D%/LntdIdler.nc\
-  %D%/LntdLoggerC.nc\
-  %D%/LntdLogger.nc\
-  %D%/LntdLoggerPosixP.nc\
-  %D%/LntdLoggerWindowsP.nc\
-  %D%/LntdMainLoop.nc\
-  %D%/LntdNonblockPoolC.nc\
-  %D%/LntdNonblockPoolLinuxP.nc\
-  %D%/LntdNonblockPoolWindowsP.nc\
-  %D%/LntdPollerC.nc\
-  %D%/LntdPoller.nc\
-  %D%/LntdPollerP.nc\
-  %D%/LntdReaderC.nc\
-  %D%/LntdReader.nc\
-  %D%/LntdReaderP.nc\
   %D%/LntdSimulatorC.nc\
-  %D%/LntdStdioC.nc\
-  %D%/LntdStdio.nc\
-  %D%/LntdStdioP.nc\
-  %D%/LntdTimerC.nc\
-  %D%/LntdTimer.nc\
-  %D%/LntdTimerLinuxP.nc\
-  %D%/LntdTimerWindowsP.nc\
-  %D%/LntdUpdateWriterC.nc\
-  %D%/LntdUpdateWriter.nc\
-  %D%/LntdUpdateWriterP.nc\
-  %D%/LntdWriterC.nc\
-  %D%/LntdWriter.nc\
-  %D%/LntdWriterP.nc
+  %D%/LntdSimulatorP.nc
 
-%C%_linted_simulator_SOURCES=\
-  %D%/async.h\
-  %D%/bool.h\
-  %D%/logger.h
+%C%_linted_simulator_SOURCES=
 
 %C%_linted_simulator_CFLAGS=\
   $(linted_CFLAGS_LANGUAGE)\
@@ -89,50 +52,10 @@ endif
 
 MOSTLYCLEANFILES+=%D%/simulator.c
 BUILT_SOURCES+=%D%/simulator.c
-%D%/simulator.c: \
-  %D%/LntdConfig.nc\
-  %D%/LntdAsyncCommandC.nc\
-  %D%/LntdAsyncCommand.nc\
-  %D%/LntdControllerReaderC.nc\
-  %D%/LntdControllerReader.nc\
-  %D%/LntdControllerReaderP.nc\
-  %D%/LntdIdlerC.nc\
-  %D%/LntdIdler.nc\
-  %D%/LntdLoggerC.nc\
-  %D%/LntdLogger.nc\
-  %D%/LntdLoggerPosixP.nc\
-  %D%/LntdLoggerWindowsP.nc\
-  %D%/LntdMainLoop.nc\
-  %D%/LntdNonblockPoolC.nc\
-  %D%/LntdNonblockPoolLinuxP.nc\
-  %D%/LntdNonblockPoolWindowsP.nc\
-  %D%/LntdPollerC.nc\
-  %D%/LntdPoller.nc\
-  %D%/LntdPollerP.nc\
-  %D%/LntdReaderC.nc\
-  %D%/LntdReader.nc\
-  %D%/LntdReaderP.nc\
-  %D%/LntdSimulatorC.nc\
-  %D%/LntdStdioC.nc\
-  %D%/LntdStdio.nc\
-  %D%/LntdStdioP.nc\
-  %D%/LntdTask.nc\
-  %D%/LntdTimerC.nc\
-  %D%/LntdTimer.nc\
-  %D%/LntdTimerLinuxP.nc\
-  %D%/LntdTimerWindowsP.nc\
-  %D%/LntdUpdateWriterC.nc\
-  %D%/LntdUpdateWriter.nc\
-  %D%/LntdUpdateWriterP.nc\
-  %D%/LntdWriterC.nc\
-  %D%/LntdWriter.nc\
-  %D%/LntdWriterP.nc\
-  \
-  %D%/async.h\
-  %D%/bool.h\
-  %D%/logger.h
+%D%/simulator.c: %D%/LntdSimulatorC.nc %D%/LntdSimulatorP.nc $(NESC_FILES)
 	$(linted_V_NESCC) $(NESCC)\
-	  -fnesc-path=$(abs_srcdir)/%D%\
+	  -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc\
+	  -I$(srcdir)/src/nesc\
 	  -I$(srcdir)/include -I$(builddir)\
 	  $(%C%_linted_simulator_CPPFLAGS) $(AM_CPPFLAGS) $(CPPFLAGS)\
 	  -D__restrict__=\
