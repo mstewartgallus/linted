@@ -48,26 +48,10 @@ if WINDOWS_API
 %D%/resources.$(OBJEXT): %D%/simulator.manifest
 endif
 
-%C%_linted_simulator_task_unique=LntdTask-5167a5c7-2eb2-43cc-8e58-b0c6be0012c8
-
 MOSTLYCLEANFILES+=%D%/simulator.c
 BUILT_SOURCES+=%D%/simulator.c
 %D%/simulator.c: %D%/LntdSimulatorC.nc %D%/LntdSimulatorP.nc $(NESC_FILES)
-	$(linted_V_NESCC) $(NESCC)\
-	  -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc\
-	  -I$(srcdir)/src/nesc\
-	  -I$(srcdir)/include -I$(builddir)\
-	  $(%C%_linted_simulator_CPPFLAGS) $(AM_CPPFLAGS) $(CPPFLAGS)\
-	  -D__restrict__=\
-	  \
-	  -DLNTD_TASK_UNIQUE='"$(%C%_linted_simulator_task_unique)"'\
-	  -fnesc-scheduler=LntdNonblockPoolC,$(%C%_linted_simulator_task_unique),LntdTask,LntdTask,run_task,post_task\
-	  -D_GNU_SOURCE=1\
-	  -P\
-	  -c\
-	  -s -E -fnesc-cfile=$@\
-	  -Wnesc-all -Wnesc-error\
-	  $<
+	$(linted_V_NESCC) $(NESCC) $(AM_NESCFLAGS) -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc $(NESCFLAGS) -fnesc-cfile=$@ $<
 	test -f $@
 
 %D%/simulator.o: %D%/simulator.c

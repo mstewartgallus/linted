@@ -13,24 +13,31 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LNTD_ENV_H
-#define LNTD_ENV_H
+#include "config.h"
 
-#include "lntd/error.h"
+#include "async.h"
 
-/**
- * @file
- *
- * Manipulate a process environment.
- */
+configuration LntdNonblockPoolC
+{
+	uses interface LntdLogger;
 
-/**
- * @todo Deprecated `lntd_env_set` as it is racy in multithreaded
- * environments.
- */
-lntd_error lntd_env_set(char const *key, char const *value,
-                        unsigned char overwrite);
+	provides interface LntdTask[lntd_task_id task_id];
+	provides interface LntdAsyncCommand[lntd_async_command_id id];
+	provides interface LntdMainLoop;
+}
+implementation
+{
+#if defined HAVE_WINDOWS_API
+	components LntdNonblockPoolWindowsP as Pool;
+#elif defined HAVE_POSIX_API
+	components LntdNonblockPoolLinuxP as Pool;
+#else
+#error Unsupported platform
+#endif
 
-lntd_error lntd_env_get(char const *key, char **valuep);
+	LntdTask = Pool.LntdTask;
+	LntdAsyncCommand = Pool.LntdAsyncCommand;
+	LntdMainLoop = Pool.LntdMainLoop;
 
-#endif /* LNTD_ENV_H */
+	Pool.LntdLogger = LntdLogger;
+}

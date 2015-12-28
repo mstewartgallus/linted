@@ -13,24 +13,25 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LNTD_ENV_H
-#define LNTD_ENV_H
+#include "config.h"
 
-#include "lntd/error.h"
+configuration LntdLoggerC
+{
+	provides interface LntdLogger;
+	uses interface LntdStdio;
+}
+implementation
+{
 
-/**
- * @file
- *
- * Manipulate a process environment.
- */
+#if defined HAVE_WINDOWS_API
+	components LntdLoggerWindowsP as Logger;
+#elif defined HAVE_POSIX_API
+	components LntdLoggerPosixP as Logger;
+#else
+#error Unsupported platform
+#endif
 
-/**
- * @todo Deprecated `lntd_env_set` as it is racy in multithreaded
- * environments.
- */
-lntd_error lntd_env_set(char const *key, char const *value,
-                        unsigned char overwrite);
+	LntdLogger = Logger;
 
-lntd_error lntd_env_get(char const *key, char **valuep);
-
-#endif /* LNTD_ENV_H */
+	Logger.LntdStdio = LntdStdio;
+}

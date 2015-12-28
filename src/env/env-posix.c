@@ -31,7 +31,7 @@
 static pthread_mutex_t mutex;
 
 lntd_error lntd_env_set(char const *key, char const *value,
-                        _Bool overwrite)
+                        unsigned char overwrite)
 {
 	lntd_error err = 0;
 

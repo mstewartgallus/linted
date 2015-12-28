@@ -13,24 +13,17 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LNTD_ENV_H
-#define LNTD_ENV_H
+#include "config.h"
 
 #include "lntd/error.h"
+#include "lntd/ko.h"
 
-/**
- * @file
- *
- * Manipulate a process environment.
- */
+#include <stddef.h>
 
-/**
- * @todo Deprecated `lntd_env_set` as it is racy in multithreaded
- * environments.
- */
-lntd_error lntd_env_set(char const *key, char const *value,
-                        unsigned char overwrite);
+interface LntdReader
+{
+	command void execute(lntd_ko ko, char *bytes, size_t size);
+	event void read_done(lntd_error err, size_t bytes_read);
 
-lntd_error lntd_env_get(char const *key, char **valuep);
-
-#endif /* LNTD_ENV_H */
+	command void cancel(void);
+}

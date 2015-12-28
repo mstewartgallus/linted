@@ -13,24 +13,29 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LNTD_ENV_H
-#define LNTD_ENV_H
+#include "config.h"
 
 #include "lntd/error.h"
+#include "lntd/ko.h"
 
-/**
- * @file
- *
- * Manipulate a process environment.
- */
+#include <stddef.h>
+#include <stdint.h>
 
-/**
- * @todo Deprecated `lntd_env_set` as it is racy in multithreaded
- * environments.
- */
-lntd_error lntd_env_set(char const *key, char const *value,
-                        unsigned char overwrite);
+struct lntd_update_writer_update {
+	int_least32_t x_position;
+	int_least32_t y_position;
+	int_least32_t z_position;
 
-lntd_error lntd_env_get(char const *key, char **valuep);
+	uint_least32_t z_rotation;
+	uint_least32_t x_rotation;
+};
 
-#endif /* LNTD_ENV_H */
+interface LntdUpdateWriter
+{
+	command void write(
+	    lntd_ko updater,
+	    struct lntd_update_writer_update const *update);
+	event void write_done(lntd_error err);
+
+	command void cancel(void);
+}

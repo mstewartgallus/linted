@@ -65,12 +65,13 @@ static inline lntd_error lntd_mem_alloc_array(void **memp, size_t nmemb,
 	lntd_error err;
 
 	void *memory;
+	size_t total;
+
 	if (0U == nmemb || 0U == size) {
 		memory = 0;
 		goto store_mem;
 	}
 
-	size_t total;
 	err = lntd_mem_safe_multiply(nmemb, size, &total);
 	if (err != 0)
 		return err;
@@ -149,13 +150,14 @@ static inline lntd_error lntd_mem_realloc_array(void **memp,
 	lntd_error err = 0;
 
 	void *new_memory;
+	size_t total;
+
 	if (0U == nmemb || 0U == size) {
 		free(memory);
 		new_memory = 0;
 		goto store_mem;
 	}
 
-	size_t total;
 	err = lntd_mem_safe_multiply(nmemb, size, &total);
 	if (err != 0)
 		return err;

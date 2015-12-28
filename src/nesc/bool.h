@@ -13,24 +13,13 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LNTD_ENV_H
-#define LNTD_ENV_H
+#ifndef LNTD_BOOL_H
+#define LNTD_BOOL_H
 
-#include "lntd/error.h"
+enum { false, true };
+typedef unsigned char bool;
 
-/**
- * @file
- *
- * Manipulate a process environment.
- */
+#define true true
+#define false false
 
-/**
- * @todo Deprecated `lntd_env_set` as it is racy in multithreaded
- * environments.
- */
-lntd_error lntd_env_set(char const *key, char const *value,
-                        unsigned char overwrite);
-
-lntd_error lntd_env_get(char const *key, char **valuep);
-
-#endif /* LNTD_ENV_H */
+#endif /* LNTD_BOOL_H */

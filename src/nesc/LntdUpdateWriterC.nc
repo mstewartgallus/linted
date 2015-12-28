@@ -13,24 +13,18 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LNTD_ENV_H
-#define LNTD_ENV_H
+#include "config.h"
 
-#include "lntd/error.h"
+generic configuration LntdUpdateWriterC()
+{
+	provides interface LntdUpdateWriter;
+}
+implementation
+{
+	components new LntdUpdateWriterP() as UpdateWriter;
+	components new LntdWriterC() as Writer;
 
-/**
- * @file
- *
- * Manipulate a process environment.
- */
+	LntdUpdateWriter = UpdateWriter;
 
-/**
- * @todo Deprecated `lntd_env_set` as it is racy in multithreaded
- * environments.
- */
-lntd_error lntd_env_set(char const *key, char const *value,
-                        unsigned char overwrite);
-
-lntd_error lntd_env_get(char const *key, char **valuep);
-
-#endif /* LNTD_ENV_H */
+	UpdateWriter.LntdWriter->Writer;
+}

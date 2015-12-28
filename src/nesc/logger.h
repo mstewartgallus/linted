@@ -13,24 +13,10 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LNTD_ENV_H
-#define LNTD_ENV_H
+#ifndef LNTD_LOGGER_H
+#define LNTD_LOGGER_H
 
-#include "lntd/error.h"
+enum { LNTD_LOGGER_ERROR };
+typedef unsigned char lntd_logger_level;
 
-/**
- * @file
- *
- * Manipulate a process environment.
- */
-
-/**
- * @todo Deprecated `lntd_env_set` as it is racy in multithreaded
- * environments.
- */
-lntd_error lntd_env_set(char const *key, char const *value,
-                        unsigned char overwrite);
-
-lntd_error lntd_env_get(char const *key, char **valuep);
-
-#endif /* LNTD_ENV_H */
+#endif /* LNTD_LOGGER_H */

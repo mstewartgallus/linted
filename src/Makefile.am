@@ -88,6 +88,8 @@ include %C%/trigger/Makefile.am
 include %C%/str/Makefile.am
 include %C%/window/Makefile.am
 
+include %C%/nesc/Makefile.am
+
 if WINDOWS_API
 include %C%/utf/Makefile.am
 endif

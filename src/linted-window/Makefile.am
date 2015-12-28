@@ -16,6 +16,9 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-window
 
+
+EXTRA_DIST+=%D%/LntdWindowC.nc %D%/LntdWindowP.nc
+
 %C%_linted_window_SOURCES=
 %C%_linted_window_CPPFLAGS=
 %C%_linted_window_LDADD=\
@@ -23,14 +26,15 @@ pkglibexec_PROGRAMS+=%D%/linted-window
   \
   src/async/libasync.la\
   src/error/liberror.la\
+  src/env/libenv.la\
   src/ko/libko.la\
   src/log/liblog.la\
   \
   src/window/libwindow.la
 
 if X11_API
-%C%_linted_window_SOURCES+=%D%/linted-window-x11.c
 %C%_linted_window_LDADD+=\
+  %D%/window.o\
   src/xcb/libxcb.la\
   $(XCB_LIBS)
 endif
@@ -49,3 +53,12 @@ endif
 
 dist_pkgdefaultconf_DATA+=%D%/window.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-window.service
+
+MOSTLYCLEANFILES+=%D%/window.c
+BUILT_SOURCES+=%D%/window.c
+%D%/window.c: %D%/LntdWindowC.nc %D%/LntdWindowP.nc $(NESC_FILES)
+	$(linted_V_NESCC) $(NESCC) $(AM_NESCFLAGS) -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc $(NESCFLAGS) -fnesc-cfile=$@ $<
+	test -f $@
+
+%D%/window.o: %D%/window.c
+	$(AM_V_CC) $(CC) $(%C%_linted_window_CFLAGS) $(CFLAGS) -c -o $@ $^
