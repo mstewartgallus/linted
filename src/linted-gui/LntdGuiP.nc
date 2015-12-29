@@ -43,7 +43,7 @@ module LntdGuiP
 
 	uses interface LntdPoller as Poller;
 	uses interface LntdReader as WindowNotifier;
-	uses interface LntdWriter as ControllerWriter;
+	uses interface LntdControllerWriter as ControllerWriter;
 }
 implementation
 {
@@ -51,20 +51,7 @@ implementation
 	lntd_ko window_notifier;
 	lntd_ko controller;
 
-	nx_struct control_input
-	{
-		nx_int32_t z_tilt;
-		nx_int32_t x_tilt;
-
-		nx_int32_t left;
-		nx_int32_t right;
-		nx_int32_t forward;
-		nx_int32_t back;
-
-		nx_int32_t jumping;
-	};
-
-	nx_struct control_input update;
+	struct lntd_controller_writer_input update;
 
 	struct xkb_context *keyboard_ctx;
 	struct xkb_keymap *keymap;
@@ -81,7 +68,6 @@ implementation
 
 	bool focused;
 	bool update_pending;
-	bool update_in_progress;
 
 	char dummy;
 
@@ -471,8 +457,6 @@ implementation
 			return;
 		}
 
-		update_in_progress = false;
-
 		maybe_update_controller();
 	}
 
@@ -644,14 +628,8 @@ implementation
 		if (!update_pending)
 			return;
 
-		if (update_in_progress)
-			return;
-
-		call ControllerWriter.execute(
-		    controller, (char const *)&update, sizeof update);
-
-		update_pending = false;
-		update_in_progress = true;
+		update_pending = true;
+		call ControllerWriter.write(controller, &update);
 	}
 
 	void on_tilt(int_fast32_t mouse_x, int_fast32_t mouse_y)

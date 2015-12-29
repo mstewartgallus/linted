@@ -21,6 +21,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "controller.h"
+
 generic module LntdControllerReaderP()
 {
 	provides interface LntdControllerReader;
@@ -28,20 +30,7 @@ generic module LntdControllerReaderP()
 }
 implementation
 {
-	nx_struct control_input
-	{
-		nx_int32_t z_tilt;
-		nx_int32_t x_tilt;
-
-		nx_int32_t left;
-		nx_int32_t right;
-		nx_int32_t forward;
-		nx_int32_t back;
-
-		nx_int32_t jumping;
-	};
-
-	nx_struct control_input control_input;
+	nx_struct lntd_controller_input control_input;
 	lntd_ko ko;
 
 	command void LntdControllerReader.start(lntd_ko the_ko)

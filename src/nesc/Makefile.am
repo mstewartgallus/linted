@@ -21,6 +21,9 @@ EXTRA_DIST+=\
   %D%/LntdControllerReaderC.nc\
   %D%/LntdControllerReader.nc\
   %D%/LntdControllerReaderP.nc\
+  %D%/LntdControllerWriterC.nc\
+  %D%/LntdControllerWriter.nc\
+  %D%/LntdControllerWriterP.nc\
   %D%/LntdIdlerC.nc\
   %D%/LntdIdler.nc\
   %D%/LntdLoggerC.nc\
@@ -53,6 +56,7 @@ EXTRA_DIST+=\
   \
   %D%/async.h\
   %D%/bool.h\
+  %D%/controller.h\
   %D%/logger.h
 
 NESC_FILES=\
@@ -61,6 +65,9 @@ NESC_FILES=\
   %D%/LntdControllerReaderC.nc\
   %D%/LntdControllerReader.nc\
   %D%/LntdControllerReaderP.nc\
+  %D%/LntdControllerWriterC.nc\
+  %D%/LntdControllerWriter.nc\
+  %D%/LntdControllerWriterP.nc\
   %D%/LntdIdlerC.nc\
   %D%/LntdIdler.nc\
   %D%/LntdLoggerC.nc\
@@ -94,6 +101,7 @@ NESC_FILES=\
   \
   %D%/async.h\
   %D%/bool.h\
+  %D%/controller.h\
   %D%/logger.h
 
 %C%_task_unique=LntdTask-5167a5c7-2eb2-43cc-8e58-b0c6be0012c8

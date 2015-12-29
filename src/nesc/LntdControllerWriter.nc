@@ -15,29 +15,32 @@
  */
 #include "config.h"
 
-configuration LntdGuiC
+#include "lntd/error.h"
+#include "lntd/ko.h"
+
+#include "controller.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+struct lntd_controller_writer_input {
+	int_least32_t z_tilt;
+	int_least32_t x_tilt;
+
+	int_least32_t left;
+	int_least32_t right;
+	int_least32_t forward;
+	int_least32_t back;
+
+	int_least32_t jumping;
+};
+
+interface LntdControllerWriter
 {
-}
-implementation
-{
-	components LntdGuiP;
-	components LntdStdioC;
-	components LntdNonblockPoolC;
-	components LntdLoggerC;
+	command void write(
+	    lntd_ko controller,
+	    struct lntd_controller_writer_input const *update);
+	event void write_done(lntd_error err);
 
-	components new LntdPollerC() as Poller;
-	components new LntdReaderC() as WindowNotifier;
-	components new LntdControllerWriterC() as ControllerWriter;
-
-	LntdGuiP.LntdMainLoop->LntdNonblockPoolC;
-	LntdGuiP.LntdStdio->LntdStdioC;
-	LntdGuiP.LntdLogger->LntdLoggerC;
-
-	LntdGuiP.Poller->Poller;
-	LntdGuiP.WindowNotifier->WindowNotifier;
-	LntdGuiP.ControllerWriter->ControllerWriter;
-
-	LntdNonblockPoolC.LntdLogger->LntdLoggerC;
-
-	LntdLoggerC.LntdStdio->LntdStdioC;
+	command void cancel(void);
 }

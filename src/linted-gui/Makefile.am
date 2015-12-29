@@ -26,7 +26,6 @@ pkglibexec_PROGRAMS+=%D%/linted-gui
   src/log/liblog.la\
   src/xcb/libxcb.la\
   \
-  src/controller/libcontroller.la\
   src/window/libwindow.la\
   \
   $(XCB_LIBS)\

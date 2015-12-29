@@ -13,15 +13,18 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#include "config.h"
 
-struct lntd_controller_code {
-	int z_tilt;
-	int x_tilt;
+generic configuration LntdControllerWriterC()
+{
+	provides interface LntdControllerWriter;
+}
+implementation
+{
+	components new LntdControllerWriterP() as ControllerWriter;
+	components new LntdWriterC() as Writer;
 
-	bool left;
-	bool right;
-	bool forward;
-	bool back;
+	LntdControllerWriter = ControllerWriter;
 
-	bool jumping;
-};
+	ControllerWriter.LntdWriter->Writer;
+}
