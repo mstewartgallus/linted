@@ -54,6 +54,16 @@ endif
 dist_pkgdefaultconf_DATA+=%D%/window.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-window.service
 
+%C%_linted_window_CFLAGS=\
+  $(linted_CFLAGS_LANGUAGE)\
+  $(linted_CFLAGS_DETERMINISTIC)\
+  $(linted_CFLAGS_OPTIMIZE)\
+  $(linted_CFLAGS_HARDEN)\
+  $(linted_CFLAGS_DEBUG)\
+  $(linted_CFLAGS_DEBUG_INFO)\
+  $(linted_CFLAGS_META)\
+  $(linted_CFLAGS_WARNINGS)
+
 MOSTLYCLEANFILES+=%D%/window.c
 BUILT_SOURCES+=%D%/window.c
 %D%/window.c: %D%/LntdWindowC.nc %D%/LntdWindowP.nc $(NESC_FILES)

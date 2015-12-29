@@ -16,9 +16,9 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-gui
 
-%C%_linted_gui_SOURCES=%D%/gui.c
+%C%_linted_gui_SOURCES=
 %C%_linted_gui_LDADD=\
-  src/start/libstart.la\
+  %D%/gui.o\
   \
   src/async/libasync.la\
   src/error/liberror.la\
@@ -40,3 +40,23 @@ pkglibexec_PROGRAMS+=%D%/linted-gui
 
 dist_pkgdefaultconf_DATA+=%D%/gui.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-gui.service
+
+%C%_linted_gui_CFLAGS=\
+  $(linted_CFLAGS_LANGUAGE)\
+  $(linted_CFLAGS_DETERMINISTIC)\
+  $(linted_CFLAGS_OPTIMIZE)\
+  $(linted_CFLAGS_HARDEN)\
+  $(linted_CFLAGS_DEBUG)\
+  $(linted_CFLAGS_DEBUG_INFO)\
+  $(linted_CFLAGS_META)\
+  $(linted_CFLAGS_WARNINGS)
+
+
+MOSTLYCLEANFILES+=%D%/gui.c
+BUILT_SOURCES+=%D%/gui.c
+%D%/gui.c: %D%/LntdGuiC.nc %D%/LntdGuiP.nc $(NESC_FILES)
+	$(linted_V_NESCC) $(NESCC) $(AM_NESCFLAGS) -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc $(NESCFLAGS) -fnesc-cfile=$@ $<
+	test -f $@
+
+%D%/gui.o: %D%/gui.c
+	$(AM_V_CC) $(CC) $(%C%_linted_gui_CFLAGS) $(CFLAGS) -c -o $@ $^
