@@ -579,9 +579,7 @@ implementation
 					err = 0;
 				}
 
-				/* Just let the polling
-				 * continue
-				 */
+				/* Just let the polling continue */
 				if (EINTR == err || EAGAIN == err ||
 				    EWOULDBLOCK == err)
 					break;
@@ -608,15 +606,12 @@ implementation
 					bytes_read = ret;
 				}
 
-				/* Just let the polling
-				 * continue
-				 */
+				/* Just let the polling continue */
 				if (EINTR == err || EAGAIN == err ||
 				    EWOULDBLOCK == err)
 					break;
 
-				/* Short reads can
-				 * happen */
+				/* Short reads can happen */
 				if (bytes_read != 0) {
 					if ((w->bytes_left -=
 					     bytes_read) != 0)

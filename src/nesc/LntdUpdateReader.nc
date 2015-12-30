@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014 Steven Stewart-Gallus
+ * Copyright 2015 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,24 +13,31 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#ifndef LNTD_WINDOW_H
-#define LNTD_WINDOW_H
+#include "config.h"
+
+#include "bool.h"
 
 #include "lntd/error.h"
 #include "lntd/ko.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
-/**
- * @file
- *
- * Communicates user input to another process.
- */
+struct lntd_update_reader_input {
+	int_least32_t x_position;
+	int_least32_t y_position;
+	int_least32_t z_position;
 
-typedef lntd_ko lntd_window;
-typedef lntd_ko lntd_window_notifier;
+	uint_least32_t z_rotation;
+	uint_least32_t x_rotation;
+};
 
-lntd_error lntd_window_read(lntd_window window, uint_fast32_t *outp);
-lntd_error lntd_window_write(lntd_window window, uint_fast32_t in);
+interface LntdUpdateReader
+{
+	command void start(lntd_ko ko);
+	command void stop(void);
 
-#endif /* LNTD_WINDOW_H */
+	event void read_input(
+	    lntd_error err,
+	    struct lntd_update_reader_input const *input);
+}

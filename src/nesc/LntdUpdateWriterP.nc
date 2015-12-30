@@ -15,6 +15,8 @@
  */
 #include "config.h"
 
+#include "update.h"
+
 #include "lntd/error.h"
 #include "lntd/ko.h"
 
@@ -28,17 +30,7 @@ generic module LntdUpdateWriterP()
 }
 implementation
 {
-	nx_struct update
-	{
-		nx_int32_t x_position;
-		nx_int32_t y_position;
-		nx_int32_t z_position;
-
-		nx_uint32_t z_rotation;
-		nx_uint32_t x_rotation;
-	};
-
-	nx_struct update update_being_written;
+	nx_struct lntd_update_input update_being_written;
 	struct lntd_update_writer_update pending_update;
 	bool update_pending;
 	bool update_in_progress;

@@ -15,4 +15,9 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-dist_pkgdefaultunits_DATA+=%D%/units/controller.socket
+dist_pkgdefaultunits_DATA+=\
+  %D%/units/controller.socket\
+  %D%/units/updater.socket\
+  %D%/units/window.socket\
+  %D%/units/window-notifier-gui.socket\
+  %D%/units/window-notifier-drawer.socket

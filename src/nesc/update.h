@@ -13,12 +13,17 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
+#ifndef LNTD_UPDATE_H
+#define LNTD_UPDATE_H
 
-struct lntd_updater_code {
-	int x_position;
-	int y_position;
-	int z_position;
+nx_struct lntd_update_input
+{
+	nx_int32_t x_position;
+	nx_int32_t y_position;
+	nx_int32_t z_position;
 
-	unsigned int z_rotation;
-	unsigned int x_rotation;
+	nx_uint32_t z_rotation;
+	nx_uint32_t x_rotation;
 };
+
+#endif /* LNTD_UPDATE_H */

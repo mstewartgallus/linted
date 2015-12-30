@@ -22,9 +22,7 @@ BUILDDIR="$(realpath "${ROOT}/..")"
 
 : ${LINTED_SYSTEM_CONF_PATH:="${SRCDIR}/src/linted/system.conf"}
 : ${LINTED_UNIT_PATH:="\
-${SRCDIR}/src/controller/units\
-:${SRCDIR}/src/updater/units\
-:${SRCDIR}/src/window/units\
+${SRCDIR}/src/sockets/units\
 :${SRCDIR}/src/linted-audio/units\
 :${SRCDIR}/src/linted-simulator/units\
 :${SRCDIR}/src/linted-window/units\

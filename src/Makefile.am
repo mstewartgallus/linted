@@ -61,8 +61,8 @@ include %C%/spawn/Makefile.am
 include %C%/unit/Makefile.am
 
 include %C%/admin/Makefile.am
-include %C%/controller/Makefile.am
-include %C%/updater/Makefile.am
+
+include %C%/sockets/Makefile.am
 endif
 
 include %C%/assets/Makefile.am

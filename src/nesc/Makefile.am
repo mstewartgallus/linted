@@ -47,6 +47,9 @@ EXTRA_DIST+=\
   %D%/LntdTimer.nc\
   %D%/LntdTimerLinuxP.nc\
   %D%/LntdTimerWindowsP.nc\
+  %D%/LntdUpdateReaderC.nc\
+  %D%/LntdUpdateReader.nc\
+  %D%/LntdUpdateReaderP.nc\
   %D%/LntdUpdateWriterC.nc\
   %D%/LntdUpdateWriter.nc\
   %D%/LntdUpdateWriterP.nc\
@@ -57,6 +60,7 @@ EXTRA_DIST+=\
   %D%/async.h\
   %D%/bool.h\
   %D%/controller.h\
+  %D%/update.h\
   %D%/logger.h
 
 NESC_FILES=\
@@ -92,6 +96,9 @@ NESC_FILES=\
   %D%/LntdTimer.nc\
   %D%/LntdTimerLinuxP.nc\
   %D%/LntdTimerWindowsP.nc\
+  %D%/LntdUpdateReaderC.nc\
+  %D%/LntdUpdateReader.nc\
+  %D%/LntdUpdateReaderP.nc\
   %D%/LntdUpdateWriterC.nc\
   %D%/LntdUpdateWriter.nc\
   %D%/LntdUpdateWriterP.nc\
@@ -102,6 +109,7 @@ NESC_FILES=\
   %D%/async.h\
   %D%/bool.h\
   %D%/controller.h\
+  %D%/update.h\
   %D%/logger.h
 
 %C%_task_unique=LntdTask-5167a5c7-2eb2-43cc-8e58-b0c6be0012c8

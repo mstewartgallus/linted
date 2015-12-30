@@ -20,10 +20,6 @@ noinst_LTLIBRARIES+=%D%/libwindow.la
   include/lntd/window.h
 %C%_libwindow_la_LIBADD=\
   src/io/libio.la
-dist_pkgdefaultunits_DATA+=\
-  %D%/units/window.socket\
-  %D%/units/window-notifier-gui.socket\
-  %D%/units/window-notifier-drawer.socket
 
 if POSIX_API
 %C%_libwindow_la_SOURCES+=%D%/window-posix.c

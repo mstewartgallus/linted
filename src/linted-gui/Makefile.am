@@ -50,7 +50,6 @@ dist_pkgdefaultunits_DATA+=%D%/units/linted-gui.service
   $(linted_CFLAGS_META)\
   $(linted_CFLAGS_WARNINGS)
 
-
 MOSTLYCLEANFILES+=%D%/gui.c
 BUILT_SOURCES+=%D%/gui.c
 %D%/gui.c: %D%/LntdGuiC.nc %D%/LntdGuiP.nc $(NESC_FILES)
