@@ -22,13 +22,10 @@ EXTRA_DIST+=%D%/LntdWindowC.nc %D%/LntdWindowP.nc
 %C%_linted_window_SOURCES=
 %C%_linted_window_CPPFLAGS=
 %C%_linted_window_LDADD=\
-  src/start/libstart.la\
-  \
-  src/async/libasync.la\
   src/error/liberror.la\
   src/env/libenv.la\
+  src/io/libio.la\
   src/ko/libko.la\
-  src/log/liblog.la\
   \
   src/window/libwindow.la
 
