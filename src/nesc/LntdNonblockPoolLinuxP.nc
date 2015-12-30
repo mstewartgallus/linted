@@ -94,6 +94,7 @@ implementation
 	void handle_sigint(int signo);
 	void finish_cmd(lntd_async_command_id id, lntd_error err);
 
+	void *start_routine(void *foo);
 	void *user_mainloop_routine(void *);
 
 	struct cmd *get_cmd(lntd_async_command_id id);
@@ -180,12 +181,50 @@ implementation
 		push_cmd(cmd_queue, &exit_node);
 	}
 
+	struct start_args {
+		pthread_t parent;
+		size_t argc;
+		char const *const *argv;
+	};
+
 	int main(int argc, char **argv) @C() @spontaneous()
+	{
+		static pthread_t child;
+		static struct start_args start_args = {0};
+		lntd_error err = 0;
+
+		start_args.parent = pthread_self();
+		start_args.argc = argc;
+		start_args.argv = (char const *const *)argv;
+
+		err = pthread_create(&child, 0, start_routine,
+		                     &start_args);
+		if (err != 0)
+			return EXIT_FAILURE;
+
+		pthread_exit(0);
+	}
+
+	void *start_routine(void *foo)
 	{
 		int status;
 		struct sigaction old_action;
 		char const *program_name;
 		lntd_error err = 0;
+
+		struct start_args *args = foo;
+		pthread_t parent = args->parent;
+		size_t argc = args->argc;
+		char const *const *argv = args->argv;
+
+		err = pthread_join(parent, 0);
+		if (err != 0) {
+			exit(EXIT_FAILURE);
+		}
+
+		err = pthread_detach(pthread_self());
+		if (err != 0)
+			exit(EXIT_FAILURE);
 
 		program_name = argv[0U];
 
@@ -193,7 +232,7 @@ implementation
 			char *dupstr = strdup(program_name);
 			char const *base;
 			if (0 == dupstr) {
-				return EXIT_FAILURE;
+				exit(EXIT_FAILURE);
 			}
 
 			base = basename(dupstr);
@@ -215,11 +254,11 @@ implementation
 
 		err = lntd_ko_stack_create(&cmd_queue);
 		if (err != 0)
-			return EXIT_FAILURE;
+			exit(EXIT_FAILURE);
 
 		err = lntd_stack_create(&event_queue);
 		if (err != 0)
-			return EXIT_FAILURE;
+			exit(EXIT_FAILURE);
 
 		pollfds[0U].fd = lntd_ko_stack_ko(cmd_queue);
 		pollfds[0U].events = POLLIN;
@@ -247,7 +286,7 @@ implementation
 			err = pthread_create(&xx, 0,
 			                     user_mainloop_routine, 0);
 			if (err != 0)
-				return EXIT_FAILURE;
+				exit(EXIT_FAILURE);
 		}
 
 		for (;;) {
