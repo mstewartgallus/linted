@@ -97,6 +97,7 @@ implementation
 	lntd_error poll_for_io(void);
 
 	void handle_sigint(int signo);
+	void do_poll_command(lntd_async_poller_id ii, short revents);
 	void finish_cmd(lntd_async_command_id id, lntd_error err);
 
 	void *start_routine(void *foo);
@@ -540,8 +541,6 @@ implementation
 
 		for (ii = 0U; ii < LNTD_ARRAY_SIZE(pollfds); ++ii) {
 			short revents;
-			struct cmd *cmd;
-			lntd_async_command_id id;
 
 			revents = pollfds[ii].revents;
 
@@ -551,134 +550,7 @@ implementation
 			if ((revents & POLLNVAL) != 0)
 				continue;
 
-			if (newcmd_poller == ii) {
-				handle_command();
-				continue;
-			}
-
-			cmd = poller_cmd[ii];
-			id = get_cmd_id(cmd);
-			switch (cmd->type) {
-			case LNTD_ASYNC_CMD_TYPE_WRITE: {
-				struct lntd_async_cmd_write *w;
-				ssize_t ret;
-				size_t bytes_wrote = 0;
-
-				w = cmd->data;
-
-				ret = write(w->ko, w->bytes + w->size -
-				                       w->bytes_left,
-				            w->bytes_left);
-				if (-1 == ret) {
-					err = errno;
-				} else {
-					err = 0;
-					bytes_wrote = ret;
-				}
-
-				/* Just let the polling
-				 * continue
-				 */
-				if (EINTR == err || EAGAIN == err ||
-				    EWOULDBLOCK == err)
-					break;
-
-				if ((w->bytes_left -= bytes_wrote) != 0)
-					break;
-
-				pollfds[ii].fd = -1;
-				pollfds[ii].events = 0;
-				poller_cmd[ii] = 0;
-				finish_cmd(id, err);
-				break;
-			}
-
-			case LNTD_ASYNC_CMD_TYPE_POLL: {
-				struct lntd_async_cmd_poll *p;
-				uint_fast64_t trans_revents;
-
-				trans_revents = 0U;
-				if ((revents & POLLIN) != 0)
-					trans_revents |=
-					    LNTD_ASYNC_POLLER_IN;
-				if ((revents & POLLOUT) != 0)
-					trans_revents |=
-					    LNTD_ASYNC_POLLER_OUT;
-
-				p = cmd->data;
-
-				p->revents = trans_revents;
-
-				pollfds[ii].fd = -1;
-				pollfds[ii].events = 0;
-				poller_cmd[ii] = 0;
-				finish_cmd(id, 0);
-				break;
-			}
-
-			case LNTD_ASYNC_CMD_TYPE_TIMER: {
-				struct lntd_async_cmd_timer *p;
-				lntd_async_command_id overrun;
-
-				p = cmd->data;
-
-				if (-1 == read(p->ko, &overrun,
-				               sizeof overrun)) {
-					err = errno;
-				} else {
-					err = 0;
-				}
-
-				/* Just let the polling continue */
-				if (EINTR == err || EAGAIN == err ||
-				    EWOULDBLOCK == err)
-					break;
-
-				pollfds[ii].fd = -1;
-				pollfds[ii].events = 0;
-				poller_cmd[ii] = 0;
-				finish_cmd(id, 0);
-				break;
-			}
-
-			case LNTD_ASYNC_CMD_TYPE_READ: {
-				struct lntd_async_cmd_read *w;
-				ssize_t ret;
-				size_t bytes_read = 0;
-
-				w = cmd->data;
-
-				ret = read(w->ko, w->bytes + w->size -
-				                      w->bytes_left,
-				           w->bytes_left);
-				if (-1 == ret) {
-					err = errno;
-				} else {
-					bytes_read = ret;
-				}
-
-				/* Just let the polling continue */
-				if (EINTR == err || EAGAIN == err ||
-				    EWOULDBLOCK == err)
-					break;
-
-				/* Short reads can happen */
-				if (bytes_read != 0) {
-					if ((w->bytes_left -=
-					     bytes_read) != 0)
-						break;
-				}
-
-				pollfds[ii].fd = -1;
-				pollfds[ii].events = 0;
-				poller_cmd[ii] = 0;
-				finish_cmd(id, err);
-				break;
-			}
-
-			default:
-				LNTD_ASSERT(0);
-			}
+			do_poll_command(ii, revents);
 
 			--nfds;
 			if (0 == nfds)
@@ -686,6 +558,139 @@ implementation
 		}
 
 		return 0;
+	}
+
+	void do_poll_command(lntd_async_poller_id ii, short revents)
+	{
+		struct cmd *cmd;
+		lntd_async_command_id id;
+		lntd_error err = 0;
+
+		if (newcmd_poller == ii) {
+			handle_command();
+			return;
+		}
+
+		cmd = poller_cmd[ii];
+		id = get_cmd_id(cmd);
+		switch (cmd->type) {
+		case LNTD_ASYNC_CMD_TYPE_WRITE: {
+			struct lntd_async_cmd_write *w;
+			ssize_t ret;
+			size_t bytes_wrote = 0;
+
+			w = cmd->data;
+
+			ret = write(w->ko,
+			            w->bytes + w->size - w->bytes_left,
+			            w->bytes_left);
+			if (-1 == ret) {
+				err = errno;
+			} else {
+				err = 0;
+				bytes_wrote = ret;
+			}
+
+			/* Just let the polling
+			 * continue
+			 */
+			if (EINTR == err || EAGAIN == err ||
+			    EWOULDBLOCK == err)
+				break;
+
+			if ((w->bytes_left -= bytes_wrote) != 0)
+				break;
+
+			pollfds[ii].fd = -1;
+			pollfds[ii].events = 0;
+			poller_cmd[ii] = 0;
+			finish_cmd(id, err);
+			break;
+		}
+
+		case LNTD_ASYNC_CMD_TYPE_POLL: {
+			struct lntd_async_cmd_poll *p;
+			uint_fast64_t trans_revents;
+
+			trans_revents = 0U;
+			if ((revents & POLLIN) != 0)
+				trans_revents |= LNTD_ASYNC_POLLER_IN;
+			if ((revents & POLLOUT) != 0)
+				trans_revents |= LNTD_ASYNC_POLLER_OUT;
+
+			p = cmd->data;
+
+			p->revents = trans_revents;
+
+			pollfds[ii].fd = -1;
+			pollfds[ii].events = 0;
+			poller_cmd[ii] = 0;
+			finish_cmd(id, 0);
+			break;
+		}
+
+		case LNTD_ASYNC_CMD_TYPE_TIMER: {
+			struct lntd_async_cmd_timer *p;
+			lntd_async_command_id overrun;
+
+			p = cmd->data;
+
+			if (-1 ==
+			    read(p->ko, &overrun, sizeof overrun)) {
+				err = errno;
+			} else {
+				err = 0;
+			}
+
+			/* Just let the polling continue */
+			if (EINTR == err || EAGAIN == err ||
+			    EWOULDBLOCK == err)
+				break;
+
+			pollfds[ii].fd = -1;
+			pollfds[ii].events = 0;
+			poller_cmd[ii] = 0;
+			finish_cmd(id, 0);
+			break;
+		}
+
+		case LNTD_ASYNC_CMD_TYPE_READ: {
+			struct lntd_async_cmd_read *w;
+			ssize_t ret;
+			size_t bytes_read = 0;
+
+			w = cmd->data;
+
+			ret = read(w->ko,
+			           w->bytes + w->size - w->bytes_left,
+			           w->bytes_left);
+			if (-1 == ret) {
+				err = errno;
+			} else {
+				bytes_read = ret;
+			}
+
+			/* Just let the polling continue */
+			if (EINTR == err || EAGAIN == err ||
+			    EWOULDBLOCK == err)
+				break;
+
+			/* Short reads can happen */
+			if (bytes_read != 0) {
+				if ((w->bytes_left -= bytes_read) != 0)
+					break;
+			}
+
+			pollfds[ii].fd = -1;
+			pollfds[ii].events = 0;
+			poller_cmd[ii] = 0;
+			finish_cmd(id, err);
+			break;
+		}
+
+		default:
+			LNTD_ASSUME_UNREACHABLE();
+		}
 	}
 
 	void finish_cmd(lntd_async_command_id id, lntd_error err)
