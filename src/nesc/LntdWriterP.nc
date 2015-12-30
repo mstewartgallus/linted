@@ -43,6 +43,7 @@ implementation
 		cmd.ko = ko;
 		cmd.bytes = bytes;
 		cmd.size = size;
+		cmd.poller = unique(LNTD_ASYNC_POLLER);
 
 		cmd.bytes_left = size;
 

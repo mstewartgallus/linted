@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#define MAXPOLLERS uniqueCount(LNTD_ASYNC_POLLER)
 #define MAXCMDS uniqueCount(LNTD_ASYNC_COMMAND)
 #define MAXTASKS uniqueCount(LNTD_TASK_UNIQUE)
 
@@ -57,7 +58,6 @@ implementation
 
 	struct taskstate {
 		struct myevent myevent;
-		lntd_task_id task_id;
 	};
 
 	struct cmd {
@@ -81,10 +81,15 @@ implementation
 	struct lntd_ko_stack *cmd_queue = 0;
 	struct lntd_stack *event_queue = 0;
 
-	struct cmd exit_node;
 	struct myevent sigint_node;
-	struct taskstate tasks[MAXTASKS];
-	struct pollfd pollfds[1U + MAXCMDS];
+
+	struct pollfd pollfds[MAXPOLLERS];
+	struct cmd *poller_cmd[MAXPOLLERS];
+
+	lntd_async_poller_id const newcmd_poller =
+	    unique(LNTD_ASYNC_POLLER);
+	lntd_async_command_id const exit_node_id =
+	    unique(LNTD_ASYNC_COMMAND);
 
 	bool time_to_exit;
 
@@ -96,6 +101,9 @@ implementation
 
 	void *start_routine(void *foo);
 	void *user_mainloop_routine(void *);
+
+	struct taskstate *get_task(lntd_task_id id);
+	lntd_task_id get_task_id(struct taskstate const *taskstate);
 
 	struct cmd *get_cmd(lntd_async_command_id id);
 	lntd_async_command_id get_cmd_id(struct cmd const *cmd);
@@ -109,9 +117,9 @@ implementation
 
 	command bool LntdTask.post_task[lntd_task_id task_id](void)
 	{
-		struct taskstate *taskstate = &tasks[task_id];
+		struct taskstate *taskstate;
 
-		taskstate->task_id = task_id;
+		taskstate = get_task(task_id);
 
 		return push_event(event_queue, &taskstate->myevent,
 		                  TASK);
@@ -178,7 +186,7 @@ implementation
 
 	command void LntdMainLoop.exit(lntd_error status)
 	{
-		push_cmd(cmd_queue, &exit_node);
+		push_cmd(cmd_queue, get_cmd(exit_node_id));
 	}
 
 	struct start_args {
@@ -260,8 +268,8 @@ implementation
 		if (err != 0)
 			exit(EXIT_FAILURE);
 
-		pollfds[0U].fd = lntd_ko_stack_ko(cmd_queue);
-		pollfds[0U].events = POLLIN;
+		pollfds[newcmd_poller].fd = lntd_ko_stack_ko(cmd_queue);
+		pollfds[newcmd_poller].events = POLLIN;
 
 		{
 			sigset_t signals;
@@ -290,6 +298,9 @@ implementation
 		}
 
 		for (;;) {
+			size_t ii;
+			bool cancelled_a_poller = false;
+
 			if (time_to_exit) {
 				status = 0;
 				goto exit_mainloop;
@@ -302,33 +313,26 @@ implementation
 				continue;
 			}
 
-			{
-				size_t ii;
-				bool cancelled_a_poller = false;
-				for (ii = 1U;
-				     ii < LNTD_ARRAY_SIZE(pollfds);
-				     ++ii) {
-					struct cmd *cmd;
+			for (ii = 0U; ii < LNTD_ARRAY_SIZE(pollfds);
+			     ++ii) {
+				struct cmd *cmd;
 
-					if (-1 == pollfds[ii].fd)
-						continue;
-
-					cmd = get_cmd(ii - 1);
-
-					if (cmd->cancelled) {
-						cancelled_a_poller =
-						    true;
-						pollfds[ii].fd = -1;
-						pollfds[ii].events = 0;
-						finish_cmd(
-						    ii - 1,
-						    LNTD_ERROR_CANCELLED);
-						continue;
-					}
-				}
-				if (cancelled_a_poller)
+				cmd = poller_cmd[ii];
+				if (0 == cmd)
 					continue;
+
+				if (cmd->cancelled) {
+					cancelled_a_poller = true;
+					pollfds[ii].fd = -1;
+					pollfds[ii].events = 0;
+					finish_cmd(
+					    get_cmd_id(cmd),
+					    LNTD_ERROR_CANCELLED);
+					continue;
+				}
 			}
+			if (cancelled_a_poller)
+				continue;
 
 			err = poll_for_io();
 			if (err != 0) {
@@ -371,6 +375,7 @@ implementation
 			struct cmd *cmd;
 			void *data;
 			lntd_async_command_id id;
+			lntd_async_poller_id poller;
 			short events;
 			int fd;
 
@@ -378,14 +383,13 @@ implementation
 			if (0 == cmd)
 				break;
 
-			if (cmd == &exit_node) {
-				time_to_exit = true;
-				return true;
-			}
-
 			got_at_least_one = true;
 
 			id = get_cmd_id(cmd);
+			if (id == exit_node_id) {
+				time_to_exit = true;
+				return true;
+			}
 			data = cmd->data;
 
 			if (cmd->cancelled) {
@@ -408,6 +412,7 @@ implementation
 				}
 
 				fd = ko;
+				poller = w->poller;
 				events = POLLOUT;
 				goto poll_command;
 			}
@@ -420,6 +425,7 @@ implementation
 				p = data;
 
 				trans_events = p->events;
+				poller = p->poller;
 				ko = p->ko;
 
 				if (ko > INT_MAX) {
@@ -448,6 +454,7 @@ implementation
 				p = data;
 
 				ko = p->ko;
+				poller = p->poller;
 
 				if (ko > INT_MAX) {
 					err =
@@ -479,6 +486,7 @@ implementation
 				r = data;
 
 				ko = r->ko;
+				poller = r->poller;
 
 				if (ko > INT_MAX) {
 					err =
@@ -504,9 +512,10 @@ implementation
 			continue;
 
 		poll_command:
-			LNTD_ASSERT(-1 == pollfds[1U + id].fd);
-			pollfds[1U + id].fd = fd;
-			pollfds[1U + id].events = events;
+			LNTD_ASSERT(-1 == pollfds[poller].fd);
+			pollfds[poller].fd = fd;
+			pollfds[poller].events = events;
+			poller_cmd[poller] = cmd;
 			continue;
 		}
 		return got_at_least_one;
@@ -542,13 +551,13 @@ implementation
 			if ((revents & POLLNVAL) != 0)
 				continue;
 
-			if (0U == ii) {
+			if (newcmd_poller == ii) {
 				handle_command();
 				continue;
 			}
 
-			id = ii - 1U;
-			cmd = get_cmd(id);
+			cmd = poller_cmd[ii];
+			id = get_cmd_id(cmd);
 			switch (cmd->type) {
 			case LNTD_ASYNC_CMD_TYPE_WRITE: {
 				struct lntd_async_cmd_write *w;
@@ -579,6 +588,7 @@ implementation
 
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
+				poller_cmd[ii] = 0;
 				finish_cmd(id, err);
 				break;
 			}
@@ -601,6 +611,7 @@ implementation
 
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
+				poller_cmd[ii] = 0;
 				finish_cmd(id, 0);
 				break;
 			}
@@ -625,6 +636,7 @@ implementation
 
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
+				poller_cmd[ii] = 0;
 				finish_cmd(id, 0);
 				break;
 			}
@@ -659,6 +671,7 @@ implementation
 
 				pollfds[ii].fd = -1;
 				pollfds[ii].events = 0;
+				poller_cmd[ii] = 0;
 				finish_cmd(id, err);
 				break;
 			}
@@ -725,7 +738,7 @@ default event
 
 				taskstate = (void *)myevent;
 				signal LntdTask
-				    .run_task[taskstate->task_id]();
+				    .run_task[get_task_id(taskstate)]();
 				continue;
 			}
 
@@ -787,11 +800,24 @@ default event
 		return (void *)node;
 	}
 
+	struct taskstate tasks[MAXTASKS];
+
+	struct taskstate *get_task(lntd_task_id id)
+	{
+		LNTD_ASSERT(id < LNTD_ARRAY_SIZE(tasks));
+		return &tasks[id];
+	}
+
+	lntd_task_id get_task_id(struct taskstate const *taskstate)
+	{
+		return taskstate - tasks;
+	}
+
 	struct cmd cmds[MAXCMDS];
 
 	struct cmd *get_cmd(lntd_async_command_id id)
 	{
-		LNTD_ASSERT(id < MAXCMDS);
+		LNTD_ASSERT(id < LNTD_ARRAY_SIZE(cmds));
 		return &cmds[id];
 	}
 

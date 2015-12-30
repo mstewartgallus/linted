@@ -31,11 +31,16 @@ enum { LNTD_ASYNC_CMD_TYPE_IDLE,
        LNTD_ASYNC_CMD_TYPE_READ };
 typedef unsigned char lntd_async_cmd_type;
 
+typedef uint_least8_t lntd_async_command_id;
+typedef uint_least8_t lntd_async_poller_id;
+typedef uint_least8_t lntd_task_id;
+
 struct lntd_async_cmd_write {
 	char const *bytes;
 	size_t size;
 	size_t bytes_left;
 	lntd_ko ko;
+	lntd_async_poller_id poller;
 };
 
 struct lntd_async_cmd_read {
@@ -43,25 +48,28 @@ struct lntd_async_cmd_read {
 	size_t size;
 	size_t bytes_left;
 	lntd_ko ko;
+	lntd_async_poller_id poller;
 };
 
 struct lntd_async_cmd_poll {
 	uint_least64_t events;
 	uint_least64_t revents;
 	lntd_ko ko;
+	lntd_async_poller_id poller;
 };
 
 struct lntd_async_cmd_timer {
 	struct timespec request;
 	lntd_ko ko;
+	lntd_async_poller_id poller;
 };
 
 #define LNTD_ASYNC_COMMAND                                             \
 	"LntdAsyncCommand-6d5734b0-1474-4a28-945e-8ca970fc2a58"
 
-enum { LNTD_ASYNC_POLLER_IN = 1, LNTD_ASYNC_POLLER_OUT = 1 << 1 };
+#define LNTD_ASYNC_POLLER                                              \
+	"LntdAsyncPoller-6d5734b0-1474-4a28-945e-8ca970fc2a58"
 
-typedef uint_least8_t lntd_async_command_id;
-typedef uint_least8_t lntd_task_id;
+enum { LNTD_ASYNC_POLLER_IN = 1, LNTD_ASYNC_POLLER_OUT = 1 << 1 };
 
 #endif /* LNTD_ASYNC_H */

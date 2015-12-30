@@ -29,6 +29,8 @@ module LntdStdioP
 }
 implementation
 {
+	lntd_async_poller_id const poller = unique(LNTD_ASYNC_POLLER);
+
 	lntd_error my_read(lntd_ko ko, char *bytes, size_t size,
 	                   size_t *bytes_read);
 
@@ -123,6 +125,8 @@ implementation
 
 		cmd.bytes_left = size;
 
+		cmd.poller = poller;
+
 		err = call LntdAsyncCommand.execute_sync(
 		    LNTD_ASYNC_CMD_TYPE_READ, &cmd);
 
@@ -140,6 +144,8 @@ implementation
 		cmd.size = size;
 
 		cmd.bytes_left = size;
+
+		cmd.poller = poller;
 
 		return call LntdAsyncCommand.execute_sync(
 		    LNTD_ASYNC_CMD_TYPE_WRITE, &cmd);

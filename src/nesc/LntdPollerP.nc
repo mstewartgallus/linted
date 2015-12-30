@@ -50,6 +50,8 @@ implementation
 		cmd.ko = ko;
 		cmd.events = events;
 
+		cmd.poller = unique(LNTD_ASYNC_POLLER);
+
 		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_POLL,
 		                              &cmd);
 		return;

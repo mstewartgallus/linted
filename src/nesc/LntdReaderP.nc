@@ -44,6 +44,8 @@ implementation
 
 		cmd.bytes_left = size;
 
+		cmd.poller = unique(LNTD_ASYNC_POLLER);
+
 		call LntdAsyncCommand.execute(LNTD_ASYNC_CMD_TYPE_READ,
 		                              &cmd);
 	}
