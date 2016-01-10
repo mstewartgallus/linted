@@ -2149,7 +2149,12 @@ static char const *const allowed_syscalls =
     "ppoll,"
 
     "timerfd_create,"
-    "timerfd_settime"
+    "timerfd_settime,"
+
+    "sigaltstack,"
+    "gettid,"
+
+    "sched_setscheduler"
 
 #if 0
     "clock_gettime,"

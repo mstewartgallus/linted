@@ -17,42 +17,15 @@
 pkglibexec_PROGRAMS+=%D%/linted-simulator
 
 EXTRA_DIST+=\
-  %D%/LntdSimulatorC.nc\
-  %D%/LntdSimulatorP.nc
+  %D%/simulator.gpr\
+  %D%/gcc.cgpr\
+  %D%/pragmas.adc\
+  \
+  %D%/src
 
-%C%_linted_simulator_SOURCES=
-
-%C%_linted_simulator_CFLAGS=\
-  $(linted_CFLAGS_LANGUAGE)\
-  $(linted_CFLAGS_DETERMINISTIC)\
-  $(linted_CFLAGS_OPTIMIZE)\
-  $(linted_CFLAGS_HARDEN)\
-  $(linted_CFLAGS_DEBUG)\
-  $(linted_CFLAGS_DEBUG_INFO)\
-  $(linted_CFLAGS_META)\
-  $(linted_CFLAGS_WARNINGS)
-
-%C%_linted_simulator_LDADD=\
-  -lm\
-  src/ko/libko.la\
-  src/ko-stack/libkostack.la\
-  src/stack/libstack.la\
-  %D%/simulator.o
+.PHONY: %D%/linted-simulator$(EXEEXT)
+%D%/linted-simulator$(EXEEXT):
+	gprbuild -P $(srcdir)/%D%/simulator.gpr -XO_Dir=$(abs_builddir)/%D%/ -XPragmas=$(srcdir)/%D%/pragmas.adc --config=$(srcdir)/%D%/gcc.cgpr -o $(abs_builddir)/%D%/linted-simulator$(EXEEXT)
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service
-
-if WINDOWS_API
-%C%_linted_simulator_SOURCES+=%D%/resources.rc %D%/simulator.manifest
-%C%_linted_simulator_LDADD+=%D%/resources.$(OBJEXT)
-%D%/resources.$(OBJEXT): %D%/simulator.manifest
-endif
-
-MOSTLYCLEANFILES+=%D%/simulator.c
-BUILT_SOURCES+=%D%/simulator.c
-%D%/simulator.c: %D%/LntdSimulatorC.nc %D%/LntdSimulatorP.nc $(NESC_FILES)
-	$(linted_V_NESCC) $(NESCC) $(AM_NESCFLAGS) -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc $(NESCFLAGS) -fnesc-cfile=$@ $<
-	test -f $@
-
-%D%/simulator.o: %D%/simulator.c
-	$(AM_V_CC) $(CC) $(%C%_linted_simulator_CFLAGS) $(CFLAGS) -c -o $@ $^
