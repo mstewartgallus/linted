@@ -16,8 +16,6 @@ private with Linted.MVars;
 
 package body Linted.IO_Pool is
    package C renames Interfaces.C;
-   package Triggers renames Linted.Triggers;
-   package Unix renames Linted.Unix;
 
    function Open (Pathname : String) return KO_Results.Result is
       use type Unix.Oflag;

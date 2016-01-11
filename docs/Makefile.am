@@ -30,7 +30,7 @@ EXTRA_DIST+=\
 	  -e 's|[@]srcdir[@]|$(srcdir)|g'\
 	  -e 's|[@]PACKAGE_NAME[@]|$(PACKAGE_NAME)|g'\
 	  -e 's|[@]PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g'\
-	< $< > $@
+	  $< > $@
 
 .PHONY: doxygen
 doxygen: %D%/Doxyfile.out

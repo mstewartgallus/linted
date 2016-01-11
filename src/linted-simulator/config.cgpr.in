@@ -11,7 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-configuration Project GCC is
+configuration project Config is
   package Builder is
   end Builder;
 
@@ -28,10 +28,10 @@ configuration Project GCC is
   for Archive_Builder use ("ar", "crD");
 
   package Compiler is
-     for Driver ("Ada") use "gcc";
-     for Driver ("C") use "gcc";
+     for Driver ("Ada") use "@ADAC@";
+     for Driver ("C") use "@CC@";
 
-     for Dependency_Driver ("C") use ("gcc", "-E", "-Wp,-M", "");
+     for Dependency_Driver ("C") use ("@CC@", "-E", "-Wp,-M", "");
 
      for Required_Switches ("Ada") use ("-c", "-x", "ada", "-gnatA");
      for Mapping_File_Switches ("Ada") use ("-gnatem=");
@@ -43,14 +43,14 @@ configuration Project GCC is
   end Compiler;
 
   package Binder is
-   for Driver ("Ada") use "/usr/lib/gprbind";
+   for Driver ("Ada") use "@ADABIND@";
 
    for Objects_Path ("Ada") use "ADA_OBJECTS_PATH";
    for Objects_Path_File ("Ada") use "ADA_PRJ_OBJECTS_FILE";
   end Binder;
 
   package Linker is
-     for Driver use "gcc";
+     for Driver use "@CCLD@";
      for Map_File_Option use "-Wl,-Map,";
   end Linker;
-end GCC;
+end Config;

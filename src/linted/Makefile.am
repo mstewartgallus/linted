@@ -65,4 +65,4 @@ MOSTLYCLEANFILES+=%D%/settings.h
 	  -e 's|[@]LNTD_DRAWER_FSTAB[@]|$(pkgdefaultconfdir)/drawer.fstab|g'\
 	  -e 's|[@]LNTD_WINDOW[@]|$(pkglibexecdir)/linted-window$(EXEEXT)|g'\
 	  -e 's|[@]LNTD_WINDOW_FSTAB[@]|$(pkgdefaultconfdir)/window.fstab|g'\
-	  < $< > $@
+	  $< > $@

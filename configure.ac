@@ -404,6 +404,14 @@ LINTED_TOOL_NESCC
 AS_IF([test -z "${NESCC}"],[
  AC_MSG_ERROR([Unable to find a Nesc compiler])
 ])
+LINTED_PROG_GPRBUILD
+AS_IF([test -z "${GPRBUILD}"],[
+ AC_MSG_ERROR([Unable to find the gprbuild build tool])
+])
+LINTED_PROG_GPRCLEAN
+AS_IF([test -z "${GPRCLEAN}"],[
+ AC_MSG_ERROR([Unable to find the gprclean build tool])
+])
 dnl
 LINTED_PROG_CLANG_FORMAT
 LINTED_PROG_VALGRIND

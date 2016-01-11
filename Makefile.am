@@ -142,6 +142,11 @@ linted_v_NESCC_ = $(linted_v_NESCC_@AM_DEFAULT_V@)
 linted_v_NESCC_0 = @echo "  NESCC   " $@;
 linted_v_NESCC_1 =
 
+linted_V_GPRBUILD = $(linted_v_GPRBUILD_@AM_V@)
+linted_v_GPRBUILD_ = $(linted_v_GPRBUILD_@AM_DEFAULT_V@)
+linted_v_GPRBUILD_0 = @echo "  GPRBUILD" $@;
+linted_v_GPRBUILD_1 =
+
 include docs/Makefile.am
 include scripts/Makefile.am
 include src/Makefile.am
