@@ -28,12 +28,5 @@ package body Linted.MVars is
 	 Current := D;
 	 Full := True;
       end Set;
-
-      procedure Set_And_Check (D : Element_T; Was_Full : out Boolean) is
-      begin
-	 Was_Full := Full;
-	 Current := D;
-	 Full := True;
-      end Set_And_Check;
    end MVar;
 end Linted.MVars;

@@ -12,6 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 private with Ada.Command_Line;
+private with Ada.Real_Time;
 
 private with Linted.Angles;
 private with Linted.Controls_Reader;
@@ -23,6 +24,7 @@ private with Linted.Update_Writer;
 
 package body Linted.Simulator is
    package Command_Line renames Ada.Command_Line;
+   package Real_Time renames Ada.Real_Time;
 
    Event_Trigger : aliased Triggers.Trigger;
 
@@ -97,6 +99,7 @@ package body Linted.Simulator is
 				     Jumping => False));
    task Main_Task;
    task body Main_Task is
+      Next_Time : Real_Time.Time;
    begin
       if Command_Line.Argument_Count < 2 then
 	 raise Constraint_Error with "At least two arguments";
@@ -122,31 +125,36 @@ package body Linted.Simulator is
 
       Controls_Reader.Start (Controller_KO);
 
+      Next_Time := Real_Time.Clock;
+
+      Timer.Wait_Until (Next_Time);
+
       loop
 	 Triggers.Wait (Event_Trigger);
-
-	 declare
-	    Option_Event : constant Linted.Timer.Option_Events.Option := Timer.Poll;
-	 begin
-	    if not Option_Event.Empty then
-	       for II in Integer range 0 .. Option_Event.Data.Overrun loop
-		  Simulate_Tick (My_State);
-		  Update_Writer.Write (Updater_KO, (X_Position => Linted.Update_Writer.Update_Int (My_State.Positions (X).Value),
-						    Y_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Y).Value),
-						    Z_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Z).Value),
-
-						    Z_Rotation => Linted.Update_Writer.Update_Nat (Sim_Angles.From_Angle (My_State.Z_Rotation)),
-						    X_Rotation => Linted.Update_Writer.Update_Nat (Sim_Angles.From_Angle (My_State.X_Rotation))));
-
-	       end loop;
-	    end if;
-	 end;
 
 	 declare
 	    Option_Event : constant Linted.Controls_Reader.Option_Events.Option := Controls_Reader.Poll;
 	 begin
 	    if not Option_Event.Empty then
 	       My_State.Controls := Option_Event.Data.Data;
+	    end if;
+	 end;
+
+	 declare
+	    use type Real_Time.Time;
+	    Option_Event : constant Linted.Timer.Option_Events.Option := Timer.Poll;
+	 begin
+	    if not Option_Event.Empty then
+	       Simulate_Tick (My_State);
+	       Update_Writer.Write (Updater_KO, (X_Position => Linted.Update_Writer.Update_Int (My_State.Positions (X).Value),
+						 Y_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Y).Value),
+						 Z_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Z).Value),
+
+						 Z_Rotation => Linted.Update_Writer.Update_Nat (Sim_Angles.From_Angle (My_State.Z_Rotation)),
+						 X_Rotation => Linted.Update_Writer.Update_Nat (Sim_Angles.From_Angle (My_State.X_Rotation))));
+
+	       Next_Time := Next_Time + Real_Time.Nanoseconds ((1000000000 / 60) / 2);
+	       Timer.Wait_Until (Next_Time);
 	    end if;
 	 end;
 

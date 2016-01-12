@@ -23,7 +23,6 @@ package Linted.MVars is
    protected type MVar is
       procedure Poll (Option : out Option_Element_Ts.Option);
       procedure Set (D : Element_T);
-      procedure Set_And_Check (D : Element_T; Was_Full : out Boolean);
    private
       Current : Element_T;
       Full : Boolean := False;

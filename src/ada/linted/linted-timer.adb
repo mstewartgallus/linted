@@ -11,56 +11,66 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Real_Time;
-
 private with Linted.MVars;
 
 package body Linted.Timer is
    package Real_Time renames Ada.Real_Time;
 
-   type Tick_Event is record
-      Overrun : Integer;
+   type Command is record
+      Time : Real_Time.Time;
    end record;
 
+   type Tick_Event is record
+      null;
+   end record;
+
+   package Command_MVars is new Linted.MVars (Command);
    package Tick_Event_MVars is new Linted.MVars (Tick_Event);
 
    package body Worker is
       task Timer_Task;
 
+      My_Trigger : Triggers.Trigger;
+      My_Command_MVar : Command_MVars.MVar;
       My_Event_MVar : Tick_Event_MVars.MVar;
 
-      task body Timer_Task is
-	 T : Real_Time.Time;
-	 use type Real_Time.Time;
-
-	 Was_Full : Boolean;
-
-	 Overrun : Integer := 0;
+      procedure Wait_Until (Time : Real_Time.Time) is
       begin
-	 T := Real_Time.Clock;
+	 My_Command_MVar.Set ((Time => Time));
+	 Triggers.Signal (My_Trigger);
+      end Wait_Until;
+
+      New_Command : Command_MVars.Option_Element_Ts.Option;
+
+      task body Timer_Task is
+	 use type Real_Time.Time;
+      begin
 	 loop
-	    My_Event_MVar.Set_And_Check (Tick_Event'(Overrun => Overrun), Was_Full);
-	    Triggers.Signal (Event_Trigger.all);
+	    Triggers.Wait (My_Trigger);
 
-	    if Was_Full then
-	       Overrun := Overrun + 1;
-	    else
-	       Overrun := 0;
+	    My_Command_MVar.Poll (New_Command);
+	    if not New_Command.Empty then
+	       declare
+		  Time : constant Real_Time.Time := New_Command.Data.Time;
+		  T : Tick_Event;
+	       begin
+		  delay until Time;
+		  My_Event_MVar.Set (T);
+		  Triggers.Signal (Event_Trigger.all);
+	       end;
 	    end if;
-
-	    delay until T;
-	    T := T + Real_Time.Nanoseconds ((1000000000 / 60) / 2);
 	 end loop;
       end Timer_Task;
 
       function Poll return Option_Events.Option is
-	 Event : Tick_Event_MVars.Option_Element_Ts.Option;
+	 T : Event;
+	 New_Event : Tick_Event_MVars.Option_Element_Ts.Option;
       begin
-	 My_Event_MVar.Poll (Event);
-	 if Event.Empty then
+	 My_Event_MVar.Poll (New_Event);
+	 if New_Event.Empty then
 	    return (Empty => True);
 	 else
-	    return (False, (Overrun => Event.Data.Overrun));
+	    return (False, T);
 	 end if;
       end Poll;
    end Worker;

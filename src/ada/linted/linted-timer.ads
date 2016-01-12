@@ -11,6 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Ada.Real_Time;
+
 with Linted.Options;
 with Linted.Triggers;
 
@@ -18,7 +20,7 @@ package Linted.Timer is
    pragma Elaborate_Body;
 
    type Event is record
-      Overrun : Integer;
+      null;
    end record;
 
    package Option_Events is new Linted.Options (Event);
@@ -26,6 +28,7 @@ package Linted.Timer is
    generic
       Event_Trigger : not null access Linted.Triggers.Trigger;
    package Worker is
+      procedure Wait_Until (Time : Ada.Real_Time.Time);
       function Poll return Option_Events.Option;
    end Worker;
 end Linted.Timer;
