@@ -51,6 +51,7 @@ EXTRA_DIST+=%D%/LntdDrawerC.nc %D%/LntdDrawerP.nc
 MOSTLYCLEANFILES+=%D%/drawer.c
 BUILT_SOURCES+=%D%/drawer.c
 %D%/drawer.c: %D%/LntdDrawerC.nc %D%/LntdDrawerP.nc $(NESC_FILES)
+	$(MKDIR_P) %D%
 	$(linted_V_NESCC) $(NESCC) $(AM_NESCFLAGS) -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc $(NESCFLAGS) -fnesc-cfile=$@ $<
 	test -f $@
 

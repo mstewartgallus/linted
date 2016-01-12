@@ -12,9 +12,11 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 private with Linted.Last_Chance;
-private with Linted.Tasks;
+private with Linted.Simulator;
 
 procedure Main is
 begin
-   Linted.Tasks.Go;
+   loop
+      null;
+   end loop;
 end Main;

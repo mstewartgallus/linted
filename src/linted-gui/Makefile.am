@@ -51,6 +51,7 @@ dist_pkgdefaultunits_DATA+=%D%/units/linted-gui.service
 MOSTLYCLEANFILES+=%D%/gui.c
 BUILT_SOURCES+=%D%/gui.c
 %D%/gui.c: %D%/LntdGuiC.nc %D%/LntdGuiP.nc $(NESC_FILES)
+	$(MKDIR_P) %D%
 	$(linted_V_NESCC) $(NESCC) $(AM_NESCFLAGS) -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc $(NESCFLAGS) -fnesc-cfile=$@ $<
 	test -f $@
 

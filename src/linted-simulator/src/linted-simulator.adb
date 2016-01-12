@@ -21,7 +21,7 @@ private with Linted.Timer;
 private with Linted.Triggers;
 private with Linted.Update_Writer;
 
-package body Linted.Tasks is
+package body Linted.Simulator is
    package Command_Line renames Ada.Command_Line;
 
    Event_Trigger : aliased Triggers.Trigger;
@@ -95,8 +95,8 @@ package body Linted.Tasks is
 				     Left => False,
 				     Right => False,
 				     Jumping => False));
-
-   procedure Go is
+   task Main_Task;
+   task body Main_Task is
    begin
       if Command_Line.Argument_Count < 2 then
 	 raise Constraint_Error with "At least two arguments";
@@ -158,7 +158,7 @@ package body Linted.Tasks is
 	    end if;
 	 end;
       end loop;
-   end Go;
+   end Main_Task;
 
    procedure Simulate_Tick (This : in out State) is
       use type Sim_Integer;
@@ -377,4 +377,4 @@ package body Linted.Tasks is
    begin
       return Sim_Integer ((Large (Y) * Large (X)) / Large (Sim_Integer'Last));
    end Downscale;
-end Linted.Tasks;
+end Linted.Simulator;

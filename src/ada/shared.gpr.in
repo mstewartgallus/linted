@@ -13,10 +13,10 @@
 -- permissions and limitations under the License.
 abstract project Shared is
   for Source_Files use ();
-  for Object_Dir use "@builddir@";
+  for Object_Dir use "@builddir@/src/ada";
 
   package Builder is
-     for Global_Configuration_Pragmas use "@srcdir@/pragmas.adc";
+     for Global_Configuration_Pragmas use "@srcdir@/src/ada/pragmas.adc";
   end Builder;
 
   package Compiler is
