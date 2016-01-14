@@ -70,14 +70,14 @@ package body Linted.IO_Pool is
 
       procedure Write (Object : KO; Buf : System.Address; Count : C.size_t) is
       begin
-	 My_Command_MVar.Set ((Object, Buf, Count));
+	 Write_Command_MVars.Set (My_Command_MVar, (Object, Buf, Count));
 	 Triggers.Signal (My_Trigger);
       end Write;
 
       function Poll return Option_Writer_Events.Option is
 	 Event : Write_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 My_Event_MVar.Poll (Event);
+	 Event := Write_Done_Event_MVars.Poll (My_Event_MVar);
 	 if Event.Empty then
 	    return (Empty => True);
 	 else
@@ -95,7 +95,7 @@ package body Linted.IO_Pool is
 	 loop
 	    Triggers.Wait (My_Trigger);
 
-	    My_Command_MVar.Poll (New_Write_Command);
+	    New_Write_Command := Write_Command_MVars.Poll (My_Command_MVar);
 	    if not New_Write_Command.Empty then
 	       declare
 		  Err : C.int;
@@ -121,7 +121,7 @@ package body Linted.IO_Pool is
 		     end if;
 		  end loop;
 
-		  My_Event_MVar.Set (Write_Done_Event'(Err => Error (Err), Bytes_Written => Bytes_Written));
+		  Write_Done_Event_MVars.Set (My_Event_MVar, Write_Done_Event'(Err => Error (Err), Bytes_Written => Bytes_Written));
 		  Triggers.Signal (Event_Trigger.all);
 	       end;
 	    end if;
@@ -152,14 +152,14 @@ package body Linted.IO_Pool is
 
       procedure Read (Object : KO; Buf : System.Address; Count : C.size_t) is
       begin
-	 My_Command_MVar.Set ((Object, Buf, Count));
+	 Read_Command_MVars.Set (My_Command_MVar, (Object, Buf, Count));
 	 Triggers.Signal (My_Trigger);
       end Read;
 
       function Poll return Option_Reader_Events.Option is
 	 Event : Read_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 My_Event_MVar.Poll (Event);
+	 Event := Read_Done_Event_MVars.Poll (My_Event_MVar);
 	 if Event.Empty then
 	    return (Empty => True);
 	 else
@@ -177,7 +177,7 @@ package body Linted.IO_Pool is
 	 loop
 	    Triggers.Wait (My_Trigger);
 
-	    My_Command_MVar.Poll (New_Read_Command);
+	    New_Read_Command := Read_Command_MVars.Poll (My_Command_MVar);
 	    if not New_Read_Command.Empty then
 	       declare
 		  Err : C.int;
@@ -206,7 +206,7 @@ package body Linted.IO_Pool is
 		     end if;
 		  end loop;
 
-		  My_Event_MVar.Set ((Err => Error (Err), Bytes_Read => Bytes_Read));
+		  Read_Done_Event_MVars.Set (My_Event_MVar, (Err => Error (Err), Bytes_Read => Bytes_Read));
 		  Triggers.Signal (Event_Trigger.all);
 	       end;
 	    end if;

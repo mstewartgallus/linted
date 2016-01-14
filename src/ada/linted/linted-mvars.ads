@@ -20,11 +20,24 @@ package Linted.MVars is
 
    package Option_Element_Ts is new Linted.Options (Element_T);
 
-   protected type MVar is
-      procedure Poll (Option : out Option_Element_Ts.Option);
+   type MVar is limited private;
+
+   function Poll (This : in out MVar) return Option_Element_Ts.Option;
+   procedure Set (This : in out MVar; D : Element_T);
+
+private
+   type Atomic_Boolean is new Boolean;
+   pragma Atomic (Atomic_Boolean);
+
+   protected type Impl is
+      procedure Poll (Option : out Option_Element_Ts.Option; Full : not null access Atomic_Boolean);
       procedure Set (D : Element_T);
    private
       Current : Element_T;
-      Full : Boolean := False;
-   end MVar;
+   end Impl;
+
+   type MVar is limited record
+      Object : Impl;
+      Full : aliased Atomic_Boolean := False;
+   end record;
 end Linted.MVars;

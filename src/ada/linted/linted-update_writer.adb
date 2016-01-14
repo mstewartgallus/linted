@@ -58,14 +58,14 @@ package body Linted.Update_Writer is
 
       procedure Write (Object : KOs.KO; Data : Update) is
       begin
-	 Write_Command_MVar.Set ((Object, Data));
+	 Write_Command_MVars.Set (Write_Command_MVar, (Object, Data));
 	 Triggers.Signal (My_Trigger);
       end Write;
 
       function Poll return Option_Events.Option is
 	 Option_Event : Write_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 Write_Done_Event_MVar.Poll (Option_Event);
+	 Option_Event := Write_Done_Event_MVars.Poll (Write_Done_Event_MVar);
 	 if Option_Event.Empty then
 	       return (Empty => True);
 	 else
@@ -97,7 +97,7 @@ package body Linted.Update_Writer is
 
 		  Update_In_Progress := False;
 
-		  Write_Done_Event_MVar.Set (Write_Done_Event'(Err => Err));
+		  Write_Done_Event_MVars.Set (Write_Done_Event_MVar, Write_Done_Event'(Err => Err));
 		  Triggers.Signal (Event_Trigger.all);
 	       end if;
 	    end;
@@ -105,7 +105,7 @@ package body Linted.Update_Writer is
 	    declare
 	       Option_Command : Write_Command_MVars.Option_Element_Ts.Option;
 	    begin
-	       Write_Command_MVar.Poll (Option_Command);
+	       Option_Command := Write_Command_MVars.Poll (Write_Command_MVar);
 	       if not Option_Command.Empty then
 		  Object := Option_Command.Data.Object;
 		  Pending_Update := Option_Command.Data.Data;

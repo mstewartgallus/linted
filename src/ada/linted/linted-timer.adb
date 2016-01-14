@@ -36,7 +36,7 @@ package body Linted.Timer is
 
       procedure Wait_Until (Time : Real_Time.Time) is
       begin
-	 My_Command_MVar.Set ((Time => Time));
+	 Command_MVars.Set (My_Command_MVar, (Time => Time));
 	 Triggers.Signal (My_Trigger);
       end Wait_Until;
 
@@ -48,14 +48,14 @@ package body Linted.Timer is
 	 loop
 	    Triggers.Wait (My_Trigger);
 
-	    My_Command_MVar.Poll (New_Command);
+	    New_Command := Command_MVars.Poll (My_Command_MVar);
 	    if not New_Command.Empty then
 	       declare
 		  Time : constant Real_Time.Time := New_Command.Data.Time;
 		  T : Tick_Event;
 	       begin
 		  delay until Time;
-		  My_Event_MVar.Set (T);
+		  Tick_Event_MVars.Set (My_Event_MVar, T);
 		  Triggers.Signal (Event_Trigger.all);
 	       end;
 	    end if;
@@ -66,7 +66,7 @@ package body Linted.Timer is
 	 T : Event;
 	 New_Event : Tick_Event_MVars.Option_Element_Ts.Option;
       begin
-	 My_Event_MVar.Poll (New_Event);
+	 New_Event := Tick_Event_MVars.Poll (My_Event_MVar);
 	 if New_Event.Empty then
 	    return (Empty => True);
 	 else

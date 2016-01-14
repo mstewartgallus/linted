@@ -12,11 +12,29 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.MVars is
-   protected body MVar is
-      procedure Poll (Option : out Option_Element_Ts.Option) is
+   function Poll (This : in out MVar) return Option_Element_Ts.Option is
+      Option : Option_Element_Ts.Option;
+   begin
+      if This.Full then
+	 This.Object.Poll (Option, This.Full'Access);
+	 return Option;
+      else
+	 return (Empty => True);
+      end if;
+   end Poll;
+
+   procedure Set (This : in out MVar; D : Element_T) is
+   begin
+      This.Object.Set (D);
+      This.Full := True;
+   end Set;
+
+   protected body Impl is
+      procedure Poll (Option : out Option_Element_Ts.Option;
+		      Full : not null access Atomic_Boolean) is
       begin
-	 if Full then
-	    Full := False;
+	 if Full.all then
+	    Full.all := False;
 	    Option := (False, Current);
 	 else
 	    Option := (Empty => True);
@@ -26,7 +44,6 @@ package body Linted.MVars is
       procedure Set (D : Element_T) is
       begin
 	 Current := D;
-	 Full := True;
       end Set;
-   end MVar;
+   end Impl;
 end Linted.MVars;

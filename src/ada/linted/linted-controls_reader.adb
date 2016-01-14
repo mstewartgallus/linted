@@ -58,14 +58,14 @@ package body Linted.Controls_Reader is
 
       procedure Start (Object : KOs.KO) is
       begin
-	 My_Command_MVar.Set (Object);
+	 Command_MVars.Set (My_Command_MVar, Object);
 	 Triggers.Signal (My_Trigger);
       end Start;
 
       function Poll return Option_Events.Option is
 	 New_Event : Read_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 My_Event_MVar.Poll (New_Event);
+	 New_Event := Read_Done_Event_MVars.Poll (My_Event_MVar);
 	 if New_Event.Empty then
 	    return (Empty => True);
 	 else
@@ -88,7 +88,7 @@ package body Linted.Controls_Reader is
 	    declare
 	       New_Command : Command_MVars.Option_Element_Ts.Option;
 	    begin
-	       My_Command_MVar.Poll (New_Command);
+	       New_Command := Command_MVars.Poll (My_Command_MVar);
 	       if not New_Command.Empty then
 		  Object := New_Command.Data;
 		  Object_Initialized := True;
@@ -111,7 +111,7 @@ package body Linted.Controls_Reader is
 
 		     C.Jumping := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 5)) /= 0;
 		  end if;
-		  My_Event_MVar.Set ((Err, C));
+		  Read_Done_Event_MVars.Set (My_Event_MVar, (Err, C));
 		  Triggers.Signal (Event_Trigger.all);
 	       end if;
 	    end;
