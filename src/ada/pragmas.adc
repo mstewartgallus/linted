@@ -14,14 +14,14 @@
 -- pragma Assertion_Policy (CHECK);
 -- pragma Debug_Policy (CHECK);
 -- pragma Check_Float_Overflow;
+-- pragma Detect_Blocking;
+-- pragma Restrictions (No_Initialize_Scalars);
 
 pragma Task_Dispatching_Policy (FIFO_Within_Priorities);
-pragma Detect_Blocking;
 
 pragma Restrictions (Max_Tasks => 255);
 
 pragma Restrictions (Max_Storage_At_Blocking => 0);
-pragma Restrictions (No_Initialize_Scalars);
 
 pragma Restrictions (No_Streams);
 pragma Restrictions (No_Access_Subprograms);

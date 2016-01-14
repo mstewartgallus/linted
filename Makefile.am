@@ -96,7 +96,9 @@ AM_LDFLAGS+=\
   $(linted_LDFLAGS_META)\
   $(linted_LDFLAGS_WARNINGS); do echo -Xcompiler "$$II"; done)
 
-mostlyclean-local:
+mostlyclean-local: clean-%C%
+.PHONY: clean-%C%
+clean-%C%:
 	- find "$(builddir)" -type f \(\
 	  -name '*.dwo'\
 	  -o -name '*.su'\

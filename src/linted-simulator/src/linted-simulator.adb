@@ -97,9 +97,10 @@ package body Linted.Simulator is
 				     Left => False,
 				     Right => False,
 				     Jumping => False));
+   Next_Time : Real_Time.Time;
+
    task Main_Task;
    task body Main_Task is
-      Next_Time : Real_Time.Time;
    begin
       if Command_Line.Argument_Count < 2 then
 	 raise Constraint_Error with "At least two arguments";

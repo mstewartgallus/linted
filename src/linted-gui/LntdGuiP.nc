@@ -456,8 +456,6 @@ implementation
 			finish(err);
 			return;
 		}
-
-		maybe_update_controller();
 	}
 
 	event void WindowNotifier.read_done(lntd_error err,
@@ -628,7 +626,7 @@ implementation
 		if (!update_pending)
 			return;
 
-		update_pending = true;
+		update_pending = false;
 		call ControllerWriter.write(controller, &update);
 	}
 

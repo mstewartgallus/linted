@@ -44,3 +44,8 @@ EXTRA_DIST+=\
 	  -e 's|[@]ADAC[@]|gcc|g'\
 	  -e 's|[@]ADABIND[@]|/usr/lib/gprbind|g'\
 	  $< > $@
+
+mostlyclean-local: clean-%C%
+.PHONY: clean-%C%
+clean-%C%:
+	- $(GPRCLEAN) -q -P $(builddir)/%D%/linted.gpr --config=$(builddir)/%D%/config.cgpr

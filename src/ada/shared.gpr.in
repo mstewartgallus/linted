@@ -22,46 +22,71 @@ abstract project Shared is
   package Compiler is
      for Default_Switches ("Ada") use ("-gnatec=" & Builder'Global_Configuration_Pragmas,
 				       "-gnat2012",
+
 				       "-Wall", "-Wextra",
 				       "-gnatwa",
-				       "-gnatwh", "-gnatw.i", "-gnatw.k", "-gnatw.o",
+				       "-gnatwh",
+				       "-gnatw.i",
+				       "-gnatw.k",
+				       "-gnatw.o",
 				       "-gnatwt",
+
 				       "-g",
-				       "-E",
-				       "-gnateE",
+--				       "-E",
+--				       "-gnateE",
+
 				       "-gnatn",
 				       "-O3",
-				       "-gno-record-gcc-switches",
-				       "-fpic", "-fPIC", "-fpie", "-fPIE",
+
 				       "-fvisibility=hidden",
 				       "-Bsymbolic",
 				       "-fdata-sections",
 				       "-ffunction-sections",
+
+				       "-gno-record-gcc-switches",
+
+				       "-fpic", "-fPIC", "-fpie", "-fPIE",
+
 				       "-gnaty3aAbCdefiIklnprsStu",
+
 				       "-fverbose-asm",
 				       "-save-temps=cwd",
 				       "-gnatD",
-				       "-fstack-usage",
-				       "-fstack-check",
-				       "-ftrapv",
-				       "-gnato",
-				       "-gnateA",
-				       "-gnateV",
-				       "-gnatVa",
-				       "-gnatE",
-				       "-fsanitize=address");
+				       "-gnatG",
+				       "-gnattt",
+				       "-gnatR3s",
+				       "-fstack-usage"
+
+--				       "-fstack-check",
+--				       "-ftrapv",
+--				       "-fsanitize=address",
+--				       "-gnato",
+--				       "-gnateA",
+--				       "-gnateV",
+--				       "-gnatVa",
+--				       "-gnatE"
+				      );
      for Default_Switches ("C") use ("-Wall", "-Wextra",
+
 				     "-g",
+
 				     "-O3",
+
 				     "-fno-working-directory", "-gno-record-gcc-switches",
+
 				     "-fpic", "-fPIC", "-fpie", "-fPIE",
 				     "-Bsymbolic",
-				     "-fstack-check",
+
 				     "-fdata-sections",
 				     "-ffunction-sections",
+
 				     "-fverbose-asm",
 				     "-save-temps=cwd",
-				     "-fstack-usage");
+				     "-fstack-usage"
+
+--				     "-fstack-check",
+				     --				     "-fsanitize=address"
+				    );
   end Compiler;
 
   package Binder is
@@ -73,6 +98,7 @@ abstract project Shared is
 				       "-Wl,-z,now",
 				       "-Wl,--rosegment",
 				       "-pie", "-fpic", "-fPIC", "-fpie", "-fPIE",
+
 				       "-Wl,-O1",
 				       "-Wl,-X", "-Wl,--discard-locals",
 				       "-Wl,--sort-common",
@@ -80,8 +106,10 @@ abstract project Shared is
 				       "-Wl,--as-needed",
 				       "-Wl,--gc-sections",
 				       "-Wl,-z,combreloc",
-				       "-Wl,--icf=safe",
-				       "-fsanitize=address",
-				       "-fstack-usage");
+				       "-Wl,--icf=safe"
+
+				       --"-fsanitize=address",
+				       -- "-fstack-usage"
+				      );
   end Linker;
 end Shared;
