@@ -11,16 +11,16 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with "@builddir@/src/ada/linted.gpr";
-with "@builddir@/src/ada/shared.gpr";
-project Simulator is
-  for Languages use ("Ada");
-  for Source_Dirs use ("@srcdir@/src/linted-simulator/src");
-  for Main use ("main.adb");
+with "shared.gpr";
+
+project Linted is
+  for Languages use ("C", "Ada");
+  for Source_Dirs use ("linted");
+  for Library_Kind use "static";
 
   for Object_Dir use Shared'Object_Dir;
   package Builder renames Shared.Builder;
   package Compiler renames Shared.Compiler;
   package Binder renames Shared.Binder;
   package Linker renames Shared.Linker;
-end Simulator;
+end Linted;

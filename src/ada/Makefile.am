@@ -15,19 +15,12 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 EXTRA_DIST+=\
-  %D%/linted.gpr.in\
+  %D%/linted.gpr\
   %D%/shared.gpr.in\
   %D%/config.cgpr.in\
   %D%/pragmas.adc\
   \
   %D%/linted
-
-%D%/linted.gpr: %D%/linted.gpr.in Makefile
-	$(MKDIR_P) %D%
-	$(linted_V_SED) sed \
-	  -e 's|[@]srcdir[@]|$(abs_srcdir)|g'\
-	  -e 's|[@]builddir[@]|$(abs_builddir)|g'\
-	  $< > $@
 
 %D%/shared.gpr: %D%/shared.gpr.in Makefile
 	$(MKDIR_P) %D%
@@ -48,4 +41,4 @@ EXTRA_DIST+=\
 mostlyclean-local: clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) -q -P $(builddir)/%D%/linted.gpr --config=$(builddir)/%D%/config.cgpr
+	- $(GPRCLEAN) -q -aP$(builddir)/%D% -aP$(srcdir)/%D% -P $(builddir)/%D%/linted.gpr --config=$(builddir)/%D%/config.cgpr

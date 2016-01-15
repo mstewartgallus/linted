@@ -17,24 +17,18 @@
 pkglibexec_PROGRAMS+=%D%/linted-simulator
 
 EXTRA_DIST+=\
-  %D%/simulator.gpr.in\
+  %D%/simulator.gpr\
   \
   %D%/src
 
-%D%/simulator.gpr: %D%/simulator.gpr.in Makefile
-	$(linted_V_SED) sed \
-	  -e 's|[@]srcdir[@]|$(abs_srcdir)|g'\
-	  -e 's|[@]builddir[@]|$(abs_builddir)|g'\
-	  $< > $@
-
 .PHONY: %D%/linted-simulator$(EXEEXT)
-%D%/linted-simulator$(EXEEXT): %D%/simulator.gpr src/ada/linted.gpr src/ada/shared.gpr src/ada/config.cgpr
-	$(linted_V_GPRBUILD) $(GPRBUILD) -q -P $(builddir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr -o $(abs_builddir)/%D%/linted-simulator$(EXEEXT)
+%D%/linted-simulator$(EXEEXT): src/ada/shared.gpr src/ada/config.cgpr
+	$(linted_V_GPRBUILD) $(GPRBUILD) -q -aP$(builddir)/src/ada -aP$(srcdir)/src/ada -P $(srcdir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr -o $(abs_builddir)/%D%/linted-simulator$(EXEEXT)
 
 mostlyclean-local: clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) -q -P $(builddir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr
+	- $(GPRCLEAN) -q -aP$(builddir)/src/ada -aP$(srcdir)/src/ada -P $(srcdir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service
