@@ -11,17 +11,13 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with "linted.gpr";
-with "shared.gpr";
+with Linted.Errors;
+with Linted.KOs;
 
-project Simulator is
-  for Languages use ("Ada");
-  for Source_Dirs use ("src");
-  for Main use ("main.adb");
+package Linted.Windows is
+   pragma Elaborate_Body;
 
-  for Object_Dir use Shared'Object_Dir & "/linted-simulator";
-  package Builder renames Shared.Builder;
-  package Compiler renames Shared.Compiler;
-  package Binder renames Shared.Binder;
-  package Linker renames Shared.Linker;
-end Simulator;
+   type Window is mod 2 ** 32;
+
+   procedure Read (KO : KOs.KO; Win : out Window; Err : out Errors.Error);
+end Linted.Windows;

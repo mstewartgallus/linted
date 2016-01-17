@@ -23,10 +23,10 @@ EXTRA_DIST+=\
 
 .PHONY: %D%/linted-simulator$(EXEEXT)
 %D%/linted-simulator$(EXEEXT): src/ada/shared.gpr src/ada/config.cgpr
-	$(linted_V_GPRBUILD) $(GPRBUILD) -q -aP$(builddir)/src/ada -aP$(srcdir)/src/ada -P $(srcdir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr -o $(abs_builddir)/%D%/linted-simulator$(EXEEXT)
+	$(linted_V_GPRBUILD) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr
 
-mostlyclean-local: clean-%C%
 .PHONY: clean-%C%
+mostlyclean-local: clean-%C%
 clean-%C%:
 	- $(GPRCLEAN) -q -aP$(builddir)/src/ada -aP$(srcdir)/src/ada -P $(srcdir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr
 

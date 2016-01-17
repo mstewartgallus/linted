@@ -25,6 +25,20 @@ package Linted.Unix is
    type Oflag is mod 2 ** (32 - 1)
      with Convention => C;
 
+   type pollfd is record
+      fd : Interfaces.C.int;
+      events : Interfaces.C.short;
+      revents : Interfaces.C.short;
+   end record
+     with Convention => C;
+
+   subtype nfds_t is Interfaces.C.unsigned_long;
+
+   type pollfd_array is array (nfds_t range <>) of aliased pollfd
+     with Convention => C;
+
+   subtype off_t is Interfaces.C.unsigned_long;
+
    O_ACCMODE : constant Oflag := 3;
    O_RDONLY : constant Oflag := 0;
    O_WRONLY : constant Oflag := 1;
@@ -38,12 +52,6 @@ package Linted.Unix is
    O_NONBLOCK : constant Oflag := 8#4000#;
 
    O_CLOEXEC : constant Oflag := 8#2000000#;
-
-   function Errno return Interfaces.C.int;
-   pragma Import (C, Errno, "linted_adarts_unix_errno");
-
-   procedure Errno_Set (Err : Interfaces.C.int);
-   pragma Import (C, Errno_Set, "linted_adarts_unix_errno_set");
 
    E2BIG : constant Interfaces.C.int := 7;
    EACCES : constant Interfaces.C.int := 13;
@@ -179,25 +187,25 @@ package Linted.Unix is
    EXDEV : constant Interfaces.C.int := 18;
    EXFULL : constant Interfaces.C.int := 54;
 
+   function Errno return Interfaces.C.int;
+   pragma Import (C, Errno, "linted_adarts_unix_errno");
+
+   procedure Errno_Set (Err : Interfaces.C.int);
+   pragma Import (C, Errno_Set, "linted_adarts_unix_errno_set");
+
    function Open (Pathname : Interfaces.C.char_array; Flags : Oflag; Mode : mode_t) return Interfaces.C.int;
 
    function Close (Object : Interfaces.C.int) return Interfaces.C.int;
    pragma Import (C, Close, "close");
 
-   type pollfd is record
-      fd : Interfaces.C.int;
-      events : Interfaces.C.short;
-      revents : Interfaces.C.short;
-   end record
-     with Convention => C;
-
-   subtype nfds_t is Interfaces.C.unsigned_long;
-
-   type pollfd_array is array (nfds_t range <>) of aliased pollfd
-     with Convention => C;
-
    function Poll (Fds : in out pollfd_array; Nfds : nfds_t; Timeout : Interfaces.C.int) return Interfaces.C.int;
    pragma Import (C, Poll, "poll");
+
+   function PRead (Fd : Interfaces.C.int;
+		   Buf : System.Address;
+		   Count : Interfaces.C.size_t;
+		   Offset : off_t) return ssize_t;
+   pragma Import (C, PRead, "pread");
 
    function Write (Fd : Interfaces.C.int; Buf : System.Address; Count : Interfaces.C.size_t) return ssize_t;
    pragma Import (C, Write, "write");

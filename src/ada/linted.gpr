@@ -18,7 +18,7 @@ project Linted is
   for Source_Dirs use ("linted");
   for Library_Kind use "static";
 
-  for Object_Dir use Shared'Object_Dir;
+  for Object_Dir use Shared'Object_Dir & "/linted";
   package Builder renames Shared.Builder;
   package Compiler renames Shared.Compiler;
   package Binder renames Shared.Binder;

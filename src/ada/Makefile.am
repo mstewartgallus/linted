@@ -41,4 +41,4 @@ EXTRA_DIST+=\
 mostlyclean-local: clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) -q -aP$(builddir)/%D% -aP$(srcdir)/%D% -P $(builddir)/%D%/linted.gpr --config=$(builddir)/%D%/config.cgpr
+	- $(GPRCLEAN) -q -aP$(builddir)/%D% -aP$(srcdir)/%D% -P $(srcdir)/%D%/linted.gpr --config=$(builddir)/%D%/config.cgpr
