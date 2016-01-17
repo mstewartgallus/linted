@@ -12,9 +12,10 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with "shared.gpr";
+with "linted_unix.gpr";
 
 project Linted is
-  for Languages use ("C", "Ada");
+  for Languages use ("Ada");
   for Source_Dirs use ("src");
   for Library_Kind use "static";
 

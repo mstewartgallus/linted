@@ -11,15 +11,12 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces.C;
+package body Linted_Unix is
+   function Real_Open (Pathname : Interfaces.C.char_array; Flags : Interfaces.C.int; Mode : mode_t) return Interfaces.C.int;
+   pragma Import (C, Real_Open, "open");
 
-package Linted.Errors is
-   subtype Valid_Error is Interfaces.C.int range 0 .. Interfaces.C.int'Last;
-   type Error is  new Valid_Error
-     with Default_Value => 0;
-
-   Success : constant Error;
-
-private
-   Success : constant Error := 0;
-end Linted.Errors;
+   function Open (Pathname : Interfaces.C.char_array; Flags : Oflag; Mode : mode_t) return Interfaces.C.int is
+   begin
+      return Real_Open (Pathname, Interfaces.C.int (Flags), Mode);
+   end Open;
+end Linted_Unix;

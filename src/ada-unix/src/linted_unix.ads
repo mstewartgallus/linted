@@ -14,7 +14,7 @@
 with Interfaces.C;
 limited with System;
 
-package Linted.Unix is
+package Linted_Unix is
    pragma Pure;
 
    type ssize_t is range -2 ** (Standard'Address_Size - 1) ..  2 ** (Standard'Address_Size - 1) - 1
@@ -215,4 +215,4 @@ package Linted.Unix is
 
    procedure Quick_Exit (Status : Interfaces.C.int);
    pragma Import (C, Quick_Exit, "_Exit");
-end Linted.Unix;
+end Linted_Unix;

@@ -11,20 +11,41 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.IO_Pool;
+with Interfaces.C;
+
 with Linted.Errors;
 
 package Linted.KOs is
-   subtype KO is Linted.IO_Pool.KO;
+   use type Interfaces.C.int;
 
-   Standard_Input : KO renames Linted.IO_Pool.Standard_Input;
-   Standard_Output : KO renames Linted.IO_Pool.Standard_Output;
-   Standard_Error : KO renames Linted.IO_Pool.Standard_Error;
+   subtype Valid_KO is Interfaces.C.int range -1 .. Interfaces.C.int'Last;
+   type KO is new Valid_KO
+     with Default_Value => -1;
 
-   package KO_Results renames Linted.IO_Pool.KO_Results;
+   Standard_Input : constant KO;
+   Standard_Output : constant KO;
+   Standard_Error : constant KO;
 
-   function Open (Pathname : String) return KO_Results.Result
-     renames Linted.IO_Pool.Open;
-   function Close (Object : KO) return Linted.Errors.Error
-     renames Linted.IO_Pool.Close;
+   generic
+      type Element_T is private;
+   package Results is
+      type Result (Erroneous : Boolean) is record
+	 case Erroneous is
+	    when True => Err : Errors.Error := 0;
+	    when False => Data : Element_T;
+	 end case;
+      end record;
+   end Results;
+
+   package KO_Results is new Results (KO);
+
+   function Open (Pathname : String) return KO_Results.Result;
+   function Close (Object : KO) return Errors.Error;
+
+private
+   Invalid : constant KO := -1;
+
+   Standard_Input : constant KO := 0;
+   Standard_Output : constant KO := 1;
+   Standard_Error : constant KO := 2;
 end Linted.KOs;

@@ -11,50 +11,23 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Linted.Unix;
+with Linted_Unix;
+
 private with Linted.MVars;
 
 package body Linted.IO_Pool is
    package C renames Interfaces.C;
 
-   function Open (Pathname : String) return KO_Results.Result is
-      use type Unix.Oflag;
-
-      X : constant C.char_array := C.To_C (Pathname);
-      Err : Error;
-      Fd : C.int;
-   begin
-      Fd := Unix.Open (X, Unix.O_RDWR or Unix.O_CLOEXEC, 0);
-      if Fd < 0 then
-	 Err := Error (Unix.Errno);
-      else
-	 Err := 0;
-      end if;
-
-      if Err /= 0 then
-	 return (Erroneous => True, Err => Err);
-      else
-	 return (Erroneous => False, Data => KO (Fd));
-      end if;
-   end Open;
-
-   function Close (Object : KO) return Error is
-   begin
-      if Unix.Close (C.int (Object)) < 0 then
-	 return Error (Unix.Errno);
-      else
-	 return 0;
-      end if;
-   end Close;
+   package Unix renames Linted_Unix;
 
    type Write_Command is record
-      Object : KO;
+      Object : KOs.KO;
       Buf : System.Address;
       Count : C.size_t;
    end record;
 
    type Write_Done_Event is record
-      Err : Error;
+      Err : Errors.Error;
       Bytes_Written : C.size_t;
    end record;
 
@@ -68,7 +41,7 @@ package body Linted.IO_Pool is
       My_Command_MVar : Write_Command_MVars.MVar;
       My_Event_MVar : Write_Done_Event_MVars.MVar;
 
-      procedure Write (Object : KO; Buf : System.Address; Count : C.size_t) is
+      procedure Write (Object : KOs.KO; Buf : System.Address; Count : C.size_t) is
       begin
 	 Write_Command_MVars.Set (My_Command_MVar, (Object, Buf, Count));
 	 Triggers.Signal (My_Trigger);
@@ -101,7 +74,7 @@ package body Linted.IO_Pool is
 		  Err : C.int;
 		  Bytes_Written : C.size_t := 0;
 
-		  Object : constant KO := New_Write_Command.Data.Object;
+		  Object : constant KOs.KO := New_Write_Command.Data.Object;
 		  Buf : constant System.Address := New_Write_Command.Data.Buf;
 		  Count : constant C.size_t := New_Write_Command.Data.Count;
 	       begin
@@ -121,7 +94,7 @@ package body Linted.IO_Pool is
 		     end if;
 		  end loop;
 
-		  Write_Done_Event_MVars.Set (My_Event_MVar, Write_Done_Event'(Err => Error (Err), Bytes_Written => Bytes_Written));
+		  Write_Done_Event_MVars.Set (My_Event_MVar, Write_Done_Event'(Err => Errors.Error (Err), Bytes_Written => Bytes_Written));
 		  Triggers.Signal (Event_Trigger.all);
 	       end;
 	    end if;
@@ -130,13 +103,13 @@ package body Linted.IO_Pool is
    end Writer_Worker;
 
    type Read_Command is record
-      Object : KO;
+      Object : KOs.KO;
       Buf : System.Address;
       Count : C.size_t;
    end record;
 
    type Read_Done_Event is record
-      Err : Error;
+      Err : Errors.Error;
       Bytes_Read : C.size_t;
    end record;
 
@@ -150,7 +123,7 @@ package body Linted.IO_Pool is
       My_Command_MVar : Read_Command_MVars.MVar;
       My_Event_MVar : Read_Done_Event_MVars.MVar;
 
-      procedure Read (Object : KO; Buf : System.Address; Count : C.size_t) is
+      procedure Read (Object : KOs.KO; Buf : System.Address; Count : C.size_t) is
       begin
 	 Read_Command_MVars.Set (My_Command_MVar, (Object, Buf, Count));
 	 Triggers.Signal (My_Trigger);
@@ -183,7 +156,7 @@ package body Linted.IO_Pool is
 		  Err : C.int;
 		  Bytes_Read : C.size_t := 0;
 
-		  Object : constant KO := New_Read_Command.Data.Object;
+		  Object : constant KOs.KO := New_Read_Command.Data.Object;
 		  Buf : constant System.Address := New_Read_Command.Data.Buf;
 		  Count : constant C.size_t := New_Read_Command.Data.Count;
 	       begin
@@ -206,7 +179,7 @@ package body Linted.IO_Pool is
 		     end if;
 		  end loop;
 
-		  Read_Done_Event_MVars.Set (My_Event_MVar, (Err => Error (Err), Bytes_Read => Bytes_Read));
+		  Read_Done_Event_MVars.Set (My_Event_MVar, (Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
 		  Triggers.Signal (Event_Trigger.all);
 	       end;
 	    end if;
