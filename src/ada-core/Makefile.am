@@ -15,22 +15,11 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 EXTRA_DIST+=\
-  %D%/shared.gpr.in\
-  %D%/config.cgpr.in\
-  %D%/pragmas.adc
+  %D%/linted.gpr\
+  \
+  %D%/src
 
-%D%/shared.gpr: %D%/shared.gpr.in Makefile
-	$(MKDIR_P) %D%
-	$(linted_V_SED) sed \
-	  -e 's|[@]srcdir[@]|$(abs_srcdir)|g'\
-	  -e 's|[@]builddir[@]|$(abs_builddir)|g'\
-	  $< > $@
-
-%D%/config.cgpr: %D%/config.cgpr.in Makefile
-	$(MKDIR_P) %D%
-	$(linted_V_SED) sed \
-	  -e 's|[@]CCLD[@]|gcc|g'\
-	  -e 's|[@]CC[@]|gcc|g'\
-	  -e 's|[@]ADAC[@]|gcc|g'\
-	  -e 's|[@]ADABIND[@]|/usr/lib/gprbind|g'\
-	  $< > $@
+mostlyclean-local: clean-%C%
+.PHONY: clean-%C%
+clean-%C%:
+	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/linted.gpr

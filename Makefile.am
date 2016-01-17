@@ -96,7 +96,14 @@ AM_LDFLAGS+=\
   $(linted_LDFLAGS_META)\
   $(linted_LDFLAGS_WARNINGS); do echo -Xcompiler "$$II"; done)
 
-AM_GPRBUILDFLAGS=-q --create-missing-dirs --config=$(builddir)/src/ada/config.cgpr -aP$(builddir)/src/ada -aP$(srcdir)/src/ada
+AM_GPRBUILDFLAGS=-q --create-missing-dirs --config=$(builddir)/src/ada/config.cgpr\
+  -aP$(builddir)/src/ada\
+  -aP$(srcdir)/src/ada\
+  -aP$(srcdir)/src/ada-core
+GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
+  -aP$(builddir)/src/ada\
+  -aP$(srcdir)/src/ada\
+  -aP$(srcdir)/src/ada-core
 
 mostlyclean-local: clean-%C%
 .PHONY: clean-%C%

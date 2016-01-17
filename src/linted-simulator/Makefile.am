@@ -23,12 +23,12 @@ EXTRA_DIST+=\
 
 .PHONY: %D%/linted-simulator$(EXEEXT)
 %D%/linted-simulator$(EXEEXT): src/ada/shared.gpr src/ada/config.cgpr
-	$(linted_V_GPRBUILD) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr
+	$(linted_V_GPRBUILD) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/simulator.gpr
 
 .PHONY: clean-%C%
 mostlyclean-local: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) -q -aP$(builddir)/src/ada -aP$(srcdir)/src/ada -P $(srcdir)/%D%/simulator.gpr --config=$(builddir)/src/ada/config.cgpr
+	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/simulator.gpr
 
 dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service
