@@ -32,7 +32,6 @@ const vec3 ambient_light = 0.01 * vec3(0.95, 1.0, 0.9);
 
 const vec2 foggy_air = vec2(0.0001, 0.00001);
 
-const vec3 dark_stone = vec3(1.0, 0.2, 0.1);
 const float r = 0.4;
 const float shininess = 9.0;
 
@@ -47,9 +46,23 @@ float to_srgb(float x)
 	}
 }
 
+float from_srgb(float x)
+{
+	if (x < 0.04045) {
+		return x / 12.92;
+	} else {
+		return pow((x + 0.055) / 1.055, 2.4);
+	}
+}
+
 vec3 to_srgb_vec3(vec3 x)
 {
 	return vec3(to_srgb(x.r), to_srgb(x.g), to_srgb(x.b));
+}
+
+vec3 from_srgb_vec3(vec3 x)
+{
+	return vec3(from_srgb(x.r), from_srgb(x.g), from_srgb(x.b));
 }
 
 void main()
@@ -61,7 +74,7 @@ void main()
                                       normalize(light_location)));
     float specular = r * pow(max(0.0, dot(normalize(reflect(normalize(light_location), linted_varying_normal)), normalize(eye_vertex - linted_varying_vertex))), shininess);
 
-    vec3 impact = ambient_light + (impact_angle + specular) * light_colour;
+    vec3 impact = ambient_light + (impact_angle + specular) * from_srgb_vec3(light_colour);
 
     vec3 value = impact / compute_decay_factor(eye_vertex, -linted_varying_vertex);
 
