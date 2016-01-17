@@ -38,6 +38,20 @@ const float shininess = 9.0;
 
 float compute_decay_factor(vec3 aa, vec3 bb);
 
+float to_srgb(float x)
+{
+	if (x < 0.0031308) {
+		return x * 12.92;
+	} else {
+		return 1.055 * pow(x, 1.0 / 2.4) - 0.055;
+	}
+}
+
+vec3 to_srgb_vec3(vec3 x)
+{
+	return vec3(to_srgb(x.r), to_srgb(x.g), to_srgb(x.b));
+}
+
 void main()
 {
     /* Note that linted_varying_normal is already normalized and norming it twice
@@ -54,7 +68,7 @@ void main()
 #if defined VIEW_NORMALS
     vec3 gamma_correct_value = linted_varying_normal;
 #else
-    vec3 gamma_correct_value = pow(value, vec3(1.0 / 2.2));
+    vec3 gamma_correct_value = to_srgb_vec3(value);
 #endif
 
     linted_fragment_color = vec4(gamma_correct_value, 1.0);
