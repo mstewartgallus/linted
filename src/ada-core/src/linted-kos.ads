@@ -14,8 +14,11 @@
 with Interfaces.C;
 
 with Linted.Errors;
+with Linted.Results;
 
 package Linted.KOs is
+   pragma Pure;
+
    use type Interfaces.C.int;
 
    subtype Valid_KO is Interfaces.C.int range -1 .. Interfaces.C.int'Last;
@@ -26,18 +29,7 @@ package Linted.KOs is
    Standard_Output : constant KO;
    Standard_Error : constant KO;
 
-   generic
-      type Element_T is private;
-   package Results is
-      type Result (Erroneous : Boolean) is record
-	 case Erroneous is
-	    when True => Err : Errors.Error := 0;
-	    when False => Data : Element_T;
-	 end case;
-      end record;
-   end Results;
-
-   package KO_Results is new Results (KO);
+   package KO_Results is new Linted.Results (KO);
 
    function Open (Pathname : String) return KO_Results.Result;
    function Close (Object : KO) return Errors.Error;

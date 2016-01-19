@@ -11,14 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.IO_Pool;
+with Linted.Errors;
 
 generic
    type Element_T is private;
 package Linted.Results is
-   pragma Elaborate_Body;
+   pragma Pure;
 
-   package Results is new Linted.IO_Pool.Results(Element_T);
-
-   subtype Result is Results.Result;
+   type Result (Erroneous : Boolean) is record
+      case Erroneous is
+	 when True => Err : Errors.Error := 0;
+	 when False => Data : Element_T;
+      end case;
+   end record;
 end Linted.Results;

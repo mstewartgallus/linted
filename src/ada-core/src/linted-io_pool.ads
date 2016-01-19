@@ -21,7 +21,6 @@ with Linted.Triggers;
 
 package Linted.IO_Pool is
    pragma Elaborate_Body;
-
    use type Interfaces.C.int;
 
    type Writer_Event is record

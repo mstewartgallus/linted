@@ -14,6 +14,8 @@
 with Interfaces.C;
 
 package Linted.Errors is
+   pragma Pure;
+
    subtype Valid_Error is Interfaces.C.int range 0 .. Interfaces.C.int'Last;
    type Error is  new Valid_Error
      with Default_Value => 0;
