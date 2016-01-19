@@ -107,7 +107,11 @@ GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
   -aP$(srcdir)/src/ada-unix\
   -aP$(srcdir)/src/ada-core
 
-mostlyclean-local: clean-%C%
+LINTED_CLEAN_RULES=
+
+mostlyclean-local: $(LINTED_CLEAN_RULES)
+
+LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
 	- find "$(builddir)" -type f \(\

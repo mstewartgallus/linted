@@ -19,7 +19,7 @@ EXTRA_DIST+=\
   \
   %D%/src
 
-mostlyclean-local: clean-%C%
+LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
 	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/linted.gpr

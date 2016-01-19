@@ -89,6 +89,8 @@ include %C%/str/Makefile.am
 include %C%/window/Makefile.am
 
 include %C%/ada/Makefile.am
+include %C%/ada-core/Makefile.am
+include %C%/ada-unix/Makefile.am
 include %C%/nesc/Makefile.am
 
 if WINDOWS_API
