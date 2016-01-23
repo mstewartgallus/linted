@@ -12,12 +12,14 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Linted_Unix;
+with C89.Errno;
 
 private with Linted.MVars;
 
 package body Linted.IO_Pool is
    package C renames Interfaces.C;
 
+   package Errno renames C89.Errno;
    package Unix renames Linted_Unix;
 
    type Write_Command is record
@@ -81,7 +83,7 @@ package body Linted.IO_Pool is
 		  loop
 		     Result := Unix.Write (C.int (Object), Buf, Count - Bytes_Written);
 		     if Result < 0 then
-			Err := Unix.Errno;
+			Err := Errno.Errno;
 			if Err /= Unix.EINTR then
 			   exit;
 			end if;
@@ -163,7 +165,7 @@ package body Linted.IO_Pool is
 		  loop
 		     Result := Unix.Read (C.int (Object), Buf, Count - Bytes_Read);
 		     if Result < 0 then
-			Err := Unix.Errno;
+			Err := Errno.Errno;
 			if Err /= Unix.EINTR then
 			   exit;
 			end if;

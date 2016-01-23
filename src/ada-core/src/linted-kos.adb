@@ -12,9 +12,11 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Linted_Unix;
+with C89.Errno;
 
 package body Linted.KOs is
    package C renames Interfaces.C;
+   package Errno renames C89.Errno;
    package Unix renames Linted_Unix;
 
    function Open (Pathname : String) return KO_Results.Result is
@@ -27,7 +29,7 @@ package body Linted.KOs is
    begin
       Fd := Unix.Open (X, Unix.O_RDWR or Unix.O_CLOEXEC, 0);
       if Fd < 0 then
-	 Err := Errors.Error (Unix.Errno);
+	 Err := Errors.Error (Errno.Errno);
       else
 	 Err := 0;
       end if;
@@ -42,7 +44,7 @@ package body Linted.KOs is
    function Close (Object : KOs.KO) return Errors.Error is
    begin
       if Unix.Close (C.int (Object)) < 0 then
-	 return Errors.Error (Unix.Errno);
+	 return Errors.Error (Errno.Errno);
       else
 	 return 0;
       end if;

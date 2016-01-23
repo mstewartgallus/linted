@@ -17,9 +17,12 @@ private with Interfaces;
 private with System.Storage_Elements;
 private with System;
 
-private with Linted.Unix;
+private with Linted_Unix;
+private with C89.Errno;
 
 package body Linted.Windows is
+   package Errno renames C89.Errno;
+   package Unix renames Linted_Unix;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -44,7 +47,7 @@ package body Linted.Windows is
       begin
 	 if Unix.PRead (C.int (KO), Convert (Buf (1)'Unchecked_Access), 4, 0) < 0 then
 	    Win := 0;
-	    Err := Errors.Error (Unix.Errno);
+	    Err := Errors.Error (Errno.Errno);
 	    return;
 	 end if;
 	 Win := From_Bytes (Buf);

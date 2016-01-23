@@ -13,6 +13,7 @@
 -- permissions and limitations under the License.
 with "shared.gpr";
 with "linted_unix.gpr";
+with "c89.gpr";
 
 project Linted is
   for Languages use ("Ada");

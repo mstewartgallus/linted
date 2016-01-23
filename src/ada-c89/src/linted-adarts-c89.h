@@ -13,16 +13,10 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-#include "linted-adarts-unix.h"
+#ifndef LINTED_ADARTS_C89_H
+#define LINTED_ADARTS_C89_H 1
 
-#include <errno.h>
+int linted_adarts_c89_errno(void);
+void linted_adarts_c89_errno_set(int err);
 
-int linted_adarts_unix_errno(void)
-{
-	return errno;
-}
-
-void linted_adarts_unix_errno_set(int err)
-{
-	errno = err;
-}
+#endif /* LINTED_ADARTS_C89_H */

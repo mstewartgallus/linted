@@ -30,7 +30,8 @@ private
    pragma Atomic (Atomic_Boolean);
 
    protected type Impl is
-      procedure Poll (Option : out Option_Element_Ts.Option; Full : not null access Atomic_Boolean);
+      procedure Poll (Option : out Option_Element_Ts.Option;
+		      Full : not null access Atomic_Boolean);
       procedure Set (D : Element_T);
    private
       Current : Element_T;

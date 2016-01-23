@@ -187,12 +187,6 @@ package Linted_Unix is
    EXDEV : constant Interfaces.C.int := 18;
    EXFULL : constant Interfaces.C.int := 54;
 
-   function Errno return Interfaces.C.int;
-   pragma Import (C, Errno, "linted_adarts_unix_errno");
-
-   procedure Errno_Set (Err : Interfaces.C.int);
-   pragma Import (C, Errno_Set, "linted_adarts_unix_errno_set");
-
    function Open (Pathname : Interfaces.C.char_array; Flags : Oflag; Mode : mode_t) return Interfaces.C.int;
 
    function Close (Object : Interfaces.C.int) return Interfaces.C.int;
