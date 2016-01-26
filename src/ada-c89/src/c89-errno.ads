@@ -29,7 +29,7 @@ package C89.Errno is
    --  unsupported macro: EPERM 1
    --  unsupported macro: ENOENT 2
    --  unsupported macro: ESRCH 3
-   --  unsupported macro: EINTR 4
+   EINTR : constant := 4;
    --  unsupported macro: EIO 5
    --  unsupported macro: ENXIO 6
    --  unsupported macro: E2BIG 7

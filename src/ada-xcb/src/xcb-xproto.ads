@@ -3820,7 +3820,7 @@ package XCB.XProto is
    pragma Import (C, xcb_create_window_sizeof, "xcb_create_window_sizeof");
 
    function xcb_create_window_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       depth : C99.Stdint.uint8_t;
       wid : xcb_window_t;
       parent : xcb_window_t;
@@ -3836,7 +3836,7 @@ package XCB.XProto is
    pragma Import (C, xcb_create_window_checked, "xcb_create_window_checked");
 
    function xcb_create_window
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       depth : C99.Stdint.uint8_t;
       wid : xcb_window_t;
       parent : xcb_window_t;
@@ -3855,57 +3855,57 @@ package XCB.XProto is
    pragma Import (C, xcb_change_window_attributes_sizeof, "xcb_change_window_attributes_sizeof");
 
    function xcb_change_window_attributes_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       value_mask : C99.Stdint.uint32_t;
       value_list : access C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6448
    pragma Import (C, xcb_change_window_attributes_checked, "xcb_change_window_attributes_checked");
 
    function xcb_change_window_attributes
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       value_mask : C99.Stdint.uint32_t;
       value_list : access C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6482
    pragma Import (C, xcb_change_window_attributes, "xcb_change_window_attributes");
 
-   function xcb_get_window_attributes (c : xcb_connection_t; window : xcb_window_t) return xcb_get_window_attributes_cookie_t;  -- /usr/include/xcb/xproto.h:6509
+   function xcb_get_window_attributes (c : xcb_connection_t_access; window : xcb_window_t) return xcb_get_window_attributes_cookie_t;  -- /usr/include/xcb/xproto.h:6509
    pragma Import (C, xcb_get_window_attributes, "xcb_get_window_attributes");
 
-   function xcb_get_window_attributes_unchecked (c : xcb_connection_t; window : xcb_window_t) return xcb_get_window_attributes_cookie_t;  -- /usr/include/xcb/xproto.h:6537
+   function xcb_get_window_attributes_unchecked (c : xcb_connection_t_access; window : xcb_window_t) return xcb_get_window_attributes_cookie_t;  -- /usr/include/xcb/xproto.h:6537
    pragma Import (C, xcb_get_window_attributes_unchecked, "xcb_get_window_attributes_unchecked");
 
    function xcb_get_window_attributes_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_window_attributes_cookie_t;
-      e : System.Address) return access xcb_get_window_attributes_reply_t;  -- /usr/include/xcb/xproto.h:6567
+      e : access xcb_generic_error_t_access) return access xcb_get_window_attributes_reply_t;  -- /usr/include/xcb/xproto.h:6567
    pragma Import (C, xcb_get_window_attributes_reply, "xcb_get_window_attributes_reply");
 
-   function xcb_destroy_window_checked (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6601
+   function xcb_destroy_window_checked (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6601
    pragma Import (C, xcb_destroy_window_checked, "xcb_destroy_window_checked");
 
-   function xcb_destroy_window (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6631
+   function xcb_destroy_window (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6631
    pragma Import (C, xcb_destroy_window, "xcb_destroy_window");
 
-   function xcb_destroy_subwindows_checked (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6657
+   function xcb_destroy_subwindows_checked (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6657
    pragma Import (C, xcb_destroy_subwindows_checked, "xcb_destroy_subwindows_checked");
 
-   function xcb_destroy_subwindows (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6680
+   function xcb_destroy_subwindows (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6680
    pragma Import (C, xcb_destroy_subwindows, "xcb_destroy_subwindows");
 
    function xcb_change_save_set_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mode : C99.Stdint.uint8_t;
       window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6714
    pragma Import (C, xcb_change_save_set_checked, "xcb_change_save_set_checked");
 
    function xcb_change_save_set
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mode : C99.Stdint.uint8_t;
       window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6746
    pragma Import (C, xcb_change_save_set, "xcb_change_save_set");
 
    function xcb_reparent_window_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       parent : xcb_window_t;
       x : C99.Stdint.int16_t;
@@ -3913,85 +3913,85 @@ package XCB.XProto is
    pragma Import (C, xcb_reparent_window_checked, "xcb_reparent_window_checked");
 
    function xcb_reparent_window
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       parent : xcb_window_t;
       x : C99.Stdint.int16_t;
       y : C99.Stdint.int16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6825
    pragma Import (C, xcb_reparent_window, "xcb_reparent_window");
 
-   function xcb_map_window_checked (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6874
+   function xcb_map_window_checked (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6874
    pragma Import (C, xcb_map_window_checked, "xcb_map_window_checked");
 
-   function xcb_map_window (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6917
+   function xcb_map_window (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6917
    pragma Import (C, xcb_map_window, "xcb_map_window");
 
-   function xcb_map_subwindows_checked (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6943
+   function xcb_map_subwindows_checked (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6943
    pragma Import (C, xcb_map_subwindows_checked, "xcb_map_subwindows_checked");
 
-   function xcb_map_subwindows (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6966
+   function xcb_map_subwindows (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6966
    pragma Import (C, xcb_map_subwindows, "xcb_map_subwindows");
 
-   function xcb_unmap_window_checked (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6998
+   function xcb_unmap_window_checked (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:6998
    pragma Import (C, xcb_unmap_window_checked, "xcb_unmap_window_checked");
 
-   function xcb_unmap_window (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7027
+   function xcb_unmap_window (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7027
    pragma Import (C, xcb_unmap_window, "xcb_unmap_window");
 
-   function xcb_unmap_subwindows_checked (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7053
+   function xcb_unmap_subwindows_checked (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7053
    pragma Import (C, xcb_unmap_subwindows_checked, "xcb_unmap_subwindows_checked");
 
-   function xcb_unmap_subwindows (c : xcb_connection_t; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7076
+   function xcb_unmap_subwindows (c : xcb_connection_t_access; window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7076
    pragma Import (C, xcb_unmap_subwindows, "xcb_unmap_subwindows");
 
    function xcb_configure_window_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:7080
    pragma Import (C, xcb_configure_window_sizeof, "xcb_configure_window_sizeof");
 
    function xcb_configure_window_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       value_mask : C99.Stdint.uint16_t;
       value_list : access C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7112
    pragma Import (C, xcb_configure_window_checked, "xcb_configure_window_checked");
 
    function xcb_configure_window
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       value_mask : C99.Stdint.uint16_t;
       value_list : access C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7144
    pragma Import (C, xcb_configure_window, "xcb_configure_window");
 
    function xcb_circulate_window_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       direction : C99.Stdint.uint8_t;
       window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7181
    pragma Import (C, xcb_circulate_window_checked, "xcb_circulate_window_checked");
 
    function xcb_circulate_window
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       direction : C99.Stdint.uint8_t;
       window : xcb_window_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7214
    pragma Import (C, xcb_circulate_window, "xcb_circulate_window");
 
-   function xcb_get_geometry (c : xcb_connection_t; drawable : xcb_drawable_t) return xcb_get_geometry_cookie_t;  -- /usr/include/xcb/xproto.h:7240
+   function xcb_get_geometry (c : xcb_connection_t_access; drawable : xcb_drawable_t) return xcb_get_geometry_cookie_t;  -- /usr/include/xcb/xproto.h:7240
    pragma Import (C, xcb_get_geometry, "xcb_get_geometry");
 
-   function xcb_get_geometry_unchecked (c : xcb_connection_t; drawable : xcb_drawable_t) return xcb_get_geometry_cookie_t;  -- /usr/include/xcb/xproto.h:7268
+   function xcb_get_geometry_unchecked (c : xcb_connection_t_access; drawable : xcb_drawable_t) return xcb_get_geometry_cookie_t;  -- /usr/include/xcb/xproto.h:7268
    pragma Import (C, xcb_get_geometry_unchecked, "xcb_get_geometry_unchecked");
 
    function xcb_get_geometry_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_geometry_cookie_t;
-      e : System.Address) return access xcb_get_geometry_reply_t;  -- /usr/include/xcb/xproto.h:7298
+      e : access xcb_generic_error_t_access) return access xcb_get_geometry_reply_t;  -- /usr/include/xcb/xproto.h:7298
    pragma Import (C, xcb_get_geometry_reply, "xcb_get_geometry_reply");
 
    function xcb_query_tree_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:7303
    pragma Import (C, xcb_query_tree_sizeof, "xcb_query_tree_sizeof");
 
-   function xcb_query_tree (c : xcb_connection_t; window : xcb_window_t) return xcb_query_tree_cookie_t;  -- /usr/include/xcb/xproto.h:7328
+   function xcb_query_tree (c : xcb_connection_t_access; window : xcb_window_t) return xcb_query_tree_cookie_t;  -- /usr/include/xcb/xproto.h:7328
    pragma Import (C, xcb_query_tree, "xcb_query_tree");
 
-   function xcb_query_tree_unchecked (c : xcb_connection_t; window : xcb_window_t) return xcb_query_tree_cookie_t;  -- /usr/include/xcb/xproto.h:7357
+   function xcb_query_tree_unchecked (c : xcb_connection_t_access; window : xcb_window_t) return xcb_query_tree_cookie_t;  -- /usr/include/xcb/xproto.h:7357
    pragma Import (C, xcb_query_tree_unchecked, "xcb_query_tree_unchecked");
 
    function xcb_query_tree_children (R : access xcb_query_tree_reply_t) return access xcb_window_t;  -- /usr/include/xcb/xproto.h:7371
@@ -4004,41 +4004,41 @@ package XCB.XProto is
    pragma Import (C, xcb_query_tree_children_end, "xcb_query_tree_children_end");
 
    function xcb_query_tree_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_query_tree_cookie_t;
-      e : System.Address) return access xcb_query_tree_reply_t;  -- /usr/include/xcb/xproto.h:7426
+      e : access xcb_generic_error_t_access) return access xcb_query_tree_reply_t;  -- /usr/include/xcb/xproto.h:7426
    pragma Import (C, xcb_query_tree_reply, "xcb_query_tree_reply");
 
    function xcb_intern_atom_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:7431
    pragma Import (C, xcb_intern_atom_sizeof, "xcb_intern_atom_sizeof");
 
    function xcb_intern_atom
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       only_if_exists : C99.Stdint.uint8_t;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return xcb_intern_atom_cookie_t;  -- /usr/include/xcb/xproto.h:7465
    pragma Import (C, xcb_intern_atom, "xcb_intern_atom");
 
    function xcb_intern_atom_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       only_if_exists : C99.Stdint.uint8_t;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return xcb_intern_atom_cookie_t;  -- /usr/include/xcb/xproto.h:7505
    pragma Import (C, xcb_intern_atom_unchecked, "xcb_intern_atom_unchecked");
 
    function xcb_intern_atom_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_intern_atom_cookie_t;
-      e : System.Address) return access xcb_intern_atom_reply_t;  -- /usr/include/xcb/xproto.h:7537
+      e : access xcb_generic_error_t_access) return access xcb_intern_atom_reply_t;  -- /usr/include/xcb/xproto.h:7537
    pragma Import (C, xcb_intern_atom_reply, "xcb_intern_atom_reply");
 
    function xcb_get_atom_name_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:7542
    pragma Import (C, xcb_get_atom_name_sizeof, "xcb_get_atom_name_sizeof");
 
-   function xcb_get_atom_name (c : xcb_connection_t; atom : xcb_atom_t) return xcb_get_atom_name_cookie_t;  -- /usr/include/xcb/xproto.h:7564
+   function xcb_get_atom_name (c : xcb_connection_t_access; atom : xcb_atom_t) return xcb_get_atom_name_cookie_t;  -- /usr/include/xcb/xproto.h:7564
    pragma Import (C, xcb_get_atom_name, "xcb_get_atom_name");
 
-   function xcb_get_atom_name_unchecked (c : xcb_connection_t; atom : xcb_atom_t) return xcb_get_atom_name_cookie_t;  -- /usr/include/xcb/xproto.h:7590
+   function xcb_get_atom_name_unchecked (c : xcb_connection_t_access; atom : xcb_atom_t) return xcb_get_atom_name_cookie_t;  -- /usr/include/xcb/xproto.h:7590
    pragma Import (C, xcb_get_atom_name_unchecked, "xcb_get_atom_name_unchecked");
 
    function xcb_get_atom_name_name (R : access xcb_get_atom_name_reply_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/xcb/xproto.h:7604
@@ -4051,16 +4051,16 @@ package XCB.XProto is
    pragma Import (C, xcb_get_atom_name_name_end, "xcb_get_atom_name_name_end");
 
    function xcb_get_atom_name_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_atom_name_cookie_t;
-      e : System.Address) return access xcb_get_atom_name_reply_t;  -- /usr/include/xcb/xproto.h:7659
+      e : access xcb_generic_error_t_access) return access xcb_get_atom_name_reply_t;  -- /usr/include/xcb/xproto.h:7659
    pragma Import (C, xcb_get_atom_name_reply, "xcb_get_atom_name_reply");
 
    function xcb_change_property_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:7664
    pragma Import (C, xcb_change_property_sizeof, "xcb_change_property_sizeof");
 
    function xcb_change_property_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mode : C99.Stdint.uint8_t;
       window : xcb_window_t;
       property : xcb_atom_t;
@@ -4071,7 +4071,7 @@ package XCB.XProto is
    pragma Import (C, xcb_change_property_checked, "xcb_change_property_checked");
 
    function xcb_change_property
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mode : C99.Stdint.uint8_t;
       window : xcb_window_t;
       property : xcb_atom_t;
@@ -4082,13 +4082,13 @@ package XCB.XProto is
    pragma Import (C, xcb_change_property, "xcb_change_property");
 
    function xcb_delete_property_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       property : xcb_atom_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7791
    pragma Import (C, xcb_delete_property_checked, "xcb_delete_property_checked");
 
    function xcb_delete_property
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       property : xcb_atom_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:7816
    pragma Import (C, xcb_delete_property, "xcb_delete_property");
@@ -4097,7 +4097,7 @@ package XCB.XProto is
    pragma Import (C, xcb_get_property_sizeof, "xcb_get_property_sizeof");
 
    function xcb_get_property
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       u_delete : C99.Stdint.uint8_t;
       window : xcb_window_t;
       property : xcb_atom_t;
@@ -4107,7 +4107,7 @@ package XCB.XProto is
    pragma Import (C, xcb_get_property, "xcb_get_property");
 
    function xcb_get_property_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       u_delete : C99.Stdint.uint8_t;
       window : xcb_window_t;
       property : xcb_atom_t;
@@ -4126,18 +4126,18 @@ package XCB.XProto is
    pragma Import (C, xcb_get_property_value_end, "xcb_get_property_value_end");
 
    function xcb_get_property_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_property_cookie_t;
-      e : System.Address) return access xcb_get_property_reply_t;  -- /usr/include/xcb/xproto.h:7996
+      e : access xcb_generic_error_t_access) return access xcb_get_property_reply_t;  -- /usr/include/xcb/xproto.h:7996
    pragma Import (C, xcb_get_property_reply, "xcb_get_property_reply");
 
    function xcb_list_properties_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:8001
    pragma Import (C, xcb_list_properties_sizeof, "xcb_list_properties_sizeof");
 
-   function xcb_list_properties (c : xcb_connection_t; window : xcb_window_t) return xcb_list_properties_cookie_t;  -- /usr/include/xcb/xproto.h:8023
+   function xcb_list_properties (c : xcb_connection_t_access; window : xcb_window_t) return xcb_list_properties_cookie_t;  -- /usr/include/xcb/xproto.h:8023
    pragma Import (C, xcb_list_properties, "xcb_list_properties");
 
-   function xcb_list_properties_unchecked (c : xcb_connection_t; window : xcb_window_t) return xcb_list_properties_cookie_t;  -- /usr/include/xcb/xproto.h:8049
+   function xcb_list_properties_unchecked (c : xcb_connection_t_access; window : xcb_window_t) return xcb_list_properties_cookie_t;  -- /usr/include/xcb/xproto.h:8049
    pragma Import (C, xcb_list_properties_unchecked, "xcb_list_properties_unchecked");
 
    function xcb_list_properties_atoms (R : System.Address) return access xcb_atom_t;  -- /usr/include/xcb/xproto.h:8063
@@ -4150,39 +4150,39 @@ package XCB.XProto is
    pragma Import (C, xcb_list_properties_atoms_end, "xcb_list_properties_atoms_end");
 
    function xcb_list_properties_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_list_properties_cookie_t;
-      e : System.Address) return access xcb_list_properties_reply_t;  -- /usr/include/xcb/xproto.h:8118
+      e : access xcb_generic_error_t_access) return access xcb_list_properties_reply_t;  -- /usr/include/xcb/xproto.h:8118
    pragma Import (C, xcb_list_properties_reply, "xcb_list_properties_reply");
 
    function xcb_set_selection_owner_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner : xcb_window_t;
       selection : xcb_atom_t;
       time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8163
    pragma Import (C, xcb_set_selection_owner_checked, "xcb_set_selection_owner_checked");
 
    function xcb_set_selection_owner
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner : xcb_window_t;
       selection : xcb_atom_t;
       time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8206
    pragma Import (C, xcb_set_selection_owner, "xcb_set_selection_owner");
 
-   function xcb_get_selection_owner (c : xcb_connection_t; selection : xcb_atom_t) return xcb_get_selection_owner_cookie_t;  -- /usr/include/xcb/xproto.h:8235
+   function xcb_get_selection_owner (c : xcb_connection_t_access; selection : xcb_atom_t) return xcb_get_selection_owner_cookie_t;  -- /usr/include/xcb/xproto.h:8235
    pragma Import (C, xcb_get_selection_owner, "xcb_get_selection_owner");
 
-   function xcb_get_selection_owner_unchecked (c : xcb_connection_t; selection : xcb_atom_t) return xcb_get_selection_owner_cookie_t;  -- /usr/include/xcb/xproto.h:8265
+   function xcb_get_selection_owner_unchecked (c : xcb_connection_t_access; selection : xcb_atom_t) return xcb_get_selection_owner_cookie_t;  -- /usr/include/xcb/xproto.h:8265
    pragma Import (C, xcb_get_selection_owner_unchecked, "xcb_get_selection_owner_unchecked");
 
    function xcb_get_selection_owner_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_selection_owner_cookie_t;
-      e : System.Address) return access xcb_get_selection_owner_reply_t;  -- /usr/include/xcb/xproto.h:8295
+      e : access xcb_generic_error_t_access) return access xcb_get_selection_owner_reply_t;  -- /usr/include/xcb/xproto.h:8295
    pragma Import (C, xcb_get_selection_owner_reply, "xcb_get_selection_owner_reply");
 
    function xcb_convert_selection_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       requestor : xcb_window_t;
       selection : xcb_atom_t;
       target : xcb_atom_t;
@@ -4191,7 +4191,7 @@ package XCB.XProto is
    pragma Import (C, xcb_convert_selection_checked, "xcb_convert_selection_checked");
 
    function xcb_convert_selection
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       requestor : xcb_window_t;
       selection : xcb_atom_t;
       target : xcb_atom_t;
@@ -4200,7 +4200,7 @@ package XCB.XProto is
    pragma Import (C, xcb_convert_selection, "xcb_convert_selection");
 
    function xcb_send_event_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       propagate : C99.Stdint.uint8_t;
       destination : xcb_window_t;
       event_mask : C99.Stdint.uint32_t;
@@ -4208,7 +4208,7 @@ package XCB.XProto is
    pragma Import (C, xcb_send_event_checked, "xcb_send_event_checked");
 
    function xcb_send_event
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       propagate : C99.Stdint.uint8_t;
       destination : xcb_window_t;
       event_mask : C99.Stdint.uint32_t;
@@ -4216,7 +4216,7 @@ package XCB.XProto is
    pragma Import (C, xcb_send_event, "xcb_send_event");
 
    function xcb_grab_pointer
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner_events : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       event_mask : C99.Stdint.uint16_t;
@@ -4228,7 +4228,7 @@ package XCB.XProto is
    pragma Import (C, xcb_grab_pointer, "xcb_grab_pointer");
 
    function xcb_grab_pointer_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner_events : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       event_mask : C99.Stdint.uint16_t;
@@ -4240,19 +4240,19 @@ package XCB.XProto is
    pragma Import (C, xcb_grab_pointer_unchecked, "xcb_grab_pointer_unchecked");
 
    function xcb_grab_pointer_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_grab_pointer_cookie_t;
-      e : System.Address) return access xcb_grab_pointer_reply_t;  -- /usr/include/xcb/xproto.h:8637
+      e : access xcb_generic_error_t_access) return access xcb_grab_pointer_reply_t;  -- /usr/include/xcb/xproto.h:8637
    pragma Import (C, xcb_grab_pointer_reply, "xcb_grab_pointer_reply");
 
-   function xcb_ungrab_pointer_checked (c : xcb_connection_t; time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8673
+   function xcb_ungrab_pointer_checked (c : xcb_connection_t_access; time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8673
    pragma Import (C, xcb_ungrab_pointer_checked, "xcb_ungrab_pointer_checked");
 
-   function xcb_ungrab_pointer (c : xcb_connection_t; time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8705
+   function xcb_ungrab_pointer (c : xcb_connection_t_access; time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8705
    pragma Import (C, xcb_ungrab_pointer, "xcb_ungrab_pointer");
 
    function xcb_grab_button_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner_events : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       event_mask : C99.Stdint.uint16_t;
@@ -4265,7 +4265,7 @@ package XCB.XProto is
    pragma Import (C, xcb_grab_button_checked, "xcb_grab_button_checked");
 
    function xcb_grab_button
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner_events : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       event_mask : C99.Stdint.uint16_t;
@@ -4278,35 +4278,35 @@ package XCB.XProto is
    pragma Import (C, xcb_grab_button, "xcb_grab_button");
 
    function xcb_ungrab_button_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       button : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       modifiers : C99.Stdint.uint16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8928
    pragma Import (C, xcb_ungrab_button_checked, "xcb_ungrab_button_checked");
 
    function xcb_ungrab_button
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       button : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       modifiers : C99.Stdint.uint16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8955
    pragma Import (C, xcb_ungrab_button, "xcb_ungrab_button");
 
    function xcb_change_active_pointer_grab_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cursor : xcb_cursor_t;
       time : xcb_timestamp_t;
       event_mask : C99.Stdint.uint16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:8985
    pragma Import (C, xcb_change_active_pointer_grab_checked, "xcb_change_active_pointer_grab_checked");
 
    function xcb_change_active_pointer_grab
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cursor : xcb_cursor_t;
       time : xcb_timestamp_t;
       event_mask : C99.Stdint.uint16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9012
    pragma Import (C, xcb_change_active_pointer_grab, "xcb_change_active_pointer_grab");
 
    function xcb_grab_keyboard
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner_events : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       time : xcb_timestamp_t;
@@ -4315,7 +4315,7 @@ package XCB.XProto is
    pragma Import (C, xcb_grab_keyboard, "xcb_grab_keyboard");
 
    function xcb_grab_keyboard_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner_events : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       time : xcb_timestamp_t;
@@ -4324,19 +4324,19 @@ package XCB.XProto is
    pragma Import (C, xcb_grab_keyboard_unchecked, "xcb_grab_keyboard_unchecked");
 
    function xcb_grab_keyboard_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_grab_keyboard_cookie_t;
-      e : System.Address) return access xcb_grab_keyboard_reply_t;  -- /usr/include/xcb/xproto.h:9151
+      e : access xcb_generic_error_t_access) return access xcb_grab_keyboard_reply_t;  -- /usr/include/xcb/xproto.h:9151
    pragma Import (C, xcb_grab_keyboard_reply, "xcb_grab_keyboard_reply");
 
-   function xcb_ungrab_keyboard_checked (c : xcb_connection_t; time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9178
+   function xcb_ungrab_keyboard_checked (c : xcb_connection_t_access; time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9178
    pragma Import (C, xcb_ungrab_keyboard_checked, "xcb_ungrab_keyboard_checked");
 
-   function xcb_ungrab_keyboard (c : xcb_connection_t; time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9201
+   function xcb_ungrab_keyboard (c : xcb_connection_t_access; time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9201
    pragma Import (C, xcb_ungrab_keyboard, "xcb_ungrab_keyboard");
 
    function xcb_grab_key_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner_events : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       modifiers : C99.Stdint.uint16_t;
@@ -4346,7 +4346,7 @@ package XCB.XProto is
    pragma Import (C, xcb_grab_key_checked, "xcb_grab_key_checked");
 
    function xcb_grab_key
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       owner_events : C99.Stdint.uint8_t;
       grab_window : xcb_window_t;
       modifiers : C99.Stdint.uint16_t;
@@ -4356,27 +4356,27 @@ package XCB.XProto is
    pragma Import (C, xcb_grab_key, "xcb_grab_key");
 
    function xcb_ungrab_key_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       key : xcb_keycode_t;
       grab_window : xcb_window_t;
       modifiers : C99.Stdint.uint16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9396
    pragma Import (C, xcb_ungrab_key_checked, "xcb_ungrab_key_checked");
 
    function xcb_ungrab_key
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       key : xcb_keycode_t;
       grab_window : xcb_window_t;
       modifiers : C99.Stdint.uint16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9433
    pragma Import (C, xcb_ungrab_key, "xcb_ungrab_key");
 
    function xcb_allow_events_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mode : C99.Stdint.uint8_t;
       time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9472
    pragma Import (C, xcb_allow_events_checked, "xcb_allow_events_checked");
 
    function xcb_allow_events
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mode : C99.Stdint.uint8_t;
       time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9507
    pragma Import (C, xcb_allow_events, "xcb_allow_events");
@@ -4393,16 +4393,16 @@ package XCB.XProto is
    function xcb_ungrab_server (c : xcb_connection_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:9599
    pragma Import (C, xcb_ungrab_server, "xcb_ungrab_server");
 
-   function xcb_query_pointer (c : xcb_connection_t; window : xcb_window_t) return xcb_query_pointer_cookie_t;  -- /usr/include/xcb/xproto.h:9625
+   function xcb_query_pointer (c : xcb_connection_t_access; window : xcb_window_t) return xcb_query_pointer_cookie_t;  -- /usr/include/xcb/xproto.h:9625
    pragma Import (C, xcb_query_pointer, "xcb_query_pointer");
 
-   function xcb_query_pointer_unchecked (c : xcb_connection_t; window : xcb_window_t) return xcb_query_pointer_cookie_t;  -- /usr/include/xcb/xproto.h:9655
+   function xcb_query_pointer_unchecked (c : xcb_connection_t_access; window : xcb_window_t) return xcb_query_pointer_cookie_t;  -- /usr/include/xcb/xproto.h:9655
    pragma Import (C, xcb_query_pointer_unchecked, "xcb_query_pointer_unchecked");
 
    function xcb_query_pointer_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_query_pointer_cookie_t;
-      e : System.Address) return access xcb_query_pointer_reply_t;  -- /usr/include/xcb/xproto.h:9685
+      e : access xcb_generic_error_t_access) return access xcb_query_pointer_reply_t;  -- /usr/include/xcb/xproto.h:9685
    pragma Import (C, xcb_query_pointer_reply, "xcb_query_pointer_reply");
 
    procedure xcb_timecoord_next (i : access xcb_timecoord_iterator_t);  -- /usr/include/xcb/xproto.h:9708
@@ -4415,14 +4415,14 @@ package XCB.XProto is
    pragma Import (C, xcb_get_motion_events_sizeof, "xcb_get_motion_events_sizeof");
 
    function xcb_get_motion_events
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       start : xcb_timestamp_t;
       stop : xcb_timestamp_t) return xcb_get_motion_events_cookie_t;  -- /usr/include/xcb/xproto.h:9757
    pragma Import (C, xcb_get_motion_events, "xcb_get_motion_events");
 
    function xcb_get_motion_events_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       start : xcb_timestamp_t;
       stop : xcb_timestamp_t) return xcb_get_motion_events_cookie_t;  -- /usr/include/xcb/xproto.h:9787
@@ -4438,13 +4438,13 @@ package XCB.XProto is
    pragma Import (C, xcb_get_motion_events_events_iterator, "xcb_get_motion_events_events_iterator");
 
    function xcb_get_motion_events_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_motion_events_cookie_t;
-      e : System.Address) return access xcb_get_motion_events_reply_t;  -- /usr/include/xcb/xproto.h:9858
+      e : access xcb_generic_error_t_access) return access xcb_get_motion_events_reply_t;  -- /usr/include/xcb/xproto.h:9858
    pragma Import (C, xcb_get_motion_events_reply, "xcb_get_motion_events_reply");
 
    function xcb_translate_coordinates
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_window : xcb_window_t;
       dst_window : xcb_window_t;
       src_x : C99.Stdint.int16_t;
@@ -4452,7 +4452,7 @@ package XCB.XProto is
    pragma Import (C, xcb_translate_coordinates, "xcb_translate_coordinates");
 
    function xcb_translate_coordinates_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_window : xcb_window_t;
       dst_window : xcb_window_t;
       src_x : C99.Stdint.int16_t;
@@ -4460,13 +4460,13 @@ package XCB.XProto is
    pragma Import (C, xcb_translate_coordinates_unchecked, "xcb_translate_coordinates_unchecked");
 
    function xcb_translate_coordinates_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_translate_coordinates_cookie_t;
-      e : System.Address) return access xcb_translate_coordinates_reply_t;  -- /usr/include/xcb/xproto.h:9950
+      e : access xcb_generic_error_t_access) return access xcb_translate_coordinates_reply_t;  -- /usr/include/xcb/xproto.h:9950
    pragma Import (C, xcb_translate_coordinates_reply, "xcb_translate_coordinates_reply");
 
    function xcb_warp_pointer_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_window : xcb_window_t;
       dst_window : xcb_window_t;
       src_x : C99.Stdint.int16_t;
@@ -4478,7 +4478,7 @@ package XCB.XProto is
    pragma Import (C, xcb_warp_pointer_checked, "xcb_warp_pointer_checked");
 
    function xcb_warp_pointer
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_window : xcb_window_t;
       dst_window : xcb_window_t;
       src_x : C99.Stdint.int16_t;
@@ -4490,14 +4490,14 @@ package XCB.XProto is
    pragma Import (C, xcb_warp_pointer, "xcb_warp_pointer");
 
    function xcb_set_input_focus_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       revert_to : C99.Stdint.uint8_t;
       focus : xcb_window_t;
       time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:10114
    pragma Import (C, xcb_set_input_focus_checked, "xcb_set_input_focus_checked");
 
    function xcb_set_input_focus
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       revert_to : C99.Stdint.uint8_t;
       focus : xcb_window_t;
       time : xcb_timestamp_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:10161
@@ -4510,9 +4510,9 @@ package XCB.XProto is
    pragma Import (C, xcb_get_input_focus_unchecked, "xcb_get_input_focus_unchecked");
 
    function xcb_get_input_focus_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_input_focus_cookie_t;
-      e : System.Address) return access xcb_get_input_focus_reply_t;  -- /usr/include/xcb/xproto.h:10238
+      e : access xcb_generic_error_t_access) return access xcb_get_input_focus_reply_t;  -- /usr/include/xcb/xproto.h:10238
    pragma Import (C, xcb_get_input_focus_reply, "xcb_get_input_focus_reply");
 
    function xcb_query_keymap (c : xcb_connection_t) return xcb_query_keymap_cookie_t;  -- /usr/include/xcb/xproto.h:10261
@@ -4522,32 +4522,32 @@ package XCB.XProto is
    pragma Import (C, xcb_query_keymap_unchecked, "xcb_query_keymap_unchecked");
 
    function xcb_query_keymap_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_query_keymap_cookie_t;
-      e : System.Address) return access xcb_query_keymap_reply_t;  -- /usr/include/xcb/xproto.h:10314
+      e : access xcb_generic_error_t_access) return access xcb_query_keymap_reply_t;  -- /usr/include/xcb/xproto.h:10314
    pragma Import (C, xcb_query_keymap_reply, "xcb_query_keymap_reply");
 
    function xcb_open_font_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:10319
    pragma Import (C, xcb_open_font_sizeof, "xcb_open_font_sizeof");
 
    function xcb_open_font_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       fid : xcb_font_t;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:10353
    pragma Import (C, xcb_open_font_checked, "xcb_open_font_checked");
 
    function xcb_open_font
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       fid : xcb_font_t;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:10387
    pragma Import (C, xcb_open_font, "xcb_open_font");
 
-   function xcb_close_font_checked (c : xcb_connection_t; font : xcb_font_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:10415
+   function xcb_close_font_checked (c : xcb_connection_t_access; font : xcb_font_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:10415
    pragma Import (C, xcb_close_font_checked, "xcb_close_font_checked");
 
-   function xcb_close_font (c : xcb_connection_t; font : xcb_font_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:10438
+   function xcb_close_font (c : xcb_connection_t_access; font : xcb_font_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:10438
    pragma Import (C, xcb_close_font, "xcb_close_font");
 
    procedure xcb_fontprop_next (i : access xcb_fontprop_iterator_t);  -- /usr/include/xcb/xproto.h:10460
@@ -4565,10 +4565,10 @@ package XCB.XProto is
    function xcb_query_font_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:10528
    pragma Import (C, xcb_query_font_sizeof, "xcb_query_font_sizeof");
 
-   function xcb_query_font (c : xcb_connection_t; font : xcb_fontable_t) return xcb_query_font_cookie_t;  -- /usr/include/xcb/xproto.h:10552
+   function xcb_query_font (c : xcb_connection_t_access; font : xcb_fontable_t) return xcb_query_font_cookie_t;  -- /usr/include/xcb/xproto.h:10552
    pragma Import (C, xcb_query_font, "xcb_query_font");
 
-   function xcb_query_font_unchecked (c : xcb_connection_t; font : xcb_fontable_t) return xcb_query_font_cookie_t;  -- /usr/include/xcb/xproto.h:10580
+   function xcb_query_font_unchecked (c : xcb_connection_t_access; font : xcb_fontable_t) return xcb_query_font_cookie_t;  -- /usr/include/xcb/xproto.h:10580
    pragma Import (C, xcb_query_font_unchecked, "xcb_query_font_unchecked");
 
    function xcb_query_font_properties (R : access xcb_query_font_reply_t) return access xcb_fontprop_t;  -- /usr/include/xcb/xproto.h:10594
@@ -4590,32 +4590,32 @@ package XCB.XProto is
    pragma Import (C, xcb_query_font_char_infos_iterator, "xcb_query_font_char_infos_iterator");
 
    function xcb_query_font_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_query_font_cookie_t;
-      e : System.Address) return access xcb_query_font_reply_t;  -- /usr/include/xcb/xproto.h:10688
+      e : access xcb_generic_error_t_access) return access xcb_query_font_reply_t;  -- /usr/include/xcb/xproto.h:10688
    pragma Import (C, xcb_query_font_reply, "xcb_query_font_reply");
 
    function xcb_query_text_extents_sizeof (u_buffer : System.Address; string_len : C99.Stdint.uint32_t) return int;  -- /usr/include/xcb/xproto.h:10693
    pragma Import (C, xcb_query_text_extents_sizeof, "xcb_query_text_extents_sizeof");
 
    function xcb_query_text_extents
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       font : xcb_fontable_t;
       string_len : C99.Stdint.uint32_t;
       string : System.Address) return xcb_query_text_extents_cookie_t;  -- /usr/include/xcb/xproto.h:10742
    pragma Import (C, xcb_query_text_extents, "xcb_query_text_extents");
 
    function xcb_query_text_extents_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       font : xcb_fontable_t;
       string_len : C99.Stdint.uint32_t;
       string : System.Address) return xcb_query_text_extents_cookie_t;  -- /usr/include/xcb/xproto.h:10796
    pragma Import (C, xcb_query_text_extents_unchecked, "xcb_query_text_extents_unchecked");
 
    function xcb_query_text_extents_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_query_text_extents_cookie_t;
-      e : System.Address) return access xcb_query_text_extents_reply_t;  -- /usr/include/xcb/xproto.h:10828
+      e : access xcb_generic_error_t_access) return access xcb_query_text_extents_reply_t;  -- /usr/include/xcb/xproto.h:10828
    pragma Import (C, xcb_query_text_extents_reply, "xcb_query_text_extents_reply");
 
    function xcb_str_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:10833
@@ -4640,14 +4640,14 @@ package XCB.XProto is
    pragma Import (C, xcb_list_fonts_sizeof, "xcb_list_fonts_sizeof");
 
    function xcb_list_fonts
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       max_names : C99.Stdint.uint16_t;
       pattern_len : C99.Stdint.uint16_t;
       pattern : Interfaces.C.Strings.chars_ptr) return xcb_list_fonts_cookie_t;  -- /usr/include/xcb/xproto.h:10950
    pragma Import (C, xcb_list_fonts, "xcb_list_fonts");
 
    function xcb_list_fonts_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       max_names : C99.Stdint.uint16_t;
       pattern_len : C99.Stdint.uint16_t;
       pattern : Interfaces.C.Strings.chars_ptr) return xcb_list_fonts_cookie_t;  -- /usr/include/xcb/xproto.h:10988
@@ -4660,23 +4660,23 @@ package XCB.XProto is
    pragma Import (C, xcb_list_fonts_names_iterator, "xcb_list_fonts_names_iterator");
 
    function xcb_list_fonts_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_list_fonts_cookie_t;
-      e : System.Address) return access xcb_list_fonts_reply_t;  -- /usr/include/xcb/xproto.h:11046
+      e : access xcb_generic_error_t_access) return access xcb_list_fonts_reply_t;  -- /usr/include/xcb/xproto.h:11046
    pragma Import (C, xcb_list_fonts_reply, "xcb_list_fonts_reply");
 
    function xcb_list_fonts_with_info_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:11051
    pragma Import (C, xcb_list_fonts_with_info_sizeof, "xcb_list_fonts_with_info_sizeof");
 
    function xcb_list_fonts_with_info
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       max_names : C99.Stdint.uint16_t;
       pattern_len : C99.Stdint.uint16_t;
       pattern : Interfaces.C.Strings.chars_ptr) return xcb_list_fonts_with_info_cookie_t;  -- /usr/include/xcb/xproto.h:11083
    pragma Import (C, xcb_list_fonts_with_info, "xcb_list_fonts_with_info");
 
    function xcb_list_fonts_with_info_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       max_names : C99.Stdint.uint16_t;
       pattern_len : C99.Stdint.uint16_t;
       pattern : Interfaces.C.Strings.chars_ptr) return xcb_list_fonts_with_info_cookie_t;  -- /usr/include/xcb/xproto.h:11121
@@ -4701,22 +4701,22 @@ package XCB.XProto is
    pragma Import (C, xcb_list_fonts_with_info_name_end, "xcb_list_fonts_with_info_name_end");
 
    function xcb_list_fonts_with_info_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_list_fonts_with_info_cookie_t;
-      e : System.Address) return access xcb_list_fonts_with_info_reply_t;  -- /usr/include/xcb/xproto.h:11231
+      e : access xcb_generic_error_t_access) return access xcb_list_fonts_with_info_reply_t;  -- /usr/include/xcb/xproto.h:11231
    pragma Import (C, xcb_list_fonts_with_info_reply, "xcb_list_fonts_with_info_reply");
 
    function xcb_set_font_path_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:11236
    pragma Import (C, xcb_set_font_path_sizeof, "xcb_set_font_path_sizeof");
 
    function xcb_set_font_path_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       font_qty : C99.Stdint.uint16_t;
       font : access xcb_str_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11262
    pragma Import (C, xcb_set_font_path_checked, "xcb_set_font_path_checked");
 
    function xcb_set_font_path
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       font_qty : C99.Stdint.uint16_t;
       font : access xcb_str_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11287
    pragma Import (C, xcb_set_font_path, "xcb_set_font_path");
@@ -4737,13 +4737,13 @@ package XCB.XProto is
    pragma Import (C, xcb_get_font_path_path_iterator, "xcb_get_font_path_path_iterator");
 
    function xcb_get_font_path_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_font_path_cookie_t;
-      e : System.Address) return access xcb_get_font_path_reply_t;  -- /usr/include/xcb/xproto.h:11392
+      e : access xcb_generic_error_t_access) return access xcb_get_font_path_reply_t;  -- /usr/include/xcb/xproto.h:11392
    pragma Import (C, xcb_get_font_path_reply, "xcb_get_font_path_reply");
 
    function xcb_create_pixmap_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       depth : C99.Stdint.uint8_t;
       pid : xcb_pixmap_t;
       drawable : xcb_drawable_t;
@@ -4752,7 +4752,7 @@ package XCB.XProto is
    pragma Import (C, xcb_create_pixmap_checked, "xcb_create_pixmap_checked");
 
    function xcb_create_pixmap
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       depth : C99.Stdint.uint8_t;
       pid : xcb_pixmap_t;
       drawable : xcb_drawable_t;
@@ -4760,17 +4760,17 @@ package XCB.XProto is
       height : C99.Stdint.uint16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11470
    pragma Import (C, xcb_create_pixmap, "xcb_create_pixmap");
 
-   function xcb_free_pixmap_checked (c : xcb_connection_t; pixmap : xcb_pixmap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11503
+   function xcb_free_pixmap_checked (c : xcb_connection_t_access; pixmap : xcb_pixmap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11503
    pragma Import (C, xcb_free_pixmap_checked, "xcb_free_pixmap_checked");
 
-   function xcb_free_pixmap (c : xcb_connection_t; pixmap : xcb_pixmap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11529
+   function xcb_free_pixmap (c : xcb_connection_t_access; pixmap : xcb_pixmap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11529
    pragma Import (C, xcb_free_pixmap, "xcb_free_pixmap");
 
    function xcb_create_gc_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:11533
    pragma Import (C, xcb_create_gc_sizeof, "xcb_create_gc_sizeof");
 
    function xcb_create_gc_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cid : xcb_gcontext_t;
       drawable : xcb_drawable_t;
       value_mask : C99.Stdint.uint32_t;
@@ -4778,7 +4778,7 @@ package XCB.XProto is
    pragma Import (C, xcb_create_gc_checked, "xcb_create_gc_checked");
 
    function xcb_create_gc
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cid : xcb_gcontext_t;
       drawable : xcb_drawable_t;
       value_mask : C99.Stdint.uint32_t;
@@ -4789,28 +4789,28 @@ package XCB.XProto is
    pragma Import (C, xcb_change_gc_sizeof, "xcb_change_gc_sizeof");
 
    function xcb_change_gc_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       gc : xcb_gcontext_t;
       value_mask : C99.Stdint.uint32_t;
       value_list : access C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11641
    pragma Import (C, xcb_change_gc_checked, "xcb_change_gc_checked");
 
    function xcb_change_gc
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       gc : xcb_gcontext_t;
       value_mask : C99.Stdint.uint32_t;
       value_list : access C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11675
    pragma Import (C, xcb_change_gc, "xcb_change_gc");
 
    function xcb_copy_gc_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_gc : xcb_gcontext_t;
       dst_gc : xcb_gcontext_t;
       value_mask : C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11705
    pragma Import (C, xcb_copy_gc_checked, "xcb_copy_gc_checked");
 
    function xcb_copy_gc
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_gc : xcb_gcontext_t;
       dst_gc : xcb_gcontext_t;
       value_mask : C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11732
@@ -4820,7 +4820,7 @@ package XCB.XProto is
    pragma Import (C, xcb_set_dashes_sizeof, "xcb_set_dashes_sizeof");
 
    function xcb_set_dashes_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       gc : xcb_gcontext_t;
       dash_offset : C99.Stdint.uint16_t;
       dashes_len : C99.Stdint.uint16_t;
@@ -4828,7 +4828,7 @@ package XCB.XProto is
    pragma Import (C, xcb_set_dashes_checked, "xcb_set_dashes_checked");
 
    function xcb_set_dashes
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       gc : xcb_gcontext_t;
       dash_offset : C99.Stdint.uint16_t;
       dashes_len : C99.Stdint.uint16_t;
@@ -4839,7 +4839,7 @@ package XCB.XProto is
    pragma Import (C, xcb_set_clip_rectangles_sizeof, "xcb_set_clip_rectangles_sizeof");
 
    function xcb_set_clip_rectangles_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       ordering : C99.Stdint.uint8_t;
       gc : xcb_gcontext_t;
       clip_x_origin : C99.Stdint.int16_t;
@@ -4849,7 +4849,7 @@ package XCB.XProto is
    pragma Import (C, xcb_set_clip_rectangles_checked, "xcb_set_clip_rectangles_checked");
 
    function xcb_set_clip_rectangles
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       ordering : C99.Stdint.uint8_t;
       gc : xcb_gcontext_t;
       clip_x_origin : C99.Stdint.int16_t;
@@ -4858,14 +4858,14 @@ package XCB.XProto is
       rectangles : System.Address) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11866
    pragma Import (C, xcb_set_clip_rectangles, "xcb_set_clip_rectangles");
 
-   function xcb_free_gc_checked (c : xcb_connection_t; gc : xcb_gcontext_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11899
+   function xcb_free_gc_checked (c : xcb_connection_t_access; gc : xcb_gcontext_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11899
    pragma Import (C, xcb_free_gc_checked, "xcb_free_gc_checked");
 
-   function xcb_free_gc (c : xcb_connection_t; gc : xcb_gcontext_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11924
+   function xcb_free_gc (c : xcb_connection_t_access; gc : xcb_gcontext_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:11924
    pragma Import (C, xcb_free_gc, "xcb_free_gc");
 
    function xcb_clear_area_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       exposures : C99.Stdint.uint8_t;
       window : xcb_window_t;
       x : C99.Stdint.int16_t;
@@ -4875,7 +4875,7 @@ package XCB.XProto is
    pragma Import (C, xcb_clear_area_checked, "xcb_clear_area_checked");
 
    function xcb_clear_area
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       exposures : C99.Stdint.uint8_t;
       window : xcb_window_t;
       x : C99.Stdint.int16_t;
@@ -4885,7 +4885,7 @@ package XCB.XProto is
    pragma Import (C, xcb_clear_area, "xcb_clear_area");
 
    function xcb_copy_area_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_drawable : xcb_drawable_t;
       dst_drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -4898,7 +4898,7 @@ package XCB.XProto is
    pragma Import (C, xcb_copy_area_checked, "xcb_copy_area_checked");
 
    function xcb_copy_area
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_drawable : xcb_drawable_t;
       dst_drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -4911,7 +4911,7 @@ package XCB.XProto is
    pragma Import (C, xcb_copy_area, "xcb_copy_area");
 
    function xcb_copy_plane_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_drawable : xcb_drawable_t;
       dst_drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -4925,7 +4925,7 @@ package XCB.XProto is
    pragma Import (C, xcb_copy_plane_checked, "xcb_copy_plane_checked");
 
    function xcb_copy_plane
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       src_drawable : xcb_drawable_t;
       dst_drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -4942,7 +4942,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_point_sizeof, "xcb_poly_point_sizeof");
 
    function xcb_poly_point_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       coordinate_mode : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -4951,7 +4951,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_point_checked, "xcb_poly_point_checked");
 
    function xcb_poly_point
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       coordinate_mode : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -4963,7 +4963,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_line_sizeof, "xcb_poly_line_sizeof");
 
    function xcb_poly_line_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       coordinate_mode : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -4972,7 +4972,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_line_checked, "xcb_poly_line_checked");
 
    function xcb_poly_line
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       coordinate_mode : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -4990,7 +4990,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_segment_sizeof, "xcb_poly_segment_sizeof");
 
    function xcb_poly_segment_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       segments_len : C99.Stdint.uint32_t;
@@ -4998,7 +4998,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_segment_checked, "xcb_poly_segment_checked");
 
    function xcb_poly_segment
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       segments_len : C99.Stdint.uint32_t;
@@ -5009,7 +5009,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_rectangle_sizeof, "xcb_poly_rectangle_sizeof");
 
    function xcb_poly_rectangle_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       rectangles_len : C99.Stdint.uint32_t;
@@ -5017,7 +5017,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_rectangle_checked, "xcb_poly_rectangle_checked");
 
    function xcb_poly_rectangle
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       rectangles_len : C99.Stdint.uint32_t;
@@ -5028,7 +5028,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_arc_sizeof, "xcb_poly_arc_sizeof");
 
    function xcb_poly_arc_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       arcs_len : C99.Stdint.uint32_t;
@@ -5036,7 +5036,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_arc_checked, "xcb_poly_arc_checked");
 
    function xcb_poly_arc
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       arcs_len : C99.Stdint.uint32_t;
@@ -5047,7 +5047,7 @@ package XCB.XProto is
    pragma Import (C, xcb_fill_poly_sizeof, "xcb_fill_poly_sizeof");
 
    function xcb_fill_poly_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       shape : C99.Stdint.uint8_t;
@@ -5057,7 +5057,7 @@ package XCB.XProto is
    pragma Import (C, xcb_fill_poly_checked, "xcb_fill_poly_checked");
 
    function xcb_fill_poly
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       shape : C99.Stdint.uint8_t;
@@ -5070,7 +5070,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_fill_rectangle_sizeof, "xcb_poly_fill_rectangle_sizeof");
 
    function xcb_poly_fill_rectangle_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       rectangles_len : C99.Stdint.uint32_t;
@@ -5078,7 +5078,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_fill_rectangle_checked, "xcb_poly_fill_rectangle_checked");
 
    function xcb_poly_fill_rectangle
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       rectangles_len : C99.Stdint.uint32_t;
@@ -5089,7 +5089,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_fill_arc_sizeof, "xcb_poly_fill_arc_sizeof");
 
    function xcb_poly_fill_arc_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       arcs_len : C99.Stdint.uint32_t;
@@ -5097,7 +5097,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_fill_arc_checked, "xcb_poly_fill_arc_checked");
 
    function xcb_poly_fill_arc
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       arcs_len : C99.Stdint.uint32_t;
@@ -5108,7 +5108,7 @@ package XCB.XProto is
    pragma Import (C, xcb_put_image_sizeof, "xcb_put_image_sizeof");
 
    function xcb_put_image_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       format : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -5123,7 +5123,7 @@ package XCB.XProto is
    pragma Import (C, xcb_put_image_checked, "xcb_put_image_checked");
 
    function xcb_put_image
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       format : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -5141,7 +5141,7 @@ package XCB.XProto is
    pragma Import (C, xcb_get_image_sizeof, "xcb_get_image_sizeof");
 
    function xcb_get_image
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       format : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       x : C99.Stdint.int16_t;
@@ -5152,7 +5152,7 @@ package XCB.XProto is
    pragma Import (C, xcb_get_image, "xcb_get_image");
 
    function xcb_get_image_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       format : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       x : C99.Stdint.int16_t;
@@ -5172,16 +5172,16 @@ package XCB.XProto is
    pragma Import (C, xcb_get_image_data_end, "xcb_get_image_data_end");
 
    function xcb_get_image_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_image_cookie_t;
-      e : System.Address) return access xcb_get_image_reply_t;  -- /usr/include/xcb/xproto.h:13082
+      e : access xcb_generic_error_t_access) return access xcb_get_image_reply_t;  -- /usr/include/xcb/xproto.h:13082
    pragma Import (C, xcb_get_image_reply, "xcb_get_image_reply");
 
    function xcb_poly_text_8_sizeof (u_buffer : System.Address; items_len : C99.Stdint.uint32_t) return int;  -- /usr/include/xcb/xproto.h:13087
    pragma Import (C, xcb_poly_text_8_sizeof, "xcb_poly_text_8_sizeof");
 
    function xcb_poly_text_8_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       x : C99.Stdint.int16_t;
@@ -5191,7 +5191,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_text_8_checked, "xcb_poly_text_8_checked");
 
    function xcb_poly_text_8
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       x : C99.Stdint.int16_t;
@@ -5204,7 +5204,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_text_16_sizeof, "xcb_poly_text_16_sizeof");
 
    function xcb_poly_text_16_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       x : C99.Stdint.int16_t;
@@ -5214,7 +5214,7 @@ package XCB.XProto is
    pragma Import (C, xcb_poly_text_16_checked, "xcb_poly_text_16_checked");
 
    function xcb_poly_text_16
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
       x : C99.Stdint.int16_t;
@@ -5227,7 +5227,7 @@ package XCB.XProto is
    pragma Import (C, xcb_image_text_8_sizeof, "xcb_image_text_8_sizeof");
 
    function xcb_image_text_8_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       string_len : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -5237,7 +5237,7 @@ package XCB.XProto is
    pragma Import (C, xcb_image_text_8_checked, "xcb_image_text_8_checked");
 
    function xcb_image_text_8
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       string_len : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -5250,7 +5250,7 @@ package XCB.XProto is
    pragma Import (C, xcb_image_text_16_sizeof, "xcb_image_text_16_sizeof");
 
    function xcb_image_text_16_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       string_len : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -5260,7 +5260,7 @@ package XCB.XProto is
    pragma Import (C, xcb_image_text_16_checked, "xcb_image_text_16_checked");
 
    function xcb_image_text_16
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       string_len : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       gc : xcb_gcontext_t;
@@ -5270,7 +5270,7 @@ package XCB.XProto is
    pragma Import (C, xcb_image_text_16, "xcb_image_text_16");
 
    function xcb_create_colormap_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       alloc : C99.Stdint.uint8_t;
       mid : xcb_colormap_t;
       window : xcb_window_t;
@@ -5278,50 +5278,50 @@ package XCB.XProto is
    pragma Import (C, xcb_create_colormap_checked, "xcb_create_colormap_checked");
 
    function xcb_create_colormap
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       alloc : C99.Stdint.uint8_t;
       mid : xcb_colormap_t;
       window : xcb_window_t;
       visual : xcb_visualid_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13509
    pragma Import (C, xcb_create_colormap, "xcb_create_colormap");
 
-   function xcb_free_colormap_checked (c : xcb_connection_t; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13538
+   function xcb_free_colormap_checked (c : xcb_connection_t_access; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13538
    pragma Import (C, xcb_free_colormap_checked, "xcb_free_colormap_checked");
 
-   function xcb_free_colormap (c : xcb_connection_t; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13561
+   function xcb_free_colormap (c : xcb_connection_t_access; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13561
    pragma Import (C, xcb_free_colormap, "xcb_free_colormap");
 
    function xcb_copy_colormap_and_free_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mid : xcb_colormap_t;
       src_cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13588
    pragma Import (C, xcb_copy_colormap_and_free_checked, "xcb_copy_colormap_and_free_checked");
 
    function xcb_copy_colormap_and_free
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mid : xcb_colormap_t;
       src_cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13613
    pragma Import (C, xcb_copy_colormap_and_free, "xcb_copy_colormap_and_free");
 
-   function xcb_install_colormap_checked (c : xcb_connection_t; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13640
+   function xcb_install_colormap_checked (c : xcb_connection_t_access; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13640
    pragma Import (C, xcb_install_colormap_checked, "xcb_install_colormap_checked");
 
-   function xcb_install_colormap (c : xcb_connection_t; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13663
+   function xcb_install_colormap (c : xcb_connection_t_access; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13663
    pragma Import (C, xcb_install_colormap, "xcb_install_colormap");
 
-   function xcb_uninstall_colormap_checked (c : xcb_connection_t; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13689
+   function xcb_uninstall_colormap_checked (c : xcb_connection_t_access; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13689
    pragma Import (C, xcb_uninstall_colormap_checked, "xcb_uninstall_colormap_checked");
 
-   function xcb_uninstall_colormap (c : xcb_connection_t; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13712
+   function xcb_uninstall_colormap (c : xcb_connection_t_access; cmap : xcb_colormap_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:13712
    pragma Import (C, xcb_uninstall_colormap, "xcb_uninstall_colormap");
 
    function xcb_list_installed_colormaps_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:13716
    pragma Import (C, xcb_list_installed_colormaps_sizeof, "xcb_list_installed_colormaps_sizeof");
 
-   function xcb_list_installed_colormaps (c : xcb_connection_t; window : xcb_window_t) return xcb_list_installed_colormaps_cookie_t;  -- /usr/include/xcb/xproto.h:13738
+   function xcb_list_installed_colormaps (c : xcb_connection_t_access; window : xcb_window_t) return xcb_list_installed_colormaps_cookie_t;  -- /usr/include/xcb/xproto.h:13738
    pragma Import (C, xcb_list_installed_colormaps, "xcb_list_installed_colormaps");
 
-   function xcb_list_installed_colormaps_unchecked (c : xcb_connection_t; window : xcb_window_t) return xcb_list_installed_colormaps_cookie_t;  -- /usr/include/xcb/xproto.h:13764
+   function xcb_list_installed_colormaps_unchecked (c : xcb_connection_t_access; window : xcb_window_t) return xcb_list_installed_colormaps_cookie_t;  -- /usr/include/xcb/xproto.h:13764
    pragma Import (C, xcb_list_installed_colormaps_unchecked, "xcb_list_installed_colormaps_unchecked");
 
    function xcb_list_installed_colormaps_cmaps (R : System.Address) return access xcb_colormap_t;  -- /usr/include/xcb/xproto.h:13778
@@ -5334,13 +5334,13 @@ package XCB.XProto is
    pragma Import (C, xcb_list_installed_colormaps_cmaps_end, "xcb_list_installed_colormaps_cmaps_end");
 
    function xcb_list_installed_colormaps_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_list_installed_colormaps_cookie_t;
-      e : System.Address) return access xcb_list_installed_colormaps_reply_t;  -- /usr/include/xcb/xproto.h:13833
+      e : access xcb_generic_error_t_access) return access xcb_list_installed_colormaps_reply_t;  -- /usr/include/xcb/xproto.h:13833
    pragma Import (C, xcb_list_installed_colormaps_reply, "xcb_list_installed_colormaps_reply");
 
    function xcb_alloc_color
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       red : C99.Stdint.uint16_t;
       green : C99.Stdint.uint16_t;
@@ -5348,7 +5348,7 @@ package XCB.XProto is
    pragma Import (C, xcb_alloc_color, "xcb_alloc_color");
 
    function xcb_alloc_color_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       red : C99.Stdint.uint16_t;
       green : C99.Stdint.uint16_t;
@@ -5356,39 +5356,39 @@ package XCB.XProto is
    pragma Import (C, xcb_alloc_color_unchecked, "xcb_alloc_color_unchecked");
 
    function xcb_alloc_color_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_alloc_color_cookie_t;
-      e : System.Address) return access xcb_alloc_color_reply_t;  -- /usr/include/xcb/xproto.h:13943
+      e : access xcb_generic_error_t_access) return access xcb_alloc_color_reply_t;  -- /usr/include/xcb/xproto.h:13943
    pragma Import (C, xcb_alloc_color_reply, "xcb_alloc_color_reply");
 
    function xcb_alloc_named_color_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:13948
    pragma Import (C, xcb_alloc_named_color_sizeof, "xcb_alloc_named_color_sizeof");
 
    function xcb_alloc_named_color
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return xcb_alloc_named_color_cookie_t;  -- /usr/include/xcb/xproto.h:13972
    pragma Import (C, xcb_alloc_named_color, "xcb_alloc_named_color");
 
    function xcb_alloc_named_color_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return xcb_alloc_named_color_cookie_t;  -- /usr/include/xcb/xproto.h:14002
    pragma Import (C, xcb_alloc_named_color_unchecked, "xcb_alloc_named_color_unchecked");
 
    function xcb_alloc_named_color_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_alloc_named_color_cookie_t;
-      e : System.Address) return access xcb_alloc_named_color_reply_t;  -- /usr/include/xcb/xproto.h:14034
+      e : access xcb_generic_error_t_access) return access xcb_alloc_named_color_reply_t;  -- /usr/include/xcb/xproto.h:14034
    pragma Import (C, xcb_alloc_named_color_reply, "xcb_alloc_named_color_reply");
 
    function xcb_alloc_color_cells_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:14039
    pragma Import (C, xcb_alloc_color_cells_sizeof, "xcb_alloc_color_cells_sizeof");
 
    function xcb_alloc_color_cells
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       contiguous : C99.Stdint.uint8_t;
       cmap : xcb_colormap_t;
       colors : C99.Stdint.uint16_t;
@@ -5396,7 +5396,7 @@ package XCB.XProto is
    pragma Import (C, xcb_alloc_color_cells, "xcb_alloc_color_cells");
 
    function xcb_alloc_color_cells_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       contiguous : C99.Stdint.uint8_t;
       cmap : xcb_colormap_t;
       colors : C99.Stdint.uint16_t;
@@ -5422,16 +5422,16 @@ package XCB.XProto is
    pragma Import (C, xcb_alloc_color_cells_masks_end, "xcb_alloc_color_cells_masks_end");
 
    function xcb_alloc_color_cells_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_alloc_color_cells_cookie_t;
-      e : System.Address) return access xcb_alloc_color_cells_reply_t;  -- /usr/include/xcb/xproto.h:14207
+      e : access xcb_generic_error_t_access) return access xcb_alloc_color_cells_reply_t;  -- /usr/include/xcb/xproto.h:14207
    pragma Import (C, xcb_alloc_color_cells_reply, "xcb_alloc_color_cells_reply");
 
    function xcb_alloc_color_planes_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:14212
    pragma Import (C, xcb_alloc_color_planes_sizeof, "xcb_alloc_color_planes_sizeof");
 
    function xcb_alloc_color_planes
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       contiguous : C99.Stdint.uint8_t;
       cmap : xcb_colormap_t;
       colors : C99.Stdint.uint16_t;
@@ -5441,7 +5441,7 @@ package XCB.XProto is
    pragma Import (C, xcb_alloc_color_planes, "xcb_alloc_color_planes");
 
    function xcb_alloc_color_planes_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       contiguous : C99.Stdint.uint8_t;
       cmap : xcb_colormap_t;
       colors : C99.Stdint.uint16_t;
@@ -5460,16 +5460,16 @@ package XCB.XProto is
    pragma Import (C, xcb_alloc_color_planes_pixels_end, "xcb_alloc_color_planes_pixels_end");
 
    function xcb_alloc_color_planes_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_alloc_color_planes_cookie_t;
-      e : System.Address) return access xcb_alloc_color_planes_reply_t;  -- /usr/include/xcb/xproto.h:14349
+      e : access xcb_generic_error_t_access) return access xcb_alloc_color_planes_reply_t;  -- /usr/include/xcb/xproto.h:14349
    pragma Import (C, xcb_alloc_color_planes_reply, "xcb_alloc_color_planes_reply");
 
    function xcb_free_colors_sizeof (u_buffer : System.Address; pixels_len : C99.Stdint.uint32_t) return int;  -- /usr/include/xcb/xproto.h:14354
    pragma Import (C, xcb_free_colors_sizeof, "xcb_free_colors_sizeof");
 
    function xcb_free_colors_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       plane_mask : C99.Stdint.uint32_t;
       pixels_len : C99.Stdint.uint32_t;
@@ -5477,7 +5477,7 @@ package XCB.XProto is
    pragma Import (C, xcb_free_colors_checked, "xcb_free_colors_checked");
 
    function xcb_free_colors
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       plane_mask : C99.Stdint.uint32_t;
       pixels_len : C99.Stdint.uint32_t;
@@ -5494,14 +5494,14 @@ package XCB.XProto is
    pragma Import (C, xcb_store_colors_sizeof, "xcb_store_colors_sizeof");
 
    function xcb_store_colors_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       items_len : C99.Stdint.uint32_t;
       items : System.Address) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:14490
    pragma Import (C, xcb_store_colors_checked, "xcb_store_colors_checked");
 
    function xcb_store_colors
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       items_len : C99.Stdint.uint32_t;
       items : System.Address) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:14517
@@ -5511,7 +5511,7 @@ package XCB.XProto is
    pragma Import (C, xcb_store_named_color_sizeof, "xcb_store_named_color_sizeof");
 
    function xcb_store_named_color_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       flags : C99.Stdint.uint8_t;
       cmap : xcb_colormap_t;
       pixel : C99.Stdint.uint32_t;
@@ -5520,7 +5520,7 @@ package XCB.XProto is
    pragma Import (C, xcb_store_named_color_checked, "xcb_store_named_color_checked");
 
    function xcb_store_named_color
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       flags : C99.Stdint.uint8_t;
       cmap : xcb_colormap_t;
       pixel : C99.Stdint.uint32_t;
@@ -5538,14 +5538,14 @@ package XCB.XProto is
    pragma Import (C, xcb_query_colors_sizeof, "xcb_query_colors_sizeof");
 
    function xcb_query_colors
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       pixels_len : C99.Stdint.uint32_t;
       pixels : access C99.Stdint.uint32_t) return xcb_query_colors_cookie_t;  -- /usr/include/xcb/xproto.h:14659
    pragma Import (C, xcb_query_colors, "xcb_query_colors");
 
    function xcb_query_colors_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       pixels_len : C99.Stdint.uint32_t;
       pixels : access C99.Stdint.uint32_t) return xcb_query_colors_cookie_t;  -- /usr/include/xcb/xproto.h:14689
@@ -5561,36 +5561,36 @@ package XCB.XProto is
    pragma Import (C, xcb_query_colors_colors_iterator, "xcb_query_colors_colors_iterator");
 
    function xcb_query_colors_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_query_colors_cookie_t;
-      e : System.Address) return access xcb_query_colors_reply_t;  -- /usr/include/xcb/xproto.h:14760
+      e : access xcb_generic_error_t_access) return access xcb_query_colors_reply_t;  -- /usr/include/xcb/xproto.h:14760
    pragma Import (C, xcb_query_colors_reply, "xcb_query_colors_reply");
 
    function xcb_lookup_color_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:14765
    pragma Import (C, xcb_lookup_color_sizeof, "xcb_lookup_color_sizeof");
 
    function xcb_lookup_color
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return xcb_lookup_color_cookie_t;  -- /usr/include/xcb/xproto.h:14789
    pragma Import (C, xcb_lookup_color, "xcb_lookup_color");
 
    function xcb_lookup_color_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cmap : xcb_colormap_t;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return xcb_lookup_color_cookie_t;  -- /usr/include/xcb/xproto.h:14819
    pragma Import (C, xcb_lookup_color_unchecked, "xcb_lookup_color_unchecked");
 
    function xcb_lookup_color_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_lookup_color_cookie_t;
-      e : System.Address) return access xcb_lookup_color_reply_t;  -- /usr/include/xcb/xproto.h:14851
+      e : access xcb_generic_error_t_access) return access xcb_lookup_color_reply_t;  -- /usr/include/xcb/xproto.h:14851
    pragma Import (C, xcb_lookup_color_reply, "xcb_lookup_color_reply");
 
    function xcb_create_cursor_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cid : xcb_cursor_t;
       source : xcb_pixmap_t;
       mask : xcb_pixmap_t;
@@ -5605,7 +5605,7 @@ package XCB.XProto is
    pragma Import (C, xcb_create_cursor_checked, "xcb_create_cursor_checked");
 
    function xcb_create_cursor
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cid : xcb_cursor_t;
       source : xcb_pixmap_t;
       mask : xcb_pixmap_t;
@@ -5620,7 +5620,7 @@ package XCB.XProto is
    pragma Import (C, xcb_create_cursor, "xcb_create_cursor");
 
    function xcb_create_glyph_cursor_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cid : xcb_cursor_t;
       source_font : xcb_font_t;
       mask_font : xcb_font_t;
@@ -5635,7 +5635,7 @@ package XCB.XProto is
    pragma Import (C, xcb_create_glyph_cursor_checked, "xcb_create_glyph_cursor_checked");
 
    function xcb_create_glyph_cursor
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cid : xcb_cursor_t;
       source_font : xcb_font_t;
       mask_font : xcb_font_t;
@@ -5649,14 +5649,14 @@ package XCB.XProto is
       back_blue : C99.Stdint.uint16_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15064
    pragma Import (C, xcb_create_glyph_cursor, "xcb_create_glyph_cursor");
 
-   function xcb_free_cursor_checked (c : xcb_connection_t; cursor : xcb_cursor_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15103
+   function xcb_free_cursor_checked (c : xcb_connection_t_access; cursor : xcb_cursor_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15103
    pragma Import (C, xcb_free_cursor_checked, "xcb_free_cursor_checked");
 
-   function xcb_free_cursor (c : xcb_connection_t; cursor : xcb_cursor_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15129
+   function xcb_free_cursor (c : xcb_connection_t_access; cursor : xcb_cursor_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15129
    pragma Import (C, xcb_free_cursor, "xcb_free_cursor");
 
    function xcb_recolor_cursor_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cursor : xcb_cursor_t;
       fore_red : C99.Stdint.uint16_t;
       fore_green : C99.Stdint.uint16_t;
@@ -5667,7 +5667,7 @@ package XCB.XProto is
    pragma Import (C, xcb_recolor_cursor_checked, "xcb_recolor_cursor_checked");
 
    function xcb_recolor_cursor
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cursor : xcb_cursor_t;
       fore_red : C99.Stdint.uint16_t;
       fore_green : C99.Stdint.uint16_t;
@@ -5678,7 +5678,7 @@ package XCB.XProto is
    pragma Import (C, xcb_recolor_cursor, "xcb_recolor_cursor");
 
    function xcb_query_best_size
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       u_class : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       width : C99.Stdint.uint16_t;
@@ -5686,7 +5686,7 @@ package XCB.XProto is
    pragma Import (C, xcb_query_best_size, "xcb_query_best_size");
 
    function xcb_query_best_size_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       u_class : C99.Stdint.uint8_t;
       drawable : xcb_drawable_t;
       width : C99.Stdint.uint16_t;
@@ -5694,30 +5694,30 @@ package XCB.XProto is
    pragma Import (C, xcb_query_best_size_unchecked, "xcb_query_best_size_unchecked");
 
    function xcb_query_best_size_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_query_best_size_cookie_t;
-      e : System.Address) return access xcb_query_best_size_reply_t;  -- /usr/include/xcb/xproto.h:15293
+      e : access xcb_generic_error_t_access) return access xcb_query_best_size_reply_t;  -- /usr/include/xcb/xproto.h:15293
    pragma Import (C, xcb_query_best_size_reply, "xcb_query_best_size_reply");
 
    function xcb_query_extension_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:15298
    pragma Import (C, xcb_query_extension_sizeof, "xcb_query_extension_sizeof");
 
    function xcb_query_extension
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return xcb_query_extension_cookie_t;  -- /usr/include/xcb/xproto.h:15333
    pragma Import (C, xcb_query_extension, "xcb_query_extension");
 
    function xcb_query_extension_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       name_len : C99.Stdint.uint16_t;
       name : Interfaces.C.Strings.chars_ptr) return xcb_query_extension_cookie_t;  -- /usr/include/xcb/xproto.h:15373
    pragma Import (C, xcb_query_extension_unchecked, "xcb_query_extension_unchecked");
 
    function xcb_query_extension_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_query_extension_cookie_t;
-      e : System.Address) return access xcb_query_extension_reply_t;  -- /usr/include/xcb/xproto.h:15404
+      e : access xcb_generic_error_t_access) return access xcb_query_extension_reply_t;  -- /usr/include/xcb/xproto.h:15404
    pragma Import (C, xcb_query_extension_reply, "xcb_query_extension_reply");
 
    function xcb_list_extensions_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:15409
@@ -5736,16 +5736,16 @@ package XCB.XProto is
    pragma Import (C, xcb_list_extensions_names_iterator, "xcb_list_extensions_names_iterator");
 
    function xcb_list_extensions_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_list_extensions_cookie_t;
-      e : System.Address) return access xcb_list_extensions_reply_t;  -- /usr/include/xcb/xproto.h:15509
+      e : access xcb_generic_error_t_access) return access xcb_list_extensions_reply_t;  -- /usr/include/xcb/xproto.h:15509
    pragma Import (C, xcb_list_extensions_reply, "xcb_list_extensions_reply");
 
    function xcb_change_keyboard_mapping_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:15514
    pragma Import (C, xcb_change_keyboard_mapping_sizeof, "xcb_change_keyboard_mapping_sizeof");
 
    function xcb_change_keyboard_mapping_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       keycode_count : C99.Stdint.uint8_t;
       first_keycode : xcb_keycode_t;
       keysyms_per_keycode : C99.Stdint.uint8_t;
@@ -5753,7 +5753,7 @@ package XCB.XProto is
    pragma Import (C, xcb_change_keyboard_mapping_checked, "xcb_change_keyboard_mapping_checked");
 
    function xcb_change_keyboard_mapping
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       keycode_count : C99.Stdint.uint8_t;
       first_keycode : xcb_keycode_t;
       keysyms_per_keycode : C99.Stdint.uint8_t;
@@ -5764,13 +5764,13 @@ package XCB.XProto is
    pragma Import (C, xcb_get_keyboard_mapping_sizeof, "xcb_get_keyboard_mapping_sizeof");
 
    function xcb_get_keyboard_mapping
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       first_keycode : xcb_keycode_t;
       count : C99.Stdint.uint8_t) return xcb_get_keyboard_mapping_cookie_t;  -- /usr/include/xcb/xproto.h:15601
    pragma Import (C, xcb_get_keyboard_mapping, "xcb_get_keyboard_mapping");
 
    function xcb_get_keyboard_mapping_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       first_keycode : xcb_keycode_t;
       count : C99.Stdint.uint8_t) return xcb_get_keyboard_mapping_cookie_t;  -- /usr/include/xcb/xproto.h:15629
    pragma Import (C, xcb_get_keyboard_mapping_unchecked, "xcb_get_keyboard_mapping_unchecked");
@@ -5785,22 +5785,22 @@ package XCB.XProto is
    pragma Import (C, xcb_get_keyboard_mapping_keysyms_end, "xcb_get_keyboard_mapping_keysyms_end");
 
    function xcb_get_keyboard_mapping_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_keyboard_mapping_cookie_t;
-      e : System.Address) return access xcb_get_keyboard_mapping_reply_t;  -- /usr/include/xcb/xproto.h:15699
+      e : access xcb_generic_error_t_access) return access xcb_get_keyboard_mapping_reply_t;  -- /usr/include/xcb/xproto.h:15699
    pragma Import (C, xcb_get_keyboard_mapping_reply, "xcb_get_keyboard_mapping_reply");
 
    function xcb_change_keyboard_control_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:15704
    pragma Import (C, xcb_change_keyboard_control_sizeof, "xcb_change_keyboard_control_sizeof");
 
    function xcb_change_keyboard_control_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       value_mask : C99.Stdint.uint32_t;
       value_list : access C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15730
    pragma Import (C, xcb_change_keyboard_control_checked, "xcb_change_keyboard_control_checked");
 
    function xcb_change_keyboard_control
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       value_mask : C99.Stdint.uint32_t;
       value_list : access C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15755
    pragma Import (C, xcb_change_keyboard_control, "xcb_change_keyboard_control");
@@ -5812,19 +5812,19 @@ package XCB.XProto is
    pragma Import (C, xcb_get_keyboard_control_unchecked, "xcb_get_keyboard_control_unchecked");
 
    function xcb_get_keyboard_control_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_keyboard_control_cookie_t;
-      e : System.Address) return access xcb_get_keyboard_control_reply_t;  -- /usr/include/xcb/xproto.h:15831
+      e : access xcb_generic_error_t_access) return access xcb_get_keyboard_control_reply_t;  -- /usr/include/xcb/xproto.h:15831
    pragma Import (C, xcb_get_keyboard_control_reply, "xcb_get_keyboard_control_reply");
 
-   function xcb_bell_checked (c : xcb_connection_t; percent : C99.Stdint.int8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15858
+   function xcb_bell_checked (c : xcb_connection_t_access; percent : C99.Stdint.int8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15858
    pragma Import (C, xcb_bell_checked, "xcb_bell_checked");
 
-   function xcb_bell (c : xcb_connection_t; percent : C99.Stdint.int8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15881
+   function xcb_bell (c : xcb_connection_t_access; percent : C99.Stdint.int8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:15881
    pragma Import (C, xcb_bell, "xcb_bell");
 
    function xcb_change_pointer_control_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       acceleration_numerator : C99.Stdint.int16_t;
       acceleration_denominator : C99.Stdint.int16_t;
       threshold : C99.Stdint.int16_t;
@@ -5833,7 +5833,7 @@ package XCB.XProto is
    pragma Import (C, xcb_change_pointer_control_checked, "xcb_change_pointer_control_checked");
 
    function xcb_change_pointer_control
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       acceleration_numerator : C99.Stdint.int16_t;
       acceleration_denominator : C99.Stdint.int16_t;
       threshold : C99.Stdint.int16_t;
@@ -5848,13 +5848,13 @@ package XCB.XProto is
    pragma Import (C, xcb_get_pointer_control_unchecked, "xcb_get_pointer_control_unchecked");
 
    function xcb_get_pointer_control_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_pointer_control_cookie_t;
-      e : System.Address) return access xcb_get_pointer_control_reply_t;  -- /usr/include/xcb/xproto.h:16021
+      e : access xcb_generic_error_t_access) return access xcb_get_pointer_control_reply_t;  -- /usr/include/xcb/xproto.h:16021
    pragma Import (C, xcb_get_pointer_control_reply, "xcb_get_pointer_control_reply");
 
    function xcb_set_screen_saver_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       timeout : C99.Stdint.int16_t;
       interval : C99.Stdint.int16_t;
       prefer_blanking : C99.Stdint.uint8_t;
@@ -5862,7 +5862,7 @@ package XCB.XProto is
    pragma Import (C, xcb_set_screen_saver_checked, "xcb_set_screen_saver_checked");
 
    function xcb_set_screen_saver
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       timeout : C99.Stdint.int16_t;
       interval : C99.Stdint.int16_t;
       prefer_blanking : C99.Stdint.uint8_t;
@@ -5876,16 +5876,16 @@ package XCB.XProto is
    pragma Import (C, xcb_get_screen_saver_unchecked, "xcb_get_screen_saver_unchecked");
 
    function xcb_get_screen_saver_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_screen_saver_cookie_t;
-      e : System.Address) return access xcb_get_screen_saver_reply_t;  -- /usr/include/xcb/xproto.h:16158
+      e : access xcb_generic_error_t_access) return access xcb_get_screen_saver_reply_t;  -- /usr/include/xcb/xproto.h:16158
    pragma Import (C, xcb_get_screen_saver_reply, "xcb_get_screen_saver_reply");
 
    function xcb_change_hosts_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:16163
    pragma Import (C, xcb_change_hosts_sizeof, "xcb_change_hosts_sizeof");
 
    function xcb_change_hosts_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mode : C99.Stdint.uint8_t;
       family : C99.Stdint.uint8_t;
       address_len : C99.Stdint.uint16_t;
@@ -5893,7 +5893,7 @@ package XCB.XProto is
    pragma Import (C, xcb_change_hosts_checked, "xcb_change_hosts_checked");
 
    function xcb_change_hosts
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       mode : C99.Stdint.uint8_t;
       family : C99.Stdint.uint8_t;
       address_len : C99.Stdint.uint16_t;
@@ -5934,34 +5934,34 @@ package XCB.XProto is
    pragma Import (C, xcb_list_hosts_hosts_iterator, "xcb_list_hosts_hosts_iterator");
 
    function xcb_list_hosts_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_list_hosts_cookie_t;
-      e : System.Address) return access xcb_list_hosts_reply_t;  -- /usr/include/xcb/xproto.h:16412
+      e : access xcb_generic_error_t_access) return access xcb_list_hosts_reply_t;  -- /usr/include/xcb/xproto.h:16412
    pragma Import (C, xcb_list_hosts_reply, "xcb_list_hosts_reply");
 
-   function xcb_set_access_control_checked (c : xcb_connection_t; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16439
+   function xcb_set_access_control_checked (c : xcb_connection_t_access; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16439
    pragma Import (C, xcb_set_access_control_checked, "xcb_set_access_control_checked");
 
-   function xcb_set_access_control (c : xcb_connection_t; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16462
+   function xcb_set_access_control (c : xcb_connection_t_access; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16462
    pragma Import (C, xcb_set_access_control, "xcb_set_access_control");
 
-   function xcb_set_close_down_mode_checked (c : xcb_connection_t; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16488
+   function xcb_set_close_down_mode_checked (c : xcb_connection_t_access; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16488
    pragma Import (C, xcb_set_close_down_mode_checked, "xcb_set_close_down_mode_checked");
 
-   function xcb_set_close_down_mode (c : xcb_connection_t; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16511
+   function xcb_set_close_down_mode (c : xcb_connection_t_access; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16511
    pragma Import (C, xcb_set_close_down_mode, "xcb_set_close_down_mode");
 
-   function xcb_kill_client_checked (c : xcb_connection_t; resource : C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16543
+   function xcb_kill_client_checked (c : xcb_connection_t_access; resource : C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16543
    pragma Import (C, xcb_kill_client_checked, "xcb_kill_client_checked");
 
-   function xcb_kill_client (c : xcb_connection_t; resource : C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16572
+   function xcb_kill_client (c : xcb_connection_t_access; resource : C99.Stdint.uint32_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16572
    pragma Import (C, xcb_kill_client, "xcb_kill_client");
 
    function xcb_rotate_properties_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:16576
    pragma Import (C, xcb_rotate_properties_sizeof, "xcb_rotate_properties_sizeof");
 
    function xcb_rotate_properties_checked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       atoms_len : C99.Stdint.uint16_t;
       c_delta : C99.Stdint.int16_t;
@@ -5969,38 +5969,38 @@ package XCB.XProto is
    pragma Import (C, xcb_rotate_properties_checked, "xcb_rotate_properties_checked");
 
    function xcb_rotate_properties
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       window : xcb_window_t;
       atoms_len : C99.Stdint.uint16_t;
       c_delta : C99.Stdint.int16_t;
       atoms : access xcb_atom_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16633
    pragma Import (C, xcb_rotate_properties, "xcb_rotate_properties");
 
-   function xcb_force_screen_saver_checked (c : xcb_connection_t; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16662
+   function xcb_force_screen_saver_checked (c : xcb_connection_t_access; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16662
    pragma Import (C, xcb_force_screen_saver_checked, "xcb_force_screen_saver_checked");
 
-   function xcb_force_screen_saver (c : xcb_connection_t; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16685
+   function xcb_force_screen_saver (c : xcb_connection_t_access; mode : C99.Stdint.uint8_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:16685
    pragma Import (C, xcb_force_screen_saver, "xcb_force_screen_saver");
 
    function xcb_set_pointer_mapping_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:16689
    pragma Import (C, xcb_set_pointer_mapping_sizeof, "xcb_set_pointer_mapping_sizeof");
 
    function xcb_set_pointer_mapping
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       map_len : C99.Stdint.uint8_t;
       map : access C99.Stdint.uint8_t) return xcb_set_pointer_mapping_cookie_t;  -- /usr/include/xcb/xproto.h:16712
    pragma Import (C, xcb_set_pointer_mapping, "xcb_set_pointer_mapping");
 
    function xcb_set_pointer_mapping_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       map_len : C99.Stdint.uint8_t;
       map : access C99.Stdint.uint8_t) return xcb_set_pointer_mapping_cookie_t;  -- /usr/include/xcb/xproto.h:16740
    pragma Import (C, xcb_set_pointer_mapping_unchecked, "xcb_set_pointer_mapping_unchecked");
 
    function xcb_set_pointer_mapping_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_set_pointer_mapping_cookie_t;
-      e : System.Address) return access xcb_set_pointer_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16771
+      e : access xcb_generic_error_t_access) return access xcb_set_pointer_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16771
    pragma Import (C, xcb_set_pointer_mapping_reply, "xcb_set_pointer_mapping_reply");
 
    function xcb_get_pointer_mapping_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:16776
@@ -6022,30 +6022,30 @@ package XCB.XProto is
    pragma Import (C, xcb_get_pointer_mapping_map_end, "xcb_get_pointer_mapping_map_end");
 
    function xcb_get_pointer_mapping_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_pointer_mapping_cookie_t;
-      e : System.Address) return access xcb_get_pointer_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16889
+      e : access xcb_generic_error_t_access) return access xcb_get_pointer_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16889
    pragma Import (C, xcb_get_pointer_mapping_reply, "xcb_get_pointer_mapping_reply");
 
    function xcb_set_modifier_mapping_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:16894
    pragma Import (C, xcb_set_modifier_mapping_sizeof, "xcb_set_modifier_mapping_sizeof");
 
    function xcb_set_modifier_mapping
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       keycodes_per_modifier : C99.Stdint.uint8_t;
       keycodes : access xcb_keycode_t) return xcb_set_modifier_mapping_cookie_t;  -- /usr/include/xcb/xproto.h:16917
    pragma Import (C, xcb_set_modifier_mapping, "xcb_set_modifier_mapping");
 
    function xcb_set_modifier_mapping_unchecked
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       keycodes_per_modifier : C99.Stdint.uint8_t;
       keycodes : access xcb_keycode_t) return xcb_set_modifier_mapping_cookie_t;  -- /usr/include/xcb/xproto.h:16945
    pragma Import (C, xcb_set_modifier_mapping_unchecked, "xcb_set_modifier_mapping_unchecked");
 
    function xcb_set_modifier_mapping_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_set_modifier_mapping_cookie_t;
-      e : System.Address) return access xcb_set_modifier_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16976
+      e : access xcb_generic_error_t_access) return access xcb_set_modifier_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16976
    pragma Import (C, xcb_set_modifier_mapping_reply, "xcb_set_modifier_mapping_reply");
 
    function xcb_get_modifier_mapping_sizeof (u_buffer : System.Address) return int;  -- /usr/include/xcb/xproto.h:16981
@@ -6067,9 +6067,9 @@ package XCB.XProto is
    pragma Import (C, xcb_get_modifier_mapping_keycodes_end, "xcb_get_modifier_mapping_keycodes_end");
 
    function xcb_get_modifier_mapping_reply
-     (c : xcb_connection_t;
+     (c : xcb_connection_t_access;
       cookie : xcb_get_modifier_mapping_cookie_t;
-      e : System.Address) return access xcb_get_modifier_mapping_reply_t;  -- /usr/include/xcb/xproto.h:17094
+      e : access xcb_generic_error_t_access) return access xcb_get_modifier_mapping_reply_t;  -- /usr/include/xcb/xproto.h:17094
    pragma Import (C, xcb_get_modifier_mapping_reply, "xcb_get_modifier_mapping_reply");
 
    function xcb_no_operation_checked (c : xcb_connection_t) return XCB.xcb_void_cookie_t;  -- /usr/include/xcb/xproto.h:17120

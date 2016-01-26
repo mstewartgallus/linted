@@ -17,12 +17,11 @@ private with Interfaces;
 private with System.Storage_Elements;
 private with System;
 
-private with Linted_Unix;
+private with Unix;
 private with C89.Errno;
 
 package body Linted.Windows is
    package Errno renames C89.Errno;
-   package Unix renames Linted_Unix;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 

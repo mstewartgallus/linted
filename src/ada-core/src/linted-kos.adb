@@ -11,23 +11,24 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted_Unix;
+with Unix.Fcntl;
+with Unix.Unistd;
 with C89.Errno;
+with Interfaces.C.Strings;
 
 package body Linted.KOs is
    package C renames Interfaces.C;
    package Errno renames C89.Errno;
-   package Unix renames Linted_Unix;
 
    function Open (Pathname : String) return KO_Results.Result is
       use type Errors.Error;
-      use type Unix.Oflag;
+      use type C.unsigned;
 
-      X : constant C.char_array := C.To_C (Pathname);
+      X : aliased C.char_array := C.To_C (Pathname);
       Err : Errors.Error;
       Fd : C.int;
    begin
-      Fd := Unix.Open (X, Unix.O_RDWR or Unix.O_CLOEXEC, 0);
+      Fd := Unix.Fcntl.open (Interfaces.C.Strings.To_Chars_Ptr (X'Unchecked_Access), C.int (C.unsigned (Unix.Fcntl.O_RDWR) or Unix.Fcntl.O_CLOEXEC), 0);
       if Fd < 0 then
 	 Err := Errors.Error (Errno.Errno);
       else
@@ -43,7 +44,7 @@ package body Linted.KOs is
 
    function Close (Object : KOs.KO) return Errors.Error is
    begin
-      if Unix.Close (C.int (Object)) < 0 then
+      if Unix.Unistd.close (C.int (Object)) < 0 then
 	 return Errors.Error (Errno.Errno);
       else
 	 return 0;

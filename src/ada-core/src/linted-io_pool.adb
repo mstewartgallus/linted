@@ -11,7 +11,9 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted_Unix;
+with Unix;
+with Unix.Sys.Types;
+with Unix.Unistd;
 with C89.Errno;
 
 private with Linted.MVars;
@@ -20,7 +22,6 @@ package body Linted.IO_Pool is
    package C renames Interfaces.C;
 
    package Errno renames C89.Errno;
-   package Unix renames Linted_Unix;
 
    type Write_Command is record
       Object : KOs.KO;
@@ -61,10 +62,10 @@ package body Linted.IO_Pool is
       end Poll;
 
       New_Write_Command : Write_Command_MVars.Option_Element_Ts.Option;
-      Result : Unix.ssize_t;
+      Result : Unix.Sys.Types.ssize_t;
 
       task body Writer_Task is
-	 use type Unix.ssize_t;
+	 use type Unix.Sys.Types.ssize_t;
 	 use type C.size_t;
       begin
 	 loop
@@ -81,10 +82,10 @@ package body Linted.IO_Pool is
 		  Count : constant C.size_t := New_Write_Command.Data.Count;
 	       begin
 		  loop
-		     Result := Unix.Write (C.int (Object), Buf, Count - Bytes_Written);
+		     Result := Unix.Unistd.write (C.int (Object), Buf, Count - Bytes_Written);
 		     if Result < 0 then
 			Err := Errno.Errno;
-			if Err /= Unix.EINTR then
+			if Err /= Errno.EINTR then
 			   exit;
 			end if;
 		     else
@@ -143,10 +144,10 @@ package body Linted.IO_Pool is
       end Poll;
 
       New_Read_Command : Read_Command_MVars.Option_Element_Ts.Option;
-      Result : Unix.ssize_t;
+      Result : Unix.Sys.Types.ssize_t;
 
       task body Reader_Task is
-	 use type Unix.ssize_t;
+	 use type Unix.Sys.Types.ssize_t;
 	 use type C.size_t;
       begin
 	 loop
@@ -163,10 +164,10 @@ package body Linted.IO_Pool is
 		  Count : constant C.size_t := New_Read_Command.Data.Count;
 	       begin
 		  loop
-		     Result := Unix.Read (C.int (Object), Buf, Count - Bytes_Read);
+		     Result := Unix.Unistd.read (C.int (Object), Buf, Count - Bytes_Read);
 		     if Result < 0 then
 			Err := Errno.Errno;
-			if Err /= Unix.EINTR then
+			if Err /= Errno.EINTR then
 			   exit;
 			end if;
 		     elsif 0 = Result then

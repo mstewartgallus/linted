@@ -14,13 +14,11 @@
 private with Ada.Exceptions;
 private with Ada.Text_IO;
 
-with Linted_Unix;
+with Unix.Unistd;
 
 package body Linted.Last_Chance is
    package Exceptions renames Ada.Exceptions;
    package Text_IO renames Ada.Text_IO;
-
-   package Unix renames Linted_Unix;
 
    procedure Last_Chance_Handler (Except : Exceptions.Exception_Occurrence);
    pragma Export (C, Last_Chance_Handler, "__gnat_last_chance_handler");
@@ -28,7 +26,7 @@ package body Linted.Last_Chance is
    procedure Last_Chance_Handler (Except : Exceptions.Exception_Occurrence) is
    begin
       Text_IO.Put_Line (Exceptions.Exception_Information (Except));
-      Unix.Quick_Exit (1);
+      Unix.Unistd.u_exit (1);
       loop
 	 null;
       end loop;

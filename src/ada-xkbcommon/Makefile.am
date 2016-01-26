@@ -15,11 +15,11 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 EXTRA_DIST+=\
-  %D%/unix.gpr\
+  %D%/xkbcommon.gpr\
   \
   %D%/src
 
 LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/unix.gpr
+	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/xkbcommon.gpr

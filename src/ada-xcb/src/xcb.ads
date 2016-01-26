@@ -28,6 +28,7 @@ package XCB is
    XCB_NO_SYMBOL : constant := 0;
 
    type xcb_connection_t is limited private;
+   type xcb_connection_t_access is access all xcb_connection_t;
 
    type xcb_generic_iterator_t is record
       data : System.Address;  -- /usr/include/xcb/xcb.h:115
@@ -82,6 +83,7 @@ package XCB is
       full_sequence : aliased C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:179
    end record;
    pragma Convention (C_Pass_By_Copy, xcb_generic_error_t);  -- /usr/include/xcb/xcb.h:180
+   type xcb_generic_error_t_access is access all xcb_generic_error_t;
 
    type xcb_void_cookie_t is record
       sequence : aliased unsigned;  -- /usr/include/xcb/xcb.h:188
@@ -115,35 +117,37 @@ package XCB is
    pragma Import (C, xcb_poll_for_queued_event, "xcb_poll_for_queued_event");
 
    type xcb_special_event_t is limited private;
+   type xcb_special_event_t_access is access all xcb_special_event_t;
 
-   function xcb_poll_for_special_event (c : xcb_connection_t; se : xcb_special_event_t) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:320
+   function xcb_poll_for_special_event (c : xcb_connection_t_access; se : xcb_special_event_t) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:320
    pragma Import (C, xcb_poll_for_special_event, "xcb_poll_for_special_event");
 
-   function xcb_wait_for_special_event (c : xcb_connection_t; se : xcb_special_event_t) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:326
+   function xcb_wait_for_special_event (c : xcb_connection_t_access; se : xcb_special_event_t) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:326
    pragma Import (C, xcb_wait_for_special_event, "xcb_wait_for_special_event");
 
    type xcb_extension_t is limited private;
+   type xcb_extension_t_access is access all xcb_extension_t;
 
    function xcb_register_for_special_xge
-     (c : xcb_connection_t;
-      ext : xcb_extension_t;
+     (c : xcb_connection_t_access;
+      ext : xcb_extension_t_access;
       eid : C99.Stdint.uint32_t;
-      stamp : access C99.Stdint.uint32_t) return xcb_special_event_t;  -- /usr/include/xcb/xcb.h:337
+      stamp : access C99.Stdint.uint32_t) return xcb_special_event_t_access;  -- /usr/include/xcb/xcb.h:337
    pragma Import (C, xcb_register_for_special_xge, "xcb_register_for_special_xge");
 
-   procedure xcb_unregister_for_special_event (c : xcb_connection_t; se : xcb_special_event_t);  -- /usr/include/xcb/xcb.h:345
+   procedure xcb_unregister_for_special_event (c : xcb_connection_t_access; se : xcb_special_event_t);  -- /usr/include/xcb/xcb.h:345
    pragma Import (C, xcb_unregister_for_special_event, "xcb_unregister_for_special_event");
 
-   function xcb_request_check (c : xcb_connection_t; cookie : xcb_void_cookie_t) return access xcb_generic_error_t;  -- /usr/include/xcb/xcb.h:364
+   function xcb_request_check (c : xcb_connection_t_access; cookie : xcb_void_cookie_t) return access xcb_generic_error_t;  -- /usr/include/xcb/xcb.h:364
    pragma Import (C, xcb_request_check, "xcb_request_check");
 
-   procedure xcb_discard_reply (c : xcb_connection_t; sequence : unsigned);  -- /usr/include/xcb/xcb.h:380
+   procedure xcb_discard_reply (c : xcb_connection_t_access; sequence : unsigned);  -- /usr/include/xcb/xcb.h:380
    pragma Import (C, xcb_discard_reply, "xcb_discard_reply");
 
-   function xcb_get_extension_data (c : xcb_connection_t; ext : xcb_extension_t) return access constant XCB.Xproto.xcb_query_extension_reply_t;  -- /usr/include/xcb/xcb.h:401
+   function xcb_get_extension_data (c : xcb_connection_t_access; ext : xcb_extension_t) return access constant XCB.Xproto.xcb_query_extension_reply_t;  -- /usr/include/xcb/xcb.h:401
    pragma Import (C, xcb_get_extension_data, "xcb_get_extension_data");
 
-   procedure xcb_prefetch_extension_data (c : xcb_connection_t; ext : xcb_extension_t);  -- /usr/include/xcb/xcb.h:414
+   procedure xcb_prefetch_extension_data (c : xcb_connection_t_access; ext : xcb_extension_t);  -- /usr/include/xcb/xcb.h:414
    pragma Import (C, xcb_prefetch_extension_data, "xcb_prefetch_extension_data");
 
    function xcb_get_setup (c : xcb_connection_t) return access constant XCB.Xproto.xcb_setup_t;  -- /usr/include/xcb/xcb.h:437
@@ -155,7 +159,7 @@ package XCB is
    function xcb_connection_has_error (c : xcb_connection_t) return int;  -- /usr/include/xcb/xcb.h:466
    pragma Import (C, xcb_connection_has_error, "xcb_connection_has_error");
 
-   function xcb_connect_to_fd (fd : int; auth_info : access xcb_auth_info_t) return xcb_connection_t;  -- /usr/include/xcb/xcb.h:480
+   function xcb_connect_to_fd (fd : int; auth_info : access xcb_auth_info_t) return xcb_connection_t_access;  -- /usr/include/xcb/xcb.h:480
    pragma Import (C, xcb_connect_to_fd, "xcb_connect_to_fd");
 
    procedure xcb_disconnect (c : xcb_connection_t);  -- /usr/include/xcb/xcb.h:489
@@ -168,19 +172,19 @@ package XCB is
       screen : access int) return int;  -- /usr/include/xcb/xcb.h:511
    pragma Import (C, xcb_parse_display, "xcb_parse_display");
 
-   function xcb_connect (displayname : Interfaces.C.Strings.chars_ptr; screenp : access int) return xcb_connection_t;  -- /usr/include/xcb/xcb.h:525
+   function xcb_connect (displayname : Interfaces.C.Strings.chars_ptr; screenp : access int) return xcb_connection_t_access;  -- /usr/include/xcb/xcb.h:525
    pragma Import (C, xcb_connect, "xcb_connect");
 
    function xcb_connect_to_display_with_auth_info
      (display : Interfaces.C.Strings.chars_ptr;
       auth : access xcb_auth_info_t;
-      screen : access int) return xcb_connection_t;  -- /usr/include/xcb/xcb.h:539
+      screen : access int) return xcb_connection_t_access;  -- /usr/include/xcb/xcb.h:539
    pragma Import (C, xcb_connect_to_display_with_auth_info, "xcb_connect_to_display_with_auth_info");
 
    function xcb_generate_id (c : xcb_connection_t) return C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:552
    pragma Import (C, xcb_generate_id, "xcb_generate_id");
 private
-   type xcb_connection_t is new System.Address;
-   type xcb_special_event_t is new System.Address;
-   type xcb_extension_t is new System.Address;
+   type xcb_connection_t is limited record null; end record;
+   type xcb_special_event_t is limited record null; end record;
+   type xcb_extension_t is limited record null; end record;
 end XCB;

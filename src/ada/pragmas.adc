@@ -24,7 +24,7 @@ pragma Restrictions (Max_Tasks => 255);
 pragma Restrictions (Max_Storage_At_Blocking => 0);
 
 pragma Restrictions (No_Streams);
-pragma Restrictions (No_Access_Subprograms);
+-- pragma Restrictions (No_Access_Subprograms);
 
 pragma Restrictions (No_Allocators);
 pragma Restrictions (No_Anonymous_Allocators);

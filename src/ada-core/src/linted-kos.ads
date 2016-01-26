@@ -17,7 +17,7 @@ with Linted.Errors;
 with Linted.Results;
 
 package Linted.KOs is
-   pragma Pure;
+   pragma Preelaborate;
 
    use type Interfaces.C.int;
 

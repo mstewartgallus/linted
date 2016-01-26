@@ -12,15 +12,17 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with "shared.gpr";
+with "c89.gpr";
+with "c99.gpr";
 
-project Linted_Unix is
+project Unix is
   for Languages use ("Ada");
   for Source_Dirs use ("src");
   for Library_Kind use "static";
 
-  for Object_Dir use Shared'Object_Dir & "/linted-unix";
+  for Object_Dir use Shared'Object_Dir & "/unix";
   package Builder renames Shared.Builder;
   package Compiler renames Shared.Compiler;
   package Binder renames Shared.Binder;
   package Linker renames Shared.Linker;
-end Linted_Unix;
+end Unix;

@@ -11,12 +11,18 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package body Linted_Unix is
-   function Real_Open (Pathname : Interfaces.C.char_array; Flags : Interfaces.C.int; Mode : mode_t) return Interfaces.C.int;
-   pragma Import (C, Real_Open, "open");
+with "c89.gpr";
+with "c99.gpr";
+with "shared.gpr";
 
-   function Open (Pathname : Interfaces.C.char_array; Flags : Oflag; Mode : mode_t) return Interfaces.C.int is
-   begin
-      return Real_Open (Pathname, Interfaces.C.int (Flags), Mode);
-   end Open;
-end Linted_Unix;
+project Xkbcommon is
+  for Languages use ("Ada");
+  for Source_Dirs use ("src");
+  for Library_Kind use "static";
+
+  for Object_Dir use Shared'Object_Dir & "/xkbcommon";
+  package Builder renames Shared.Builder;
+  package Compiler renames Shared.Compiler;
+  package Binder renames Shared.Binder;
+  package Linker renames Shared.Linker;
+end Xkbcommon;
