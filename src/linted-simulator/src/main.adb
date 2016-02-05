@@ -16,9 +16,6 @@ private with Ada.Real_Time;
 private with Linted.Last_Chance;
 private with Linted.Simulator;
 
-private with XCB;
-private with Xkbcommon;
-
 procedure Main is
 begin
    loop

@@ -13,8 +13,6 @@
 -- permissions and limitations under the License.
 with "shared.gpr";
 with "linted.gpr";
-with "xcb.gpr";
-with "xkbcommon.gpr";
 
 project Simulator is
   for Languages use ("Ada");

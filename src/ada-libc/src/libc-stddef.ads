@@ -11,17 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with "shared.gpr";
-with "libc.gpr";
+with Interfaces.C;
 
-project Linted is
-  for Languages use ("Ada");
-  for Source_Dirs use ("src");
-  for Library_Kind use "static";
+package Libc.Stddef is
+   pragma Pure;
 
-  for Object_Dir use Shared'Object_Dir & "/linted";
-  package Builder renames Shared.Builder;
-  package Compiler renames Shared.Compiler;
-  package Binder renames Shared.Binder;
-  package Linker renames Shared.Linker;
-end Linted;
+   --  unsupported macro: NULL __null
+   --  arg-macro: procedure offsetof (TYPE, MEMBER)
+   --    __builtin_offsetof (TYPE, MEMBER)
+   subtype ptrdiff_t is Interfaces.C.ptrdiff_t;  -- /usr/lib/gcc/x86_64-linux-gnu/4.6/include/stddef.h:150
+
+   subtype size_t is Interfaces.C.size_t;  -- /usr/lib/gcc/x86_64-linux-gnu/4.6/include/stddef.h:212
+
+   subtype wchar_t is Interfaces.C.wchar_t;
+end Libc.Stddef;

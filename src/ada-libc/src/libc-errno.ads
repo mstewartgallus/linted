@@ -11,17 +11,18 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with "shared.gpr";
-with "libc.gpr";
+with Interfaces.C; use Interfaces.C;
 
-project Linted is
-  for Languages use ("Ada");
-  for Source_Dirs use ("src");
-  for Library_Kind use "static";
+package Libc.Errno is
+   pragma Pure;
 
-  for Object_Dir use Shared'Object_Dir & "/linted";
-  package Builder renames Shared.Builder;
-  package Compiler renames Shared.Compiler;
-  package Binder renames Shared.Binder;
-  package Linker renames Shared.Linker;
-end Linted;
+   function Errno return Interfaces.C.int;
+   pragma Import (C, Errno, "linted_adarts_libc_errno");
+
+   procedure Errno_Set (Err : Interfaces.C.int);
+   pragma Import (C, Errno_Set, "linted_adarts_libc_errno_set");
+
+   EDOM : constant := 33;
+   EILSEQ : constant := 84;
+   ERANGE : constant := 34;
+end Libc.Errno;

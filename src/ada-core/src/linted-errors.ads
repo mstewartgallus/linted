@@ -13,6 +13,8 @@
 -- permissions and limitations under the License.
 with Interfaces.C;
 
+with Libc.Errno.POSIX_2008;
+
 package Linted.Errors is
    pragma Pure;
 
@@ -21,7 +23,18 @@ package Linted.Errors is
      with Default_Value => 0;
 
    Success : constant Error;
+   Permission : constant Error;
+   Protocol : constant Error;
+   Unimplemented : constant Error;
+   Out_Of_Memory : constant Error;
+   Invalid_Parameter : constant Error;
 
 private
    Success : constant Error := 0;
+
+   Permission : constant Error := Libc.Errno.POSIX_2008.EPERM;
+   Protocol : constant Error := Libc.Errno.POSIX_2008.EPROTO;
+   Unimplemented : constant Error := Libc.Errno.POSIX_2008.ENOSYS;
+   Out_Of_Memory : constant Error := Libc.Errno.POSIX_2008.ENOMEM;
+   Invalid_Parameter : constant Error := Libc.Errno.POSIX_2008.EINVAL;
 end Linted.Errors;

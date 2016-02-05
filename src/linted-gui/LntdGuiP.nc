@@ -153,7 +153,7 @@ implementation
 
 		if (!xkb_x11_setup_xkb_extension(
 		        connection, XKB_X11_MIN_MAJOR_XKB_VERSION,
-		        XKB_X11_MIN_MINOR_XKB_VERSION, 0, 0, 0, 0, 0)) {
+		        XKB_X11_MIN_MINOR_XKB_VERSION, XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS, 0, 0, 0, 0)) {
 			err = LNTD_ERROR_UNIMPLEMENTED;
 			goto destroy_window;
 		}

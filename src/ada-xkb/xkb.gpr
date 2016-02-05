@@ -13,15 +13,16 @@
 -- permissions and limitations under the License.
 with "shared.gpr";
 with "libc.gpr";
+with "xcb.gpr";
 
-project Linted is
+project XKB is
   for Languages use ("Ada");
   for Source_Dirs use ("src");
   for Library_Kind use "static";
 
-  for Object_Dir use Shared'Object_Dir & "/linted";
+  for Object_Dir use Shared'Object_Dir & "/xkb";
   package Builder renames Shared.Builder;
   package Compiler renames Shared.Compiler;
   package Binder renames Shared.Binder;
   package Linker renames Shared.Linker;
-end Linted;
+end XKB;

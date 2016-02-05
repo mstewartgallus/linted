@@ -90,11 +90,9 @@ include %C%/window/Makefile.am
 
 include %C%/ada/Makefile.am
 include %C%/ada-core/Makefile.am
-include %C%/ada-c89/Makefile.am
-include %C%/ada-c99/Makefile.am
+include %C%/ada-libc/Makefile.am
 include %C%/ada-xcb/Makefile.am
-include %C%/ada-xkbcommon/Makefile.am
-include %C%/ada-unix/Makefile.am
+include %C%/ada-xkb/Makefile.am
 include %C%/nesc/Makefile.am
 
 if WINDOWS_API

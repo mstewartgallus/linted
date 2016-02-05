@@ -11,17 +11,18 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Unix;
-with Unix.Sys.Types;
-with Unix.Unistd;
-with C89.Errno;
+with Libc.Sys.Poll;
+with Libc.Sys.Types;
+with Libc.Unistd;
+with Libc.Errno.POSIX_2008;
+with Libc.Errno;
 
 private with Linted.MVars;
 
 package body Linted.IO_Pool is
    package C renames Interfaces.C;
 
-   package Errno renames C89.Errno;
+   package Errno renames Libc.Errno;
 
    type Write_Command is record
       Object : KOs.KO;
@@ -62,10 +63,10 @@ package body Linted.IO_Pool is
       end Poll;
 
       New_Write_Command : Write_Command_MVars.Option_Element_Ts.Option;
-      Result : Unix.Sys.Types.ssize_t;
+      Result : Libc.Sys.Types.ssize_t;
 
       task body Writer_Task is
-	 use type Unix.Sys.Types.ssize_t;
+	 use type Libc.Sys.Types.ssize_t;
 	 use type C.size_t;
       begin
 	 loop
@@ -82,10 +83,10 @@ package body Linted.IO_Pool is
 		  Count : constant C.size_t := New_Write_Command.Data.Count;
 	       begin
 		  loop
-		     Result := Unix.Unistd.write (C.int (Object), Buf, Count - Bytes_Written);
+		     Result := Libc.Unistd.write (C.int (Object), Buf, Count - Bytes_Written);
 		     if Result < 0 then
-			Err := Errno.Errno;
-			if Err /= Errno.EINTR then
+			Err := Libc.Errno.Errno;
+			if Err /= Libc.Errno.POSIX_2008.EINTR then
 			   exit;
 			end if;
 		     else
@@ -144,10 +145,10 @@ package body Linted.IO_Pool is
       end Poll;
 
       New_Read_Command : Read_Command_MVars.Option_Element_Ts.Option;
-      Result : Unix.Sys.Types.ssize_t;
+      Result : Libc.Sys.Types.ssize_t;
 
       task body Reader_Task is
-	 use type Unix.Sys.Types.ssize_t;
+	 use type Libc.Sys.Types.ssize_t;
 	 use type C.size_t;
       begin
 	 loop
@@ -164,10 +165,10 @@ package body Linted.IO_Pool is
 		  Count : constant C.size_t := New_Read_Command.Data.Count;
 	       begin
 		  loop
-		     Result := Unix.Unistd.read (C.int (Object), Buf, Count - Bytes_Read);
+		     Result := Libc.Unistd.read (C.int (Object), Buf, Count - Bytes_Read);
 		     if Result < 0 then
 			Err := Errno.Errno;
-			if Err /= Errno.EINTR then
+			if Err /= Libc.Errno.POSIX_2008.EINTR then
 			   exit;
 			end if;
 		     elsif 0 = Result then
@@ -189,4 +190,91 @@ package body Linted.IO_Pool is
 	 end loop;
       end Reader_Task;
    end Reader_Worker;
+
+   type Poller_Command is record
+      Object : KOs.KO;
+      Events : Poll_Events;
+   end record;
+
+   type Poller_Done_Event is record
+      Err : Errors.Error;
+   end record;
+
+   package Poller_Command_MVars is new Linted.MVars (Poller_Command);
+   package Poller_Done_Event_MVars is new Linted.MVars (Poller_Done_Event);
+
+   package body Poller_Worker is
+      task Poller_Task;
+
+      My_Trigger : Triggers.Trigger;
+      My_Command_MVar : Poller_Command_MVars.MVar;
+      My_Event_MVar : Poller_Done_Event_MVars.MVar;
+
+      procedure Watch (Object : KOs.KO; Events : Poll_Events) is
+      begin
+	 Poller_Command_MVars.Set (My_Command_MVar, (Object, Events));
+	 Triggers.Signal (My_Trigger);
+      end Watch;
+
+      function Poll return Option_Poller_Events.Option is
+	 Event : Poller_Done_Event_MVars.Option_Element_Ts.Option;
+      begin
+	 Event := Poller_Done_Event_MVars.Poll (My_Event_MVar);
+	 if Event.Empty then
+	    return (Empty => True);
+	 else
+	    return (False, Poller_Event'(Err => Event.Data.Err));
+	 end if;
+      end Poll;
+
+      New_Command : Poller_Command_MVars.Option_Element_Ts.Option;
+
+      task body Poller_Task is
+	 use type Libc.Sys.Types.ssize_t;
+	 use type C.size_t;
+      begin
+	 loop
+	    Triggers.Wait (My_Trigger);
+
+	    New_Command := Poller_Command_MVars.Poll (My_Command_MVar);
+	    if not New_Command.Empty then
+	       declare
+		  Err : C.int;
+
+		  Object : constant KOs.KO := New_Command.Data.Object;
+		  Events : constant Poll_Events := New_Command.Data.Events;
+		  Result : Interfaces.C.int;
+	       begin
+		  loop
+		     declare
+			Pollfds : aliased Libc.Sys.Poll.pollfd;
+		     begin
+			Pollfds.fd := C.int (Object);
+			case Events is
+			   when Poll_Events_Read =>
+			      Pollfds.events := Libc.Sys.Poll.POLLIN;
+			   when Poll_Events_Write =>
+			      Pollfds.events := Libc.Sys.Poll.POLLOUT;
+			end case;
+
+			Result := Libc.Sys.Poll.poll (Pollfds'Unchecked_Access, 1, -1);
+			if Result < 0 then
+			   Err := Errno.Errno;
+			   if Err /= Libc.Errno.POSIX_2008.EINTR then
+			      exit;
+			   end if;
+			else
+			   Err := 0;
+			   exit;
+			end if;
+		     end;
+		  end loop;
+
+		  Poller_Done_Event_MVars.Set (My_Event_MVar, (Err => Errors.Error (Err)));
+		  Triggers.Signal (Event_Trigger.all);
+	       end;
+	    end if;
+	 end loop;
+      end Poller_Task;
+   end Poller_Worker;
 end Linted.IO_Pool;

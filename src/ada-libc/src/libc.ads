@@ -1,3 +1,6 @@
+package Libc is
+   pragma Pure;
+end Libc;
 -- Copyright 2015 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,17 +14,3 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with "shared.gpr";
-with "libc.gpr";
-
-project Linted is
-  for Languages use ("Ada");
-  for Source_Dirs use ("src");
-  for Library_Kind use "static";
-
-  for Object_Dir use Shared'Object_Dir & "/linted";
-  package Builder renames Shared.Builder;
-  package Compiler renames Shared.Compiler;
-  package Binder renames Shared.Binder;
-  package Linker renames Shared.Linker;
-end Linted;

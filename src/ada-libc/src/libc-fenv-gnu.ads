@@ -11,17 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with "shared.gpr";
-with "libc.gpr";
+with Interfaces.C; use Interfaces.C;
 
-project Linted is
-  for Languages use ("Ada");
-  for Source_Dirs use ("src");
-  for Library_Kind use "static";
+package Libc.Fenv.GNU is
+   pragma Pure;
 
-  for Object_Dir use Shared'Object_Dir & "/linted";
-  package Builder renames Shared.Builder;
-  package Compiler renames Shared.Compiler;
-  package Binder renames Shared.Binder;
-  package Linker renames Shared.Linker;
-end Linted;
+   function feenableexcept (excepts : int) return int;  -- /usr/include/fenv.h:122
+   pragma Import (C, feenableexcept, "feenableexcept");
+
+   function fedisableexcept (excepts : int) return int;  -- /usr/include/fenv.h:127
+   pragma Import (C, fedisableexcept, "fedisableexcept");
+
+   function fegetexcept return int;  -- /usr/include/fenv.h:130
+   pragma Import (C, fegetexcept, "fegetexcept");
+end Libc.Fenv.GNU;

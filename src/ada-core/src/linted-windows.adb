@@ -17,17 +17,17 @@ private with Interfaces;
 private with System.Storage_Elements;
 private with System;
 
-private with Unix;
-private with C89.Errno;
+private with Libc;
+private with Libc.Errno;
 
 package body Linted.Windows is
-   package Errno renames C89.Errno;
+   package Errno renames Libc.Errno;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
    use type C.int;
    use type C.size_t;
-   use type Unix.ssize_t;
+   use type Libc.ssize_t;
    use type Interfaces.Unsigned_32;
    use type Interfaces.Unsigned_8;
    use type Storage_Elements.Storage_Element;
@@ -44,7 +44,7 @@ package body Linted.Windows is
       declare
 	 Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
       begin
-	 if Unix.PRead (C.int (KO), Convert (Buf (1)'Unchecked_Access), 4, 0) < 0 then
+	 if Libc.PRead (C.int (KO), Convert (Buf (1)'Unchecked_Access), 4, 0) < 0 then
 	    Win := 0;
 	    Err := Errors.Error (Errno.Errno);
 	    return;

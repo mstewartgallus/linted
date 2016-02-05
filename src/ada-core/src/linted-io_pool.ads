@@ -50,4 +50,19 @@ package Linted.IO_Pool is
       procedure Read (Object : KOs.KO; Buf : System.Address; Count : Interfaces.C.size_t);
       function Poll return Option_Reader_Events.Option;
    end Reader_Worker;
+
+   type Poll_Events is (Poll_Events_Read, Poll_Events_Write);
+
+   type Poller_Event is record
+      Err : Errors.Error;
+   end record;
+
+   package Option_Poller_Events is new Linted.Options (Poller_Event);
+
+   generic
+      Event_Trigger : not null access Linted.Triggers.Trigger;
+   package Poller_Worker is
+      procedure Watch (Object : KOs.KO; Events : Poll_Events);
+      function Poll return Option_Poller_Events.Option;
+   end Poller_Worker;
 end Linted.IO_Pool;

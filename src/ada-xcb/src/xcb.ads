@@ -1,14 +1,25 @@
-pragma Ada_2005;
-pragma Style_Checks (Off);
-
+-- Copyright 2015 Steven Stewart-Gallus
+--
+-- Licensed under the Apache License, Version 2.0 (the "License");
+-- you may not use this file except in compliance with the License.
+-- You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing, software
+-- distributed under the License is distributed on an "AS IS" BASIS,
+-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+-- implied.  See the License for the specific language governing
+-- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 with System;
-with C99.Stdint;
+with Libc.Stdint;
 with Interfaces.C.Strings;
-limited with XCB.Xproto;
+limited with XCB.XProto;
 
 package XCB is
    pragma Preelaborate;
+   pragma Link_With ("-lxcb");
 
    X_PROTOCOL : constant := 11;
    X_PROTOCOL_REVISION : constant := 0;
@@ -40,47 +51,47 @@ package XCB is
    --  skipped anonymous struct anon_26
 
    type xcb_generic_reply_t is record
-      response_type : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:126
-      pad0 : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:127
-      sequence : aliased C99.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:128
-      length : aliased C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:129
+      response_type : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:126
+      pad0 : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:127
+      sequence : aliased Libc.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:128
+      length : aliased Libc.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:129
    end record;
    pragma Convention (C_Pass_By_Copy, xcb_generic_reply_t);  -- /usr/include/xcb/xcb.h:130
 
-   type xcb_generic_event_t_pad_array is array (0 .. 6) of aliased C99.Stdint.uint32_t;
+   type xcb_generic_event_t_pad_array is array (0 .. 6) of aliased Libc.Stdint.uint32_t;
    type xcb_generic_event_t is record
-      response_type : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:138
-      pad0 : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:139
-      sequence : aliased C99.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:140
+      response_type : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:138
+      pad0 : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:139
+      sequence : aliased Libc.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:140
       pad : aliased xcb_generic_event_t_pad_array;  -- /usr/include/xcb/xcb.h:141
-      full_sequence : aliased C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:142
+      full_sequence : aliased Libc.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:142
    end record;
    pragma Convention (C_Pass_By_Copy, xcb_generic_event_t);  -- /usr/include/xcb/xcb.h:143
 
-   type xcb_ge_event_t_pad_array is array (0 .. 4) of aliased C99.Stdint.uint32_t;
+   type xcb_ge_event_t_pad_array is array (0 .. 4) of aliased Libc.Stdint.uint32_t;
    type xcb_ge_event_t is record
-      response_type : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:155
-      pad0 : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:156
-      sequence : aliased C99.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:157
-      length : aliased C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:158
-      event_type : aliased C99.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:159
-      pad1 : aliased C99.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:160
+      response_type : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:155
+      pad0 : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:156
+      sequence : aliased Libc.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:157
+      length : aliased Libc.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:158
+      event_type : aliased Libc.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:159
+      pad1 : aliased Libc.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:160
       pad : aliased xcb_ge_event_t_pad_array;  -- /usr/include/xcb/xcb.h:161
-      full_sequence : aliased C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:162
+      full_sequence : aliased Libc.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:162
    end record;
    pragma Convention (C_Pass_By_Copy, xcb_ge_event_t);  -- /usr/include/xcb/xcb.h:163
 
-   type xcb_generic_error_t_pad_array is array (0 .. 4) of aliased C99.Stdint.uint32_t;
+   type xcb_generic_error_t_pad_array is array (0 .. 4) of aliased Libc.Stdint.uint32_t;
    type xcb_generic_error_t is record
-      response_type : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:171
-      error_code : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:172
-      sequence : aliased C99.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:173
-      resource_id : aliased C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:174
-      minor_code : aliased C99.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:175
-      major_code : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:176
-      pad0 : aliased C99.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:177
+      response_type : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:171
+      error_code : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:172
+      sequence : aliased Libc.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:173
+      resource_id : aliased Libc.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:174
+      minor_code : aliased Libc.Stdint.uint16_t;  -- /usr/include/xcb/xcb.h:175
+      major_code : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:176
+      pad0 : aliased Libc.Stdint.uint8_t;  -- /usr/include/xcb/xcb.h:177
       pad : aliased xcb_generic_error_t_pad_array;  -- /usr/include/xcb/xcb.h:178
-      full_sequence : aliased C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:179
+      full_sequence : aliased Libc.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:179
    end record;
    pragma Convention (C_Pass_By_Copy, xcb_generic_error_t);  -- /usr/include/xcb/xcb.h:180
    type xcb_generic_error_t_access is access all xcb_generic_error_t;
@@ -98,22 +109,22 @@ package XCB is
    end record;
    pragma Convention (C_Pass_By_Copy, xcb_auth_info_t);  -- /usr/include/xcb/xcb.h:216
 
-   function xcb_flush (c : xcb_connection_t) return int;  -- /usr/include/xcb/xcb.h:234
+   function xcb_flush (c : xcb_connection_t_access) return int;  -- /usr/include/xcb/xcb.h:234
    pragma Import (C, xcb_flush, "xcb_flush");
 
-   function xcb_get_maximum_request_length (c : xcb_connection_t) return C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:251
+   function xcb_get_maximum_request_length (c : xcb_connection_t_access) return Libc.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:251
    pragma Import (C, xcb_get_maximum_request_length, "xcb_get_maximum_request_length");
 
-   procedure xcb_prefetch_maximum_request_length (c : xcb_connection_t);  -- /usr/include/xcb/xcb.h:270
+   procedure xcb_prefetch_maximum_request_length (c : xcb_connection_t_access);  -- /usr/include/xcb/xcb.h:270
    pragma Import (C, xcb_prefetch_maximum_request_length, "xcb_prefetch_maximum_request_length");
 
-   function xcb_wait_for_event (c : xcb_connection_t) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:284
+   function xcb_wait_for_event (c : xcb_connection_t_access) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:284
    pragma Import (C, xcb_wait_for_event, "xcb_wait_for_event");
 
-   function xcb_poll_for_event (c : xcb_connection_t) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:297
+   function xcb_poll_for_event (c : xcb_connection_t_access) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:297
    pragma Import (C, xcb_poll_for_event, "xcb_poll_for_event");
 
-   function xcb_poll_for_queued_event (c : xcb_connection_t) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:313
+   function xcb_poll_for_queued_event (c : xcb_connection_t_access) return access xcb_generic_event_t;  -- /usr/include/xcb/xcb.h:313
    pragma Import (C, xcb_poll_for_queued_event, "xcb_poll_for_queued_event");
 
    type xcb_special_event_t is limited private;
@@ -131,8 +142,8 @@ package XCB is
    function xcb_register_for_special_xge
      (c : xcb_connection_t_access;
       ext : xcb_extension_t_access;
-      eid : C99.Stdint.uint32_t;
-      stamp : access C99.Stdint.uint32_t) return xcb_special_event_t_access;  -- /usr/include/xcb/xcb.h:337
+      eid : Libc.Stdint.uint32_t;
+      stamp : access Libc.Stdint.uint32_t) return xcb_special_event_t_access;  -- /usr/include/xcb/xcb.h:337
    pragma Import (C, xcb_register_for_special_xge, "xcb_register_for_special_xge");
 
    procedure xcb_unregister_for_special_event (c : xcb_connection_t_access; se : xcb_special_event_t);  -- /usr/include/xcb/xcb.h:345
@@ -144,25 +155,25 @@ package XCB is
    procedure xcb_discard_reply (c : xcb_connection_t_access; sequence : unsigned);  -- /usr/include/xcb/xcb.h:380
    pragma Import (C, xcb_discard_reply, "xcb_discard_reply");
 
-   function xcb_get_extension_data (c : xcb_connection_t_access; ext : xcb_extension_t) return access constant XCB.Xproto.xcb_query_extension_reply_t;  -- /usr/include/xcb/xcb.h:401
+   function xcb_get_extension_data (c : xcb_connection_t_access; ext : xcb_extension_t) return access constant XCB.XProto.xcb_query_extension_reply_t;  -- /usr/include/xcb/xcb.h:401
    pragma Import (C, xcb_get_extension_data, "xcb_get_extension_data");
 
    procedure xcb_prefetch_extension_data (c : xcb_connection_t_access; ext : xcb_extension_t);  -- /usr/include/xcb/xcb.h:414
    pragma Import (C, xcb_prefetch_extension_data, "xcb_prefetch_extension_data");
 
-   function xcb_get_setup (c : xcb_connection_t) return access constant XCB.Xproto.xcb_setup_t;  -- /usr/include/xcb/xcb.h:437
+   function xcb_get_setup (c : xcb_connection_t_access) return access constant XCB.XProto.xcb_setup_t;  -- /usr/include/xcb/xcb.h:437
    pragma Import (C, xcb_get_setup, "xcb_get_setup");
 
-   function xcb_get_file_descriptor (c : xcb_connection_t) return int;  -- /usr/include/xcb/xcb.h:447
+   function xcb_get_file_descriptor (c : xcb_connection_t_access) return int;  -- /usr/include/xcb/xcb.h:447
    pragma Import (C, xcb_get_file_descriptor, "xcb_get_file_descriptor");
 
-   function xcb_connection_has_error (c : xcb_connection_t) return int;  -- /usr/include/xcb/xcb.h:466
+   function xcb_connection_has_error (c : xcb_connection_t_access) return int;  -- /usr/include/xcb/xcb.h:466
    pragma Import (C, xcb_connection_has_error, "xcb_connection_has_error");
 
    function xcb_connect_to_fd (fd : int; auth_info : access xcb_auth_info_t) return xcb_connection_t_access;  -- /usr/include/xcb/xcb.h:480
    pragma Import (C, xcb_connect_to_fd, "xcb_connect_to_fd");
 
-   procedure xcb_disconnect (c : xcb_connection_t);  -- /usr/include/xcb/xcb.h:489
+   procedure xcb_disconnect (c : xcb_connection_t_access);  -- /usr/include/xcb/xcb.h:489
    pragma Import (C, xcb_disconnect, "xcb_disconnect");
 
    function xcb_parse_display
@@ -181,7 +192,7 @@ package XCB is
       screen : access int) return xcb_connection_t_access;  -- /usr/include/xcb/xcb.h:539
    pragma Import (C, xcb_connect_to_display_with_auth_info, "xcb_connect_to_display_with_auth_info");
 
-   function xcb_generate_id (c : xcb_connection_t) return C99.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:552
+   function xcb_generate_id (c : xcb_connection_t_access) return Libc.Stdint.uint32_t;  -- /usr/include/xcb/xcb.h:552
    pragma Import (C, xcb_generate_id, "xcb_generate_id");
 private
    type xcb_connection_t is limited record null; end record;
