@@ -27,6 +27,12 @@ package Libc.Time.GNU is
 
    type timer_t is new System.Address;
 
+   type timeval is record
+      tv_sec : aliased time_t;
+      tv_usec : aliased long;
+   end record;
+   pragma Convention (C_Pass_By_Copy, timeval);
+
    type timespec is record
       tv_sec : aliased time_t;  -- /usr/include/time.h:122
       tv_nsec : aliased long;  -- /usr/include/time.h:123

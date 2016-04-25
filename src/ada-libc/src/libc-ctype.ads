@@ -12,7 +12,6 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
-with Libc.xlocale_h;
 
 package Libc.Ctype is
    pragma Pure;
