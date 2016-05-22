@@ -26,7 +26,6 @@ with Pulse.Sample;
 
 package Pulse.Context is
 
-   --  skipped empty struct pa_context
    type pa_context is limited private;
    type pa_context_access is access all pa_context;
 

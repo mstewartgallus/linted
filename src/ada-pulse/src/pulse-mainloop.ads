@@ -48,7 +48,7 @@ package Pulse.Mainloop is
       retval : access int) return int;  -- /usr/include/pulse/mainloop.h:109
    pragma Import (C, pa_mainloop_iterate, "pa_mainloop_iterate");
 
-   function pa_mainloop_run (m : pa_mainloop_access; retval : access int) return int;  -- /usr/include/pulse/mainloop.h:112
+   function pa_mainloop_run (m : pa_mainloop_access; retval : out int) return int;  -- /usr/include/pulse/mainloop.h:112
    pragma Import (C, pa_mainloop_run, "pa_mainloop_run");
 
    function pa_mainloop_get_api (m : pa_mainloop_access) return access Pulse.Mainloop.Api.pa_mainloop_api;  -- /usr/include/pulse/mainloop.h:117

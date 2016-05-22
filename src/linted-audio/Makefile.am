@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2015 Steven Stewart-Gallus
+# Copyright 2016 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,32 +16,19 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-audio
 
-%C%_linted_audio_SOURCES=
-%C%_linted_audio_CPPFLAGS=
-%C%_linted_audio_LDADD=\
-  src/start/libstart.la\
-  src/error/liberror.la\
-  src/log/liblog.la
+EXTRA_DIST+=\
+  %D%/audio.gpr\
+  \
+  %D%/src
 
-if POSIX_API
-%C%_linted_audio_SOURCES+=%D%/audio-pulse.c
-%C%_linted_audio_CPPFLAGS+=$(PULSE_FLAGS)
-%C%_linted_audio_LDADD+=\
-  -lm\
-  $(PULSE_LIBS)
-endif
+.PHONY: %D%/linted-audio$(EXEEXT)
+%D%/linted-audio$(EXEEXT): src/ada/shared.gpr src/ada/config.cgpr
+	$(linted_V_GPRBUILD) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/audio.gpr
 
-if WINDOWS_API
-%C%_linted_audio_SOURCES+=%D%/resources.rc %D%/audio.manifest
-%C%_linted_audio_SOURCES+=%D%/audio-windows.c
-%C%_linted_audio_LDADD+=\
-  %D%/resources.$(OBJEXT)\
-  $(USER_LIBS)
-
-%D%/resources.$(OBJEXT): %D%/audio.manifest
-endif
-
-%C%_linted_audio_CPPFLAGS+=$(AM_CPPFLAGS)
+LINTED_CLEAN_RULES+=clean-%C%
+.PHONY: clean-%C%
+clean-%C%:
+	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/audio.gpr
 
 dist_pkgdefaultconf_DATA+=%D%/audio.fstab
 dist_pkgdefaultunits_DATA+=%D%/units/linted-audio.service

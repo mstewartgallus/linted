@@ -81,28 +81,28 @@ package Pulse.Sample is
 
    subtype pa_usec_t is Libc.Stdint.uint64_t;  -- /usr/include/pulse/sample.h:262
 
-   function pa_bytes_per_second (spec : System.Address) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:265
+   function pa_bytes_per_second (spec : access constant pa_sample_spec) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:265
    pragma Import (C, pa_bytes_per_second, "pa_bytes_per_second");
 
-   function pa_frame_size (spec : System.Address) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:268
+   function pa_frame_size (spec : access constant pa_sample_spec) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:268
    pragma Import (C, pa_frame_size, "pa_frame_size");
 
-   function pa_sample_size (spec : System.Address) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:271
+   function pa_sample_size (spec : access constant pa_sample_spec) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:271
    pragma Import (C, pa_sample_size, "pa_sample_size");
 
    function pa_sample_size_of_format (f : pa_sample_format_t) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:275
    pragma Import (C, pa_sample_size_of_format, "pa_sample_size_of_format");
 
-   function pa_bytes_to_usec (length : Libc.Stdint.uint64_t; spec : System.Address) return pa_usec_t;  -- /usr/include/pulse/sample.h:280
+   function pa_bytes_to_usec (length : Libc.Stdint.uint64_t; spec : access constant pa_sample_spec) return pa_usec_t;  -- /usr/include/pulse/sample.h:280
    pragma Import (C, pa_bytes_to_usec, "pa_bytes_to_usec");
 
-   function pa_usec_to_bytes (t : pa_usec_t; spec : System.Address) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:285
+   function pa_usec_to_bytes (t : pa_usec_t; spec : access constant pa_sample_spec) return Libc.Stddef.size_t;  -- /usr/include/pulse/sample.h:285
    pragma Import (C, pa_usec_to_bytes, "pa_usec_to_bytes");
 
    function pa_sample_spec_init (spec : access pa_sample_spec) return access pa_sample_spec;  -- /usr/include/pulse/sample.h:290
    pragma Import (C, pa_sample_spec_init, "pa_sample_spec_init");
 
-   function pa_sample_spec_valid (spec : System.Address) return int;  -- /usr/include/pulse/sample.h:293
+   function pa_sample_spec_valid (spec : access constant pa_sample_spec) return int;  -- /usr/include/pulse/sample.h:293
    pragma Import (C, pa_sample_spec_valid, "pa_sample_spec_valid");
 
    function pa_sample_spec_equal (a : System.Address; b : System.Address) return int;  -- /usr/include/pulse/sample.h:296
@@ -117,7 +117,7 @@ package Pulse.Sample is
    function pa_sample_spec_snprint
      (s : Interfaces.C.Strings.chars_ptr;
       l : Libc.Stddef.size_t;
-      spec : System.Address) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/sample.h:312
+      spec : access constant pa_sample_spec) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/sample.h:312
    pragma Import (C, pa_sample_spec_snprint, "pa_sample_spec_snprint");
 
    function pa_bytes_snprint
