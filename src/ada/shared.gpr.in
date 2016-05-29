@@ -28,8 +28,8 @@ abstract project Shared is
 				       "-gnatwh",
 				       "-gnatw.i",
 				       "-gnatw.k",
-				       "-gnatw.o",
 				       "-gnatwt",
+				       "-gnatwF",
 
 				       "-g",
 --				       "-E",

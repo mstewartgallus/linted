@@ -23,6 +23,7 @@ private with Interfaces.C;
 
 private with Pulse.Context;
 private with Pulse.Def;
+private with Pulse.Error;
 private with Pulse.Mainloop;
 private with Pulse.Proplist;
 private with Pulse.Sample;
@@ -39,6 +40,7 @@ package body Linted.Audio is
 
    use Pulse.Context;
    use Pulse.Def;
+   use Pulse.Error;
    use Pulse.Mainloop;
    use Pulse.Proplist;
    use Pulse.Sample;
@@ -52,9 +54,9 @@ package body Linted.Audio is
 
    Sampledata : array (0 .. Integer (GREATEST_PERIOD) - 1) of aliased short;
 
-   Test_Sample_Spec : aliased constant Pa_Sample_Spec := (Format => PA_SAMPLE_S16LE,
-							  Rate => unsigned (SAMPLE_RATE),
-							  Channels => 1);
+   Test_Sample_Spec : aliased constant pa_sample_spec := (format => PA_SAMPLE_S16LE,
+							  rate => unsigned (SAMPLE_RATE),
+							  channels => 1);
 
    function Square_Wave (II : Integer; Freq : Float; Amplitude : Float;
 						     Sample : Float) return Float;
@@ -62,7 +64,7 @@ package body Linted.Audio is
 			   Freq : Float;
 			   Amplitude : Float;
 			   Sample : Float) return Float;
-   function Sin_Wave (Ii : Integer;
+   function Sin_Wave (II : Integer;
 		      Freq : Float;
 		      Amplitude : Float;
 		      Sample : Float) return Float;
@@ -73,14 +75,7 @@ package body Linted.Audio is
    task Main_Task;
    task body Main_Task is
       Mainloop : pa_mainloop_access;
-      Proplist : pa_proplist_access;
-
-      Set : int;
-
       Context : pa_context_access;
-
-      Err : int;
-
       Retval : int;
    begin
       for II in Sampledata'Range loop
@@ -90,19 +85,60 @@ package body Linted.Audio is
       end loop;
 
       Mainloop := pa_mainloop_new;
-      Proplist := pa_proplist_new;
+      if null = Mainloop then
+	 raise Storage_Error with "Cannot create a mainloop";
+      end if;
 
-      Set := pa_proplist_sets (Proplist, New_String ("PULSE_PROP_media.role"), New_String ("game"));
+      declare
+	 Proplist : pa_proplist_access;
+	 Role_Str : chars_ptr;
+	 Role : chars_ptr;
+	 Game_Name : chars_ptr;
+      begin
+	 Proplist := pa_proplist_new;
+	 if null = Proplist then
+	    raise Storage_Error with "Cannot create a property list";
+	 end if;
 
-      Context := pa_context_new_with_proplist (pa_mainloop_get_api (Mainloop),
-					       New_String ("Linted"),
-					       Proplist);
+	 Role_Str := New_String ("PULSE_PROP_media.role");
+	 Role := New_String ("game");
+
+	 if 0 < pa_proplist_sets (Proplist, Role, Role_Str) then
+	    raise Storage_Error with "Cannot set property list values";
+	 end if;
+
+	 Free (Role);
+	 Free (Role_Str);
+
+	 Game_Name := New_String ("Linted");
+
+	 Context := pa_context_new_with_proplist (pa_mainloop_get_api (Mainloop),
+						  Game_Name,
+						  Proplist);
+	 if null = Context then
+	    raise Storage_Error with "Cannot create a new context";
+	 end if;
+
+	 Free (Game_Name);
+
+	 pa_proplist_free (Proplist);
+      end;
 
       pa_context_set_state_callback (Context, On_Notify'Access, System.Null_Address);
 
-      Err := pa_context_connect (Context, Null_Ptr, PA_CONTEXT_NOAUTOSPAWN, null);
+      if pa_context_connect (Context, Null_Ptr, PA_CONTEXT_NOAUTOSPAWN, null) < 0 then
+	 raise Program_Error with "Cannot connect context: " &
+	   Value (pa_strerror (pa_context_errno (Context)));
+      end if;
 
-      Err := pa_mainloop_run (Mainloop, Retval);
+      if pa_mainloop_run (Mainloop, Retval) < 0 then
+	 raise Program_Error with "Cannot run mainloop: " &
+	   Value (pa_strerror (pa_context_errno (Context)));
+      end if;
+
+      pa_context_unref (Context);
+
+      pa_mainloop_free (Mainloop);
    end Main_Task;
 
    function Square_Wave (II : Integer;
@@ -110,8 +146,8 @@ package body Linted.Audio is
 			 Amplitude : Float;
 			 Sample : Float) return Float
    is
-      Frequency : Float := Freq / Sample;
-      Period : Float := 1.0 / Frequency;
+      Frequency : constant Float := Freq / Sample;
+      Period : constant Float := 1.0 / Frequency;
    begin
       return Amplitude * ((Float (II mod Integer (Period)) + (Period / 2.0)) / Period);
    end Square_Wave;
@@ -121,8 +157,8 @@ package body Linted.Audio is
 			   Amplitude : Float;
 			   Sample : Float) return Float
    is
-      Frequency : Float := Freq / Sample;
-      Period : Float := 1.0 / Frequency;
+      Frequency : constant Float := Freq / Sample;
+      Period : constant Float := 1.0 / Frequency;
    begin
 
       return Amplitude * Float (II mod Integer (Period)) / Period;
@@ -133,8 +169,8 @@ package body Linted.Audio is
 		      Amplitude : Float;
 		      Sample : Float) return Float
    is
-      Frequency : Float := Freq / Sample;
-      Tau : Float := 6.28318530718;
+      Frequency : constant Float := Freq / Sample;
+      Tau : constant Float := 6.28318530718;
    begin
       return Amplitude * Ada.Numerics.Elementary_Functions.Sin (Tau * Frequency * Float (II));
    end Sin_Wave;
@@ -169,40 +205,46 @@ package body Linted.Audio is
    procedure On_Ready (c : pa_context_access) is
       Stream : pa_stream_access;
 
-      Buffer_Attr : aliased Pa_Buffer_Attr;
-      Latency : unsigned_long := 20000;
+      Buffer_Attr : aliased pa_buffer_attr;
+      Latency : constant unsigned_long := 20000;
 
-      Err : int;
+      Stream_Name : chars_ptr;
    begin
-      Stream := pa_stream_new (c, New_String ("Background_Music"), Test_Sample_Spec'Access, null);
+      Stream_Name := New_String ("Background Music");
+
+      Stream := pa_stream_new (c, Stream_Name, Test_Sample_Spec'Access, null);
+
+      Free (Stream_Name);
 
       pa_stream_set_write_callback (Stream, On_Ok_To_Write'Access, System.Null_Address);
 
-      Buffer_Attr.maxlength := unsigned (pa_usec_to_bytes (latency, Test_Sample_Spec'Access));
+      Buffer_Attr.maxlength := unsigned (pa_usec_to_bytes (Latency, Test_Sample_Spec'Access));
       Buffer_Attr.minreq := unsigned (pa_usec_to_bytes (0, Test_Sample_Spec'Access));
       Buffer_Attr.prebuf := -1;
-      Buffer_Attr.tlength := unsigned (pa_usec_to_bytes (latency, Test_Sample_Spec'Access));
+      Buffer_Attr.tlength := unsigned (pa_usec_to_bytes (Latency, Test_Sample_Spec'Access));
 
-      Err := pa_stream_connect_playback (Stream, Null_Ptr, Buffer_Attr'Access,
+      if pa_stream_connect_playback (Stream, Null_Ptr, Buffer_Attr'Access,
 					 PA_STREAM_INTERPOLATE_TIMING or
 					   PA_STREAM_ADJUST_LATENCY or
 					   PA_STREAM_AUTO_TIMING_UPDATE,
 					 null,
-					 System.Null_Address);
+				     System.Null_Address) < 0
+      then
+	 raise Program_Error with "pa_stream_connect_playback: " &
+	   Value (pa_strerror (pa_context_errno (c)));
+      end if;
    end On_Ready;
 
    Sampleoffs : Libc.Stddef.size_t := 0;
    procedure On_Ok_To_Write (s : pa_stream_access;
 			     nbytes : Libc.Stddef.size_t;
 			     userdata : System.Address) is
-      Err : int;
-
       Mybytes : Libc.Stddef.size_t := nbytes;
 
       type Short_Access is not null access all short;
       function Convert is new Ada.Unchecked_Conversion (Short_Access, System.Address);
    begin
-      if Sampleoffs * 2 + mybytes >
+      if Sampleoffs * 2 + Mybytes >
 	Libc.Stddef.size_t (GREATEST_PERIOD) * 2 then
 	 Sampleoffs := 0;
       end if;
@@ -211,8 +253,11 @@ package body Linted.Audio is
 	 Mybytes := Libc.Stddef.size_t (GREATEST_PERIOD) * 2;
       end if;
 
-      Err := pa_stream_write (s, Convert (Sampledata (Integer (Sampleoffs))'Access), Mybytes,
-			      null, 0, PA_SEEK_RELATIVE);
+      if pa_stream_write (s, Convert (Sampledata (Integer (Sampleoffs))'Access), Mybytes,
+			  null, 0, PA_SEEK_RELATIVE) < 0
+      then
+	 raise Program_Error with "pa_stream_write";
+      end if;
 
       Sampleoffs := Sampleoffs + nbytes / 2;
    end On_Ok_To_Write;
