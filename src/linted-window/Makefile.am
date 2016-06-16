@@ -26,6 +26,7 @@ EXTRA_DIST+=%D%/LntdWindowC.nc %D%/LntdWindowP.nc
   src/env/libenv.la\
   src/io/libio.la\
   src/ko/libko.la\
+  src/log/liblog.la\
   \
   src/window/libwindow.la
 

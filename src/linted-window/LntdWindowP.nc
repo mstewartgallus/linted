@@ -19,6 +19,7 @@
 #include "lntd/env.h"
 #include "lntd/io.h"
 #include "lntd/ko.h"
+#include "lntd/log.h"
 #include "lntd/mem.h"
 #include "lntd/proc.h"
 #include "lntd/util.h"
@@ -66,6 +67,7 @@ implementation
 	{
 		lntd_error err = 0;
 
+		char *display_string;
 		char const *kill_ko_path;
 		char const *window_path;
 		char const *gui_notifier_path;
@@ -176,17 +178,23 @@ implementation
 		}
 
 		{
+			char *xx;
+			err = lntd_env_get("DISPLAY", &xx);
+			if (err != 0)
+				goto destroy_window;
+			display_string = xx;
+		}
+
+		{
 			int xx;
-			connection = xcb_connect(0, &xx);
+			connection = xcb_connect(display_string, &xx);
 			if (0 == connection) {
 				err = LNTD_ERROR_UNIMPLEMENTED;
 				goto destroy_window;
 			}
 			err = lntd_xcb_conn_error(connection);
-			if (err != 0) {
-				err = LNTD_ERROR_UNIMPLEMENTED;
+			if (err != 0)
 				goto destroy_window;
-			}
 			screen_number = (unsigned)xx;
 		}
 

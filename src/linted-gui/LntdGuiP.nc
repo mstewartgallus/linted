@@ -146,10 +146,8 @@ implementation
 			goto destroy_window;
 		}
 		err = lntd_xcb_conn_error(connection);
-		if (err != 0) {
-			err = LNTD_ERROR_UNIMPLEMENTED;
+		if (err != 0)
 			goto destroy_window;
-		}
 
 		if (!xkb_x11_setup_xkb_extension(
 		        connection, XKB_X11_MIN_MAJOR_XKB_VERSION,

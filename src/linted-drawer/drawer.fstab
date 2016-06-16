@@ -17,6 +17,7 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 ../../window-notifier-drawer	run/window-notifier-drawer	none	touch,bind
 
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,ro,bind
+"${XAUTHORITY}"	"./${XAUTHORITY}"	none	touch,ro,bind
 
 /dev/dri	dev/dri	none	mkdir,shared,bind
 /dev/log	dev/log	none	touch,bind
@@ -30,3 +31,6 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 /usr	usr	none	mkdir,shared,bind
 
 /bin	bin	none	mkdir,shared,bind
+
+
+

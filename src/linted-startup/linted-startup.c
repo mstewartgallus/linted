@@ -67,6 +67,7 @@ static lntd_error conf_socket_pipe_size(struct conf *conf,
 static char const *const *conf_service_exec_start(struct conf *conf);
 static char const *const *
 conf_service_pass_environment(struct conf *conf);
+static char const *const *conf_service_environment(struct conf *conf);
 static char const *const *
 conf_service_x_lntd_clone_flags(struct conf *conf);
 
@@ -944,6 +945,7 @@ service_activate(struct system_conf const *system_conf,
 	char const *const *command = conf_service_exec_start(conf);
 	char const *const *env_whitelist =
 	    conf_service_pass_environment(conf);
+	char const *const *env = conf_service_environment(conf);
 	char const *const *clone_flags =
 	    conf_service_x_lntd_clone_flags(conf);
 
@@ -1131,6 +1133,26 @@ service_activate(struct system_conf const *system_conf,
 
 	size_t envvars_size =
 	    null_list_size((char const *const *)envvars);
+
+	if (env != 0) {
+		for (size_t ii = 0U; env[ii] != 0; ++ii) {
+			void *xx = envvars;
+			err = lntd_mem_realloc_array(
+			    &xx, envvars, envvars_size + 2U,
+			    sizeof envvars[0U]);
+			if (err != 0)
+				goto free_unit_name;
+			envvars = xx;
+			++envvars_size;
+			envvars[envvars_size] = 0;
+
+			char *yy = 0;
+			err = lntd_str_dup(&yy, env[ii]);
+			if (err != 0)
+				goto free_unit_name;
+			envvars[envvars_size - 1U] = yy;
+		}
+	}
 
 	char *service_name_setting;
 	{
@@ -1651,6 +1673,10 @@ static char const *const *
 conf_service_pass_environment(struct conf *conf)
 {
 	return conf_find(conf, "Service", "PassEnvironment");
+}
+static char const *const *conf_service_environment(struct conf *conf)
+{
+	return conf_find(conf, "Service", "Environment");
 }
 static char const *const *
 conf_service_x_lntd_clone_flags(struct conf *conf)

@@ -138,10 +138,8 @@ implementation
 			goto destroy_window;
 		}
 		err = lntd_xcb_conn_error(connection);
-		if (err != 0) {
-			err = LNTD_ERROR_UNIMPLEMENTED;
+		if (err != 0)
 			goto destroy_window;
-		}
 
 		{
 			struct lntd_gpu_context *xx;
