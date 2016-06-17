@@ -1559,7 +1559,7 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 				break;
 
 			case WRDE_NOSPACE:
-				err = ENOMEM;
+				err = LNTD_ERROR_OUT_OF_MEMORY;
 				break;
 			}
 

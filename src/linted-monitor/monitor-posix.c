@@ -1249,9 +1249,9 @@ detach_from_process:
 
 	if (0 == unit)
 		return err;
-
+#if 0
 	err = service_activate(monitor, unit, false);
-
+#endif
 	return err;
 }
 

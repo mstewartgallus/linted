@@ -581,7 +581,7 @@ static unsigned char lntd_start_main(char const *const process_name,
 				break;
 
 			case WRDE_NOSPACE:
-				err = ENOMEM;
+				err = LNTD_ERROR_OUT_OF_MEMORY;
 				break;
 			}
 			if (err != 0) {
@@ -1405,8 +1405,9 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 		if (mkdir_flag) {
 			err = lntd_dir_create(0, LNTD_KO_CWD, dir, 0U,
 			                      S_IRWXU);
-			if (err != 0)
+			if (err != 0) {
 				return err;
+			}
 		} else if (touch_flag) {
 			/* Disgusting */
 			char *xx = dir;
@@ -1442,7 +1443,6 @@ mount_directories(struct mount_args const *mount_args, size_t size)
 			if (-1 == mount(fsname, dir, type, mountflags,
 			                data)) {
 				err = errno;
-				LNTD_ASSUME(err != 0);
 				return err;
 			}
 			continue;

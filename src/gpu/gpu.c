@@ -173,8 +173,7 @@ static EGLint const attr_list[] = {
     /**/ EGL_CONFORMANT, EGL_OPENGL_ES3_BIT_KHR,
     /**/ EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
     //   /**/ EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
-    /**/ EGL_SURFACE_TYPE,
-    EGL_WINDOW_BIT | EGL_SWAP_BEHAVIOR_PRESERVED_BIT,
+    /**/ EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
     /**/ EGL_DEPTH_SIZE, 1, EGL_NONE};
 
 static EGLint const context_attr[] = {EGL_CONTEXT_CLIENT_VERSION,
@@ -283,6 +282,7 @@ lntd_gpu_context_create(struct lntd_gpu_context **gpu_contextp)
 	}
 
 	bool egl_khr_create_context = false;
+	bool egl_khr_get_all_proc_addresses = false;
 	char const *exts = eglQueryString(display, EGL_EXTENSIONS);
 	for (;;) {
 		char const *end = strchr(exts, ' ');
@@ -296,13 +296,21 @@ lntd_gpu_context_create(struct lntd_gpu_context **gpu_contextp)
 			egl_khr_create_context = true;
 		}
 
+		if (0 == strncmp("EGL_KHR_get_all_proc_addresses", exts,
+		                 dist_to_end)) {
+			egl_khr_get_all_proc_addresses = true;
+		}
+
 		if ('\0' == *end)
 			break;
 
 		exts = end + 1U;
 	}
-	if (!egl_khr_create_context)
+	if (!egl_khr_create_context &&
+	    !egl_khr_get_all_proc_addresses) {
+		err = LNTD_ERROR_UNIMPLEMENTED;
 		goto destroy_display;
+	}
 
 	size_t matching_config_count;
 	{
@@ -408,8 +416,8 @@ free_configs:
 		goto destroy_display;
 
 	if (!got_config) {
-		for (;;)
-			;
+		err = LNTD_ERROR_UNIMPLEMENTED;
+		goto destroy_display;
 	}
 
 	{
@@ -1026,20 +1034,6 @@ static lntd_error create_egl_surface(struct privates *privates)
 		case EGL_BAD_ALLOC:
 			return LNTD_ERROR_OUT_OF_MEMORY;
 		}
-
-		LNTD_ASSERT(false);
-	}
-
-	if (EGL_FALSE == eglSurfaceAttrib(display, surface,
-	                                  EGL_SWAP_BEHAVIOR,
-	                                  EGL_BUFFER_DESTROYED)) {
-		EGLint err_egl = eglGetError();
-		LNTD_ASSUME(err_egl != EGL_SUCCESS);
-
-		LNTD_ASSERT(err_egl != EGL_BAD_DISPLAY);
-		LNTD_ASSERT(err_egl != EGL_NOT_INITIALIZED);
-		LNTD_ASSERT(err_egl != EGL_BAD_ATTRIBUTE);
-		LNTD_ASSERT(err_egl != EGL_BAD_MATCH);
 
 		LNTD_ASSERT(false);
 	}

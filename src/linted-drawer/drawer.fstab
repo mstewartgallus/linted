@@ -19,6 +19,8 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 /tmp/.X11-unix	tmp/.X11-unix	none	mkdir,ro,bind
 "${XAUTHORITY}"	"./${XAUTHORITY}"	none	touch,ro,bind
 
+/run/udev	run/udev	none	mkdir,shared,bind
+
 /dev/dri	dev/dri	none	mkdir,shared,bind
 /dev/log	dev/log	none	touch,bind
 /dev/null	dev/null	none	touch,bind
@@ -32,5 +34,7 @@ tmpfs	run	tmpfs	mkdir,nosuid,noexec,mode=700
 
 /bin	bin	none	mkdir,shared,bind
 
+sysfs	sys	sysfs	mkdir
 
+/run/udev	run/udev	none	mkdir,shared,bind
 

@@ -91,7 +91,7 @@ lntd_error lntd_str_append(char **bufp, size_t *capp, size_t *sizep,
 	size_t size = *sizep;
 
 	if (size > SIZE_MAX - strsize)
-		return ENOMEM;
+		return LNTD_ERROR_OUT_OF_MEMORY;
 
 	size_t new_size = size + strsize;
 
