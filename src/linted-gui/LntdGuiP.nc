@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Steven Stewart-Gallus
+ * Copyright 2015, 2016 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 #include "config.h"
 
+#include "lntd/env.h"
 #include "lntd/error.h"
 #include "lntd/ko.h"
 #include "lntd/mem.h"
@@ -92,6 +93,7 @@ implementation
 	{
 		lntd_error err = 0;
 
+		char *display_string;
 		char const *window_path;
 		char const *window_notifier_path;
 		char const *controller_path;
@@ -140,7 +142,15 @@ implementation
 			controller = xx;
 		}
 
-		connection = xcb_connect(0, 0);
+		{
+			char *xx;
+			err = lntd_env_get("DISPLAY", &xx);
+			if (err != 0)
+				goto destroy_window;
+			display_string = xx;
+		}
+
+		connection = xcb_connect(display_string, 0);
 		if (0 == connection) {
 			err = LNTD_ERROR_UNIMPLEMENTED;
 			goto destroy_window;

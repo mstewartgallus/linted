@@ -18,6 +18,9 @@
  *
  * @todo Port to --host=x86_64-w64-mingw32
  *
+ * @todo Make the process monitor distinguish between transient faults
+ *       and persistent faults.
+ *
  * @todo Use length annotated strings instead of C strings.
  *
  * @todo Create a notification method.

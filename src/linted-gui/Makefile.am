@@ -20,6 +20,7 @@ pkglibexec_PROGRAMS+=%D%/linted-gui
 %C%_linted_gui_LDADD=\
   %D%/gui.o\
   \
+  src/env/libenv.la\
   src/error/liberror.la\
   src/ko/libko.la\
   src/xcb/libxcb.la\

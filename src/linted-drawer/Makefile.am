@@ -20,6 +20,7 @@ pkglibexec_PROGRAMS+=%D%/linted-drawer
 %C%_linted_drawer_LDADD=\
   %D%/drawer.o\
   \
+  src/env/libenv.la\
   src/error/liberror.la\
   src/gpu/libgpu.la\
   src/ko/libko.la\

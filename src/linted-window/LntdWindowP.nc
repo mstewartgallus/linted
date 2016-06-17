@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Steven Stewart-Gallus
+ * Copyright 2015, 2016 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -227,9 +227,9 @@ implementation
 
 		{
 			uint32_t value_mask =
-			    XCB_CW_BACK_PIXMAP | XCB_CW_BACKING_STORE;
+			    XCB_CW_BACK_PIXEL | XCB_CW_BACKING_STORE;
 			uint32_t const window_opts[] = {
-			    XCB_BACK_PIXMAP_NONE,
+			    screen->black_pixel,
 			    XCB_BACKING_STORE_WHEN_MAPPED};
 
 			create_win_ck = xcb_create_window_checked(

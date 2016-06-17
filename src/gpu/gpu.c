@@ -43,6 +43,8 @@
 #include <GLES3/gl3.h>
 
 struct config_attr {
+	EGLint renderable_type;
+
 	EGLint depth_size;
 
 	EGLint red_size;
@@ -170,6 +172,7 @@ struct matrix {
 static EGLint const attr_list[] = {
     /**/ EGL_CONFORMANT, EGL_OPENGL_ES3_BIT_KHR,
     /**/ EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
+    //   /**/ EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR,
     /**/ EGL_SURFACE_TYPE,
     EGL_WINDOW_BIT | EGL_SWAP_BEHAVIOR_PRESERVED_BIT,
     /**/ EGL_DEPTH_SIZE, 1, EGL_NONE};
@@ -279,6 +282,28 @@ lntd_gpu_context_create(struct lntd_gpu_context **gpu_contextp)
 		goto destroy_display;
 	}
 
+	bool egl_khr_create_context = false;
+	char const *exts = eglQueryString(display, EGL_EXTENSIONS);
+	for (;;) {
+		char const *end = strchr(exts, ' ');
+		if (0 == end) {
+			end = exts + strlen(exts);
+		}
+		size_t dist_to_end = end - exts;
+
+		if (0 == strncmp("EGL_KHR_create_context", exts,
+		                 dist_to_end)) {
+			egl_khr_create_context = true;
+		}
+
+		if ('\0' == *end)
+			break;
+
+		exts = end + 1U;
+	}
+	if (!egl_khr_create_context)
+		goto destroy_display;
+
 	size_t matching_config_count;
 	{
 		EGLint xx;
@@ -342,29 +367,38 @@ lntd_gpu_context_create(struct lntd_gpu_context **gpu_contextp)
 		LNTD_ASSERT(matching_config_count == (size_t)xx);
 	}
 
-	EGLConfig config = configs[0U];
-
+	EGLConfig config;
+	bool got_config = false;
 	{
 		struct config_attr attr;
-		get_egl_config_attr(&attr, display, config);
 
-		for (size_t ii = 1U; ii < matching_config_count; ++ii) {
+		for (size_t ii = 0U; ii < matching_config_count; ++ii) {
 			EGLConfig maybe_config = configs[ii];
 
 			struct config_attr maybe_attr;
 			get_egl_config_attr(&maybe_attr, display,
 			                    maybe_config);
 
-			if (maybe_attr.samples > attr.samples) {
-				attr = maybe_attr;
-				config = maybe_config;
-			}
+			if (!((maybe_attr.renderable_type &
+			       EGL_OPENGL_ES3_BIT_KHR) != 0))
+				continue;
+
+			if (!got_config)
+				goto choose_config;
+
+			if (maybe_attr.samples > attr.samples)
+				goto choose_config;
 
 			if (maybe_attr.sample_buffers >
-			    attr.sample_buffers) {
-				attr = maybe_attr;
-				config = maybe_config;
-			}
+			    attr.sample_buffers)
+				goto choose_config;
+
+			continue;
+
+		choose_config:
+			attr = maybe_attr;
+			config = maybe_config;
+			got_config = true;
 		}
 	}
 
@@ -372,6 +406,11 @@ free_configs:
 	lntd_mem_free(configs);
 	if (err != 0)
 		goto destroy_display;
+
+	if (!got_config) {
+		for (;;)
+			;
+	}
 
 	{
 		struct privates *xx = &gpu_context->privates;
@@ -1703,6 +1742,10 @@ static EGLBoolean get_egl_config_attr(struct config_attr *attr,
                                       EGLDisplay display,
                                       EGLConfig config)
 {
+	if (!eglGetConfigAttrib(display, config, EGL_RENDERABLE_TYPE,
+	                        &attr->renderable_type))
+		return EGL_FALSE;
+
 	if (!eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE,
 	                        &attr->depth_size))
 		return EGL_FALSE;

@@ -80,6 +80,23 @@ terminal) or from a `SIGKILL` from a set parent death signal.
        until they have been reparented to `init` before using
        `PR_SET_PDEATHSIG`.
 
+@section errors Error Handling
+
+There are two main types of faults: transient faults and persistent
+faults.
+
+There are transient faults such as memory corruption which can be
+resolved by aborting and letting the process monitor restart the
+process.
+
+There are permanent faults such as logic errors or unsupported system
+configurations for which the process monitor should not restart the
+process and for which the system should notify the user and wait for
+user input.
+
+Transient faults are probably best mapped to UNIX signals and
+permanent faults to nonzero process exit codes.
+
 @section ipc IPC
 
 So far we have chosen to use file FIFOs as they can be easily bound in
