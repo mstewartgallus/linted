@@ -64,11 +64,11 @@ implementation
 		struct myevent myevent;
 		void *data;
 		lntd_error err;
-		lntd_async_cmd_type type;
 		volatile uint32_t finished;
-		unsigned in_use : 1U;
-		unsigned have_waiter : 1U;
-		unsigned cancelled : 1U;
+		lntd_async_cmd_type type;
+		unsigned short in_use : 1U;
+		unsigned short have_waiter : 1U;
+		unsigned short cancelled : 1U;
 	};
 
 	size_t global_argc;
