@@ -29,9 +29,15 @@ package Linted.KOs is
    Standard_Output : constant KO;
    Standard_Error : constant KO;
 
+   type Open_Flags is mod 2 ** 32;
+
+   Read_Only : constant Open_Flags := 1;
+   Write_Only : constant Open_Flags := 2;
+   Read_Write : constant Open_Flags := 4;
+
    package KO_Results is new Linted.Results (KO);
 
-   function Open (Pathname : String) return KO_Results.Result;
+   function Open (Pathname : String; Flags : Open_Flags) return KO_Results.Result;
    function Close (Object : KO) return Errors.Error;
 
 private

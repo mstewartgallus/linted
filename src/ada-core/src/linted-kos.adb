@@ -20,15 +20,49 @@ package body Linted.KOs is
    package C renames Interfaces.C;
    package Errno renames Libc.Errno;
 
-   function Open (Pathname : String) return KO_Results.Result is
+   function Open (Pathname : String; Flags : Open_Flags) return KO_Results.Result is
       use type Errors.Error;
       use type C.unsigned;
 
       X : aliased C.char_array := C.To_C (Pathname);
       Err : Errors.Error;
       Fd : C.int;
+
+      C_Flags : C.unsigned := Libc.Fcntl.O_CLOEXEC;
+
+      Has_Read_Only : Boolean := (Flags and Read_Only) /= 0;
+      Has_Write_Only : Boolean := (Flags and Write_Only) /= 0;
+      Has_Read_Write : Boolean := (Flags and Read_Write) /= 0;
    begin
-      Fd := Libc.Fcntl.open (Interfaces.C.Strings.To_Chars_Ptr (X'Unchecked_Access), C.int (C.unsigned (Libc.Fcntl.O_RDWR) or Libc.Fcntl.O_CLOEXEC), 0);
+      if (Flags and not (Read_Only or Write_Only or Read_Write)) /= 0 then
+	 return (Erroneous => True, Err => Errors.Invalid_Parameter);
+      end if;
+
+      if Has_Read_Only and Has_Write_Only then
+	 return (Erroneous => True, Err => Errors.Invalid_Parameter);
+      end if;
+
+      if Has_Read_Only and Has_Read_Write then
+	 return (Erroneous => True, Err => Errors.Invalid_Parameter);
+      end if;
+
+      if Has_Write_Only and Has_Read_Write then
+	 return (Erroneous => True, Err => Errors.Invalid_Parameter);
+      end if;
+
+      if Has_Read_Only then
+	 C_Flags := C_Flags or Libc.Fcntl.O_RDONLY;
+      end if;
+
+      if Has_Write_Only then
+	 C_Flags := C_Flags or Libc.Fcntl.O_WRONLY;
+      end if;
+
+      if Has_Read_Write then
+	 C_Flags := C_Flags or Libc.Fcntl.O_RDWR;
+      end if;
+
+      Fd := Libc.Fcntl.open (Interfaces.C.Strings.To_Chars_Ptr (X'Unchecked_Access), C.int (C_Flags), 0);
       if Fd < 0 then
 	 Err := Errors.Error (Errno.Errno);
       else

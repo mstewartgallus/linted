@@ -24,7 +24,7 @@ package body Linted.Angles is
    end To_Angle;
 
    function To_Angle (X : Element_T;
-		     Y : Element_T) return Angle is
+		      Y : Element_T) return Angle is
    begin
       return (Value => (Element_T'Last / Y) * X  + X / Y);
    end To_Angle;
@@ -45,9 +45,9 @@ package body Linted.Angles is
    end "-";
 
    function Add_Clamped (Min : Angle;
-			Max : Angle;
-			Theta : Angle;
-			Phi : Angle) return Angle is
+			 Max : Angle;
+			 Theta : Angle;
+			 Phi : Angle) return Angle is
       X : Angle;
    begin
       Assertions.Assert (From_Angle (Max) <= Element_T'Last / 2);
@@ -63,9 +63,9 @@ package body Linted.Angles is
    end Add_Clamped;
 
    function Subtract_Clamped (Min : Angle;
-			     Max : Angle;
-			     Theta : Angle;
-			     Phi : Angle) return Angle is
+			      Max : Angle;
+			      Theta : Angle;
+			      Phi : Angle) return Angle is
       X : Angle;
    begin
       Assertions.Assert (From_Angle (Max) <= Element_T'Last / 2);

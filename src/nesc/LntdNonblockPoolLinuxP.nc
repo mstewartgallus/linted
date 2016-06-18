@@ -798,7 +798,11 @@ default event
 	struct myevent *pop_event(struct lntd_stack * stack)
 	{
 		struct lntd_node *node;
-		lntd_stack_recv(stack, &node);
+		{
+			struct lntd_node *xx;
+			lntd_stack_recv(stack, &xx);
+			node = xx;
+		}
 
 		((struct myevent *)node)->is_pending = false;
 

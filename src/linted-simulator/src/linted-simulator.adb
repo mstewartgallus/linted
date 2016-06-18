@@ -107,7 +107,7 @@ package body Linted.Simulator is
       end if;
 
       declare
-	 Maybe_Controller_KO : constant KOs.KO_Results.Result := KOs.Open (Command_Line.Argument (1));
+	 Maybe_Controller_KO : constant KOs.KO_Results.Result := KOs.Open (Command_Line.Argument (1), KOs.Read_Write);
       begin
 	 if Maybe_Controller_KO.Erroneous then
 	    raise Constraint_Error with "Erroneous controller path";
@@ -116,7 +116,7 @@ package body Linted.Simulator is
       end;
 
       declare
-	 Maybe_Updater_KO : constant KOs.KO_Results.Result := KOs.Open (Command_Line.Argument (2));
+	 Maybe_Updater_KO : constant KOs.KO_Results.Result := KOs.Open (Command_Line.Argument (2), KOs.Read_Write);
       begin
 	 if Maybe_Updater_KO.Erroneous then
 	    raise Constraint_Error with "Erroneous updater path";
