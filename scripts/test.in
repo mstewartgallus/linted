@@ -20,14 +20,8 @@ EXEEXT="@EXEEXT@"
 ROOT="$(realpath "$(dirname "$0")")"
 BUILDDIR="$(realpath "${ROOT}/..")"
 
-: ${LINTED_SYSTEM_CONF_PATH:="${SRCDIR}/src/linted/system.conf"}
-: ${LINTED_UNIT_PATH:="\
-${SRCDIR}/src/sockets/units\
-:${SRCDIR}/src/linted-audio/units\
-:${SRCDIR}/src/linted-simulator/units\
-:${SRCDIR}/src/linted-window/units\
-:${SRCDIR}/src/linted-gui/units\
-:${SRCDIR}/src/linted-drawer/units"}
+: ${LINTED_SYSTEM_CONF_PATH:="${SRCDIR}/src/factory/system.conf"}
+: ${LINTED_UNIT_PATH:="${SRCDIR}/src/factory/units"}
 
 : ${LINTED_INIT:="${BUILDDIR}/src/linted-init/linted-init${EXEEXT}"}
 : ${LINTED_MONITOR:="${BUILDDIR}/src/linted-monitor/linted-monitor${EXEEXT}"}
@@ -35,19 +29,19 @@ ${SRCDIR}/src/sockets/units\
 : ${LINTED_SANDBOX:="${BUILDDIR}/src/linted-sandbox/linted-sandbox${EXEEXT}"}
 : ${LINTED_WAITER:="${BUILDDIR}/src/linted-waiter/linted-waiter${EXEEXT}"}
 
-: ${LINTED_AUDIO_FSTAB:="${SRCDIR}/src/linted-audio/audio.fstab"}
+: ${LINTED_AUDIO_FSTAB:="${SRCDIR}/src/factory/audio.fstab"}
 : ${LINTED_AUDIO:="${BUILDDIR}/src/linted-audio/linted-audio${EXEEXT}"}
 
-: ${LINTED_SIMULATOR_FSTAB:="${SRCDIR}/src/linted-simulator/simulator.fstab"}
+: ${LINTED_SIMULATOR_FSTAB:="${SRCDIR}/src/factory/simulator.fstab"}
 : ${LINTED_SIMULATOR:="${BUILDDIR}/src/linted-simulator/linted-simulator${EXEEXT}"}
 
-: ${LINTED_GUI_FSTAB:="${SRCDIR}/src/linted-gui/gui.fstab"}
+: ${LINTED_GUI_FSTAB:="${SRCDIR}/src/factory/gui.fstab"}
 : ${LINTED_GUI:="${BUILDDIR}/src/linted-gui/linted-gui${EXEEXT}"}
 
-: ${LINTED_DRAWER_FSTAB:="${SRCDIR}/src/linted-drawer/drawer.fstab"}
+: ${LINTED_DRAWER_FSTAB:="${SRCDIR}/src/factory/drawer.fstab"}
 : ${LINTED_DRAWER:="${BUILDDIR}/src/linted-drawer/linted-drawer${EXEEXT}"}
 
-: ${LINTED_WINDOW_FSTAB:="${SRCDIR}/src/linted-window/window.fstab"}
+: ${LINTED_WINDOW_FSTAB:="${SRCDIR}/src/factory/window.fstab"}
 : ${LINTED_WINDOW:="${BUILDDIR}/src/linted-window/linted-window${EXEEXT}"}
 
 export LINTED_SYSTEM_CONF_PATH

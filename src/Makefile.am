@@ -39,6 +39,8 @@ include %C%/linted/Makefile.am
 include %C%/linted-init/Makefile.am
 include %C%/linted-monitor/Makefile.am
 
+include %C%/factory/Makefile.am
+
 include %C%/linted-window/Makefile.am
 include %C%/linted-audio/Makefile.am
 include %C%/linted-simulator/Makefile.am
@@ -61,8 +63,6 @@ include %C%/spawn/Makefile.am
 include %C%/unit/Makefile.am
 
 include %C%/admin/Makefile.am
-
-include %C%/sockets/Makefile.am
 endif
 
 include %C%/assets/Makefile.am

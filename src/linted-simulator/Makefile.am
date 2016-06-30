@@ -29,6 +29,3 @@ LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
 	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/simulator.gpr
-
-dist_pkgdefaultconf_DATA+=%D%/simulator.fstab
-dist_pkgdefaultunits_DATA+=%D%/units/linted-simulator.service

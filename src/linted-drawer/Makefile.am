@@ -34,9 +34,6 @@ pkglibexec_PROGRAMS+=%D%/linted-drawer
   $(XCB_FLAGS)\
   $(AM_CPPFLAGS)
 
-dist_pkgdefaultconf_DATA+=%D%/drawer.fstab
-dist_pkgdefaultunits_DATA+=%D%/units/linted-drawer.service
-
 %C%_linted_drawer_CFLAGS=\
   $(linted_CFLAGS_LANGUAGE)\
   $(linted_CFLAGS_DETERMINISTIC)\

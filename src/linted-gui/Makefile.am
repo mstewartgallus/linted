@@ -36,9 +36,6 @@ pkglibexec_PROGRAMS+=%D%/linted-gui
   $(XCB_FLAGS) $(XCB_XKB_FLAGS) $(XKB_FLAGS) $(XKB_X11_FLAGS)\
   $(AM_CPPFLAGS)
 
-dist_pkgdefaultconf_DATA+=%D%/gui.fstab
-dist_pkgdefaultunits_DATA+=%D%/units/linted-gui.service
-
 %C%_linted_gui_CFLAGS=\
   $(linted_CFLAGS_LANGUAGE)\
   $(linted_CFLAGS_DETERMINISTIC)\
