@@ -1295,6 +1295,7 @@ on_add_unit(struct monitor *monitor,
 	bool has_limit_memlock = limit_memlock != 0;
 
 	bool clone_newuser = request->clone_newuser;
+	bool clone_newcgroup = request->clone_newcgroup;
 	bool clone_newpid = request->clone_newpid;
 	bool clone_newipc = request->clone_newipc;
 	bool clone_newnet = request->clone_newnet;
@@ -1401,6 +1402,7 @@ on_add_unit(struct monitor *monitor,
 	unit_service->has_limit_memlock = has_limit_memlock;
 
 	unit_service->clone_newuser = clone_newuser;
+	unit_service->clone_newcgroup = clone_newcgroup;
 	unit_service->clone_newpid = clone_newpid;
 	unit_service->clone_newipc = clone_newipc;
 	unit_service->clone_newnet = clone_newnet;
@@ -1686,6 +1688,7 @@ spawn_service:
 	bool has_limit_memlock = unit_service->has_limit_memlock;
 
 	bool clone_newuser = unit_service->clone_newuser;
+	bool clone_newcgroup = unit_service->clone_newcgroup;
 	bool clone_newpid = unit_service->clone_newpid;
 	bool clone_newipc = unit_service->clone_newipc;
 	bool clone_newnet = unit_service->clone_newnet;
@@ -1845,6 +1848,7 @@ spawn_service:
 		     no_new_privs},
 		    {"--seccomp-arch-native", 0, true},
 		    {"--clone-newuser", 0, clone_newuser},
+		    {"--clone-newcgroup", 0, clone_newcgroup},
 		    {"--clone-newpid", 0, clone_newpid},
 		    {"--clone-newipc", 0, clone_newipc},
 		    {"--clone-newnet", 0, clone_newnet},

@@ -67,6 +67,7 @@ struct lntd_admin_request_add_unit {
 	int_least64_t *limit_memlock;
 
 	lntd_admin_bool clone_newuser;
+	lntd_admin_bool clone_newcgroup;
 	lntd_admin_bool clone_newpid;
 	lntd_admin_bool clone_newipc;
 	lntd_admin_bool clone_newnet;

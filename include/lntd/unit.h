@@ -93,6 +93,7 @@ struct lntd_unit_service {
 	_Bool has_limit_memlock : 1U;
 
 	_Bool clone_newuser : 1U;
+	_Bool clone_newcgroup : 1U;
 	_Bool clone_newpid : 1U;
 	_Bool clone_newipc : 1U;
 	_Bool clone_newnet : 1U;

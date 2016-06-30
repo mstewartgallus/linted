@@ -59,6 +59,10 @@
 #include <seccomp.h>
 #include <linux/seccomp.h>
 
+#ifndef CLONE_NEWCGROUP
+#define CLONE_NEWCGROUP 0x02000000
+#endif
+
 /**
  * @file
  *
@@ -88,6 +92,7 @@ enum { STOP_OPTIONS,
        WAITER,
        SECCOMP_FILTER,
        SECCOMP_NATIVE,
+       NEWCGROUP_ARG,
        NEWUSER_ARG,
        NEWPID_ARG,
        NEWIPC_ARG,
@@ -133,6 +138,7 @@ static char const *const argstrs[NUM_OPTIONS] = {
         /**/ [NEWPID_ARG] = "--clone-newpid",
         /**/ [NEWIPC_ARG] = "--clone-newipc",
         /**/ [NEWNET_ARG] = "--clone-newnet",
+        /**/ [NEWCGROUP_ARG] = "--clone-newcgroup",
         /**/ [NEWNS_ARG] = "--clone-newns",
         /**/ [NEWUTS_ARG] = "--clone-newuts"};
 
@@ -250,6 +256,7 @@ static unsigned char lntd_start_main(char const *const process_name,
 	bool no_new_privs;
 	bool drop_caps;
 
+	bool clone_newcgroup;
 	bool clone_newuser;
 	bool clone_newpid;
 	bool clone_newipc;
@@ -323,6 +330,7 @@ static unsigned char lntd_start_main(char const *const process_name,
 		no_new_privs = opt_values[NO_NEW_PRIVS].flag;
 		drop_caps = opt_values[DROP_CAPS].flag;
 
+		clone_newcgroup = opt_values[NEWCGROUP_ARG].flag;
 		clone_newuser = opt_values[NEWUSER_ARG].flag;
 		clone_newpid = opt_values[NEWPID_ARG].flag;
 		clone_newipc = opt_values[NEWIPC_ARG].flag;
@@ -911,6 +919,8 @@ static unsigned char lntd_start_main(char const *const process_name,
 	}
 
 	int clone_flags = 0;
+	if (clone_newcgroup)
+		clone_flags |= CLONE_NEWCGROUP;
 	if (clone_newuser)
 		clone_flags |= CLONE_NEWUSER;
 	if (clone_newipc)

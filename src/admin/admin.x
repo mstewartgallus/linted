@@ -37,6 +37,7 @@ struct lntd_admin_proto_request_add_unit {
 	hyper *limit_locks;
 	hyper *limit_memlock;
 
+	bool clone_newcgroup;
 	bool clone_newuser;
 	bool clone_newpid;
 	bool clone_newipc;

@@ -1088,6 +1088,7 @@ service_activate(struct system_conf const *system_conf,
 	}
 
 	bool clone_newuser = false;
+	bool clone_newcgroup = false;
 	bool clone_newpid = false;
 	bool clone_newipc = false;
 	bool clone_newnet = false;
@@ -1098,6 +1099,8 @@ service_activate(struct system_conf const *system_conf,
 			char const *flag = clone_flags[ii];
 			if (0 == strcmp("CLONE_NEWUSER", flag)) {
 				clone_newuser = true;
+			} else if (0 == strcmp("CLONE_NEWCGROUP", flag)) {
+				clone_newcgroup = true;
 			} else if (0 == strcmp("CLONE_NEWPID", flag)) {
 				clone_newpid = true;
 			} else if (0 == strcmp("CLONE_NEWIPC", flag)) {
@@ -1211,6 +1214,7 @@ envvar_allocate_succeeded:
 		    has_limit_memlock ? &limit_memlock : 0;
 
 		xx->clone_newuser = clone_newuser;
+		xx->clone_newcgroup = clone_newcgroup;
 		xx->clone_newpid = clone_newpid;
 		xx->clone_newipc = clone_newipc;
 		xx->clone_newnet = clone_newnet;
