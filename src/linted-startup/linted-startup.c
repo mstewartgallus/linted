@@ -1385,12 +1385,14 @@ struct parser_result_value {
 	char const *const *value;
 };
 
+union parser_result_union {
+	struct parser_result_section section;
+	struct parser_result_value value;
+};
+
 struct parser_result {
 	unsigned char state;
-	union {
-		struct parser_result_section section;
-		struct parser_result_value value;
-	};
+	union parser_result_union result_union;
 };
 
 static void parser_init(struct parser *parser, FILE *file);
@@ -1442,24 +1444,19 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 			continue;
 
 		case PARSER_SECTION: {
-			char const *section_name =
-			    result.section.section_name;
-
-			{
-				conf_section xx;
-				err = conf_add_section(conf, &xx,
-				                       section_name);
-				if (err != 0)
-					break;
-				current_section = xx;
-			}
+			conf_section xx;
+			err = conf_add_section(conf, &xx,
+					       result.result_union.section.section_name);
+			if (err != 0)
+				break;
+			current_section = xx;
 			break;
 		}
 
 		case PARSER_VALUE: {
 			err = conf_add_setting(conf, current_section,
-			                       result.value.field,
-			                       result.value.value);
+			                       result.result_union.value.field,
+			                       result.result_union.value.value);
 			if (err != 0)
 				break;
 		}
@@ -1705,22 +1702,30 @@ static struct conf *conf_db_get_conf(struct conf_db *db, size_t ii)
 
 struct conf_setting;
 
-struct conf_section_bucket {
-	size_t sections_size;
-	struct conf_section *sections;
+enum {
+	SECTION_MANAGER,
+	SECTION_UNIT,
+	SECTION_SERVICE,
+	SECTION_SOCKET,
+	SECTION_COUNT
 };
 
-#define SECTION_BUCKETS_SIZE 1024U
-
-struct conf {
-	char *name;
-	unsigned long refcount;
-	struct conf_section_bucket buckets[SECTION_BUCKETS_SIZE];
-};
+#define SETTING_BUCKETS_SIZE 1024U
 
 struct conf_setting_bucket {
 	size_t settings_size;
 	struct conf_setting *settings;
+};
+
+struct conf_section {
+	size_t buckets_used;
+	struct conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
+};
+
+struct conf {
+	char *name;
+	unsigned long refcount;
+	struct conf_section sections[SECTION_COUNT];
 };
 
 static lntd_error conf_create(struct conf **confp, char *name)
@@ -1739,11 +1744,10 @@ static lntd_error conf_create(struct conf **confp, char *name)
 	conf->name = name;
 	conf->refcount = 1;
 
-	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
-		struct conf_section_bucket *bucket = &conf->buckets[ii];
+	for (size_t ii = 0U; ii < SECTION_COUNT; ++ii) {
+		struct conf_section *section = &conf->sections[ii];
 
-		bucket->sections_size = 0U;
-		bucket->sections = 0;
+		section->buckets_used = 0U;
 	}
 
 	*confp = conf;
@@ -1751,7 +1755,8 @@ static lntd_error conf_create(struct conf **confp, char *name)
 	return 0;
 }
 
-static void free_sections(struct conf_section *sections, size_t size);
+static void free_settings(struct conf_setting *settings,
+                          size_t settings_size);
 
 static void conf_put(struct conf *conf)
 {
@@ -1761,16 +1766,23 @@ static void conf_put(struct conf *conf)
 	if (--conf->refcount != 0)
 		return;
 
-	for (size_t ii = 0U; ii < SECTION_BUCKETS_SIZE; ++ii) {
-		struct conf_section_bucket const *bucket =
-		    &conf->buckets[ii];
+	for (size_t ii = 0U; ii < SECTION_COUNT; ++ii) {
+		struct conf_section *section = &conf->sections[ii];
 
-		size_t sections_size = bucket->sections_size;
-		struct conf_section *sections = bucket->sections;
+		struct conf_setting_bucket *buckets = section->buckets;
 
-		free_sections(sections, sections_size);
+		for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
+			struct conf_setting_bucket const *
+			    setting_bucket = &buckets[kk];
+			size_t settings_size =
+			    setting_bucket->settings_size;
+			struct conf_setting *settings =
+			    setting_bucket->settings;
 
-		lntd_mem_free(sections);
+			free_settings(settings, settings_size);
+
+			lntd_mem_free(settings);
+		}
 	}
 
 	lntd_mem_free(conf->name);
@@ -1782,129 +1794,29 @@ static char const *conf_peek_name(struct conf *conf)
 	return conf->name;
 }
 
-#define SETTING_BUCKETS_SIZE 1024U
-
-struct conf_section {
-	unsigned long refcount;
-	char *name;
-	struct conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
-};
-
-static inline conf_section section_id_create(unsigned hash, unsigned ii)
+static lntd_error get_section(conf_section *sectionp, char const *name)
 {
-	return ((conf_section)hash) << 32U | (conf_section)ii;
-}
-
-static inline size_t section_id_hash(conf_section id)
-{
-	return id >> 32U;
-}
-
-static inline size_t section_id_offset(conf_section id)
-{
-	return id & UINT32_MAX;
-}
-
-static void free_settings(struct conf_setting *settings,
-                          size_t settings_size);
-
-static void free_sections(struct conf_section *sections,
-                          size_t sections_size)
-{
-	for (size_t jj = 0U; jj < sections_size; ++jj) {
-		struct conf_section const *section = &sections[jj];
-
-		for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
-			struct conf_setting_bucket const *
-			    setting_bucket = &section->buckets[kk];
-			size_t settings_size =
-			    setting_bucket->settings_size;
-			struct conf_setting *settings =
-			    setting_bucket->settings;
-
-			free_settings(settings, settings_size);
-
-			lntd_mem_free(settings);
-		}
-		lntd_mem_free(section->name);
+	conf_section section_id;
+	if (0 == strcmp("Manager", name)) {
+		section_id = SECTION_MANAGER;
+	} else if (0 == strcmp("Unit", name)) {
+		section_id = SECTION_UNIT;
+	} else if (0 == strcmp("Service", name)) {
+		section_id = SECTION_SERVICE;
+	} else if (0 == strcmp("Socket", name)) {
+		section_id = SECTION_SOCKET;
+	} else {
+		return ENOENT;
 	}
+	*sectionp = section_id;
+	return 0;
 }
 
 static lntd_error conf_add_section(struct conf *conf,
                                    conf_section *sectionp,
                                    char const *section_name)
 {
-	lntd_error err;
-
-	struct conf_section_bucket *buckets = conf->buckets;
-
-	size_t section_hash =
-	    string_hash(section_name) % SECTION_BUCKETS_SIZE;
-
-	struct conf_section_bucket *bucket = &buckets[section_hash];
-
-	size_t sections_size = bucket->sections_size;
-	struct conf_section *sections = bucket->sections;
-
-	{
-		bool have_found_field = false;
-
-		size_t found_field;
-		for (size_t ii = 0U; ii < sections_size; ++ii) {
-			if (0 ==
-			    strcmp(sections[ii].name, section_name)) {
-				have_found_field = true;
-				found_field = ii;
-				break;
-			}
-		}
-
-		if (have_found_field) {
-			*sectionp = section_id_create(section_hash,
-			                              found_field);
-			return 0;
-		}
-	}
-
-	char *section_name_dup;
-	{
-		char *xx;
-		err = lntd_str_dup(&xx, section_name);
-		if (err != 0)
-			return err;
-		section_name_dup = xx;
-	}
-
-	size_t new_sections_size = sections_size + 1U;
-	struct conf_section *new_sections;
-	{
-		void *xx;
-		err = lntd_mem_realloc_array(&xx, sections,
-		                             new_sections_size,
-		                             sizeof sections[0U]);
-		if (err != 0)
-			goto free_section_name;
-		new_sections = xx;
-	}
-
-	struct conf_section *new_section = &new_sections[sections_size];
-
-	new_section->name = section_name_dup;
-
-	for (size_t ii = 0U; ii < SETTING_BUCKETS_SIZE; ++ii) {
-		new_section->buckets[ii].settings_size = 0U;
-		new_section->buckets[ii].settings = 0;
-	}
-
-	bucket->sections_size = new_sections_size;
-	bucket->sections = new_sections;
-
-	*sectionp = section_id_create(section_hash, sections_size);
-	return 0;
-
-free_section_name:
-	lntd_mem_free(section_name_dup);
-	return err;
+	return get_section(sectionp, section_name);
 }
 
 struct conf_setting {
@@ -1930,32 +1842,14 @@ static char const *const *conf_find(struct conf *conf,
                                     char const *section_name,
                                     char const *field)
 {
-	struct conf_section *section;
-	{
-		struct conf_section_bucket *buckets = conf->buckets;
-		struct conf_section_bucket *bucket =
-		    &buckets[string_hash(section_name) %
-		             SECTION_BUCKETS_SIZE];
+	lntd_error err =0;
 
-		size_t sections_size = bucket->sections_size;
-		struct conf_section *sections = bucket->sections;
+	conf_section section_id;
+	err = get_section(&section_id, section_name);
+	if (err != 0)
+		return 0;
 
-		size_t section_index;
-		bool have_found_section = false;
-		for (size_t ii = 0U; ii < sections_size; ++ii) {
-			if (0 ==
-			    strcmp(sections[ii].name, section_name)) {
-				have_found_section = true;
-				section_index = ii;
-				break;
-			}
-		}
-
-		if (!have_found_section)
-			return 0;
-
-		section = &sections[section_index];
-	}
+	struct conf_section *section = &conf->sections[section_id];
 
 	struct conf_setting_bucket *buckets = section->buckets;
 	struct conf_setting_bucket *bucket =
@@ -2064,9 +1958,9 @@ static lntd_error conf_add_setting(struct conf *conf,
 {
 	lntd_error err;
 
+
 	struct conf_setting_bucket *buckets =
-	    conf->buckets[section_id_hash(section)]
-	        .sections[section_id_offset(section)]
+	    conf->sections[section]
 	        .buckets;
 
 	struct conf_setting_bucket *bucket =
@@ -2343,7 +2237,7 @@ static lntd_error parser_get_line(struct parser *parser,
 		lntd_mem_free(parser->section_name);
 		parser->section_name = section_name;
 
-		result->section.section_name = section_name;
+		result->result_union.section.section_name = section_name;
 
 		state = PARSER_SECTION;
 		break;
@@ -2478,8 +2372,8 @@ static lntd_error parser_get_line(struct parser *parser,
 		parser->field = field;
 		parser->expr = expr;
 
-		result->value.field = field;
-		result->value.value =
+		result->result_union.value.field = field;
+		result->result_union.value.value =
 		    (char const *const *)expr.we_wordv;
 
 		state = PARSER_VALUE;
