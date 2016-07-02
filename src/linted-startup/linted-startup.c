@@ -1099,7 +1099,8 @@ service_activate(struct system_conf const *system_conf,
 			char const *flag = clone_flags[ii];
 			if (0 == strcmp("CLONE_NEWUSER", flag)) {
 				clone_newuser = true;
-			} else if (0 == strcmp("CLONE_NEWCGROUP", flag)) {
+			} else if (0 ==
+			           strcmp("CLONE_NEWCGROUP", flag)) {
 				clone_newcgroup = true;
 			} else if (0 == strcmp("CLONE_NEWPID", flag)) {
 				clone_newpid = true;
@@ -1358,16 +1359,29 @@ free_result_envvars:
 
 static size_t string_list_size(char const *const *list);
 
+enum { PARSER_EOF, PARSER_EMPTY_LINE, PARSER_SECTION, PARSER_VALUE };
+
+struct parser {
+	FILE *file;
+	char *line_buffer;
+	size_t line_capacity;
+	size_t line_size;
+	unsigned char state;
+
+	char *section_name;
+	char *field;
+	wordexp_t expr;
+};
+
+static void parser_init(struct parser *parser, FILE *file);
+static lntd_error parser_get_line(struct parser *parser);
+
 static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
                                   char const *file_name)
 {
 	lntd_error err = 0;
 
-	char *line_buffer = 0;
-	size_t line_capacity = 0U;
-
 	conf_section current_section;
-	bool has_current_section = false;
 
 	lntd_ko conf_fd;
 	{
@@ -1389,197 +1403,42 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 		return err;
 	}
 
+	struct parser parser;
+	parser_init(&parser, conf_file);
+
 	for (;;) {
-		size_t line_size;
-		ssize_t zz;
-		{
-			char *xx = line_buffer;
-			size_t yy = line_capacity;
-			errno = 0;
-			zz = getline(&xx, &yy, conf_file);
-			line_buffer = xx;
-			line_capacity = yy;
-			line_size = zz;
-		}
-		if (zz < 0) {
-			err = errno;
-			/* May be 0 to indicate end of line */
+		err = parser_get_line(&parser);
+		if (err != 0)
 			break;
-		}
-
-		if (0U == line_size)
-			break;
-
-		if ('\n' == line_buffer[line_size - 1U])
-			--line_size;
+		switch (parser.state) {
+		case PARSER_EOF:
+			goto free_parser;
 
 		/* Ignore empty lines */
-		if (0U == line_size)
+		case PARSER_EMPTY_LINE:
 			continue;
 
-		switch (line_buffer[0U]) {
-		/* Ignore comments */
-		case ';':
-		case '#':
-			continue;
-
-		/* A section start */
-		case '[': {
-			if (line_buffer[line_size - 1U] != ']') {
-				err = LNTD_ERROR_INVALID_PARAMETER;
-				break;
-			}
-
-			char *section_name;
-			{
-				char *xx;
-				err = lntd_str_dup_len(&xx,
-				                       line_buffer + 1U,
-				                       line_size - 2U);
-				if (err != 0)
-					break;
-				section_name = xx;
-			}
+		case PARSER_SECTION: {
+			char *section_name = parser.section_name;
 
 			{
 				conf_section xx;
 				err = conf_add_section(conf, &xx,
 				                       section_name);
 				if (err != 0)
-					goto free_section_name;
+					break;
 				current_section = xx;
 			}
-			has_current_section = true;
-
-		free_section_name:
-			lntd_mem_free(section_name);
 			break;
 		}
 
-		default: {
-			if (!has_current_section) {
-				err = LNTD_ERROR_INVALID_PARAMETER;
-				break;
-			}
-
-			size_t equals_position;
-			size_t whitespace_position;
-			size_t field_len;
-			for (size_t ii = 0U; ii < line_size; ++ii) {
-				switch (line_buffer[ii]) {
-				case '=':
-					equals_position = ii;
-					field_len = ii;
-					goto found_equal;
-
-				case ' ':
-				case '\t':
-					if (0U == ii) {
-						err =
-						    LNTD_ERROR_INVALID_PARAMETER;
-						break;
-					}
-
-					whitespace_position = ii;
-					field_len = ii;
-					goto found_whitespace;
-
-				case '\n':
-					err =
-					    LNTD_ERROR_INVALID_PARAMETER;
-					break;
-
-				default:
-					break;
-				}
-				if (err != 0)
-					break;
-			}
-			break;
-
-		found_whitespace:
-			for (size_t ii = whitespace_position + 1U;
-			     ii < line_size; ++ii) {
-				switch (line_buffer[ii]) {
-				case '=':
-					equals_position = ii;
-					goto found_equal;
-
-				case ' ':
-				case '\t':
-					break;
-
-				default:
-					err =
-					    LNTD_ERROR_INVALID_PARAMETER;
-					break;
-				}
-				if (err != 0)
-					break;
-			}
-			if (err != 0)
-				break;
-
-			err = LNTD_ERROR_INVALID_PARAMETER;
-			break;
-
-		found_equal:
-			;
-			size_t value_offset = equals_position + 1U;
-			size_t value_len = line_size - value_offset;
-
-			char *field;
-			{
-				void *xx;
-				err =
-				    lntd_mem_alloc(&xx, field_len + 1U);
-				if (err != 0)
-					break;
-				field = xx;
-			}
-			if (field_len > 0U)
-				memcpy(field, line_buffer, field_len);
-			field[field_len] = '\0';
-
-			char *value;
-			{
-				void *xx;
-				err =
-				    lntd_mem_alloc(&xx, value_len + 1U);
-				if (err != 0)
-					goto free_field;
-				value = xx;
-			}
-			memcpy(value, line_buffer + value_offset,
-			       value_len);
-			value[value_len] = '\0';
-
-			wordexp_t expr;
-			switch (wordexp(value, &expr, WRDE_NOCMD)) {
-			case WRDE_BADCHAR:
-			case WRDE_CMDSUB:
-			case WRDE_SYNTAX:
-				err = LNTD_ERROR_INVALID_PARAMETER;
-				break;
-
-			case WRDE_NOSPACE:
-				err = LNTD_ERROR_OUT_OF_MEMORY;
-				break;
-			}
-
-			lntd_mem_free(value);
-
-			if (err != 0)
-				goto free_field;
-
+		case PARSER_VALUE: {
 			err = conf_add_setting(
-			    conf, current_section, field,
-			    (char const *const *)expr.we_wordv);
+			    conf, current_section, parser.field,
+			    (char const *const *)parser.expr.we_wordv);
 
-			wordfree(&expr);
-
-		free_field:
-			lntd_mem_free(field);
+			wordfree(&parser.expr);
+			lntd_mem_free(parser.field);
 
 			if (err != 0)
 				break;
@@ -1587,7 +1446,9 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 		}
 	}
 
-	lntd_mem_free(line_buffer);
+free_parser:
+	lntd_mem_free(parser.section_name);
+	lntd_mem_free(parser.line_buffer);
 
 	if (err != 0)
 		conf_put(conf);
@@ -2364,4 +2225,217 @@ static size_t string_hash(char const *str)
 	for (size_t ii = 0U; str[ii] != '\0'; ++ii)
 		hash = hash * 31U + (unsigned)str[ii];
 	return hash;
+}
+
+static void parser_init(struct parser *parser, FILE *file)
+{
+	parser->file = file;
+	parser->line_buffer = 0;
+	parser->line_capacity = 0U;
+	parser->section_name = 0;
+}
+
+static lntd_error parser_get_line(struct parser *parser)
+{
+	unsigned char state;
+	lntd_error err = 0;
+
+	char *line_buffer = parser->line_buffer;
+	size_t line_capacity = parser->line_capacity;
+	FILE *file = parser->file;
+
+	ssize_t zz;
+	{
+		char *xx = line_buffer;
+		size_t yy = line_capacity;
+
+		errno = 0;
+		zz = getline(&xx, &yy, file);
+		if (zz < 0) {
+			/* May be 0 to indicate end of line */
+			err = errno;
+			if (0 == err) {
+				state = PARSER_EOF;
+			} else {
+				/* Doesn't matter */
+				state = 0;
+			}
+			goto set_values;
+		}
+
+		line_buffer = xx;
+		line_capacity = yy;
+	}
+	size_t line_size = zz;
+	if (0 == line_size) {
+		state = PARSER_EOF;
+		goto set_values;
+	}
+
+	if ('\n' == line_buffer[line_size - 1U])
+		--line_size;
+
+	if (0U == line_size) {
+		state = PARSER_EMPTY_LINE;
+		goto set_values;
+	}
+
+	switch (line_buffer[0U]) {
+	/* Ignore comments */
+	case ';':
+	case '#':
+		state = PARSER_EMPTY_LINE;
+		break;
+
+	case '[': {
+		if (line_buffer[line_size - 1U] != ']') {
+			err = LNTD_ERROR_INVALID_PARAMETER;
+			break;
+		}
+
+		char *section_name;
+		{
+			char *xx;
+			err = lntd_str_dup_len(&xx, line_buffer + 1U,
+			                       line_size - 2U);
+			if (err != 0)
+				break;
+			section_name = xx;
+		}
+
+		lntd_mem_free(parser->section_name);
+		parser->section_name = section_name;
+		state = PARSER_SECTION;
+		break;
+	}
+
+	default: {
+		if (0 == parser->section_name) {
+			err = LNTD_ERROR_INVALID_PARAMETER;
+			break;
+		}
+
+		size_t equals_position;
+		size_t whitespace_position;
+		size_t field_len;
+		for (size_t ii = 0U; ii < line_size; ++ii) {
+			switch (line_buffer[ii]) {
+			case '=':
+				equals_position = ii;
+				field_len = ii;
+				goto found_equal;
+
+			case ' ':
+			case '\t':
+				if (0U == ii) {
+					err =
+					    LNTD_ERROR_INVALID_PARAMETER;
+					break;
+				}
+
+				whitespace_position = ii;
+				field_len = ii;
+				goto found_whitespace;
+
+			case '\n':
+				err = LNTD_ERROR_INVALID_PARAMETER;
+				break;
+
+			default:
+				break;
+			}
+			if (err != 0)
+				break;
+		}
+		break;
+
+	found_whitespace:
+		for (size_t ii = whitespace_position + 1U;
+		     ii < line_size; ++ii) {
+			switch (line_buffer[ii]) {
+			case '=':
+				equals_position = ii;
+				goto found_equal;
+
+			case ' ':
+			case '\t':
+				break;
+
+			default:
+				err = LNTD_ERROR_INVALID_PARAMETER;
+				break;
+			}
+			if (err != 0)
+				break;
+		}
+		if (err != 0)
+			break;
+
+		err = LNTD_ERROR_INVALID_PARAMETER;
+		break;
+
+	found_equal:
+		;
+		size_t value_offset = equals_position + 1U;
+		size_t value_len = line_size - value_offset;
+
+		char *field;
+		{
+			void *xx;
+			err = lntd_mem_alloc(&xx, field_len + 1U);
+			if (err != 0)
+				break;
+			field = xx;
+		}
+		if (field_len > 0U)
+			memcpy(field, line_buffer, field_len);
+		field[field_len] = '\0';
+
+		char *value;
+		{
+			void *xx;
+			err = lntd_mem_alloc(&xx, value_len + 1U);
+			if (err != 0) {
+				lntd_mem_free(field);
+				break;
+			}
+			value = xx;
+		}
+		memcpy(value, line_buffer + value_offset, value_len);
+		value[value_len] = '\0';
+
+		wordexp_t expr;
+		switch (wordexp(value, &expr, WRDE_NOCMD)) {
+		case WRDE_BADCHAR:
+		case WRDE_CMDSUB:
+		case WRDE_SYNTAX:
+			err = LNTD_ERROR_INVALID_PARAMETER;
+			break;
+
+		case WRDE_NOSPACE:
+			err = LNTD_ERROR_OUT_OF_MEMORY;
+			break;
+		}
+
+		lntd_mem_free(value);
+
+		if (err != 0) {
+			wordfree(&expr);
+			break;
+		}
+
+		parser->field = field;
+		parser->expr = expr;
+		state = PARSER_VALUE;
+		break;
+	}
+	}
+
+set_values:
+	parser->line_buffer = line_buffer;
+	parser->line_capacity = line_capacity;
+	parser->line_size = line_size;
+	parser->state = state;
+
+	return err;
 }
