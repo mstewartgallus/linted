@@ -1359,13 +1359,16 @@ free_result_envvars:
 
 static size_t string_list_size(char const *const *list);
 
-enum { PARSER_EOF, PARSER_EMPTY_LINE, PARSER_SECTION, PARSER_VALUE };
+enum { PARSER_ERROR,
+       PARSER_EOF,
+       PARSER_EMPTY_LINE,
+       PARSER_SECTION,
+       PARSER_VALUE };
 
 struct parser {
 	FILE *file;
 	char *line_buffer;
 	size_t line_capacity;
-	size_t line_size;
 	unsigned char state;
 
 	char *section_name;
@@ -1373,8 +1376,27 @@ struct parser {
 	wordexp_t expr;
 };
 
+struct parser_result_section {
+	char const *section_name;
+};
+
+struct parser_result_value {
+	char const *field;
+	char const *const *value;
+};
+
+struct parser_result {
+	unsigned char state;
+	union {
+		struct parser_result_section section;
+		struct parser_result_value value;
+	};
+};
+
 static void parser_init(struct parser *parser, FILE *file);
-static lntd_error parser_get_line(struct parser *parser);
+
+static lntd_error parser_get_line(struct parser *parser,
+                                  struct parser_result *resultp);
 
 static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
                                   char const *file_name)
@@ -1407,10 +1429,11 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 	parser_init(&parser, conf_file);
 
 	for (;;) {
-		err = parser_get_line(&parser);
+		struct parser_result result;
+		err = parser_get_line(&parser, &result);
 		if (err != 0)
 			break;
-		switch (parser.state) {
+		switch (result.state) {
 		case PARSER_EOF:
 			goto free_parser;
 
@@ -1419,7 +1442,8 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 			continue;
 
 		case PARSER_SECTION: {
-			char *section_name = parser.section_name;
+			char const *section_name =
+			    result.section.section_name;
 
 			{
 				conf_section xx;
@@ -1433,13 +1457,9 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 		}
 
 		case PARSER_VALUE: {
-			err = conf_add_setting(
-			    conf, current_section, parser.field,
-			    (char const *const *)parser.expr.we_wordv);
-
-			wordfree(&parser.expr);
-			lntd_mem_free(parser.field);
-
+			err = conf_add_setting(conf, current_section,
+			                       result.value.field,
+			                       result.value.value);
 			if (err != 0)
 				break;
 		}
@@ -1447,6 +1467,12 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 	}
 
 free_parser:
+	switch (parser.state) {
+	case PARSER_VALUE:
+		lntd_mem_free(parser.field);
+		wordfree(&parser.expr);
+		break;
+	}
 	lntd_mem_free(parser.section_name);
 	lntd_mem_free(parser.line_buffer);
 
@@ -2233,9 +2259,11 @@ static void parser_init(struct parser *parser, FILE *file)
 	parser->line_buffer = 0;
 	parser->line_capacity = 0U;
 	parser->section_name = 0;
+	parser->state = PARSER_ERROR;
 }
 
-static lntd_error parser_get_line(struct parser *parser)
+static lntd_error parser_get_line(struct parser *parser,
+                                  struct parser_result *result)
 {
 	unsigned char state;
 	lntd_error err = 0;
@@ -2243,6 +2271,13 @@ static lntd_error parser_get_line(struct parser *parser)
 	char *line_buffer = parser->line_buffer;
 	size_t line_capacity = parser->line_capacity;
 	FILE *file = parser->file;
+
+	switch (parser->state) {
+	case PARSER_VALUE:
+		lntd_mem_free(parser->field);
+		wordfree(&parser->expr);
+		break;
+	}
 
 	ssize_t zz;
 	{
@@ -2257,8 +2292,7 @@ static lntd_error parser_get_line(struct parser *parser)
 			if (0 == err) {
 				state = PARSER_EOF;
 			} else {
-				/* Doesn't matter */
-				state = 0;
+				state = PARSER_ERROR;
 			}
 			goto set_values;
 		}
@@ -2290,6 +2324,7 @@ static lntd_error parser_get_line(struct parser *parser)
 	case '[': {
 		if (line_buffer[line_size - 1U] != ']') {
 			err = LNTD_ERROR_INVALID_PARAMETER;
+			state = PARSER_ERROR;
 			break;
 		}
 
@@ -2298,13 +2333,18 @@ static lntd_error parser_get_line(struct parser *parser)
 			char *xx;
 			err = lntd_str_dup_len(&xx, line_buffer + 1U,
 			                       line_size - 2U);
-			if (err != 0)
+			if (err != 0) {
+				state = PARSER_ERROR;
 				break;
+			}
 			section_name = xx;
 		}
 
 		lntd_mem_free(parser->section_name);
 		parser->section_name = section_name;
+
+		result->section.section_name = section_name;
+
 		state = PARSER_SECTION;
 		break;
 	}
@@ -2312,6 +2352,7 @@ static lntd_error parser_get_line(struct parser *parser)
 	default: {
 		if (0 == parser->section_name) {
 			err = LNTD_ERROR_INVALID_PARAMETER;
+			state = PARSER_ERROR;
 			break;
 		}
 
@@ -2330,6 +2371,7 @@ static lntd_error parser_get_line(struct parser *parser)
 				if (0U == ii) {
 					err =
 					    LNTD_ERROR_INVALID_PARAMETER;
+					state = PARSER_ERROR;
 					break;
 				}
 
@@ -2339,13 +2381,16 @@ static lntd_error parser_get_line(struct parser *parser)
 
 			case '\n':
 				err = LNTD_ERROR_INVALID_PARAMETER;
+				state = PARSER_ERROR;
 				break;
 
 			default:
 				break;
 			}
-			if (err != 0)
+			if (err != 0) {
+
 				break;
+			}
 		}
 		break;
 
@@ -2363,6 +2408,7 @@ static lntd_error parser_get_line(struct parser *parser)
 
 			default:
 				err = LNTD_ERROR_INVALID_PARAMETER;
+				state = PARSER_ERROR;
 				break;
 			}
 			if (err != 0)
@@ -2372,6 +2418,7 @@ static lntd_error parser_get_line(struct parser *parser)
 			break;
 
 		err = LNTD_ERROR_INVALID_PARAMETER;
+		state = PARSER_ERROR;
 		break;
 
 	found_equal:
@@ -2383,8 +2430,10 @@ static lntd_error parser_get_line(struct parser *parser)
 		{
 			void *xx;
 			err = lntd_mem_alloc(&xx, field_len + 1U);
-			if (err != 0)
+			if (err != 0) {
+				state = PARSER_ERROR;
 				break;
+			}
 			field = xx;
 		}
 		if (field_len > 0U)
@@ -2397,6 +2446,7 @@ static lntd_error parser_get_line(struct parser *parser)
 			err = lntd_mem_alloc(&xx, value_len + 1U);
 			if (err != 0) {
 				lntd_mem_free(field);
+				state = PARSER_ERROR;
 				break;
 			}
 			value = xx;
@@ -2421,11 +2471,17 @@ static lntd_error parser_get_line(struct parser *parser)
 
 		if (err != 0) {
 			wordfree(&expr);
+			state = PARSER_ERROR;
 			break;
 		}
 
 		parser->field = field;
 		parser->expr = expr;
+
+		result->value.field = field;
+		result->value.value =
+		    (char const *const *)expr.we_wordv;
+
 		state = PARSER_VALUE;
 		break;
 	}
@@ -2434,8 +2490,9 @@ static lntd_error parser_get_line(struct parser *parser)
 set_values:
 	parser->line_buffer = line_buffer;
 	parser->line_capacity = line_capacity;
-	parser->line_size = line_size;
 	parser->state = state;
+
+	result->state = state;
 
 	return err;
 }
