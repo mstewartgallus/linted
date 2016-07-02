@@ -1445,8 +1445,9 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 
 		case PARSER_SECTION: {
 			conf_section xx;
-			err = conf_add_section(conf, &xx,
-					       result.result_union.section.section_name);
+			err = conf_add_section(
+			    conf, &xx,
+			    result.result_union.section.section_name);
 			if (err != 0)
 				break;
 			current_section = xx;
@@ -1454,9 +1455,10 @@ static lntd_error conf_parse_file(struct conf *conf, lntd_ko dir_ko,
 		}
 
 		case PARSER_VALUE: {
-			err = conf_add_setting(conf, current_section,
-			                       result.result_union.value.field,
-			                       result.result_union.value.value);
+			err = conf_add_setting(
+			    conf, current_section,
+			    result.result_union.value.field,
+			    result.result_union.value.value);
 			if (err != 0)
 				break;
 		}
@@ -1702,13 +1704,11 @@ static struct conf *conf_db_get_conf(struct conf_db *db, size_t ii)
 
 struct conf_setting;
 
-enum {
-	SECTION_MANAGER,
-	SECTION_UNIT,
-	SECTION_SERVICE,
-	SECTION_SOCKET,
-	SECTION_COUNT
-};
+enum { SECTION_MANAGER,
+       SECTION_UNIT,
+       SECTION_SERVICE,
+       SECTION_SOCKET,
+       SECTION_COUNT };
 
 #define SETTING_BUCKETS_SIZE 1024U
 
@@ -1842,7 +1842,7 @@ static char const *const *conf_find(struct conf *conf,
                                     char const *section_name,
                                     char const *field)
 {
-	lntd_error err =0;
+	lntd_error err = 0;
 
 	conf_section section_id;
 	err = get_section(&section_id, section_name);
@@ -1958,10 +1958,8 @@ static lntd_error conf_add_setting(struct conf *conf,
 {
 	lntd_error err;
 
-
 	struct conf_setting_bucket *buckets =
-	    conf->sections[section]
-	        .buckets;
+	    conf->sections[section].buckets;
 
 	struct conf_setting_bucket *bucket =
 	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
@@ -2237,7 +2235,8 @@ static lntd_error parser_get_line(struct parser *parser,
 		lntd_mem_free(parser->section_name);
 		parser->section_name = section_name;
 
-		result->result_union.section.section_name = section_name;
+		result->result_union.section.section_name =
+		    section_name;
 
 		state = PARSER_SECTION;
 		break;
