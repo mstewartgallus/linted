@@ -1748,6 +1748,14 @@ static lntd_error conf_create(struct conf **confp, char *name)
 		struct conf_section *section = &conf->sections[ii];
 
 		section->buckets_used = 0U;
+
+		for (size_t jj = 0U; jj < SETTING_BUCKETS_SIZE; ++jj) {
+			struct conf_setting_bucket *bucket =
+			    &section->buckets[jj];
+
+			bucket->settings_size = 0U;
+			bucket->settings = 0;
+		}
 	}
 
 	*confp = conf;
