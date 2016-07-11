@@ -175,16 +175,16 @@ static unsigned char lntd_start_main(char const *process_name,
 
 		switch (code) {
 		case CLD_EXITED:
-			if (EXIT_SUCCESS == status)
-				goto exit_loop;
-
+			/* Assume these errors are non-transient. */
 			lntd_io_write_format(LNTD_KO_STDERR, 0,
 			                     "monitor exited with %i\n",
 			                     status);
-			break;
+			goto exit_loop;
 
 		case CLD_DUMPED:
 		case CLD_KILLED:
+			/* Assume these errors are transient and
+			 * fixable by restarting. */
 			lntd_io_write_format(
 			    LNTD_KO_STDERR, 0, "monitor killed by %s\n",
 			    lntd_signal_string(status));
