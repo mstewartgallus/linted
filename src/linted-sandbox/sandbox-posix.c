@@ -1372,19 +1372,6 @@ LNTD_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 		if (err != 0)
 			goto fail;
 	}
-#if 0
-	if (use_seccomp) {
-		if (-1 == prctl(PR_SET_SECCOMP,
-		                (unsigned long)SECCOMP_MODE_FILTER,
-		                lntd_sandbox_filter, 0UL, 0UL)) {
-			err = errno;
-			LNTD_ASSUME(err != 0);
-
-			LNTD_ASSERT(err != EINVAL);
-			goto fail;
-		}
-	}
-#endif
 
 	execve(binary, (char *const *)argv, environ);
 	err = errno;
