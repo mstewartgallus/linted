@@ -133,9 +133,19 @@ indent:
 	find $(srcdir)/src $(srcdir)/include/lntd  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -\( -name '*.[ch]' -o -name '*.nc' -\) -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 
+CPROGRAMS=\
+  src/linted/linted\
+  src/linted-init/linted-init\
+  src/linted-startup/linted-startup\
+  src/linted-sandbox/linted-sandbox\
+  src/linted-monitor/linted-monitor\
+  src/linted-gui/linted-gui\
+  src/linted-drawer/linted-drawer\
+  src/linted-window/linted-window
+
 .PHONY: list-programs
 list-programs:
-	@for II in $(PROGRAMS) $(check_PROGRAMS); do printf -- '%s\n' "$${II}"; done
+	@for II in $(CPROGRAMS) $(check_PROGRAMS); do printf -- '%s\n' "$${II}"; done
 
 linted_CLANG_FORMATFLAGS+=-i
 

@@ -355,7 +355,7 @@ static lntd_error startup_start(struct startup *startup)
 			char *xx;
 			err = lntd_str_dup_len(&xx, start, len);
 			if (err != 0)
-				return err;
+				goto destroy_conf_db;
 			file_name_dup = xx;
 		}
 
@@ -365,7 +365,7 @@ static lntd_error startup_start(struct startup *startup)
 		lntd_mem_free(file_name_dup);
 
 		if (err != 0)
-			return err;
+			goto destroy_conf_db;
 
 		if (0 == end)
 			break;
@@ -385,8 +385,10 @@ static lntd_error startup_start(struct startup *startup)
 			break;
 		}
 	}
-	if (0 == system_conf)
-		return LNTD_ERROR_FILE_NOT_FOUND;
+	if (0 == system_conf) {
+		err = LNTD_ERROR_FILE_NOT_FOUND;
+		goto destroy_conf_db;
+	}
 
 	struct system_conf system_conf_struct = {0};
 
@@ -2289,10 +2291,12 @@ static lntd_error parser_get_line(struct parser *parser,
 				break;
 			}
 			if (err != 0) {
-
+				state = PARSER_ERROR;
 				break;
 			}
 		}
+		err = LNTD_ERROR_INVALID_PARAMETER;
+		state = PARSER_ERROR;
 		break;
 
 	found_whitespace:
@@ -2371,6 +2375,8 @@ static lntd_error parser_get_line(struct parser *parser,
 		lntd_mem_free(value);
 
 		if (err != 0) {
+			lntd_mem_free(field);
+
 			wordfree(&expr);
 			state = PARSER_ERROR;
 			break;

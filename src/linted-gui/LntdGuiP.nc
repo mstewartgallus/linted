@@ -435,7 +435,6 @@ implementation
 			} else {
 				clear_controls = true;
 			}
-			focused = focused;
 		}
 
 		/* All X11 processing should be done by this point */
@@ -534,6 +533,8 @@ implementation
 		xcb_get_geometry_cookie_t geom_ck;
 		xcb_query_pointer_cookie_t point_ck;
 		int x, y;
+		unsigned resize_width;
+		unsigned resize_height;
 
 		err = gui_remove_window();
 		if (err != 0)
@@ -587,8 +588,8 @@ implementation
 				return err;
 			}
 
-			width = reply->width;
-			height = reply->height;
+			resize_width = reply->width;
+			resize_height = reply->height;
 
 			lntd_mem_free(reply);
 		}
@@ -621,8 +622,8 @@ implementation
 
 		xcb_flush(connection);
 
-		width = width;
-		height = height;
+		width = resize_width;
+		height = resize_height;
 
 		on_tilt(x, y);
 
