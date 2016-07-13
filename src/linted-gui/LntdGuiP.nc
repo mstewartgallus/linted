@@ -19,6 +19,7 @@
 #include "lntd/error.h"
 #include "lntd/ko.h"
 #include "lntd/mem.h"
+#include "lntd/log.h"
 #include "lntd/util.h"
 #include "lntd/window.h"
 #include "lntd/xcb.h"
@@ -105,8 +106,7 @@ implementation
 			call LntdLogger.log(
 			    LNTD_LOGGER_ERROR,
 			    "missing some of 3 file operands!");
-			call LntdMainLoop.exit(EXIT_FAILURE);
-			return;
+			goto fail;
 		}
 
 		window_path = argv[1U];
@@ -117,8 +117,14 @@ implementation
 			lntd_ko xx;
 			err = lntd_ko_open(&xx, LNTD_KO_CWD,
 			                   window_path, LNTD_KO_RDWR);
-			if (err != 0)
-				goto destroy_window;
+			if (err != 0) {
+				char const *str =
+				    lntd_error_string(err);
+				lntd_log(LNTD_LOG_ERROR,
+				         "lntd_ko_open: %s", str);
+				lntd_error_string_free(str);
+				goto fail;
+			}
 			window_ko = xx;
 		}
 
@@ -127,8 +133,14 @@ implementation
 			err = lntd_ko_open(&xx, LNTD_KO_CWD,
 			                   window_notifier_path,
 			                   LNTD_KO_RDWR);
-			if (err != 0)
-				goto destroy_window;
+			if (err != 0) {
+				char const *str =
+				    lntd_error_string(err);
+				lntd_log(LNTD_LOG_ERROR,
+				         "lntd_ko_open: %s", str);
+				lntd_error_string_free(str);
+				goto fail;
+			}
 			window_notifier = xx;
 		}
 
@@ -137,8 +149,14 @@ implementation
 			err =
 			    lntd_ko_open(&xx, LNTD_KO_CWD,
 			                 controller_path, LNTD_KO_RDWR);
-			if (err != 0)
-				goto destroy_window;
+			if (err != 0) {
+				char const *str =
+				    lntd_error_string(err);
+				lntd_log(LNTD_LOG_ERROR,
+				         "lntd_ko_open: %s", str);
+				lntd_error_string_free(str);
+				goto fail;
+			}
 			controller = xx;
 		}
 
@@ -221,15 +239,20 @@ implementation
 			goto destroy_window;
 		}
 
-		call WindowNotifier.execute(window_notifier, &dummy,
-		                            sizeof dummy);
-		call Poller.execute(xcb_get_file_descriptor(connection),
-		                    LNTD_ASYNC_POLLER_IN);
+		call WindowNotifier.read_start(window_notifier, &dummy,
+		                               sizeof dummy);
+		call Poller.poll_start(
+		    xcb_get_file_descriptor(connection),
+		    LNTD_ASYNC_POLLER_IN);
 
 		return;
 
 	destroy_window:
 		finish(err);
+		return;
+
+	fail:
+		call LntdMainLoop.exit(EXIT_FAILURE);
 	}
 
 	event int LntdMainLoop.shutdown(lntd_error err)
@@ -438,8 +461,9 @@ implementation
 		}
 
 		/* All X11 processing should be done by this point */
-		call Poller.execute(xcb_get_file_descriptor(connection),
-		                    LNTD_ASYNC_POLLER_IN);
+		call Poller.poll_start(
+		    xcb_get_file_descriptor(connection),
+		    LNTD_ASYNC_POLLER_IN);
 
 	clear:
 		if (clear_controls) {
@@ -480,8 +504,8 @@ implementation
 			return;
 		}
 
-		call WindowNotifier.execute(window_notifier, &dummy,
-		                            sizeof dummy);
+		call WindowNotifier.read_start(window_notifier, &dummy,
+		                               sizeof dummy);
 
 		err = gui_refresh_window();
 		if (err != 0) {
@@ -493,16 +517,9 @@ implementation
 	void finish(lntd_error err)
 	{
 		if (err != 0) {
-			char *errmsg;
-
-			errno = err;
-			if (-1 == asprintf(&errmsg, "%m")) {
-				return;
-			}
-
-			call LntdLogger.log(LNTD_LOGGER_ERROR, errmsg);
-
-			free(errmsg);
+			char const *str = lntd_error_string(err);
+			call LntdLogger.log(LNTD_LOGGER_ERROR, str);
+			lntd_error_string_free(str);
 		}
 
 		call LntdMainLoop.exit(err);

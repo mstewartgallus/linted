@@ -33,8 +33,8 @@ implementation
 	struct lntd_async_cmd_write cmd;
 	bool in_progress;
 
-	command void LntdWriter.execute(lntd_ko ko, char const *bytes,
-	                                size_t size)
+	command void LntdWriter.write_start(
+	    lntd_ko ko, char const *bytes, size_t size)
 	{
 		LNTD_ASSERT(!in_progress);
 
@@ -51,7 +51,7 @@ implementation
 		                              &cmd);
 	}
 
-	command void LntdWriter.cancel(void)
+	command void LntdWriter.write_cancel(void)
 	{
 		call LntdAsyncCommand.cancel();
 	}

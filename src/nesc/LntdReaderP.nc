@@ -33,8 +33,8 @@ implementation
 	struct lntd_async_cmd_read cmd;
 	bool in_progress;
 
-	command void LntdReader.execute(lntd_ko ko, char *bytes,
-	                                size_t size)
+	command void LntdReader.read_start(lntd_ko ko, char *bytes,
+	                                   size_t size)
 	{
 		LNTD_ASSERT(!in_progress);
 
@@ -50,7 +50,7 @@ implementation
 		                              &cmd);
 	}
 
-	command void LntdReader.cancel(void)
+	command void LntdReader.read_cancel(void)
 	{
 		call LntdAsyncCommand.cancel();
 	}

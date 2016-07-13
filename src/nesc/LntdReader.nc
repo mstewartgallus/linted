@@ -22,8 +22,8 @@
 
 interface LntdReader
 {
-	command void execute(lntd_ko ko, char *bytes, size_t size);
+	command void read_start(lntd_ko ko, char *bytes, size_t size);
 	event void read_done(lntd_error err, size_t bytes_read);
 
-	command void cancel(void);
+	command void read_cancel(void);
 }

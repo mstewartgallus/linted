@@ -36,13 +36,14 @@ implementation
 	command void LntdControllerReader.start(lntd_ko the_ko)
 	{
 		ko = the_ko;
-		call LntdReader.execute(the_ko, (char *)&control_input,
-		                        sizeof control_input);
+		call LntdReader.read_start(the_ko,
+		                           (char *)&control_input,
+		                           sizeof control_input);
 	}
 
 	command void LntdControllerReader.stop(void)
 	{
-		call LntdReader.cancel();
+		call LntdReader.read_cancel();
 	}
 
 	event void LntdReader.read_done(lntd_error err,

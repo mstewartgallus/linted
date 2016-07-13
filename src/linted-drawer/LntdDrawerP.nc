@@ -159,10 +159,11 @@ implementation
 			gpu_context = xx;
 		}
 
-		call WindowNotifier.execute(notifier, &dummy,
-		                            sizeof dummy);
-		call Poller.execute(xcb_get_file_descriptor(connection),
-		                    LNTD_ASYNC_POLLER_IN);
+		call WindowNotifier.read_start(notifier, &dummy,
+		                               sizeof dummy);
+		call Poller.poll_start(
+		    xcb_get_file_descriptor(connection),
+		    LNTD_ASYNC_POLLER_IN);
 		call UpdateReader.start(updater);
 
 		drawer_refresh_window();
@@ -239,8 +240,9 @@ implementation
 			lntd_mem_free(myevent);
 		}
 
-		call Poller.execute(xcb_get_file_descriptor(connection),
-		                    LNTD_ASYNC_POLLER_IN);
+		call Poller.poll_start(
+		    xcb_get_file_descriptor(connection),
+		    LNTD_ASYNC_POLLER_IN);
 
 		if (window_destroyed) {
 			lntd_gpu_remove_window(gpu_context);
@@ -315,8 +317,8 @@ implementation
 			return;
 		}
 
-		call WindowNotifier.execute(notifier, &dummy,
-		                            sizeof dummy);
+		call WindowNotifier.read_start(notifier, &dummy,
+		                               sizeof dummy);
 
 		err = drawer_refresh_window();
 		if (err != 0) {

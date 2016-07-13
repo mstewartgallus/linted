@@ -50,10 +50,10 @@ implementation
 		maybe_update();
 	}
 
-	command void LntdUpdateWriter.cancel(void)
+	command void LntdUpdateWriter.write_cancel(void)
 	{
 		update_in_progress = false;
-		call LntdWriter.cancel();
+		call LntdWriter.write_cancel();
 	}
 
 	event void LntdWriter.write_done(lntd_error err)
@@ -88,7 +88,7 @@ implementation
 		update_being_written.x_rotation =
 		    pending_update.x_rotation;
 
-		call LntdWriter.execute(
+		call LntdWriter.write_start(
 		    ko, (char const *)&update_being_written,
 		    sizeof update_being_written);
 	}

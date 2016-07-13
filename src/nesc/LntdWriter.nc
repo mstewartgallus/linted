@@ -22,9 +22,9 @@
 
 interface LntdWriter
 {
-	command void execute(lntd_ko ko, char const *bytes,
-	                     size_t size);
+	command void write_start(lntd_ko ko, char const *bytes,
+	                         size_t size);
 	event void write_done(lntd_error err);
 
-	command void cancel(void);
+	command void write_cancel(void);
 }

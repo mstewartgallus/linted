@@ -453,12 +453,13 @@ implementation
 		if (err != 0)
 			goto destroy_window;
 
-		call GuiNotifier.execute(gui_notifier, &dummy,
-		                         sizeof dummy);
-		call DrawerNotifier.execute(drawer_notifier, &dummy,
-		                            sizeof dummy);
-		call Poller.execute(xcb_get_file_descriptor(connection),
-		                    LNTD_ASYNC_POLLER_IN);
+		call GuiNotifier.write_start(gui_notifier, &dummy,
+		                             sizeof dummy);
+		call DrawerNotifier.write_start(drawer_notifier, &dummy,
+		                                sizeof dummy);
+		call Poller.poll_start(
+		    xcb_get_file_descriptor(connection),
+		    LNTD_ASYNC_POLLER_IN);
 
 		return;
 
@@ -531,8 +532,9 @@ implementation
 				finish(0);
 		}
 
-		call Poller.execute(xcb_get_file_descriptor(connection),
-		                    LNTD_ASYNC_POLLER_IN);
+		call Poller.poll_start(
+		    xcb_get_file_descriptor(connection),
+		    LNTD_ASYNC_POLLER_IN);
 	}
 
 	void finish(lntd_error err)

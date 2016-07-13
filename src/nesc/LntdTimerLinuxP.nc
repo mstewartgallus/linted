@@ -37,7 +37,7 @@ implementation
 
 	task void timer_error_handler(void);
 
-	command void LntdTimer.execute(struct timespec const *req)
+	command void LntdTimer.tick_start(struct timespec const *req)
 	{
 		LNTD_ASSERT(!in_progress);
 
@@ -64,12 +64,12 @@ implementation
 		                              &cmd);
 	}
 
-	command void LntdTimer.cancel(void)
+	command void LntdTimer.tick_cancel(void)
 	{
 		call LntdAsyncCommand.cancel();
 	}
 
-	event void LntdAsyncCommand.done(lntd_error err)
+	event void LntdAsyncCommand.tick_done(lntd_error err)
 	{
 		in_progress = false;
 		signal LntdTimer.tick_done(err);

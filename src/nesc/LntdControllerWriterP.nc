@@ -53,7 +53,7 @@ implementation
 	command void LntdControllerWriter.cancel(void)
 	{
 		update_in_progress = false;
-		call LntdWriter.cancel();
+		call LntdWriter.write_cancel();
 	}
 
 	event void LntdWriter.write_done(lntd_error err)
@@ -86,7 +86,7 @@ implementation
 
 		update_being_written.jumping = pending_update.jumping;
 
-		call LntdWriter.execute(
+		call LntdWriter.write_start(
 		    ko, (char const *)&update_being_written,
 		    sizeof update_being_written);
 	}

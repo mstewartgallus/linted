@@ -36,13 +36,14 @@ implementation
 	command void LntdUpdateReader.start(lntd_ko the_ko)
 	{
 		ko = the_ko;
-		call LntdReader.execute(the_ko, (char *)&control_input,
-		                        sizeof control_input);
+		call LntdReader.read_start(the_ko,
+		                           (char *)&control_input,
+		                           sizeof control_input);
 	}
 
 	command void LntdUpdateReader.stop(void)
 	{
-		call LntdReader.cancel();
+		call LntdReader.read_cancel();
 	}
 
 	event void LntdReader.read_done(lntd_error err,
@@ -74,7 +75,7 @@ implementation
 			signal LntdUpdateReader.read_input(0, &input);
 		}
 
-		call LntdReader.execute(ko, (char *)&control_input,
-		                        sizeof control_input);
+		call LntdReader.read_start(ko, (char *)&control_input,
+		                           sizeof control_input);
 	}
 }

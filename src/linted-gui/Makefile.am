@@ -23,6 +23,7 @@ pkglibexec_PROGRAMS+=%D%/linted-gui
   src/env/libenv.la\
   src/error/liberror.la\
   src/ko/libko.la\
+  src/log/liblog.la\
   src/xcb/libxcb.la\
   \
   src/window/libwindow.la\

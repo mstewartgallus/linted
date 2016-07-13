@@ -30,8 +30,8 @@ implementation
 {
 	struct lntd_async_cmd_poll cmd;
 
-	command void LntdPoller.execute(lntd_ko ko,
-	                                uint_fast64_t events)
+	command void LntdPoller.poll_start(lntd_ko ko,
+	                                   uint_fast64_t events)
 	{
 		lntd_error err = 0;
 
@@ -60,7 +60,7 @@ implementation
 		signal LntdPoller.poll_done(err, 0);
 	}
 
-	command void LntdPoller.cancel(void)
+	command void LntdPoller.poll_cancel(void)
 	{
 		call LntdAsyncCommand.cancel();
 	}
