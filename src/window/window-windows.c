@@ -131,20 +131,14 @@ void lntd_window_task_watch_destroy(struct lntd_window_task_watch *task)
 	lntd_mem_free(task);
 }
 
-struct lntd_async_task *
-lntd_window_task_watch_prepare(struct lntd_window_task_watch *task,
-                               union lntd_async_ck task_ck,
-                               void *userstate, lntd_ko notifier)
+void lntd_window_task_watch_submit(struct lntd_async_pool *pool,
+                                   struct lntd_window_task_watch *task,
+                                   union lntd_async_ck task_ck,
+                                   void *userstate, lntd_ko notifier)
 {
-	return lntd_io_task_read_prepare(
-	    task->parent, task_ck, userstate, notifier, task->dummy,
-	    sizeof task->dummy);
-}
-
-struct lntd_async_task *
-lntd_window_task_watch_to_async(struct lntd_window_task_watch *task)
-{
-	return lntd_io_task_read_to_async(task->parent);
+	lntd_io_task_read_submit(pool, task->parent, task_ck, userstate,
+	                         notifier, task->dummy,
+	                         sizeof task->dummy);
 }
 
 void *lntd_window_task_watch_data(struct lntd_window_task_watch *task)
@@ -191,20 +185,13 @@ void lntd_window_task_notify_destroy(
 
 static const char dummy[1U];
 
-struct lntd_async_task *
-lntd_window_task_notify_prepare(struct lntd_window_task_notify *task,
-                                union lntd_async_ck task_ck,
-                                void *userstate, lntd_ko notifier)
+void lntd_window_task_notify_submit(
+    struct lntd_async_pool *pool, struct lntd_window_task_notify *task,
+    union lntd_async_ck task_ck, void *userstate, lntd_ko notifier)
 {
-	return lntd_io_task_write_prepare(task->parent, task_ck,
-	                                  userstate, notifier, dummy,
-	                                  sizeof dummy);
-}
-
-struct lntd_async_task *
-lntd_window_task_notify_to_async(struct lntd_window_task_notify *task)
-{
-	return lntd_io_task_write_to_async(task->parent);
+	lntd_io_task_write_submit(pool, task->parent, task_ck,
+	                          userstate, notifier, dummy,
+	                          sizeof dummy);
 }
 
 void *lntd_window_task_notify_data(struct lntd_window_task_notify *task)

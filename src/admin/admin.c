@@ -170,20 +170,19 @@ lntd_error lntd_admin_in_send(lntd_admin_in admin,
 	return err;
 }
 
-struct lntd_async_task *
-lntd_admin_in_task_recv_prepare(struct lntd_admin_in_task_recv *task,
-                                union lntd_async_ck task_ck,
-                                void *userstate, lntd_ko ko)
+void lntd_admin_in_task_recv_cancel(
+    struct lntd_admin_in_task_recv *task)
 {
-	return lntd_io_task_read_prepare(task->parent, task_ck,
-	                                 userstate, ko, task->request,
-	                                 sizeof task->request);
+	lntd_io_task_read_cancel(task->parent);
 }
 
-struct lntd_async_task *
-lntd_admin_in_task_recv_to_async(struct lntd_admin_in_task_recv *task)
+void lntd_admin_in_task_recv_submit(
+    struct lntd_async_pool *pool, struct lntd_admin_in_task_recv *task,
+    union lntd_async_ck task_ck, void *userstate, lntd_ko ko)
 {
-	return lntd_io_task_read_to_async(task->parent);
+	lntd_io_task_read_submit(pool, task->parent, task_ck, userstate,
+	                         ko, task->request,
+	                         sizeof task->request);
 }
 
 lntd_error
@@ -232,9 +231,10 @@ lntd_admin_out_task_send_data(struct lntd_admin_out_task_send *task)
 	return task->data;
 }
 
-struct lntd_async_task *lntd_admin_out_task_send_prepare(
-    struct lntd_admin_out_task_send *task, union lntd_async_ck task_ck,
-    void *userstate, lntd_ko ko, struct lntd_admin_reply const *reply)
+void lntd_admin_out_task_send_submit(
+    struct lntd_async_pool *pool, struct lntd_admin_out_task_send *task,
+    union lntd_async_ck task_ck, void *userstate, lntd_ko ko,
+    struct lntd_admin_reply const *reply)
 {
 	char *tip = task->reply;
 	memset(tip, 0, CHUNK_SIZE);
@@ -247,15 +247,15 @@ struct lntd_async_task *lntd_admin_out_task_send_prepare(
 
 	xdr_destroy(&xdr);
 
-	return lntd_io_task_write_prepare(task->parent, task_ck,
-	                                  userstate, ko, task->reply,
-	                                  sizeof task->reply);
+	lntd_io_task_write_submit(pool, task->parent, task_ck,
+	                          userstate, ko, task->reply,
+	                          sizeof task->reply);
 }
 
-struct lntd_async_task *
-lntd_admin_out_task_send_to_async(struct lntd_admin_out_task_send *task)
+void lntd_admin_out_task_send_cancel(
+    struct lntd_admin_out_task_send *task)
 {
-	return lntd_io_task_write_to_async(task->parent);
+	lntd_io_task_write_cancel(task->parent);
 }
 
 lntd_error lntd_admin_out_recv(lntd_admin_out admin,

@@ -66,8 +66,6 @@ lntd_error lntd_async_pool_create(struct lntd_async_pool **poolp,
                                   unsigned max_tasks);
 lntd_error lntd_async_pool_destroy(struct lntd_async_pool *pool);
 
-void lntd_async_pool_submit(struct lntd_async_pool *pool,
-                            struct lntd_async_task *task);
 void lntd_async_pool_resubmit(struct lntd_async_pool *pool,
                               struct lntd_async_task *task);
 void lntd_async_pool_complete(struct lntd_async_pool *pool,
@@ -94,9 +92,10 @@ lntd_error lntd_async_task_create(struct lntd_async_task **taskp,
 void lntd_async_task_destroy(struct lntd_async_task *task);
 
 void lntd_async_task_cancel(struct lntd_async_task *task);
-struct lntd_async_task *
-lntd_async_task_prepare(struct lntd_async_task *task,
-                        union lntd_async_ck task_ck, void *userstate);
+void lntd_async_task_submit(struct lntd_async_pool *pool,
+                            struct lntd_async_task *task,
+                            union lntd_async_ck task_ck,
+                            void *userstate);
 
 void *lntd_async_task_data(struct lntd_async_task *task);
 

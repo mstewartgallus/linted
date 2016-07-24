@@ -81,11 +81,9 @@ static unsigned char lntd_start_main(char const *process_name,
 
 		struct lntd_sched_task_idle *task = idle_task[ii];
 
-		lntd_async_pool_submit(
-		    pool,
-		    lntd_sched_task_idle_prepare(
-		        task, (union lntd_async_ck){.u64 = ON_IDLE},
-		        task));
+		lntd_sched_task_idle_submit(
+		    pool, task, (union lntd_async_ck){.u64 = ON_IDLE},
+		    task);
 	}
 
 	for (;;) {
@@ -154,9 +152,7 @@ static void on_idle(struct lntd_sched_task_idle *idle_task,
 		return;
 	idle_data->idle_count = count - 1U;
 
-	lntd_async_pool_submit(
-	    idle_data->pool,
-	    lntd_sched_task_idle_prepare(
-	        idle_task, (union lntd_async_ck){.u64 = ON_IDLE},
-	        idle_task));
+	lntd_sched_task_idle_submit(
+	    idle_data->pool, idle_task,
+	    (union lntd_async_ck){.u64 = ON_IDLE}, idle_task);
 }

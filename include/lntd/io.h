@@ -106,24 +106,23 @@ lntd_error lntd_io_task_poll_create(struct lntd_io_task_poll **taskp,
                                     void *data);
 void lntd_io_task_poll_destroy(struct lntd_io_task_poll *task);
 
-struct lntd_async_task *
-lntd_io_task_poll_to_async(struct lntd_io_task_poll *);
-struct lntd_async_task *
-lntd_io_task_poll_prepare(struct lntd_io_task_poll *task,
-                          union lntd_async_ck task_ck, void *userstate,
-                          lntd_ko ko, int flags);
+void lntd_io_task_poll_cancel(struct lntd_io_task_poll *task);
+void lntd_io_task_poll_submit(struct lntd_async_pool *pool,
+                              struct lntd_io_task_poll *task,
+                              union lntd_async_ck task_ck,
+                              void *userstate, lntd_ko ko, int flags);
 void *lntd_io_task_poll_data(struct lntd_io_task_poll *task);
 
 lntd_error lntd_io_task_read_create(struct lntd_io_task_read **taskp,
                                     void *data);
 void lntd_io_task_read_destroy(struct lntd_io_task_read *task);
 
-struct lntd_async_task *
-lntd_io_task_read_to_async(struct lntd_io_task_read *);
-struct lntd_async_task *
-lntd_io_task_read_prepare(struct lntd_io_task_read *task,
-                          union lntd_async_ck task_ck, void *userstate,
-                          lntd_ko ko, char *buf, size_t size);
+void lntd_io_task_read_cancel(struct lntd_io_task_read *task);
+void lntd_io_task_read_submit(struct lntd_async_pool *pool,
+                              struct lntd_io_task_read *task,
+                              union lntd_async_ck task_ck,
+                              void *userstate, lntd_ko ko, char *buf,
+                              size_t size);
 void *lntd_io_task_read_data(struct lntd_io_task_read *task);
 lntd_ko lntd_io_task_read_ko(struct lntd_io_task_read *task);
 size_t lntd_io_task_read_bytes_read(struct lntd_io_task_read *task);
@@ -132,12 +131,12 @@ lntd_error lntd_io_task_write_create(struct lntd_io_task_write **taskp,
                                      void *data);
 void lntd_io_task_write_destroy(struct lntd_io_task_write *task);
 
-struct lntd_async_task *
-lntd_io_task_write_to_async(struct lntd_io_task_write *);
-struct lntd_async_task *
-lntd_io_task_write_prepare(struct lntd_io_task_write *task,
-                           union lntd_async_ck task_ck, void *userstate,
-                           lntd_ko ko, char const *buf, size_t size);
+void lntd_io_task_write_cancel(struct lntd_io_task_write *task);
+void lntd_io_task_write_submit(struct lntd_async_pool *pool,
+                               struct lntd_io_task_write *task,
+                               union lntd_async_ck task_ck,
+                               void *userstate, lntd_ko ko,
+                               char const *buf, size_t size);
 void *lntd_io_task_write_data(struct lntd_io_task_write *task);
 
 void lntd_io_do_poll(struct lntd_async_pool *pool,

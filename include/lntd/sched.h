@@ -48,19 +48,19 @@ lntd_sched_task_idle_create(struct lntd_sched_task_idle **taskp,
 void lntd_sched_task_idle_destroy(struct lntd_sched_task_idle *task);
 
 void *lntd_sched_task_idle_data(struct lntd_sched_task_idle *task);
-struct lntd_async_task *
-lntd_sched_task_idle_to_async(struct lntd_sched_task_idle *task);
-struct lntd_async_task *
-lntd_sched_task_idle_prepare(struct lntd_sched_task_idle *task,
-                             union lntd_async_ck task_ck,
-                             void *userstate);
+void lntd_sched_task_idle_cancel(struct lntd_sched_task_idle *task);
+void lntd_sched_task_idle_submit(struct lntd_async_pool *pool,
+                                 struct lntd_sched_task_idle *task,
+                                 union lntd_async_ck task_ck,
+                                 void *userstate);
 
 lntd_error lntd_sched_task_sleep_until_create(
     struct lntd_sched_task_sleep_until **taskp, void *data);
 void lntd_sched_task_sleep_until_destroy(
     struct lntd_sched_task_sleep_until *task);
 
-struct lntd_async_task *lntd_sched_task_sleep_until_prepare(
+void lntd_sched_task_sleep_until_submit(
+    struct lntd_async_pool *pool,
     struct lntd_sched_task_sleep_until *task,
     union lntd_async_ck task_ck, void *userstate,
     struct timespec const *req);
@@ -69,7 +69,7 @@ void lntd_sched_task_sleep_until_time(
 
 void *lntd_sched_task_sleep_until_data(
     struct lntd_sched_task_sleep_until *task);
-struct lntd_async_task *lntd_sched_task_sleep_until_to_async(
+void lntd_sched_task_sleep_until_cancel(
     struct lntd_sched_task_sleep_until *task);
 
 void lntd_sched_do_idle(struct lntd_async_pool *pool,

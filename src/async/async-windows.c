@@ -258,16 +258,6 @@ lntd_error lntd_async_pool_destroy(struct lntd_async_pool *pool)
 	return 0;
 }
 
-void lntd_async_pool_submit(struct lntd_async_pool *pool,
-                            struct lntd_async_task *task)
-{
-	LNTD_ASSERT(pool != 0);
-
-	canceller_start(&task->canceller);
-
-	job_submit(pool->job_queue, task);
-}
-
 void lntd_async_pool_resubmit(struct lntd_async_pool *pool,
                               struct lntd_async_task *task)
 {
@@ -407,13 +397,19 @@ void lntd_async_task_cancel(struct lntd_async_task *task)
 	canceller_cancel(&task->canceller);
 }
 
-struct lntd_async_task *
-lntd_async_task_prepare(struct lntd_async_task *task,
-                        union lntd_async_ck task_ck, void *userstate)
+void lntd_async_task_submit(struct lntd_async_pool *pool,
+                            struct lntd_async_task *task,
+                            union lntd_async_ck task_ck,
+                            void *userstate)
 {
+	LNTD_ASSERT(pool != 0);
+
 	task->task_ck = task_ck;
 	task->userstate = userstate;
-	return task;
+
+	canceller_start(&task->canceller);
+
+	job_submit(pool->job_queue, task);
 }
 
 union lntd_async_ck lntd_async_task_ck(struct lntd_async_task *task)

@@ -145,12 +145,11 @@ void lntd_admin_request_free(struct lntd_admin_request *outp);
 
 void *
 lntd_admin_in_task_recv_data(struct lntd_admin_in_task_recv *task);
-struct lntd_async_task *
-lntd_admin_in_task_recv_prepare(struct lntd_admin_in_task_recv *task,
-                                union lntd_async_ck task_ck,
-                                void *userstate, lntd_ko ko);
-struct lntd_async_task *
-lntd_admin_in_task_recv_to_async(struct lntd_admin_in_task_recv *task);
+void lntd_admin_in_task_recv_submit(
+    struct lntd_async_pool *pool, struct lntd_admin_in_task_recv *task,
+    union lntd_async_ck task_ck, void *userstate, lntd_ko ko);
+void lntd_admin_in_task_recv_cancel(
+    struct lntd_admin_in_task_recv *task);
 
 lntd_error
 lntd_admin_out_task_send_create(struct lntd_admin_out_task_send **taskp,
@@ -158,12 +157,13 @@ lntd_admin_out_task_send_create(struct lntd_admin_out_task_send **taskp,
 void lntd_admin_out_task_send_destroy(
     struct lntd_admin_out_task_send *task);
 
-struct lntd_async_task *lntd_admin_out_task_send_prepare(
-    struct lntd_admin_out_task_send *task, union lntd_async_ck task_ck,
-    void *userstate, lntd_ko ko, struct lntd_admin_reply const *reply);
+void lntd_admin_out_task_send_submit(
+    struct lntd_async_pool *pool, struct lntd_admin_out_task_send *task,
+    union lntd_async_ck task_ck, void *userstate, lntd_ko ko,
+    struct lntd_admin_reply const *reply);
 void *
 lntd_admin_out_task_send_data(struct lntd_admin_out_task_send *task);
-struct lntd_async_task *lntd_admin_out_task_send_to_async(
+void lntd_admin_out_task_send_cancel(
     struct lntd_admin_out_task_send *task);
 
 lntd_error lntd_admin_in_send(lntd_admin_in admin,

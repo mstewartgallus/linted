@@ -37,15 +37,14 @@ lntd_signal_task_wait_create(struct lntd_signal_task_wait **taskp,
                              void *data);
 void lntd_signal_task_wait_destroy(struct lntd_signal_task_wait *task);
 
-struct lntd_async_task *
-lntd_signal_task_wait_prepare(struct lntd_signal_task_wait *task,
-                              union lntd_async_ck task_ck,
-                              void *userstate);
+void lntd_signal_task_wait_submit(struct lntd_async_pool *pool,
+                                  struct lntd_signal_task_wait *task,
+                                  union lntd_async_ck task_ck,
+                                  void *userstate);
 
 void *lntd_signal_task_wait_data(struct lntd_signal_task_wait *task);
 int lntd_signal_task_wait_signo(struct lntd_signal_task_wait *task);
-struct lntd_async_task *
-lntd_signal_task_wait_to_async(struct lntd_signal_task_wait *task);
+void lntd_signal_task_wait_cancel(struct lntd_signal_task_wait *task);
 
 void lntd_signal_do_wait(struct lntd_async_pool *pool,
                          struct lntd_async_task *task);

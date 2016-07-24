@@ -60,25 +60,18 @@ void *lntd_sched_task_idle_data(struct lntd_sched_task_idle *task)
 	return lntd_async_task_data((void *)task);
 }
 
-struct lntd_async_task *
-lntd_sched_task_idle_to_async(struct lntd_sched_task_idle *task)
-{
-	return (void *)task;
-}
-
 struct lntd_sched_task_idle *
 lntd_sched_task_idle_from_async(struct lntd_async_task *task)
 {
 	return (void *)task;
 }
 
-struct lntd_async_task *
-lntd_sched_task_idle_prepare(struct lntd_sched_task_idle *task,
-                             union lntd_async_ck task_ck,
-                             void *userstate)
+void lntd_sched_task_idle_submit(struct lntd_async_pool *pool,
+                                 struct lntd_sched_task_idle *task,
+                                 union lntd_async_ck task_ck,
+                                 void *userstate)
 {
-	return lntd_async_task_prepare((void *)task, task_ck,
-	                               userstate);
+	lntd_async_task_submit(pool, (void *)task, task_ck, userstate);
 }
 
 lntd_error lntd_sched_task_sleep_until_create(
@@ -130,20 +123,20 @@ void lntd_sched_task_sleep_until_time(
 	*xx = task->time;
 }
 
-struct lntd_async_task *lntd_sched_task_sleep_until_prepare(
+void lntd_sched_task_sleep_until_submit(
+    struct lntd_async_pool *pool,
     struct lntd_sched_task_sleep_until *task,
     union lntd_async_ck task_ck, void *userstate,
     struct timespec const *req)
 {
 	task->time = *req;
-	return lntd_async_task_prepare(task->parent, task_ck,
-	                               userstate);
+	lntd_async_task_submit(pool, task->parent, task_ck, userstate);
 }
 
-struct lntd_async_task *lntd_sched_task_sleep_until_to_async(
+void lntd_sched_task_sleep_until_cancel(
     struct lntd_sched_task_sleep_until *task)
 {
-	return task->parent;
+	lntd_async_task_cancel(task->parent);
 }
 
 struct lntd_sched_task_sleep_until *

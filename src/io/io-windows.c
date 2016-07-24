@@ -347,21 +347,14 @@ void lntd_io_task_poll_destroy(struct lntd_io_task_poll *task)
 	lntd_mem_free(task);
 }
 
-struct lntd_async_task *
-lntd_io_task_poll_prepare(struct lntd_io_task_poll *task,
-                          union lntd_async_ck task_ck, void *userstate,
-                          lntd_ko ko, int flags)
+void lntd_io_task_poll_submit(struct lntd_async_pool *pool,
+                              struct lntd_io_task_poll *task,
+                              union lntd_async_ck task_ck,
+                              void *userstate, lntd_ko ko, int flags)
 {
 	task->ko = ko;
 	task->events = flags;
-	return lntd_async_task_prepare(task->parent, task_ck,
-	                               userstate);
-}
-
-struct lntd_async_task *
-lntd_io_task_poll_to_async(struct lntd_io_task_poll *task)
-{
-	return task->parent;
+	lntd_async_task_submit(pool, task->parent, task_ck, userstate);
 }
 
 void *lntd_io_task_poll_data(struct lntd_io_task_poll *task)
@@ -419,22 +412,16 @@ void lntd_io_task_read_destroy(struct lntd_io_task_read *task)
 	lntd_mem_free(task);
 }
 
-struct lntd_async_task *
-lntd_io_task_read_prepare(struct lntd_io_task_read *task,
-                          union lntd_async_ck task_ck, void *userstate,
-                          lntd_ko ko, char *buf, size_t size)
+void lntd_io_task_read_submit(struct lntd_async_pool *pool,
+                              astruct lntd_io_task_read *task,
+                              union lntd_async_ck task_ck,
+                              void *userstate, lntd_ko ko, char *buf,
+                              size_t size)
 {
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
-	return lntd_async_task_prepare(task->parent, task_ck,
-	                               userstate);
-}
-
-struct lntd_async_task *
-lntd_io_task_read_to_async(struct lntd_io_task_read *task)
-{
-	return task->parent;
+	lntd_async_task_submit(pool, task->parent, task_ck, userstate);
 }
 
 void *lntd_io_task_read_data(struct lntd_io_task_read *task)
@@ -503,22 +490,17 @@ void lntd_io_task_write_destroy(struct lntd_io_task_write *task)
 	lntd_mem_free(task);
 }
 
-struct lntd_async_task *
-lntd_io_task_write_prepare(struct lntd_io_task_write *task,
-                           union lntd_async_ck task_ck, void *userstate,
-                           lntd_ko ko, char const *buf, size_t size)
+void lntd_io_task_write_submit(struct lntd_async_pool *pool,
+                               struct lntd_io_task_write *task,
+                               union lntd_async_ck task_ck,
+                               void *userstate, lntd_ko ko,
+                               char const *buf, size_t size)
 {
 	task->ko = ko;
 	task->buf = buf;
 	task->size = size;
-	return lntd_async_task_prepare(task->parent, task_ck,
-	                               userstate);
-}
-
-struct lntd_async_task *
-lntd_io_task_write_to_async(struct lntd_io_task_write *task)
-{
-	return task->parent;
+	return lntd_async_task_submit(pool, task->parent, task_ck,
+	                              userstate);
 }
 
 void *lntd_io_task_write_data(struct lntd_io_task_write *task)

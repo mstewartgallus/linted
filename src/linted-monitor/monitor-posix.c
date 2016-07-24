@@ -594,25 +594,22 @@ static lntd_error monitor_start(struct monitor *monitor)
 
 	lntd_signal_listen_to_sigchld();
 
-	lntd_async_pool_submit(
-	    pool, lntd_signal_task_wait_prepare(
-	              signal_wait_task,
-	              (union lntd_async_ck){.u64 = SIGNAL_WAIT},
-	              signal_wait_task));
+	lntd_signal_task_wait_submit(
+	    pool, signal_wait_task,
+	    (union lntd_async_ck){.u64 = SIGNAL_WAIT},
+	    signal_wait_task);
 
-	lntd_async_pool_submit(
-	    pool, lntd_admin_in_task_recv_prepare(
-	              admin_in_read_task,
-	              (union lntd_async_ck){.u64 = ADMIN_IN_READ},
-	              admin_in_read_task, admin_in));
+	lntd_admin_in_task_recv_submit(
+	    pool, admin_in_read_task,
+	    (union lntd_async_ck){.u64 = ADMIN_IN_READ},
+	    admin_in_read_task, admin_in);
 
 	static char dummy;
 
-	lntd_async_pool_submit(
-	    pool,
-	    lntd_io_task_read_prepare(
-	        kill_read_task, (union lntd_async_ck){.u64 = KILL_READ},
-	        kill_read_task, kill_fifo, &dummy, sizeof dummy));
+	lntd_io_task_read_submit(
+	    pool, kill_read_task,
+	    (union lntd_async_ck){.u64 = KILL_READ}, kill_read_task,
+	    kill_fifo, &dummy, sizeof dummy);
 
 	lntd_signal_listen_to_sighup();
 	lntd_signal_listen_to_sigint();
@@ -653,14 +650,10 @@ static lntd_error monitor_stop(struct monitor *monitor)
 	struct lntd_io_task_read *kill_task_read =
 	    monitor->kill_read_task;
 
-	lntd_async_task_cancel(
-	    lntd_admin_in_task_recv_to_async(read_task));
-	lntd_async_task_cancel(
-	    lntd_admin_out_task_send_to_async(write_task));
-	lntd_async_task_cancel(
-	    lntd_signal_task_wait_to_async(signal_wait_task));
-	lntd_async_task_cancel(
-	    lntd_io_task_read_to_async(kill_task_read));
+	lntd_admin_in_task_recv_cancel(read_task);
+	lntd_admin_out_task_send_cancel(write_task);
+	lntd_signal_task_wait_cancel(signal_wait_task);
+	lntd_io_task_read_cancel(kill_task_read);
 
 	return 0;
 }
@@ -703,11 +696,10 @@ monitor_on_signal(struct monitor *monitor,
 
 	int signo = lntd_signal_task_wait_signo(signal_wait_task);
 
-	lntd_async_pool_submit(
-	    pool, lntd_signal_task_wait_prepare(
-	              signal_wait_task,
-	              (union lntd_async_ck){.u64 = SIGNAL_WAIT},
-	              signal_wait_task));
+	lntd_signal_task_wait_submit(
+	    pool, signal_wait_task,
+	    (union lntd_async_ck){.u64 = SIGNAL_WAIT},
+	    signal_wait_task);
 
 	switch (signo) {
 	case SIGCHLD:
@@ -804,12 +796,10 @@ static lntd_error monitor_on_admin_in_read(
 	{
 		struct lntd_admin_reply xx = reply;
 
-		lntd_async_pool_submit(
-		    pool,
-		    lntd_admin_out_task_send_prepare(
-		        write_task,
-		        (union lntd_async_ck){.u64 = ADMIN_OUT_WRITE},
-		        write_task, admin_out, &xx));
+		lntd_admin_out_task_send_submit(
+		    pool, write_task,
+		    (union lntd_async_ck){.u64 = ADMIN_OUT_WRITE},
+		    write_task, admin_out, &xx);
 	}
 
 	return err;
@@ -827,11 +817,10 @@ monitor_on_admin_out_write(struct monitor *monitor,
 	if (err != 0)
 		return 0;
 
-	lntd_async_pool_submit(
-	    pool,
-	    lntd_admin_in_task_recv_prepare(
-	        read_task, (union lntd_async_ck){.u64 = ADMIN_IN_READ},
-	        read_task, admin_in));
+	lntd_admin_in_task_recv_submit(
+	    pool, read_task,
+	    (union lntd_async_ck){.u64 = ADMIN_IN_READ}, read_task,
+	    admin_in);
 
 	return 0;
 }
@@ -889,11 +878,10 @@ monitor_on_kill_read(struct monitor *monitor,
 	monitor->time_to_exit = true;
 
 	static char dummy;
-	lntd_async_pool_submit(
-	    pool,
-	    lntd_io_task_read_prepare(
-	        kill_read_task, (union lntd_async_ck){.u64 = KILL_READ},
-	        kill_read_task, kill_fifo, &dummy, sizeof dummy));
+	lntd_io_task_read_submit(
+	    pool, kill_read_task,
+	    (union lntd_async_ck){.u64 = KILL_READ}, kill_read_task,
+	    kill_fifo, &dummy, sizeof dummy);
 	return 0;
 }
 
