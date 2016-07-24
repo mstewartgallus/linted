@@ -65,7 +65,7 @@ def go():
         afile = afileandflags['file']
         flags = afileandflags['flags']
 
-        arguments = ['clang-3.6',
+        arguments = ['clang-3.9',
                      '-Xclang', '-analyzer-output=text',
                      '-Xclang', '-o-',
                      '--analyze',
@@ -144,7 +144,7 @@ ENABLED = [
 
 	# Warn about Objective-C classes that lack a correct implementation of
 	# -dealloc
-	 'alpha.osx.cocoa.Dealloc',
+	# 'alpha.osx.cocoa.Dealloc',
 	# Check for direct assignments to instance variables
 	 'alpha.osx.cocoa.DirectIvarAssignment',
 	# Check for direct assignments to instance variables in the methods
@@ -173,7 +173,7 @@ ENABLED = [
 	# Check for memory leaks, double free, and use-after-free
 	# problems. Traces memory managed by malloc()/free(). Assumes that all
 	# user-defined functions which might free a pointer are annotated.
-	 'alpha.unix.MallocWithAnnotations',
+	#'alpha.unix.MallocWithAnnotations',
 	# Simple lock -> unlock checker
 	 'alpha.unix.PthreadLock',
 	# Check for misuses of stream APIs
@@ -233,6 +233,11 @@ ENABLED = [
 
 	# Check code for LLVM codebase conventions
 	 'llvm.Conventions',
+
+	 'nullability.NullPassedToNonnull',
+	 'nullability.NullReturnedFromNonnull',
+
+	 'optin.performance.Padding',
 
 	# Check for proper uses of various Apple APIs
 	 'osx.API',

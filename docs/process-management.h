@@ -30,15 +30,17 @@ spawning the `startup` process the `monitor` process then idly waits for
 commands.
 
 Meanwhile, the `startup` process reads through the unit files in the
-directories listed in `LINTED_UNIT_PATH` and registers those units with
-the `monitor`.  Once the `monitor` receives units to regiister it then
-spawns associated processes or creates associated files.  In the future,
-I would like to have the `monitor` automatically deduce unit file
-dependencies and only spawn processes once their dependencies are met.
+directories listed in `LINTED_UNIT_PATH` and registers those units
+with the `monitor`.  Once the `monitor` receives units to register it
+then spawns associated processes or creates associated files.  In the
+future, I would like to have the `monitor` automatically deduce unit
+file dependencies and only spawn processes once their dependencies are
+met.
 
 @section hierarchy Process hierarchy
 
 - `init`
+  - `monitor`
   - `audio`
     - `audio`
   - `simulator`
@@ -49,7 +51,6 @@ dependencies and only spawn processes once their dependencies are met.
     - `gui`
   - `window`
     - `window`
-  - `monitor`
 
 `init` is the top level service that contains everything using
 `PR_SET_CHILD_SUBREAPER`.  All it does is monitor and restart the
