@@ -25,6 +25,6 @@ interface LntdAsyncCommand
 
 	command void cancel(void);
 
-	command lntd_error
-	execute_sync(lntd_async_cmd_type type, void *data);
+	command lntd_error execute_sync(lntd_async_cmd_type type,
+	                                void *data);
 }

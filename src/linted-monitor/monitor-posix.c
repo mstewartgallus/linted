@@ -22,8 +22,8 @@
 #include "lntd/dir.h"
 #include "lntd/env.h"
 #include "lntd/error.h"
-#include "lntd/file.h"
 #include "lntd/fifo.h"
+#include "lntd/file.h"
 #include "lntd/io.h"
 #include "lntd/ko.h"
 #include "lntd/log.h"
@@ -40,8 +40,8 @@
 #include "lntd/util.h"
 
 #include <errno.h>
-#include <inttypes.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -466,8 +466,7 @@ cancel_tasks:
 destroy_monitor:
 	monitor_destroy(&monitor);
 
-destroy_pool:
-	;
+destroy_pool:;
 	lntd_error destroy_err = lntd_async_pool_destroy(pool);
 	if (0 == err)
 		err = destroy_err;
@@ -1163,8 +1162,7 @@ on_child_ptrace_event_stopped(char const *process_name, lntd_proc pid,
 
 	err = lntd_ptrace_setoptions(pid, PTRACE_O_TRACEEXIT);
 
-continue_process:
-	;
+continue_process:;
 	lntd_error cont_err = lntd_ptrace_cont(pid, 0);
 	if (0 == err)
 		err = cont_err;
@@ -1660,8 +1658,7 @@ static lntd_error service_activate(struct monitor *monitor,
 service_not_found:
 	if (err != ESRCH)
 		return err;
-spawn_service:
-	;
+spawn_service:;
 	char const *const *command = unit_service->command;
 	char const *const *environment = unit_service->environment;
 	bool no_new_privs = unit_service->no_new_privs;

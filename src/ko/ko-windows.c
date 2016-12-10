@@ -27,8 +27,8 @@
 
 #include "lntd/ko.h"
 
-#include "lntd/mem.h"
 #include "lntd/error.h"
+#include "lntd/mem.h"
 #include "lntd/str.h"
 #include "lntd/utf.h"
 #include "lntd/util.h"
@@ -39,8 +39,8 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <winsock2.h>
 #include <windows.h>
+#include <winsock2.h>
 
 lntd_error lntd_ko_open(lntd_ko *kop, lntd_ko dirko,
                         char const *pathname, unsigned long flags)

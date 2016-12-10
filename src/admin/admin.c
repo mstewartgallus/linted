@@ -43,9 +43,9 @@ LNTD_STATIC_ASSERT(sizeof(struct lntd_admin_reply) ==
 
 #define ALIGN(X)                                                       \
 	(sizeof(struct {                                               \
-		char _a;                                               \
-		X _b;                                                  \
-	}) -                                                           \
+		 char _a;                                              \
+		 X _b;                                                 \
+	 }) -                                                          \
 	 sizeof(X))
 
 struct lntd_admin_in_task_recv {

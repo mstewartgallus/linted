@@ -36,8 +36,8 @@ implementation
 
 	lntd_error my_write(lntd_ko ko, char const *bytes, size_t size);
 
-	command lntd_error
-	    LntdStdio.read_line(lntd_ko ko, char **bufp, size_t *sizep)
+	command lntd_error LntdStdio.read_line(lntd_ko ko, char **bufp,
+	                                       size_t *sizep)
 	{
 		size_t size = 80U;
 
@@ -77,8 +77,8 @@ implementation
 		return 0;
 	}
 
-	command lntd_error
-	    LntdStdio.write_line(lntd_ko ko, char const *str)
+	command lntd_error LntdStdio.write_line(lntd_ko ko,
+	                                        char const *str)
 	{
 		size_t strsize;
 		char *newlinestr;
@@ -107,8 +107,8 @@ implementation
 		return my_read(ko, buf, size, bytes_read);
 	}
 
-	command lntd_error
-	    LntdStdio.write(lntd_ko ko, char const *bytes, size_t size)
+	command lntd_error LntdStdio.write(
+	    lntd_ko ko, char const *bytes, size_t size)
 	{
 		return my_write(ko, bytes, size);
 	}

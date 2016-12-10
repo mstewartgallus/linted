@@ -19,14 +19,14 @@
 
 #include "lntd/spawn.h"
 
-#include "lntd/execveat.h"
 #include "lntd/error.h"
+#include "lntd/execveat.h"
 #include "lntd/fifo.h"
 #include "lntd/io.h"
 #include "lntd/ko.h"
 #include "lntd/mem.h"
-#include "lntd/proc.h"
 #include "lntd/prctl.h"
+#include "lntd/proc.h"
 #include "lntd/util.h"
 
 #include <errno.h>

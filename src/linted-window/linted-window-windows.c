@@ -37,8 +37,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <windows.h>
 #include <d3d9.h>
+#include <windows.h>
 
 typedef WINAPI IDirect3D9 *typeof_Direct3DCreate9(UINT SDKVersion);
 

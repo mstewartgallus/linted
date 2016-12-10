@@ -20,12 +20,12 @@
 
 interface LntdStdio
 {
-	command lntd_error
-	write(lntd_ko ko, char const *bytes, size_t size);
+	command lntd_error write(lntd_ko ko, char const *bytes,
+	                         size_t size);
 	command lntd_error write_line(lntd_ko ko, char const *str);
 
-	command lntd_error
-	read(lntd_ko ko, char *buf, size_t size, size_t *bytes_read);
-	command lntd_error
-	read_line(lntd_ko ko, char **bufp, size_t *sizep);
+	command lntd_error read(lntd_ko ko, char *buf, size_t size,
+	                        size_t *bytes_read);
+	command lntd_error read_line(lntd_ko ko, char **bufp,
+	                             size_t *sizep);
 }

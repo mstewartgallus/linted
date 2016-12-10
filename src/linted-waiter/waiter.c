@@ -201,8 +201,7 @@ static void on_term(int signo)
 		LNTD_ASSERT(false);
 	}
 
-prevent_looping:
-	;
+prevent_looping:;
 	sigset_t exitset;
 	sigemptyset(&exitset);
 	for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(exit_signals); ++ii)

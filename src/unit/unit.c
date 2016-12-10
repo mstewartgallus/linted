@@ -28,10 +28,10 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdint.h>
-#include <sys/types.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 
 struct lntd_unit_db {
 	size_t size;

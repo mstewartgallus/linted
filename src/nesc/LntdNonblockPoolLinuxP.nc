@@ -16,8 +16,8 @@
 #include "config.h"
 
 #include "async.h"
-#include "lntd/node.h"
 #include "lntd/ko-stack.h"
+#include "lntd/node.h"
 #include "lntd/stack.h"
 #include "lntd/util.h"
 
@@ -25,10 +25,10 @@
 #include <libgen.h>
 #include <pthread.h>
 #include <sched.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
 #include <sys/mman.h>
 #include <sys/poll.h>
 #include <sys/timerfd.h>

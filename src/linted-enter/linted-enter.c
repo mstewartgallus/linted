@@ -17,8 +17,8 @@
 
 #include "config.h"
 
-#include "lntd/execveat.h"
 #include "lntd/error.h"
+#include "lntd/execveat.h"
 #include "lntd/ko.h"
 #include "lntd/log.h"
 #include "lntd/proc.h"
@@ -31,8 +31,8 @@
 #include <sched.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 

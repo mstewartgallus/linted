@@ -15,8 +15,8 @@
  */
 #include "config.h"
 
-#include "logger.h"
 #include "lntd/util.h"
+#include "logger.h"
 
 #include <stdio.h>
 #include <string.h>

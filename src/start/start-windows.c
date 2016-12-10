@@ -28,17 +28,17 @@
 
 #include "lntd/async.h"
 #include "lntd/env.h"
+#include "lntd/log.h"
 #include "lntd/mem.h"
 #include "lntd/path.h"
 #include "lntd/signal.h"
 #include "lntd/str.h"
 #include "lntd/utf.h"
-#include "lntd/log.h"
 
 #include <errno.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <windows.h>

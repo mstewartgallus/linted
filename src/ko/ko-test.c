@@ -15,8 +15,8 @@
  */
 #include "config.h"
 
-#include "lntd/ko.h"
 #include "lntd/error.h"
+#include "lntd/ko.h"
 #include "lntd/start.h"
 #include "lntd/test.h"
 

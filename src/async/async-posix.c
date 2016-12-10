@@ -19,12 +19,12 @@
 
 #include "lntd/async.h"
 
+#include "lntd/channel.h"
 #include "lntd/error.h"
 #include "lntd/io.h"
+#include "lntd/ko-stack.h"
 #include "lntd/ko.h"
 #include "lntd/mem.h"
-#include "lntd/channel.h"
-#include "lntd/ko-stack.h"
 #include "lntd/node.h"
 #include "lntd/proc.h"
 #include "lntd/sched.h"
@@ -36,10 +36,10 @@
 #include <poll.h>
 #include <pthread.h>
 #include <sched.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
@@ -765,8 +765,7 @@ static void *master_worker_routine(void *arg)
 			}
 			sched_yield();
 		}
-	exit_loop:
-		;
+	exit_loop:;
 	}
 
 	for (size_t ii = 0U; ii < max_tasks; ++ii) {

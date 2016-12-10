@@ -15,8 +15,8 @@
  */
 #include "config.h"
 
-#include "lntd/error.h"
 #include "lntd/env.h"
+#include "lntd/error.h"
 #include "lntd/io.h"
 #include "lntd/ko.h"
 #include "lntd/log.h"
@@ -28,11 +28,11 @@
 
 #include <errno.h>
 #include <math.h>
+#include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include <signal.h>
 #include <time.h>
 #include <unistd.h>
 

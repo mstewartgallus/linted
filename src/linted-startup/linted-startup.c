@@ -254,8 +254,7 @@ static unsigned char lntd_start_main(char const *const process_name,
 	if (0 == err)
 		err = stop_err;
 
-destroy_startup:
-	;
+destroy_startup:;
 	lntd_error destroy_err = startup_destroy(&startup);
 	if (0 == err)
 		err = destroy_err;
@@ -1782,8 +1781,8 @@ static void conf_put(struct conf *conf)
 		struct conf_setting_bucket *buckets = section->buckets;
 
 		for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
-			struct conf_setting_bucket const *
-			    setting_bucket = &buckets[kk];
+			struct conf_setting_bucket const
+			    *setting_bucket = &buckets[kk];
 			size_t settings_size =
 			    setting_bucket->settings_size;
 			struct conf_setting *settings =
@@ -2067,8 +2066,7 @@ static lntd_error conf_add_setting(struct conf *conf,
 		}
 		return 0;
 	}
-have_not_found_field:
-	;
+have_not_found_field:;
 	char *field_dup;
 	{
 		char *xx;
@@ -2326,8 +2324,7 @@ static lntd_error parser_get_line(struct parser *parser,
 		state = PARSER_ERROR;
 		break;
 
-	found_equal:
-		;
+	found_equal:;
 		size_t value_offset = equals_position + 1U;
 		size_t value_len = line_size - value_offset;
 

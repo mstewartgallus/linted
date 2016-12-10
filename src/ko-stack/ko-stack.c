@@ -18,8 +18,8 @@
 #include "config.h"
 
 #include "lntd/error.h"
-#include "lntd/ko.h"
 #include "lntd/ko-stack.h"
+#include "lntd/ko.h"
 #include "lntd/mem.h"
 #include "lntd/node.h"
 #include "lntd/sched.h"

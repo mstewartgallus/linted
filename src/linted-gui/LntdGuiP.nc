@@ -18,24 +18,24 @@
 #include "lntd/env.h"
 #include "lntd/error.h"
 #include "lntd/ko.h"
-#include "lntd/mem.h"
 #include "lntd/log.h"
+#include "lntd/mem.h"
 #include "lntd/util.h"
 #include "lntd/window.h"
 #include "lntd/xcb.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xkb.h>
-#include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon-x11.h>
+#include <xkbcommon/xkbcommon.h>
 
 module LntdGuiP
 {
@@ -305,8 +305,8 @@ implementation
 
 			switch (myevent->response_type & ~0x80) {
 			case XCB_CONFIGURE_NOTIFY: {
-				xcb_configure_notify_event_t const *
-				    configure_event = (void *)myevent;
+				xcb_configure_notify_event_t const
+				    *configure_event = (void *)myevent;
 
 				resize_width = configure_event->width;
 				resize_height = configure_event->height;
@@ -319,8 +319,8 @@ implementation
 				break;
 
 			case XCB_MOTION_NOTIFY: {
-				xcb_motion_notify_event_t const *
-				    motion_event;
+				xcb_motion_notify_event_t const
+				    *motion_event;
 
 				if (!focused)
 					break;

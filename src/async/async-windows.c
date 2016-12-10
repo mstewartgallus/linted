@@ -27,11 +27,11 @@
 
 #include "lntd/async.h"
 
+#include "lntd/channel.h"
 #include "lntd/io.h"
 #include "lntd/mem.h"
-#include "lntd/proc.h"
-#include "lntd/channel.h"
 #include "lntd/node.h"
+#include "lntd/proc.h"
 #include "lntd/sched.h"
 #include "lntd/signal.h"
 #include "lntd/stack.h"
@@ -1059,8 +1059,7 @@ static lntd_error poll_one(lntd_ko ko, short events, short *reventsp)
 	*reventsp = revents;
 	return 0;
 
-poll_failed:
-	;
+poll_failed:;
 	lntd_error err = HRESULT_FROM_WIN32(WSAGetLastError());
 	LNTD_ASSUME(err != 0);
 	return err;

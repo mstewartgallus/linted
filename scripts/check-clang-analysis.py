@@ -65,7 +65,7 @@ def go():
         afile = afileandflags['file']
         flags = afileandflags['flags']
 
-        arguments = ['clang-3.9',
+        arguments = ['clang-3.8',
                      '-Xclang', '-analyzer-output=text',
                      '-Xclang', '-o-',
                      '--analyze',

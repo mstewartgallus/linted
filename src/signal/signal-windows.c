@@ -28,15 +28,15 @@
 #include "lntd/signal.h"
 
 #include "lntd/async.h"
-#include "lntd/mem.h"
 #include "lntd/fifo.h"
+#include "lntd/mem.h"
 #include "lntd/util.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <signal.h>
 
 #include <windows.h>
 

@@ -34,9 +34,9 @@
 #include <errno.h>
 #include <locale.h>
 #include <pthread.h>
-#include <stddef.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

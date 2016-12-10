@@ -18,10 +18,10 @@
 #include "config.h"
 
 #include "lntd/dir.h"
-#include "lntd/execveat.h"
 #include "lntd/error.h"
-#include "lntd/file.h"
+#include "lntd/execveat.h"
 #include "lntd/fifo.h"
+#include "lntd/file.h"
 #include "lntd/io.h"
 #include "lntd/ko.h"
 #include "lntd/locale.h"
@@ -39,7 +39,6 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <mntent.h>
-#include <wordexp.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -55,9 +54,10 @@
 #include <sys/wait.h>
 #include <syscall.h>
 #include <unistd.h>
+#include <wordexp.h>
 
-#include <seccomp.h>
 #include <linux/seccomp.h>
+#include <seccomp.h>
 
 #ifndef CLONE_NEWCGROUP
 #define CLONE_NEWCGROUP 0x02000000

@@ -29,11 +29,11 @@
 #include <errno.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include <signal.h>
 #include <unistd.h>
 
 enum { LNTD_SIGNAL_HUP,

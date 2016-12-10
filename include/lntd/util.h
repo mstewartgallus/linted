@@ -16,8 +16,8 @@
 #ifndef LNTD_UTIL_H
 #define LNTD_UTIL_H
 
-#include <stddef.h>
 #include <limits.h>
+#include <stddef.h>
 
 /**
  * @file
