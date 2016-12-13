@@ -38,8 +38,9 @@ configuration project Config is
 
      for Leading_Required_Switches ("C") use ("-c");
      for Object_File_Suffix ("C") use ".o";
-     for Dependency_Switches ("C") use ("-MMD","-MF","");
+     for Dependency_Switches ("C") use ("-Wp,-MD,");
      for Include_Switches ("C") use ("-I");
+     for Mapping_File_Switches ("Ada") use ("-gnatem=");
   end Compiler;
 
   package Binder is

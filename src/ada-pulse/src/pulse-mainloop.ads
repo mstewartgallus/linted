@@ -17,7 +17,7 @@ with Interfaces.C; use Interfaces.C;
 
 limited with Pulse.Mainloop.Api;
 
-package Pulse.Mainloop is
+package Pulse.Mainloop with SPARK_Mode => Off is
 
    --  skipped empty struct pollfd
 

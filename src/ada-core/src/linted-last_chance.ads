@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,6 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package Linted.Last_Chance is
+package Linted.Last_Chance with SPARK_Mode => Off is
    pragma Elaborate_Body;
 end Linted.Last_Chance;

@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -14,36 +14,37 @@
 with Linted.Errors;
 with Linted.KOs;
 with Linted.Options;
-with Linted.Triggers;
+with Ada.Synchronous_Task_Control;
 
-package Linted.Controls_Reader is
+package Linted.Controls_Reader with SPARK_Mode => Off is
    pragma Elaborate_Body;
 
    type Controls_Int is range -2 ** (32 - 1) .. 2 ** (32 - 1) - 1;
 
    type Controls is record
-      Z_Tilt : Controls_Int;
-      X_Tilt : Controls_Int;
+      Z_Tilt : Controls_Int := 0;
+      X_Tilt : Controls_Int := 0;
 
-      Left : Boolean;
-      Right : Boolean;
-      Forward : Boolean;
-      Back : Boolean;
+      Left : Boolean := False;
+      Right : Boolean := False;
+      Forward : Boolean := False;
+      Back : Boolean := False;
 
-      Jumping : Boolean;
+      Jumping : Boolean := False;
    end record;
 
    type Event is record
       Data : Controls;
-      Err : Errors.Error;
+      Err : Errors.Error := 0;
    end record;
 
    package Option_Events is new Linted.Options (Event);
 
    generic
-      Event_Trigger : not null access Linted.Triggers.Trigger;
    package Worker is
       procedure Start (Object : KOs.KO);
       function Poll return Option_Events.Option;
+
+      procedure Wait;
    end Worker;
 end Linted.Controls_Reader;

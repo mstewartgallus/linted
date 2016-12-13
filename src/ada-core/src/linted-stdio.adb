@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,16 +11,14 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+private with Ada.Synchronous_Task_Control;
 private with Ada.Unchecked_Conversion;
 private with Interfaces.C.Strings;
 
-private with Linted.Libc;
 private with Linted.Writer;
-private with Linted.Triggers;
 
-package body Linted.Stdio is
+package body Linted.Stdio with SPARK_Mode => Off is
    package C renames Interfaces.C;
-   use Linted.Triggers;
 
    procedure Write_String (Object : KO; Str : String; Err : out Error) is
       function Convert is new Ada.Unchecked_Conversion (Interfaces.C.Strings.chars_ptr, System.Address);
@@ -28,13 +26,11 @@ package body Linted.Stdio is
       Bytes_Written : C.size_t;
    begin
       X := Interfaces.C.Strings.New_String (Str);
-      Write (Object, Convert (X), Libc.Strlen (Interfaces.C.Strings.Value (X)), Bytes_Written, Err);
+      Write (Object, Convert (X), Interfaces.C.Strings.Strlen (X), Bytes_Written, Err);
       Interfaces.C.Strings.Free (X);
    end Write_String;
 
-   Event_Trigger : aliased Trigger;
-
-   package Writer is new Linted.Writer.Worker (Event_Trigger'Access);
+   package Writer is new Linted.Writer.Worker;
 
    procedure Write (Object : KO;
 		   Buf : System.Address;
@@ -45,7 +41,7 @@ package body Linted.Stdio is
       Writer.Write (Object, Buf, Count);
 
       loop
-	 Event_Trigger.Wait;
+	 Writer.Wait;
 
 	 declare
 	    Option_Event : constant Linted.Writer.Option_Events.Option := Writer.Poll;

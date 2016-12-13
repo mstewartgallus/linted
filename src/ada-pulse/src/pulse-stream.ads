@@ -27,7 +27,7 @@ limited with Pulse.Volume;
 limited with Pulse.Format;
 with Pulse.Proplist;
 
-package Pulse.Stream is
+package Pulse.Stream with SPARK_Mode => Off is
 
    type pa_stream is limited private;
    type pa_stream_access is access all pa_stream;

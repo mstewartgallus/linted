@@ -21,7 +21,7 @@ with Libc.Time.GNU;
 
 with Pulse.Sample;
 
-package Pulse.Def is
+package Pulse.Def with SPARK_Mode => Off is
 
    --  unsupported macro: PA_CONTEXT_UNCONNECTED PA_CONTEXT_UNCONNECTED
    --  unsupported macro: PA_CONTEXT_CONNECTING PA_CONTEXT_CONNECTING

@@ -25,6 +25,7 @@ private with Pulse.Context;
 private with Pulse.Def;
 private with Pulse.Error;
 private with Pulse.Mainloop;
+private with Pulse.Mainloop.API;
 private with Pulse.Proplist;
 private with Pulse.Sample;
 private with Pulse.Stream;
@@ -42,6 +43,7 @@ package body Linted.Audio is
    use Pulse.Def;
    use Pulse.Error;
    use Pulse.Mainloop;
+   use Pulse.Mainloop.API;
    use Pulse.Proplist;
    use Pulse.Sample;
    use Pulse.Stream;

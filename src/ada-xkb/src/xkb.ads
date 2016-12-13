@@ -18,7 +18,7 @@ with Libc.Stddef;
 with System;
 limited with Libc.Stdio;
 
-package XKB is
+package XKB with SPARK_Mode => Off is
    pragma Preelaborate;
    pragma Link_With ("-lxkbcommon");
 

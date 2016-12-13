@@ -20,7 +20,7 @@ with Libc.Stdint;
 with Pulse.Def;
 with Pulse.Context;
 
-package Pulse.Subscribe is
+package Pulse.Subscribe with SPARK_Mode => Off is
 
    type pa_context_subscribe_cb_t is access procedure
         (arg1 : System.Address;

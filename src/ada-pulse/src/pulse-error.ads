@@ -14,7 +14,7 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 
-package Pulse.Error is
+package Pulse.Error with SPARK_Mode => Off is
 
    function pa_strerror (error : int) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/error.h:35
    pragma Import (C, pa_strerror, "pa_strerror");

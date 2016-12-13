@@ -17,7 +17,7 @@ with Libc.Stdint;
 with Interfaces.C.Strings;
 limited with XCB.XProto;
 
-package XCB is
+package XCB with SPARK_Mode => Off is
    pragma Preelaborate;
    pragma Link_With ("-lxcb");
 

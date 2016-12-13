@@ -39,7 +39,7 @@ dnl     This is useful because combined with gc sections it can result in
 dnl     omitting dependencies
         [-ffunction-sections]dnl
 dnl
-        [-flto]dnl
+        dnl [-flto]dnl
 ])
 AC_SUBST([linted_CFLAGS_OPTIMIZE])
 dnl
@@ -56,8 +56,8 @@ dnl
         dnl Use large addresses on i386 Windows
         [-Wl,--large-address-aware]dnl
 dnl
-        [-flto]dnl
-        [-fuse-linker-plugin]dnl
+        dnl [-flto]dnl
+        dnl [-fuse-linker-plugin]dnl
 dnl
         [-Wl,--icf=safe]dnl
 ])

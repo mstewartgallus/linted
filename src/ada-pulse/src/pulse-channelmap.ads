@@ -21,7 +21,7 @@ with Libc.Stddef;
 
 limited with Pulse.Sample;
 
-package Pulse.Channelmap is
+package Pulse.Channelmap with SPARK_Mode => Off is
 
    --  unsupported macro: PA_CHANNEL_POSITION_INVALID PA_CHANNEL_POSITION_INVALID
    --  unsupported macro: PA_CHANNEL_POSITION_MONO PA_CHANNEL_POSITION_MONO

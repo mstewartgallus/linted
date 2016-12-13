@@ -16,7 +16,7 @@ with XCB;
 with System;
 with Interfaces.C.Strings;
 
-package XCB.XProto is
+package XCB.XProto with SPARK_Mode => Off is
    pragma Preelaborate;
 
    XCB_KEY_PRESS : constant := 2;

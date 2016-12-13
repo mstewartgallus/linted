@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -13,11 +13,11 @@
 -- permissions and limitations under the License.
 private with Linted.MVars;
 
-package body Linted.Timer is
+package body Linted.Timer with SPARK_Mode => Off is
    package Real_Time renames Ada.Real_Time;
 
    type Command is record
-      Time : Real_Time.Time;
+      Time : Real_Time.Time := Real_Time.Time_First;
    end record;
 
    type Tick_Event is record
@@ -28,17 +28,23 @@ package body Linted.Timer is
    package Tick_Event_MVars is new Linted.MVars (Tick_Event);
 
    package body Worker is
-      task Timer_Task;
+      Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
-      My_Trigger : Triggers.Trigger;
+      My_Trigger : Ada.Synchronous_Task_Control.Suspension_object;
       My_Command_MVar : Command_MVars.MVar;
       My_Event_MVar : Tick_Event_MVars.MVar;
 
+      task Timer_Task;
+
       procedure Wait_Until (Time : Real_Time.Time) is
       begin
-	 Command_MVars.Set (My_Command_MVar, (Time => Time));
-	 Triggers.Signal (My_Trigger);
+	 My_Command_MVar.Set ((Time => Time));
+	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Wait_Until;
+
+      procedure Wait is begin
+	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+      end Wait;
 
       New_Command : Command_MVars.Option_Element_Ts.Option;
 
@@ -46,17 +52,17 @@ package body Linted.Timer is
 	 use type Real_Time.Time;
       begin
 	 loop
-	    Triggers.Wait (My_Trigger);
+	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
-	    New_Command := Command_MVars.Poll (My_Command_MVar);
+	    My_Command_MVar.Poll (New_Command);
 	    if not New_Command.Empty then
 	       declare
 		  Time : constant Real_Time.Time := New_Command.Data.Time;
 		  T : Tick_Event;
 	       begin
 		  delay until Time;
-		  Tick_Event_MVars.Set (My_Event_MVar, T);
-		  Triggers.Signal (Event_Trigger.all);
+		  My_Event_MVar.Set (T);
+		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
 	       end;
 	    end if;
 	 end loop;
@@ -66,7 +72,7 @@ package body Linted.Timer is
 	 T : Event;
 	 New_Event : Tick_Event_MVars.Option_Element_Ts.Option;
       begin
-	 New_Event := Tick_Event_MVars.Poll (My_Event_MVar);
+	 My_Event_MVar.Poll (New_Event);
 	 if New_Event.Empty then
 	    return (Empty => True);
 	 else

@@ -18,7 +18,7 @@ with Libc.Sys.Types;
 with Libc.Time;
 with Libc.Time.GNU;
 
-package Libc.Signal.GNU is
+package Libc.Signal.GNU with SPARK_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: si_pid _sifields._kill.si_pid

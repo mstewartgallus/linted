@@ -13,7 +13,7 @@
 -- permissions and limitations under the License.
 with System;
 
-package Pulse is
+package Pulse with SPARK_Mode => Off is
    pragma Preelaborate;
    pragma Link_With ("-lpulse");
 end Pulse;

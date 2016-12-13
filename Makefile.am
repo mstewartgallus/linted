@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
+# Copyright 2013,2014,2015,2016 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -96,7 +96,9 @@ AM_LDFLAGS+=\
   $(linted_LDFLAGS_META)\
   $(linted_LDFLAGS_WARNINGS); do echo -Xcompiler "$$II"; done)
 
-AM_GPRBUILDFLAGS=-q --create-missing-dirs --config=$(builddir)/src/ada/config.cgpr\
+AM_GPRBUILDFLAGS=-q\
+  --create-missing-dirs\
+  --config=$(builddir)/src/ada/config.cgpr\
   -aP$(builddir)/src/ada\
   -aP$(srcdir)/src/ada-libc\
   -aP$(srcdir)/src/ada-xcb\
@@ -110,6 +112,15 @@ GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
   -aP$(srcdir)/src/ada-xkb\
   -aP$(srcdir)/src/ada-pulse\
   -aP$(srcdir)/src/ada-core
+
+GPRPROVEFLAGS=\
+  -j3 -k --level=0 --pedantic -U\
+  -aP=$(builddir)/src/ada\
+  -aP=$(srcdir)/src/ada-libc\
+  -aP=$(srcdir)/src/ada-xcb\
+  -aP=$(srcdir)/src/ada-xkb\
+  -aP=$(srcdir)/src/ada-pulse\
+  -aP=$(srcdir)/src/ada-core
 
 LINTED_CLEAN_RULES=
 
@@ -127,6 +138,10 @@ clean-%C%:
 	  -o -name '*.res'\
 	  -o -name '*.out'\
 	  \) -exec rm -f -- '{}' '+'
+
+.PHONY: prove
+prove: src/ada/shared.gpr src/ada/config.cgpr
+	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
 
 .PHONY: indent
 indent:

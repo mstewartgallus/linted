@@ -13,10 +13,10 @@
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 
-package Libc.Errno is
-   pragma Pure;
+package Libc.Errno with SPARK_Mode => Off is
+   pragma Preelaborate;
 
-   function Errno return Interfaces.C.int;
+   function Errno return Interfaces.C.Int;
    pragma Import (C, Errno, "linted_adarts_libc_errno");
 
    procedure Errno_Set (Err : Interfaces.C.int);

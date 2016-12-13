@@ -22,7 +22,7 @@ with Libc.Stddef;
 with Pulse.Context;
 with Pulse.Volume;
 
-package Pulse.Scache is
+package Pulse.Scache with SPARK_Mode => Off is
 
    type pa_context_play_sample_cb_t is access procedure
         (arg1 : System.Address;

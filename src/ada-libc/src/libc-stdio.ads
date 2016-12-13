@@ -16,7 +16,7 @@ with Interfaces.C.Strings;
 with System;
 with Libc.Stddef;
 
-package Libc.Stdio is
+package Libc.Stdio with SPARK_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: BUFSIZ _IO_BUFSIZ

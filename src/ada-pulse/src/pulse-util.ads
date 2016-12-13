@@ -16,7 +16,7 @@ with Interfaces.C.Strings;
 
 with Libc.Stddef;
 
-package Pulse.Util is
+package Pulse.Util with SPARK_Mode => Off is
 
    function pa_get_user_name (s : Interfaces.C.Strings.chars_ptr; l : Libc.Stddef.size_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/util.h:37
    pragma Import (C, pa_get_user_name, "pa_get_user_name");

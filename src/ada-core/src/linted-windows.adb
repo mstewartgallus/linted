@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -17,17 +17,18 @@ private with Interfaces;
 private with System.Storage_Elements;
 private with System;
 
-private with Libc;
+private with Libc.Sys.Types;
+private with Libc.Unistd;
 private with Libc.Errno;
 
-package body Linted.Windows is
+package body Linted.Windows with SPARK_Mode => Off is
    package Errno renames Libc.Errno;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
    use type C.int;
    use type C.size_t;
-   use type Libc.ssize_t;
+   use type Libc.Sys.Types.ssize_t;
    use type Interfaces.Unsigned_32;
    use type Interfaces.Unsigned_8;
    use type Storage_Elements.Storage_Element;
@@ -44,7 +45,7 @@ package body Linted.Windows is
       declare
 	 Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
       begin
-	 if Libc.PRead (C.int (KO), Convert (Buf (1)'Unchecked_Access), 4, 0) < 0 then
+	 if Libc.Unistd.pread (C.int (KO), Convert (Buf (1)'Unchecked_Access), 4, 0) < 0 then
 	    Win := 0;
 	    Err := Errors.Error (Errno.Errno);
 	    return;

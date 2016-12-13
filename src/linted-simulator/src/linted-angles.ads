@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -18,33 +18,44 @@ package Linted.Angles is
 
    type Angle is private;
 
-   function To_Angle (X : Element_T) return Angle;
-   function To_Angle (X : Element_T;
-		      Y : Element_T) return Angle;
-   function From_Angle (X : Angle) return Element_T;
+   function To_Angle (X : Element_T) return Angle with
+     Global => null;
 
-   function "+" (Theta : Angle; Phi : Angle) return Angle;
-   function "-" (Theta : Angle; Phi : Angle) return Angle;
+   function To_Angle (X : Element_T;
+		      Y : Element_T) return Angle with
+     Global => null,
+     Pre => X <= Y;
+   function From_Angle (X : Angle) return Element_T with
+     Global => null;
+
+   function "+" (Theta : Angle; Phi : Angle) return Angle with
+     Global => null;
+   function "-" (Theta : Angle; Phi : Angle) return Angle with
+     Global => null;
 
    function Add_Clamped (Min : Angle;
 			 Max : Angle;
 			 Theta : Angle;
-			 Phi : Angle) return Angle;
+			 Phi : Angle) return Angle with
+     Global => null;
    function Subtract_Clamped (Min : Angle;
 			      Max : Angle;
 			      Theta : Angle;
-			      Phi : Angle) return Angle;
+			      Phi : Angle) return Angle with
+     Global => null;
 
    generic
       type Element_U is range <>;
-   function Sin (X : Angle) return Element_U;
+   function Sin (X : Angle) return Element_U with
+     Post => Sin'Result < 1 or Sin'Result > -1;
 
    generic
       type Element_U is range <>;
-   function Cos (X : Angle) return Element_U;
+   function Cos (X : Angle) return Element_U with
+     Post => Cos'Result < 1 or Cos'Result > -1;
 private
    type Angle is record
-      Value : Element_T;
+      Value : Element_T := 0;
    end record;
 
 end Linted.Angles;

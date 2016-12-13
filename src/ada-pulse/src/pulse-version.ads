@@ -14,7 +14,7 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 
-package Pulse.Version is
+package Pulse.Version with SPARK_Mode => Off is
 
    --  arg-macro: function pa_get_headers_version ()
    --    return "4.0.0";

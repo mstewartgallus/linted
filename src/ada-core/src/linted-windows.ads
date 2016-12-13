@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 with Linted.Errors;
 with Linted.KOs;
 
-package Linted.Windows is
+package Linted.Windows with SPARK_Mode => Off is
    pragma Elaborate_Body;
 
    type Window is mod 2 ** 32;

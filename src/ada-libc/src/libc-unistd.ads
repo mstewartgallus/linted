@@ -17,7 +17,7 @@ with System;
 with Libc.Sys.Types;
 with Libc.Stdint;
 
-package Libc.Unistd is
+package Libc.Unistd with SPARK_Mode => Off is
    pragma Preelaborate;
 
    STDIN_FILENO : constant := 0;

@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,14 +11,4 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package body Linted.Triggers is
-   procedure Wait (This : in out Trigger) is
-   begin
-      Ada.Synchronous_Task_Control.Suspend_Until_True (This.Object);
-   end Wait;
-
-   procedure Signal (This : in out Trigger) is
-   begin
-      Ada.Synchronous_Task_Control.Set_True (This.Object);
-   end Signal;
-end Linted.Triggers;
+pragma SPARK_Mode (Off);

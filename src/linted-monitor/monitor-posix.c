@@ -2025,6 +2025,7 @@ static char const *const allowed_syscalls =
     "time,"
     "gettimeofday,"
     "clock_gettime,"
+    "clock_getres,"
 
     "open,"
 

@@ -17,7 +17,7 @@ with Interfaces.C; use Interfaces.C;
 
 limited with Libc.Time.GNU;
 
-package Pulse.Mainloop.Api is
+package Pulse.Mainloop.API with SPARK_Mode => Off is
 
    subtype pa_io_event_flags is unsigned;
    PA_IO_EVENT_NULL : constant pa_io_event_flags := 0;
@@ -109,4 +109,4 @@ package Pulse.Mainloop.Api is
       userdata : System.Address);  -- /usr/include/pulse/mainloop-api.h:118
    pragma Import (C, pa_mainloop_api_once, "pa_mainloop_api_once");
 
-end Pulse.Mainloop.Api;
+end Pulse.Mainloop.API;

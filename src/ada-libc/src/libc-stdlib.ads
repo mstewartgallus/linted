@@ -16,7 +16,7 @@ with Interfaces.C.Strings;
 with System;
 with Interfaces.C.Extensions;
 
-package Libc.Stdlib is
+package Libc.Stdlib with SPARK_Mode => Off is
    pragma Preelaborate;
 
    subtype size_t is Interfaces.C.size_t;

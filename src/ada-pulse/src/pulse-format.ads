@@ -21,7 +21,7 @@ with Libc.Stddef;
 with Pulse.Sample;
 limited with Pulse.Channelmap;
 
-package Pulse.Format is
+package Pulse.Format with SPARK_Mode => Off is
 
    --  unsupported macro: PA_ENCODING_ANY PA_ENCODING_ANY
    --  unsupported macro: PA_ENCODING_PCM PA_ENCODING_PCM

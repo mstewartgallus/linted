@@ -13,7 +13,7 @@
 -- permissions and limitations under the License.
 with Pulse.Sample;
 
-package Pulse.Rtclock is
+package Pulse.Rtclock with SPARK_Mode => Off is
 
    function pa_rtclock_now return Pulse.Sample.pa_usec_t;  -- /usr/include/pulse/rtclock.h:36
    pragma Import (C, pa_rtclock_now, "pa_rtclock_now");

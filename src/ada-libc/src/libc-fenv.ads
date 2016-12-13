@@ -13,8 +13,8 @@
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 
-package Libc.Fenv is
-   pragma Pure;
+package Libc.Fenv with SPARK_Mode => Off is
+   pragma Preelaborate;
 
    function feenableexcept (excepts : int) return int;  -- /usr/include/fenv.h:122
    pragma Import (C, feenableexcept, "feenableexcept");

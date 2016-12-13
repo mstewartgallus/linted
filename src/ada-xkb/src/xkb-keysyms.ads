@@ -11,7 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package XKB.Keysyms is
+package XKB.Keysyms with SPARK_Mode => Off is
    pragma Pure;
 
    XKB_KEY_NoSymbol : constant := #16#000000;

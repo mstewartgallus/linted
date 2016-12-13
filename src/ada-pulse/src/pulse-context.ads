@@ -24,7 +24,7 @@ with Pulse.Def;
 with Pulse.Proplist;
 with Pulse.Sample;
 
-package Pulse.Context is
+package Pulse.Context with SPARK_Mode => Off is
 
    type pa_context is limited private;
    type pa_context_access is access all pa_context;

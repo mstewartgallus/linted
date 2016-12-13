@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ with Linted.Errors;
 generic
    type Element_T is private;
 package Linted.Results is
-   pragma Pure;
+   pragma Preelaborate;
 
    type Result (Erroneous : Boolean) is record
       case Erroneous is

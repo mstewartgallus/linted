@@ -14,7 +14,7 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 
-package Libc.Locale is
+package Libc.Locale with SPARK_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: LC_ALL __LC_ALL

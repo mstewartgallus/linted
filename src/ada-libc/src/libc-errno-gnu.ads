@@ -12,8 +12,9 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Interfaces.C.Strings;
+with Libc.Errno.POSIX_2008;
 
-package Libc.Errno.GNU is
+package Libc.Errno.GNU with SPARK_Mode => Off is
    pragma Preelaborate;
 
    program_invocation_name : Interfaces.C.Strings.chars_ptr;  -- /usr/include/errno.h:54
@@ -37,7 +38,7 @@ package Libc.Errno.GNU is
    ENOANO : constant := 55;
    EBADRQC : constant := 56;
    EBADSLT : constant := 57;
-   EDEADLOCK : constant := EDEADLK;
+   EDEADLOCK : constant := Libc.Errno.POSIX_2008.EDEADLK;
    EBFONT : constant := 59;
    ENONET : constant := 64;
    ENOPKG : constant := 65;

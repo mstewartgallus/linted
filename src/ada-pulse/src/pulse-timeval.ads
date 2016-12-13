@@ -18,7 +18,7 @@ limited with Libc.Time.GNU;
 
 with Pulse.Sample;
 
-package Pulse.Timeval is
+package Pulse.Timeval with SPARK_Mode => Off is
 
    --  unsupported macro: PA_MSEC_PER_SEC ((pa_usec_t) 1000ULL)
    --  unsupported macro: PA_USEC_PER_SEC ((pa_usec_t) 1000000ULL)

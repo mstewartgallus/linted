@@ -15,7 +15,7 @@ with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with Libc.Sys.Types;
 
-package Libc.Fcntl is
+package Libc.Fcntl with SPARK_Mode => Off is
    pragma Preelaborate;
 
    O_ACCMODE : constant := 8#3#;

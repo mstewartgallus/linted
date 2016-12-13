@@ -14,7 +14,7 @@
 with Interfaces.C; use Interfaces.C;
 
 package Libc.Errno.C11 is
-   pragma Pure;
+   pragma Preelaborate;
 
    subtype error_t is int;  -- /usr/include/errno.h:68
 end Libc.Errno.C11;

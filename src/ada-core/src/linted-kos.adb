@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ with Libc.Unistd;
 with Libc.Errno;
 with Interfaces.C.Strings;
 
-package body Linted.KOs is
+package body Linted.KOs with SPARK_Mode => Off is
    package C renames Interfaces.C;
    package Errno renames Libc.Errno;
 

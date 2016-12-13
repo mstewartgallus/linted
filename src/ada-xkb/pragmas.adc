@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,25 +11,4 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces.C;
-limited with System;
-
-with Linted.Errors;
-with Linted.KOs;
-
-package Linted.Stdio with SPARK_Mode => Off is
-   pragma Elaborate_Body;
-
-   use Linted.Errors;
-   use Linted.KOs;
-
-   procedure Write_String (Object : KO;
-			   Str : String;
-			   Err : out Error);
-
-   procedure Write (Object : KO;
-		    Buf : System.Address;
-		    Count :  Interfaces.C.size_t;
-		    Bytes_Written : out Interfaces.C.size_t;
-		    Err : out Error);
-end Linted.Stdio;
+pragma SPARK_Mode (Off);

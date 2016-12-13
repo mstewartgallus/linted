@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ private with Ada.Text_IO;
 
 with Libc.Unistd;
 
-package body Linted.Last_Chance is
+package body Linted.Last_Chance with SPARK_Mode => Off is
    package Exceptions renames Ada.Exceptions;
    package Text_IO renames Ada.Text_IO;
 

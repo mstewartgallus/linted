@@ -11,6 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+pragma Profile (Ravenscar);
+pragma Partition_Elaboration_Policy (Sequential);
 -- pragma Assertion_Policy (CHECK);
 -- pragma Debug_Policy (CHECK);
 -- pragma Check_Float_Overflow;
@@ -37,7 +39,7 @@ pragma Restrictions (No_Protected_Type_Allocators);
 -- pragma Restrictions (No_Unchecked_Access);
 
 pragma Restrictions (No_Obsolescent_Features);
--- pragma Restrictions (No_Wide_Characters);
+pragma Restrictions (No_Wide_Characters);
 
 pragma Restrictions (No_Recursion);
 pragma Restrictions (No_Requeue_Statements);

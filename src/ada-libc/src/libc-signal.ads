@@ -13,8 +13,8 @@
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 
-package Libc.Signal is
-   pragma Pure;
+package Libc.Signal with SPARK_Mode => Off is
+   pragma Preelaborate;
 
    subtype sig_atomic_t is int;  -- /usr/include/signal.h:40
 

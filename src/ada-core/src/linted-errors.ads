@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ with Interfaces.C;
 with Libc.Errno.POSIX_2008;
 
 package Linted.Errors is
-   pragma Pure;
+   pragma Preelaborate;
 
    subtype Valid_Error is Interfaces.C.int range 0 .. Interfaces.C.int'Last;
    type Error is  new Valid_Error

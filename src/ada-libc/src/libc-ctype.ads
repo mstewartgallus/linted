@@ -13,8 +13,8 @@
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 
-package Libc.Ctype is
-   pragma Pure;
+package Libc.Ctype with SPARK_Mode => Off is
+   pragma Preelaborate;
    --  arg-macro: procedure isascii (c)
    --    __isascii (c)
    --  arg-macro: procedure toascii (c)

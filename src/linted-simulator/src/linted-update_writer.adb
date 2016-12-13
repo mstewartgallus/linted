@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ private with System;
 private with Linted.MVars;
 private with Linted.Writer;
 
-package body Linted.Update_Writer is
+package body Linted.Update_Writer with SPARK_Mode => Off is
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -49,29 +49,43 @@ package body Linted.Update_Writer is
    package body Worker is
       task Writer_Task;
 
-      My_Trigger : aliased Triggers.Trigger;
+      Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
-      package Worker is new Linted.Writer.Worker (My_Trigger'Access);
+      package Worker is new Linted.Writer.Worker;
 
       Write_Command_MVar : Write_Command_MVars.MVar;
       Write_Done_Event_MVar : Write_Done_Event_MVars.MVar;
 
+      task A;
+      task body A is
+      begin
+	 loop
+	    Worker.Wait;
+	    Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+	 end loop;
+      end A;
+
       procedure Write (Object : KOs.KO; Data : Update) is
       begin
-	 Write_Command_MVars.Set (Write_Command_MVar, (Object, Data));
-	 Triggers.Signal (My_Trigger);
+	 Write_Command_MVar.Set ((Object, Data));
+	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Write;
 
       function Poll return Option_Events.Option is
 	 Option_Event : Write_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 Option_Event := Write_Done_Event_MVars.Poll (Write_Done_Event_MVar);
+	 Write_Done_Event_MVar.Poll (Option_Event);
 	 if Option_Event.Empty then
 	       return (Empty => True);
 	 else
 	       return (False, Option_Event.Data.Err);
 	 end if;
       end Poll;
+
+      procedure Wait is begin
+	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+      end Wait;
 
       Data_Being_Written : aliased Storage_Elements.Storage_Array (1 .. 5 * 4);
 
@@ -87,7 +101,7 @@ package body Linted.Update_Writer is
 	 function Convert is new Ada.Unchecked_Conversion (Storage_Access, System.Address);
       begin
 	 loop
-	    Triggers.Wait (My_Trigger);
+	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
 	    declare
 	       Option_Event : constant Linted.Writer.Option_Events.Option := Worker.Poll;
@@ -97,15 +111,15 @@ package body Linted.Update_Writer is
 
 		  Update_In_Progress := False;
 
-		  Write_Done_Event_MVars.Set (Write_Done_Event_MVar, Write_Done_Event'(Err => Err));
-		  Triggers.Signal (Event_Trigger.all);
+		  Write_Done_Event_MVar.Set (Write_Done_Event'(Err => Err));
+		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
 	       end if;
 	    end;
 
 	    declare
 	       Option_Command : Write_Command_MVars.Option_Element_Ts.Option;
 	    begin
-	       Option_Command := Write_Command_MVars.Poll (Write_Command_MVar);
+	       Write_Command_MVar.Poll (Option_Command);
 	       if not Option_Command.Empty then
 		  Object := Option_Command.Data.Object;
 		  Pending_Update := Option_Command.Data.Data;

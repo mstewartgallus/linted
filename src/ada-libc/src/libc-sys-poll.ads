@@ -15,7 +15,7 @@ with Interfaces.C; use Interfaces.C;
 limited with Libc.Signal.GNU;
 limited with Libc.Time.GNU;
 
-package Libc.Sys.Poll is
+package Libc.Sys.Poll with SPARK_Mode => Off is
 
    subtype nfds_t is unsigned_long;  -- /usr/include/sys/poll.h:36
 

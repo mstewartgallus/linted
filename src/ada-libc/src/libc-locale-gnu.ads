@@ -15,7 +15,7 @@ with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with System;
 
-package Libc.Locale.GNU is
+package Libc.Locale.GNU with SPARK_Mode => Off is
    pragma Preelaborate;
 
    type uu_locale_struct_uu_locales_array is array (0 .. 12) of System.Address;

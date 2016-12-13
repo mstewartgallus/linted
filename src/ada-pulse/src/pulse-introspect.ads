@@ -25,7 +25,7 @@ with Pulse.Def;
 with Pulse.Context;
 limited with Pulse.Format;
 
-package Pulse.Introspect is
+package Pulse.Introspect with SPARK_Mode => Off is
 
    type pa_sink_port_info is record
       name : Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/introspect.h:202

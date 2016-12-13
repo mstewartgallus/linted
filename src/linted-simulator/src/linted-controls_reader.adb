@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ private with System;
 private with Linted.Reader;
 private with Linted.MVars;
 
-package body Linted.Controls_Reader is
+package body Linted.Controls_Reader with SPARK_Mode => Off is
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -47,9 +47,10 @@ package body Linted.Controls_Reader is
    package body Worker is
       task Reader_Task;
 
-      My_Trigger : aliased Triggers.Trigger;
+      package Worker is new Linted.Reader.Worker;
 
-      package Worker is new Linted.Reader.Worker (My_Trigger'Access);
+      My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
       Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 2 * 4 + 1);
 
@@ -58,20 +59,34 @@ package body Linted.Controls_Reader is
 
       procedure Start (Object : KOs.KO) is
       begin
-	 Command_MVars.Set (My_Command_MVar, Object);
-	 Triggers.Signal (My_Trigger);
+	 My_Command_MVar.Set (Object);
+	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Start;
 
       function Poll return Option_Events.Option is
 	 New_Event : Read_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 New_Event := Read_Done_Event_MVars.Poll (My_Event_MVar);
+	 My_Event_MVar.Poll (New_Event);
 	 if New_Event.Empty then
 	    return (Empty => True);
 	 else
 	    return (False, (New_Event.Data.Data, New_Event.Data.Err));
 	 end if;
       end Poll;
+
+      procedure Wait is
+      begin
+	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+      end;
+
+      task A;
+      task body A is
+      begin
+	 loop
+	    Worker.Wait;
+	    Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+	 end loop;
+      end A;
 
       Err : Errors.Error;
       C : Controls;
@@ -83,12 +98,12 @@ package body Linted.Controls_Reader is
 	 use type Errors.Error;
       begin
 	 loop
-	    Triggers.Wait (My_Trigger);
+	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
 	    declare
 	       New_Command : Command_MVars.Option_Element_Ts.Option;
 	    begin
-	       New_Command := Command_MVars.Poll (My_Command_MVar);
+	       My_Command_MVar.Poll (New_Command);
 	       if not New_Command.Empty then
 		  Object := New_Command.Data;
 		  Object_Initialized := True;
@@ -111,8 +126,8 @@ package body Linted.Controls_Reader is
 
 		     C.Jumping := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 5)) /= 0;
 		  end if;
-		  Read_Done_Event_MVars.Set (My_Event_MVar, (Err, C));
-		  Triggers.Signal (Event_Trigger.all);
+		  My_Event_MVar.Set ((Err, C));
+		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
 	       end if;
 	    end;
 

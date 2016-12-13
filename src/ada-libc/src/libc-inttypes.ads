@@ -16,7 +16,7 @@ with Libc.Stdint;
 with Interfaces.C.Strings;
 with System;
 
-package Libc.Inttypes is
+package Libc.Inttypes with SPARK_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: PRId8 "d"
@@ -199,16 +199,16 @@ package Libc.Inttypes is
       uu_base : int) return Libc.Stdint.uintmax_t;  -- /usr/include/inttypes.h:301
    pragma Import (C, strtoumax, "strtoumax");
 
-   function wcstoimax
-     (uu_nptr : access wchar_t;
-      uu_endptr : System.Address;
-      uu_base : int) return Libc.Stdint.intmax_t;  -- /usr/include/inttypes.h:305
-   pragma Import (C, wcstoimax, "wcstoimax");
+   --  function wcstoimax
+   --    (uu_nptr : access wchar_t;
+   --     uu_endptr : System.Address;
+   --     uu_base : int) return Libc.Stdint.intmax_t;  -- /usr/include/inttypes.h:305
+   --  pragma Import (C, wcstoimax, "wcstoimax");
 
-   function wcstoumax
-     (uu_nptr : access wchar_t;
-      uu_endptr : System.Address;
-      uu_base : int) return Libc.Stdint.uintmax_t;  -- /usr/include/inttypes.h:310
-   pragma Import (C, wcstoumax, "wcstoumax");
+   --  function wcstoumax
+   --    (uu_nptr : access wchar_t;
+   --     uu_endptr : System.Address;
+   --     uu_base : int) return Libc.Stdint.uintmax_t;  -- /usr/include/inttypes.h:310
+   --  pragma Import (C, wcstoumax, "wcstoumax");
 
 end Libc.Inttypes;

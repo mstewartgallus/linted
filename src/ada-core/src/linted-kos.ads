@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ with Interfaces.C;
 with Linted.Errors;
 with Linted.Results;
 
-package Linted.KOs is
+package Linted.KOs with SPARK_Mode => Off is
    pragma Preelaborate;
 
    use type Interfaces.C.int;

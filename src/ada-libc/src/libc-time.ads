@@ -15,7 +15,7 @@ with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with System;
 
-package Libc.Time is
+package Libc.Time with SPARK_Mode => Off is
    pragma Preelaborate;
 
    subtype clock_t is long;

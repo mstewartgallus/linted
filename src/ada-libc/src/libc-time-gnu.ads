@@ -18,7 +18,7 @@ with System;
 with Libc.Locale.GNU;
 with Libc.Sys.Types;
 
-package Libc.Time.GNU is
+package Libc.Time.GNU with SPARK_Mode => Off is
    pragma Preelaborate;
 
    TIME_UTC : constant := 1;

@@ -17,7 +17,7 @@ with XCB.XProto;
 with System;
 with Interfaces.C.Strings;
 
-package XCB.XKB is
+package XCB.XKB with SPARK_Mode => Off is
    pragma Preelaborate;
    pragma Link_With ("-lxcb -lxcb-xkb");
 

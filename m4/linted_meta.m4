@@ -34,9 +34,10 @@ LINTED_CHECK_CFLAGS([linted_CFLAGS_META],[dnl
 dnl
 AC_SUBST([linted_CFLAGS_META])
 dnl
-LINTED_CHECK_LDFLAGS([linted_LDFLAGS_META],[dnl
-	[-Wl,-plugin-opt=also-emit-llvm]
-])
+dnl Errors out
+dnl LINTED_CHECK_LDFLAGS([linted_LDFLAGS_META],[dnl
+dnl 	[-Wl,-plugin-opt=also-emit-llvm]
+dnl ])
 dnl
 AC_SUBST([linted_LDFLAGS_META])
 ])

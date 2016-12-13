@@ -12,10 +12,9 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
-with Libc.xlocale_h;
 
-package Libc.Ctype is
-   pragma Pure;
+package Libc.Ctype.GNU with SPARK_Mode => Off is
+   pragma Preelaborate;
 
    --  arg-macro: procedure isascii (c)
    --    __isascii (c)
@@ -64,45 +63,45 @@ package Libc.Ctype is
 
    --  skipped func _tolower
 
-   function isalnum_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:271
-   pragma Import (C, isalnum_l, "isalnum_l");
+   --  function isalnum_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:271
+   --  pragma Import (C, isalnum_l, "isalnum_l");
 
-   function isalpha_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:272
-   pragma Import (C, isalpha_l, "isalpha_l");
+   --  function isalpha_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:272
+   --  pragma Import (C, isalpha_l, "isalpha_l");
 
-   function iscntrl_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:273
-   pragma Import (C, iscntrl_l, "iscntrl_l");
+   --  function iscntrl_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:273
+   --  pragma Import (C, iscntrl_l, "iscntrl_l");
 
-   function isdigit_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:274
-   pragma Import (C, isdigit_l, "isdigit_l");
+   --  function isdigit_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:274
+   --  pragma Import (C, isdigit_l, "isdigit_l");
 
-   function islower_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:275
-   pragma Import (C, islower_l, "islower_l");
+   --  function islower_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:275
+   --  pragma Import (C, islower_l, "islower_l");
 
-   function isgraph_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:276
-   pragma Import (C, isgraph_l, "isgraph_l");
+   --  function isgraph_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:276
+   --  pragma Import (C, isgraph_l, "isgraph_l");
 
-   function isprint_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:277
-   pragma Import (C, isprint_l, "isprint_l");
+   --  function isprint_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:277
+   --  pragma Import (C, isprint_l, "isprint_l");
 
-   function ispunct_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:278
-   pragma Import (C, ispunct_l, "ispunct_l");
+   --  function ispunct_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:278
+   --  pragma Import (C, ispunct_l, "ispunct_l");
 
-   function isspace_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:279
-   pragma Import (C, isspace_l, "isspace_l");
+   --  function isspace_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:279
+   --  pragma Import (C, isspace_l, "isspace_l");
 
-   function isupper_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:280
-   pragma Import (C, isupper_l, "isupper_l");
+   --  function isupper_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:280
+   --  pragma Import (C, isupper_l, "isupper_l");
 
-   function isxdigit_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:281
-   pragma Import (C, isxdigit_l, "isxdigit_l");
+   --  function isxdigit_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:281
+   --  pragma Import (C, isxdigit_l, "isxdigit_l");
 
-   function isblank_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:283
-   pragma Import (C, isblank_l, "isblank_l");
+   --  function isblank_l (arg1 : int; arg2 : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:283
+   --  pragma Import (C, isblank_l, "isblank_l");
 
-   function tolower_l (c : int; l : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:288
-   pragma Import (C, tolower_l, "tolower_l");
+   --  function tolower_l (c : int; l : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:288
+   --  pragma Import (C, tolower_l, "tolower_l");
 
-   function toupper_l (c : int; l : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:292
-   pragma Import (C, toupper_l, "toupper_l");
-end Libc.Ctype;
+   --  function toupper_l (c : int; l : Libc.xlocale_h.locale_t) return int;  -- /usr/include/ctype.h:292
+   --  pragma Import (C, toupper_l, "toupper_l");
+end Libc.Ctype.GNU;

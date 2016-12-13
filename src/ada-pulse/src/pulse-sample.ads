@@ -19,7 +19,7 @@ with Interfaces.C.Strings;
 with Libc.Stdint;
 with Libc.Stddef;
 
-package Pulse.Sample is
+package Pulse.Sample with SPARK_Mode => Off is
 
    --  unsupported macro: PA_CHANNELS_MAX 32U
    --  unsupported macro: PA_RATE_MAX (48000U*4U)

@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ with Libc.Errno;
 
 private with Linted.MVars;
 
-package body Linted.IO_Pool is
+package body Linted.IO_Pool with SPARK_Mode => Off is
    package C renames Interfaces.C;
 
    package Errno renames Libc.Errno;
@@ -41,20 +41,25 @@ package body Linted.IO_Pool is
    package body Writer_Worker is
       task Writer_Task;
 
-      My_Trigger : Triggers.Trigger;
+      Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
       My_Command_MVar : Write_Command_MVars.MVar;
       My_Event_MVar : Write_Done_Event_MVars.MVar;
 
+      procedure Wait is begin
+	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+      end Wait;
+
       procedure Write (Object : KOs.KO; Buf : System.Address; Count : C.size_t) is
       begin
-	 Write_Command_MVars.Set (My_Command_MVar, (Object, Buf, Count));
-	 Triggers.Signal (My_Trigger);
+	 My_Command_MVar.Set ((Object, Buf, Count));
+	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Write;
 
       function Poll return Option_Writer_Events.Option is
 	 Event : Write_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 Event := Write_Done_Event_MVars.Poll (My_Event_MVar);
+	 My_Event_MVar.Poll (Event);
 	 if Event.Empty then
 	    return (Empty => True);
 	 else
@@ -70,9 +75,9 @@ package body Linted.IO_Pool is
 	 use type C.size_t;
       begin
 	 loop
-	    Triggers.Wait (My_Trigger);
+	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
-	    New_Write_Command := Write_Command_MVars.Poll (My_Command_MVar);
+	    My_Command_MVar.Poll (New_Write_Command);
 	    if not New_Write_Command.Empty then
 	       declare
 		  Err : C.int;
@@ -98,8 +103,8 @@ package body Linted.IO_Pool is
 		     end if;
 		  end loop;
 
-		  Write_Done_Event_MVars.Set (My_Event_MVar, Write_Done_Event'(Err => Errors.Error (Err), Bytes_Written => Bytes_Written));
-		  Triggers.Signal (Event_Trigger.all);
+		  My_Event_MVar.Set (Write_Done_Event'(Err => Errors.Error (Err), Bytes_Written => Bytes_Written));
+		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
 	       end;
 	    end if;
 	 end loop;
@@ -123,20 +128,25 @@ package body Linted.IO_Pool is
    package body Reader_Worker is
       task Reader_Task;
 
-      My_Trigger : Triggers.Trigger;
+      Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
       My_Command_MVar : Read_Command_MVars.MVar;
       My_Event_MVar : Read_Done_Event_MVars.MVar;
 
+      procedure Wait is begin
+	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+      end Wait;
+
       procedure Read (Object : KOs.KO; Buf : System.Address; Count : C.size_t) is
       begin
-	 Read_Command_MVars.Set (My_Command_MVar, (Object, Buf, Count));
-	 Triggers.Signal (My_Trigger);
+	 My_Command_MVar.Set ((Object, Buf, Count));
+	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Read;
 
       function Poll return Option_Reader_Events.Option is
 	 Event : Read_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 Event := Read_Done_Event_MVars.Poll (My_Event_MVar);
+	 My_Event_MVar.Poll (Event);
 	 if Event.Empty then
 	    return (Empty => True);
 	 else
@@ -152,9 +162,9 @@ package body Linted.IO_Pool is
 	 use type C.size_t;
       begin
 	 loop
-	    Triggers.Wait (My_Trigger);
+	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
-	    New_Read_Command := Read_Command_MVars.Poll (My_Command_MVar);
+	    My_Command_MVar.Poll (New_Read_Command);
 	    if not New_Read_Command.Empty then
 	       declare
 		  Err : C.int;
@@ -183,8 +193,8 @@ package body Linted.IO_Pool is
 		     end if;
 		  end loop;
 
-		  Read_Done_Event_MVars.Set (My_Event_MVar, (Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
-		  Triggers.Signal (Event_Trigger.all);
+		  My_Event_MVar.Set ((Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
+		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
 	       end;
 	    end if;
 	 end loop;
@@ -206,20 +216,27 @@ package body Linted.IO_Pool is
    package body Poller_Worker is
       task Poller_Task;
 
-      My_Trigger : Triggers.Trigger;
+      Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+
+      My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
       My_Command_MVar : Poller_Command_MVars.MVar;
       My_Event_MVar : Poller_Done_Event_MVars.MVar;
 
+      procedure Wait is
+      begin
+	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+      end Wait;
+
       procedure Watch (Object : KOs.KO; Events : Poll_Events) is
       begin
-	 Poller_Command_MVars.Set (My_Command_MVar, (Object, Events));
-	 Triggers.Signal (My_Trigger);
+	 My_Command_MVar.Set ((Object, Events));
+	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Watch;
 
       function Poll return Option_Poller_Events.Option is
 	 Event : Poller_Done_Event_MVars.Option_Element_Ts.Option;
       begin
-	 Event := Poller_Done_Event_MVars.Poll (My_Event_MVar);
+	 My_Event_MVar.Poll (Event);
 	 if Event.Empty then
 	    return (Empty => True);
 	 else
@@ -234,9 +251,9 @@ package body Linted.IO_Pool is
 	 use type C.size_t;
       begin
 	 loop
-	    Triggers.Wait (My_Trigger);
+	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
-	    New_Command := Poller_Command_MVars.Poll (My_Command_MVar);
+	    My_Command_MVar.Poll (New_Command);
 	    if not New_Command.Empty then
 	       declare
 		  Err : C.int;
@@ -270,8 +287,8 @@ package body Linted.IO_Pool is
 		     end;
 		  end loop;
 
-		  Poller_Done_Event_MVars.Set (My_Event_MVar, (Err => Errors.Error (Err)));
-		  Triggers.Signal (Event_Trigger.all);
+		  My_Event_MVar.Set ((Err => Errors.Error (Err)));
+		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
 	       end;
 	    end if;
 	 end loop;

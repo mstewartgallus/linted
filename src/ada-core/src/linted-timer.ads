@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Real_Time;
+with Ada.Synchronous_Task_Control;
 
 with Linted.Options;
-with Linted.Triggers;
 
-package Linted.Timer is
+package Linted.Timer with SPARK_Mode => Off Is
    pragma Elaborate_Body;
 
    type Event is record
@@ -26,9 +26,9 @@ package Linted.Timer is
    package Option_Events is new Linted.Options (Event);
 
    generic
-      Event_Trigger : not null access Linted.Triggers.Trigger;
    package Worker is
       procedure Wait_Until (Time : Ada.Real_Time.Time);
       function Poll return Option_Events.Option;
+      procedure Wait;
    end Worker;
 end Linted.Timer;

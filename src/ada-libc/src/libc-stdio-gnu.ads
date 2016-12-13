@@ -16,7 +16,7 @@ with Interfaces.C.Strings;
 with System;
 with Libc.Stddef;
 
-package Libc.Stdio is
+package Libc.Stdio.GNU with SPARK_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: BUFSIZ _IO_BUFSIZ
@@ -445,4 +445,4 @@ private
       null;
    end record;
    pragma Convention (C_Pass_By_Copy, FILE);
-end Libc.Stdio;
+end Libc.Stdio.GNU;

@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -16,22 +16,20 @@ with System;
 
 with Linted.IO_Pool;
 with Linted.KOs;
-with Linted.Triggers;
 
-package Linted.Reader is
+package Linted.Reader with SPARK_Mode => Off  is
    pragma Elaborate_Body;
-
-   use Linted.KOs;
-   use Linted.Triggers;
 
    subtype Event is Linted.IO_Pool.Reader_Event;
 
    package Option_Events renames Linted.IO_Pool.Option_Reader_Events;
 
    generic
-      Event_Trigger : not null access Trigger;
    package Worker is
-      procedure Read (Object : KO; Buf : System.Address; Count : Interfaces.C.size_t);
+      procedure Read (Object : Linted.KOs.KO;
+		      Buf : System.Address;
+		      Count : Interfaces.C.size_t);
       function Poll return Option_Events.Option;
+      procedure Wait;
    end Worker;
 end Linted.Reader;

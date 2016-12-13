@@ -15,7 +15,7 @@ with System;
 
 with Pulse.Def;
 
-package Pulse.Operation is
+package Pulse.Operation with SPARK_Mode => Off is
 
    --  skipped empty struct pa_operation
 

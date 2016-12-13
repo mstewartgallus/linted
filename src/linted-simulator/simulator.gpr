@@ -21,7 +21,12 @@ project Simulator is
 
   for Object_Dir use Shared'Object_Dir & "/linted-simulator";
   package Builder renames Shared.Builder;
-  package Compiler renames Shared.Compiler;
+  package Compiler is
+      for Local_Configuration_Pragmas use "pragmas.adc";
+      for Default_Switches ("Ada") use Shared.Compiler'Default_Switches ("Ada");
+      for Default_Switches ("C") use Shared.Compiler'Default_Switches ("C");
+      for Default_Switches ("C") use Shared.Compiler'Default_Switches ("C");
+   end Compiler;
   package Binder renames Shared.Binder;
   package Linker renames Shared.Linker;
 end Simulator;

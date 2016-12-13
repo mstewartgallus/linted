@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -12,38 +12,18 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.MVars is
-   function Poll (This : in out MVar) return Option_Element_Ts.Option is
-      Option : Option_Element_Ts.Option;
-   begin
-      if This.Full then
-	 This.Object.Poll (Option, This.Full'Access);
-	 return Option;
-      else
-	 return (Empty => True);
-      end if;
-   end Poll;
-
-   procedure Set (This : in out MVar; D : Element_T) is
-   begin
-      This.Object.Set (D);
-      This.Full := True;
-   end Set;
-
-   protected body Impl is
-      procedure Poll (Option : out Option_Element_Ts.Option;
-		      Full : not null access Atomic_Boolean) is
+   protected body MVar is
+      procedure Poll (Option : out Option_Element_Ts.Option) is
       begin
-	 if Full.all then
-	    Full.all := False;
-	    Option := (False, Current);
-	 else
-	    Option := (Empty => True);
+	 Option := Current;
+	 if not Current.Empty then
+	    Current := (Empty => True);
 	 end if;
       end Poll;
 
       procedure Set (D : Element_T) is
       begin
-	 Current := D;
+	 Current := (Empty => False, Data => D);
       end Set;
-   end Impl;
+   end MVar;
 end Linted.MVars;

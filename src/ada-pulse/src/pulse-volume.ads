@@ -22,7 +22,7 @@ with Libc.Stddef;
 with Pulse.Channelmap;
 limited with Pulse.Sample;
 
-package Pulse.Volume is
+package Pulse.Volume with SPARK_Mode => Off is
    subtype pa_volume_t is Libc.Stdint.uint32_t;  -- /usr/include/pulse/volume.h:107
 
    PA_VOLUME_NORM : constant pa_volume_t := 16#10000#;

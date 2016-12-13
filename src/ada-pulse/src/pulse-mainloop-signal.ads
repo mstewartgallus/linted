@@ -17,7 +17,7 @@ with Interfaces.C; use Interfaces.C;
 
 limited with Pulse.Mainloop.Api;
 
-package Pulse.Mmainloop.Signal is
+package Pulse.Mainloop.Signal with SPARK_Mode => Off is
 
    --  skipped empty struct pa_signal_event
 
@@ -52,4 +52,4 @@ package Pulse.Mmainloop.Signal is
    procedure pa_signal_set_destroy (e : System.Address; callback : pa_signal_destroy_cb_t);  -- /usr/include/pulse/mainloop-signal.h:62
    pragma Import (C, pa_signal_set_destroy, "pa_signal_set_destroy");
 
-end Pulse.Mmainloop.Signal;
+end Pulse.Mainloop.Signal;

@@ -18,7 +18,7 @@ with Interfaces.C.Strings;
 
 with Libc.Stddef;
 
-package Pulse.Proplist is
+package Pulse.Proplist with SPARK_Mode => Off is
 
    --  unsupported macro: PA_PROP_MEDIA_NAME "media.name"
    --  unsupported macro: PA_PROP_MEDIA_TITLE "media.title"

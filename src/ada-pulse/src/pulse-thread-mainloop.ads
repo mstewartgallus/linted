@@ -15,7 +15,7 @@ with Interfaces.C; use Interfaces.C;
 with System;
 limited with Pulse.Mainloop.Api;
 
-package Pulse.Thread.Mainloop is
+package Pulse.Thread.Mainloop with SPARK_Mode => Off is
 
    --  skipped empty struct pa_threaded_mainloop
 

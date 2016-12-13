@@ -12,7 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package Libc.Errno.POSIX_2008 is
-   pragma Pure;
+   pragma Preelaborate;
 
    E2BIG : constant := 7;
    EBADF : constant := 9;

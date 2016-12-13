@@ -16,7 +16,7 @@ with Libc.Stddef;
 with System;
 with Interfaces.C.Strings;
 
-package Pulse.XMalloc is
+package Pulse.XMalloc with SPARK_Mode => Off is
 
    --  arg-macro: function pa_xnew (type, n)
    --    return (type*) _pa_xnew_internal((n), sizeof(type));

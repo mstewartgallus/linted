@@ -17,7 +17,7 @@ with System;
 with Interfaces.C.Extensions;
 with Libc.Stddef;
 
-package Libc.Stdlib.GNU is
+package Libc.Stdlib.GNU with SPARK_Mode => Off is
    --  arg-macro: procedure WEXITSTATUS (status)
    --    __WEXITSTATUS (__WAIT_INT (status))
    --  arg-macro: procedure WTERMSIG (status)
