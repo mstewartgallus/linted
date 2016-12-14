@@ -81,11 +81,11 @@ package body Linted.Simulate is
       Normal_Force (Z) := -Boolean'Pos (This.Controls.Left);
 
       for II in Position loop
-	 Thrusts (II) := X_Thrust (II) + Y_Thrust (II) + Z_Thrust (II);
+	 Thrusts (II) := X_Thrust (II) + (Y_Thrust (II) + Z_Thrust (II));
       end loop;
 
       for II in Position loop
-	 Forces (II) := Gravity (II) + Normal_Force (II) + Thrusts (II);
+	 Forces (II) := Gravity (II) + (Normal_Force (II) + Thrusts (II));
       end loop;
 
       for II in Position loop

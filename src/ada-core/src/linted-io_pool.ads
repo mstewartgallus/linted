@@ -11,7 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Synchronous_Task_Control;
 with Interfaces.C;
 with System;
 
@@ -19,12 +18,12 @@ with Linted.Errors;
 with Linted.KOs;
 with Linted.Options;
 
-package Linted.IO_Pool with SPARK_Mode => Off is
+package Linted.IO_Pool is
    pragma Elaborate_Body;
    use type Interfaces.C.int;
 
    type Writer_Event is record
-      Bytes_Written : Interfaces.C.size_t;
+      Bytes_Written : Interfaces.C.size_t := 0;
       Err : Errors.Error;
    end record;
 
@@ -39,7 +38,7 @@ package Linted.IO_Pool with SPARK_Mode => Off is
    end Writer_Worker;
 
    type Reader_Event is record
-      Bytes_Read : Interfaces.C.size_t;
+      Bytes_Read : Interfaces.C.size_t := 0;
       Err : Errors.Error;
    end record;
 
@@ -51,19 +50,4 @@ package Linted.IO_Pool with SPARK_Mode => Off is
       function Poll return Option_Reader_Events.Option;
       procedure Wait;
    end Reader_Worker;
-
-   type Poll_Events is (Poll_Events_Read, Poll_Events_Write);
-
-   type Poller_Event is record
-      Err : Errors.Error;
-   end record;
-
-   package Option_Poller_Events is new Linted.Options (Poller_Event);
-
-   generic
-   package Poller_Worker is
-      procedure Watch (Object : KOs.KO; Events : Poll_Events);
-      function Poll return Option_Poller_Events.Option;
-      procedure Wait;
-   end Poller_Worker;
 end Linted.IO_Pool;

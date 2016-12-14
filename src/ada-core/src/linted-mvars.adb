@@ -16,14 +16,21 @@ package body Linted.MVars is
       procedure Poll (Option : out Option_Element_Ts.Option) is
       begin
 	 Option := Current;
-	 if not Current.Empty then
-	    Current := (Empty => True);
-	 end if;
+	 pragma Annotate (GNATprove, False_Positive,
+			  "discriminant check might fail",
+			  "reviewed by Steven Stewart-Gallus");
+	 Current := (Empty => True);
+	 pragma Annotate (GNATprove, False_Positive,
+			  "discriminant check might fail",
+			  "reviewed by Steven Stewart-Gallus");
       end Poll;
 
       procedure Set (D : Element_T) is
       begin
 	 Current := (Empty => False, Data => D);
+	 pragma Annotate (GNATprove, False_Positive,
+			  "discriminant check might fail",
+			  "reviewed by Steven Stewart-Gallus");
       end Set;
    end MVar;
 end Linted.MVars;

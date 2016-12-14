@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,13 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Assertions;
-private with Ada.Numerics;
-private with Ada.Numerics.Generic_Elementary_Functions;
-
 package body Linted.Angles is
-   package Assertions renames Ada.Assertions;
-
    function To_Angle (X : Element_T) return Angle is
    begin
       return (Value => X);
@@ -25,8 +19,14 @@ package body Linted.Angles is
 
    function To_Angle (X : Element_T;
 		      Y : Element_T) return Angle is
+      Result : Element_T;
    begin
-      return (Value => (Element_T'Last / Y) * X  + X / Y);
+      if 0 = Y then
+	 Result := X;
+      else
+	 Result := (Element_T'Last / Y) * X  + X / Y;
+      end if;
+      return (Value => Result);
    end To_Angle;
 
    function From_Angle (X : Angle) return Element_T is
@@ -50,9 +50,6 @@ package body Linted.Angles is
 			 Phi : Angle) return Angle is
       X : Angle;
    begin
-      Assertions.Assert (From_Angle (Max) <= Element_T'Last / 2);
-      Assertions.Assert (From_Angle (Min) <= Element_T'Last / 2);
-
       X := Theta + Phi;
 
       if From_Angle (X) > From_Angle (Max) then
@@ -68,9 +65,6 @@ package body Linted.Angles is
 			      Phi : Angle) return Angle is
       X : Angle;
    begin
-      Assertions.Assert (From_Angle (Max) <= Element_T'Last / 2);
-      Assertions.Assert (From_Angle (Min) <= Element_T'Last / 2);
-
       X := Theta - Phi;
 
       if From_Angle (X) > From_Angle (Min) then
@@ -82,15 +76,39 @@ package body Linted.Angles is
 
    function Sin (X : Angle) return Element_U is
       type My_Float is digits 18;
-      package XX is new Ada.Numerics.Generic_Elementary_Functions (My_Float);
+
+      Last : constant My_Float := My_Float (Element_U'Last);
+
+      S : Element_U := 1;
+      A : Element_T := From_Angle (X);
    begin
-      return Element_U (XX.Sin (My_Float (From_Angle (X)), Cycle => My_Float (Element_T'Last) + 1.0) * My_Float (Element_U'Last));
+      if A > Element_T'Last / 2 then
+	 A := A - Element_T'Last / 2;
+	 S := -1;
+      end if;
+      if A > Element_T'Last / 4 then
+	 A := Element_T'Last / 2 - A;
+      end if;
+
+      -- Sin (x) = x - x^3/ 6 + x^5 / 120
+      declare
+	 F : My_Float := My_Float (A) * (2.0 * 3.1459265359 / (Last + 1.0));
+	 M : My_Float := F * (1.0 - (F * F) * (1.0 / 3.0 + (F * F) / 120.0));
+	 N : My_Float := Last * M;
+	 U : Element_U;
+      begin
+	 if N > Last then
+	    U := Element_U'Last;
+	 else
+	    U := Element_U (N);
+	 end if;
+	 return S * U;
+      end;
    end Sin;
 
    function Cos (X : Angle) return Element_U is
-      type My_Float is digits 18;
-      package XX is new Ada.Numerics.Generic_Elementary_Functions (My_Float);
+      function My_Sin is new Sin (Element_U);
    begin
-      return Element_U (XX.Sin (My_Float (From_Angle (X) + Element_T'Last / 4), Cycle => My_Float (Element_T'Last) + 1.0) * My_Float (Element_U'Last));
+      return My_Sin (To_Angle (From_Angle (X) + Element_T'Last / 4));
    end Cos;
 end Linted.Angles;

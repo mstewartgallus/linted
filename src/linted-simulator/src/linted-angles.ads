@@ -37,22 +37,25 @@ package Linted.Angles is
 			 Max : Angle;
 			 Theta : Angle;
 			 Phi : Angle) return Angle with
-     Global => null;
+     Global => null,
+     Pre => From_Angle (Max) <= Element_T'Last / 2 and
+     From_Angle (Min) <= Element_T'Last / 2;
+
    function Subtract_Clamped (Min : Angle;
 			      Max : Angle;
 			      Theta : Angle;
 			      Phi : Angle) return Angle with
-     Global => null;
+     Global => null,
+     Pre => From_Angle (Max) <= Element_T'Last / 2 and
+     From_Angle (Min) <= Element_T'Last / 2;
 
    generic
       type Element_U is range <>;
-   function Sin (X : Angle) return Element_U with
-     Post => Sin'Result < 1 or Sin'Result > -1;
+   function Sin (X : Angle) return Element_U;
 
    generic
       type Element_U is range <>;
-   function Cos (X : Angle) return Element_U with
-     Post => Cos'Result < 1 or Cos'Result > -1;
+   function Cos (X : Angle) return Element_U;
 private
    type Angle is record
       Value : Element_T := 0;

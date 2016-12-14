@@ -17,7 +17,7 @@ with System;
 with Linted.IO_Pool;
 with Linted.KOs;
 
-package Linted.Writer with SPARK_Mode => Off is
+package Linted.Writer is
    pragma Elaborate_Body;
 
    subtype Event is Linted.IO_Pool.Writer_Event;
