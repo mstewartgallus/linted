@@ -13,7 +13,6 @@
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
-with System;
 
 package Libc.Time with SPARK_Mode => Off is
    pragma Preelaborate;

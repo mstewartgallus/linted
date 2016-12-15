@@ -19,7 +19,7 @@ with Interfaces.C.Strings;
 with Libc.Stdint;
 with Libc.Stddef;
 
-with Pulse.Mainloop.Api;
+with Pulse.Mainloop.API;
 with Pulse.Def;
 with Pulse.Proplist;
 with Pulse.Sample;
@@ -45,11 +45,11 @@ package Pulse.Context with SPARK_Mode => Off is
          arg4 : System.Address);
    pragma Convention (C, pa_context_event_cb_t);  -- /usr/include/pulse/context.h:169
 
-   function pa_context_new (mainloop : access Pulse.Mainloop.Api.pa_mainloop_api; name : Interfaces.C.Strings.chars_ptr) return pa_context_access;  -- /usr/include/pulse/context.h:174
+   function pa_context_new (mainloop : access Pulse.Mainloop.API.pa_mainloop_api; name : Interfaces.C.Strings.chars_ptr) return pa_context_access;  -- /usr/include/pulse/context.h:174
    pragma Import (C, pa_context_new, "pa_context_new");
 
    function pa_context_new_with_proplist
-     (mainloop : access Pulse.Mainloop.Api.pa_mainloop_api;
+     (mainloop : access Pulse.Mainloop.API.pa_mainloop_api;
       name : Interfaces.C.Strings.chars_ptr;
       proplist : Pulse.Proplist.pa_proplist_access) return pa_context_access;  -- /usr/include/pulse/context.h:179
    pragma Import (C, pa_context_new_with_proplist, "pa_context_new_with_proplist");
@@ -157,7 +157,7 @@ package Pulse.Context with SPARK_Mode => Off is
    function pa_context_rttime_new
      (c : pa_context_access;
       usec : Pulse.Sample.pa_usec_t;
-      cb : Pulse.Mainloop.Api.pa_time_event_cb_t;
+      cb : Pulse.Mainloop.API.pa_time_event_cb_t;
       userdata : System.Address) return System.Address;  -- /usr/include/pulse/context.h:262
    pragma Import (C, pa_context_rttime_new, "pa_context_rttime_new");
 

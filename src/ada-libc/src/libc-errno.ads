@@ -16,7 +16,7 @@ with Interfaces.C; use Interfaces.C;
 package Libc.Errno with SPARK_Mode => Off is
    pragma Preelaborate;
 
-   function Errno return Interfaces.C.Int;
+   function Errno return Interfaces.C.int;
    pragma Import (C, Errno, "linted_adarts_libc_errno");
 
    procedure Errno_Set (Err : Interfaces.C.int);

@@ -30,9 +30,9 @@ package body Linted.KOs is
 
       C_Flags : C.unsigned := Libc.Fcntl.O_CLOEXEC;
 
-      Has_Read_Only : Boolean := (Flags and Read_Only) /= 0;
-      Has_Write_Only : Boolean := (Flags and Write_Only) /= 0;
-      Has_Read_Write : Boolean := (Flags and Read_Write) /= 0;
+      Has_Read_Only : constant Boolean := (Flags and Read_Only) /= 0;
+      Has_Write_Only : constant Boolean := (Flags and Write_Only) /= 0;
+      Has_Read_Write : constant Boolean := (Flags and Read_Write) /= 0;
    begin
       if (Flags and not (Read_Only or Write_Only or Read_Write)) /= 0 then
 	 return (Erroneous => True, Err => Errors.Invalid_Parameter);

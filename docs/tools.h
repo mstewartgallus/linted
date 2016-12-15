@@ -175,7 +175,8 @@ A code linter.
 - It's okay but mostly just catches bad style.
 </li>
 
-<li> [IWYU](https://github.com/include-what-you-use/include-what-you-use/)
+<li>
+[IWYU](https://github.com/include-what-you-use/include-what-you-use/)
 Is a bit buggy.
 Use like: `make CC='iwyu -I/usr/lib/clang/3.6/include' -k | tee
 iwyu.log`

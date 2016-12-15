@@ -77,7 +77,7 @@ package body Linted.Controls_Reader is
       procedure Wait is
       begin
 	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
-      end;
+      end Wait;
 
       task A;
       task body A is

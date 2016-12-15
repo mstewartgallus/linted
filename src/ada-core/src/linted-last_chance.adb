@@ -12,20 +12,27 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 private with Ada.Exceptions;
-private with Ada.Text_IO;
+private with Ada.Unchecked_Conversion;
+with System;
+private with Interfaces.C;
+private with Interfaces.C.Strings;
 
 with Libc.Unistd;
 
 package body Linted.Last_Chance with SPARK_Mode => Off is
    package Exceptions renames Ada.Exceptions;
-   package Text_IO renames Ada.Text_IO;
 
    procedure Last_Chance_Handler (Except : Exceptions.Exception_Occurrence);
    pragma Export (C, Last_Chance_Handler, "__gnat_last_chance_handler");
 
    procedure Last_Chance_Handler (Except : Exceptions.Exception_Occurrence) is
+      function Convert is new Ada.Unchecked_Conversion (Interfaces.C.Strings.chars_ptr, System.Address);
+
+      X : aliased Interfaces.C.char_array := Interfaces.C.To_C (Exceptions.Exception_Information (Except));
+      P : Interfaces.C.Strings.chars_ptr := Interfaces.C.Strings.To_Chars_Ptr (X'Unchecked_Access);
+      Res : Interfaces.C.long;
    begin
-      Text_IO.Put_Line (Exceptions.Exception_Information (Except));
+      Res := Libc.Unistd.write (2, Convert (P), Interfaces.C.Strings.Strlen (P));
       Libc.Unistd.u_exit (1);
       loop
 	 null;

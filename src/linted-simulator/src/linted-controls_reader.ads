@@ -40,7 +40,7 @@ package Linted.Controls_Reader is
    package Option_Events is new Linted.Options (Event);
 
    generic
-   package Worker with SPARK_Mode => Off Is
+   package Worker with SPARK_Mode => Off is
       procedure Start (Object : KOs.KO);
       function Poll return Option_Events.Option;
 

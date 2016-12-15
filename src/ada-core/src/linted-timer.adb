@@ -11,6 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+private with Ada.Synchronous_Task_Control;
+
 private with Linted.MVars;
 
 package body Linted.Timer with SPARK_Mode => Off is
@@ -30,7 +32,7 @@ package body Linted.Timer with SPARK_Mode => Off is
    package body Worker is
       Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
-      My_Trigger : Ada.Synchronous_Task_Control.Suspension_object;
+      My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
       My_Command_MVar : Command_MVars.MVar;
       My_Event_MVar : Tick_Event_MVars.MVar;
 

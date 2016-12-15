@@ -16,8 +16,6 @@ with System;
 with Ada.Unchecked_Conversion;
 with Ada.Numerics.Elementary_Functions;
 
-private with Ada.Text_IO;
-
 private with Interfaces.C.Strings;
 private with Interfaces.C;
 
@@ -31,11 +29,11 @@ private with Pulse.Sample;
 private with Pulse.Stream;
 
 private with Linted.Errors;
+private with Linted.KOs;
+private with Linted.Stdio;
 private with Libc.Stddef;
 
 package body Linted.Audio is
-   package Text_IO renames Ada.Text_IO;
-
    use Interfaces.C.Strings;
    use Interfaces.C;
 
@@ -182,20 +180,20 @@ package body Linted.Audio is
    procedure On_Notify (c : pa_context_access; userdata : System.Address) is begin
       case pa_context_get_state (c) is
 	 when PA_CONTEXT_UNCONNECTED =>
-	    Text_IO.Put_Line (Text_IO.Standard_Error, "Unconnected");
+	    Stdio.Write_Line (KOs.Standard_Error, "Unconnected");
 	 when PA_CONTEXT_CONNECTING =>
-	    Text_IO.Put_Line (Text_IO.Standard_Error, "Connecting");
+	    Stdio.Write_Line (KOs.Standard_Error, "Connecting");
 	 when PA_CONTEXT_AUTHORIZING =>
-	    Text_IO.Put_Line (Text_IO.Standard_Error, "Authorizing");
+	    Stdio.Write_Line (KOs.Standard_Error, "Authorizing");
 	 when PA_CONTEXT_SETTING_NAME =>
-	    Text_IO.Put_Line (Text_IO.Standard_Error, "Setting Name");
+	    Stdio.Write_Line (KOs.Standard_Error, "Setting Name");
 	 when PA_CONTEXT_READY =>
-	    Text_IO.Put_Line (Text_IO.Standard_Error, "Ready");
+	    Stdio.Write_Line (KOs.Standard_Error, "Ready");
 	    On_Ready (c);
 	 when PA_CONTEXT_FAILED =>
-	    Text_IO.Put_Line (Text_IO.Standard_Error, "Failed");
+	    Stdio.Write_Line (KOs.Standard_Error, "Failed");
 	 when PA_CONTEXT_TERMINATED =>
-	    Text_IO.Put_Line (Text_IO.Standard_Error, "Terminated");
+	    Stdio.Write_Line (KOs.Standard_Error, "Terminated");
       end case;
    end On_Notify;
 
@@ -246,8 +244,8 @@ package body Linted.Audio is
       type Short_Access is not null access all short;
       function Convert is new Ada.Unchecked_Conversion (Short_Access, System.Address);
    begin
-      if Sampleoffs * 2 + Mybytes >
-	Libc.Stddef.size_t (GREATEST_PERIOD) * 2 then
+      if Sampleoffs * 2 + Mybytes > Libc.Stddef.size_t (GREATEST_PERIOD) * 2
+      then
 	 Sampleoffs := 0;
       end if;
 

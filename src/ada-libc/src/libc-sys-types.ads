@@ -53,7 +53,7 @@ package Libc.Sys.Types is
 
    subtype daddr_t is int;  -- /usr/include/sys/types.h:115
 
-   subtype caddr_t is Interfaces.C.Strings.Chars_ptr;  -- /usr/include/sys/types.h:116
+   subtype caddr_t is Interfaces.C.Strings.chars_ptr;  -- /usr/include/sys/types.h:116
 
    subtype key_t is int;  -- /usr/include/sys/types.h:122
 

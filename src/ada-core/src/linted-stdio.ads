@@ -20,16 +20,15 @@ with Linted.KOs;
 package Linted.Stdio with SPARK_Mode => Off is
    pragma Elaborate_Body;
 
-   use Linted.Errors;
-   use Linted.KOs;
+   procedure Write_Line (Object : Linted.KOs.KO; Str : String);
 
-   procedure Write_String (Object : KO;
+   procedure Write_String (Object : Linted.KOs.KO;
 			   Str : String;
-			   Err : out Error);
+			   Err : out Linted.Errors.Error);
 
-   procedure Write (Object : KO;
+   procedure Write (Object : Linted.KOs.KO;
 		    Buf : System.Address;
 		    Count :  Interfaces.C.size_t;
 		    Bytes_Written : out Interfaces.C.size_t;
-		    Err : out Error);
+		    Err : out Linted.Errors.Error);
 end Linted.Stdio;

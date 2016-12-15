@@ -15,7 +15,7 @@ with Linted.Options;
 
 generic
    type Element_T is private;
-package Linted.MVars Is
+package Linted.MVars is
    pragma Pure;
 
    package Option_Element_Ts is new Linted.Options (Element_T);

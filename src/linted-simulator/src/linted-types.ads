@@ -11,22 +11,26 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Controls_Reader;
-with Linted.Types;
+with Linted.Angles;
 
-package Linted.Simulate is
-   pragma Elaborate_Body;
+package Linted.Types is
+   pragma Pure;
 
-   type State is record
-      Controls : Linted.Controls_Reader.Controls;
+   type Large is range -2 ** (64 - 1) ..  2 ** (64 - 1) - 1;
 
-      Positions : Types.Varying_Positions := (Types.X => (Value => 0, Old => 0),
-					Types.Y => (Value => 0, Old => 0),
-					Types.Z => (Value => 0, Old => 0));
+   type Nat is mod 2 ** 32;
+   type Int is range -2 ** (32 - 1) ..  2 ** (32 - 1) - 1;
 
-      Z_Rotation : Types.Sim_Angle;
-      X_Rotation : Types.Sim_Angle;
+   package Sim_Angles is new Linted.Angles (Nat);
+
+   subtype Sim_Angle is Sim_Angles.Angle;
+   use type Sim_Angle;
+
+   type Differentiable is record
+      Value : Int;
+      Old : Int;
    end record;
 
-   procedure Tick (This : in out State);
-end Linted.Simulate;
+   type Position is (X, Y, Z);
+   type Varying_Positions is array (Position) of Differentiable;
+end Linted.Types;

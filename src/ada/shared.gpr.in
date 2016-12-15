@@ -21,96 +21,101 @@ abstract project Shared is
 
   package Compiler is
      for Default_Switches ("Ada") use ("-gnat2012",
-     	 		  	      "-gnatec=" & Builder'Global_Configuration_Pragmas);
--- 				       "-gnat2012",
+     	 		  	      "-gnatec=" & Builder'Global_Configuration_Pragmas,
 
--- 				       "-Wall", "-Wextra",
--- 				       "-gnatwa",
--- 				       "-gnatwh",
--- 				       "-gnatw.i",
--- 				       "-gnatw.k",
--- 				       "-gnatwt",
--- 				       "-gnatwF",
+				       "-Wall", "-Wextra",
+				       "-gnatwa",
+				       "-gnatwh",
+				       "-gnatw.i",
+				       "-gnatw.k",
+				       "-gnatwt",
+				       "-gnatwF",
 
--- 				       "-g",
--- --				       "-E",
--- --				       "-gnateE",
+				       "-gnatwK",
 
--- 				       "-gnatn",
--- 				       -- "-O3",
+				       "-g",
+				       "-E",
 
--- 				       -- "-fvisibility=hidden",
--- 				       -- "-Bsymbolic",
--- 				       -- "-fdata-sections",
--- 				       -- "-ffunction-sections",
+				       "-gnateE",
 
--- 				       -- "-gno-record-gcc-switches",
+				       "-gnatn",
 
--- 				       -- "-fpic", "-fPIC", "-fpie", "-fPIE",
+				       -- TODO: Debug optimization causes problems
+				       "-O0",
 
--- 				       "-gnaty3aAbCdefiIklnprsStu",
+				       "-fvisibility=hidden",
+				       "-Bsymbolic",
+				       "-fdata-sections",
+				       "-ffunction-sections",
 
--- 				       -- "-fverbose-asm",
--- 				       -- "-save-temps=cwd",
--- 				       "-gnatD",
--- 				       "-gnatG",
--- 				       "-gnattt",
--- 				       -- "-gnatR3s",
--- 				       -- "-fstack-usage"
+				       "-gno-record-gcc-switches",
 
--- --				       "-fstack-check",
--- --				       "-ftrapv",
--- --				       "-fsanitize=address",
--- --				       "-gnato",
--- --				       "-gnateA",
--- --				       "-gnateV",
--- --				       "-gnatVa",
--- --				       "-gnatE"
--- 				      );
---      for Default_Switches ("C") use ("-Wall", "-Wextra",
+--				       "-fpic", "-fPIC", "-fpie", "-fPIE",
 
--- 				     -- "-g",
+				       "-gnaty3aAbCdefiIklnprsStu",
 
--- 				     -- "-O3",
+				       "-fverbose-asm",
+				       "-save-temps=cwd",
+				       "-gnatG",
+				       "-gnattt",
 
--- 				     -- "-fno-working-directory", "-gno-record-gcc-switches",
+				       "-gnatD",
+				       --"-gnatR3s",
+				       "-fstack-usage",
 
--- 				     -- "-fpic", "-fPIC", "-fpie", "-fPIE",
--- 				     -- "-Bsymbolic",
+				       "-fstack-check",
+				       "-ftrapv",
+--				       "-fsanitize=address",
+				       "-gnato",
+				       "-gnateA",
+				       "-gnateV",
+				       "-gnatVa",
+				       "-gnatE"
+ 				      );
+     for Default_Switches ("C") use ("-Wall", "-Wextra",
 
--- 				     -- "-fdata-sections",
--- 				     -- "-ffunction-sections",
+				     "-g",
 
--- 				     -- "-fverbose-asm",
--- 				     -- "-save-temps=cwd",
--- 				     -- "-fstack-usage"
+				     "-O3",
 
--- --				     "-fstack-check",
--- 				     --				     "-fsanitize=address"
--- 				    );
+				     "-fno-working-directory", "-gno-record-gcc-switches",
+
+--				     "-fpic", "-fPIC", "-fpie", "-fPIE",
+				     "-Bsymbolic",
+
+				     "-fdata-sections",
+				     "-ffunction-sections",
+
+				     "-fverbose-asm",
+				     "-save-temps=cwd",
+				     "-fstack-usage",
+
+				     "-fstack-check"
+--				     "-fsanitize=address"
+				    );
   end Compiler;
 
   package Binder is
   end Binder;
 
   package Linker is
-     -- for Default_Switches ("Ada") use ("-fuse-ld=gold",
-     -- 				       "-Wl,-z,relro",
-     -- 				       "-Wl,-z,now",
-     -- 				       "-Wl,--rosegment",
-     -- 				       -- "-pie", "-fpic", "-fPIC", "-fpie", "-fPIE",
+     for Default_Switches ("Ada") use ("-fuse-ld=gold",
+     				       "-Wl,-z,relro",
+     				       "-Wl,-z,now",
+     				       "-Wl,--rosegment",
+--     				       "-pie", "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-     -- 				       "-Wl,-O1",
-     -- 				       "-Wl,-X", "-Wl,--discard-locals",
-     -- 				       "-Wl,--sort-common",
-     -- 				       "-Wl,--hash-style=gnu",
-     -- 				       "-Wl,--as-needed",
-     -- 				       "-Wl,--gc-sections",
-     -- 				       "-Wl,-z,combreloc",
-     -- 				       "-Wl,--icf=safe"
+     				       "-Wl,-O1",
+     				       "-Wl,-X", "-Wl,--discard-locals",
+     				       "-Wl,--sort-common",
+     				       "-Wl,--hash-style=gnu",
+     				       "-Wl,--as-needed",
+     				       "-Wl,--gc-sections",
+     				       "-Wl,-z,combreloc",
+     				       "-Wl,--icf=safe",
 
-     -- 				       --"-fsanitize=address",
-     -- 				       -- "-fstack-usage"
-     -- 				      );
+--     				       "-fsanitize=address",
+     				       "-fstack-usage"
+     				      );
   end Linker;
 end Shared;

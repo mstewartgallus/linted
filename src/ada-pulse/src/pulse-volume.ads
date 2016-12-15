@@ -13,7 +13,7 @@
 -- permissions and limitations under the License.
 with System;
 
-with Interfaces.C; use Interfaces.C;
+with Interfaces.C;
 with Interfaces.C.Strings;
 
 with Libc.Stdint;
@@ -55,7 +55,7 @@ package Pulse.Volume with SPARK_Mode => Off is
    end record;
    pragma Convention (C_Pass_By_Copy, pa_cvolume);  -- /usr/include/pulse/volume.h:135
 
-   function pa_cvolume_equal (a : System.Address; b : System.Address) return int;  -- /usr/include/pulse/volume.h:141
+   function pa_cvolume_equal (a : System.Address; b : System.Address) return Interfaces.C.int;  -- /usr/include/pulse/volume.h:141
    pragma Import (C, pa_cvolume_equal, "pa_cvolume_equal");
 
    function pa_cvolume_init (a : access pa_cvolume) return access pa_cvolume;  -- /usr/include/pulse/volume.h:146
@@ -63,7 +63,7 @@ package Pulse.Volume with SPARK_Mode => Off is
 
    function pa_cvolume_set
      (a : access pa_cvolume;
-      channels : unsigned;
+      channels : Interfaces.C.unsigned;
       v : pa_volume_t) return access pa_cvolume;  -- /usr/include/pulse/volume.h:155
    pragma Import (C, pa_cvolume_set, "pa_cvolume_set");
 
@@ -118,10 +118,10 @@ package Pulse.Volume with SPARK_Mode => Off is
       mask : Pulse.Channelmap.pa_channel_position_mask_t) return pa_volume_t;  -- /usr/include/pulse/volume.h:225
    pragma Import (C, pa_cvolume_min_mask, "pa_cvolume_min_mask");
 
-   function pa_cvolume_valid (v : System.Address) return int;  -- /usr/include/pulse/volume.h:228
+   function pa_cvolume_valid (v : System.Address) return Interfaces.C.int;  -- /usr/include/pulse/volume.h:228
    pragma Import (C, pa_cvolume_valid, "pa_cvolume_valid");
 
-   function pa_cvolume_channels_equal_to (a : System.Address; v : pa_volume_t) return int;  -- /usr/include/pulse/volume.h:231
+   function pa_cvolume_channels_equal_to (a : System.Address; v : pa_volume_t) return Interfaces.C.int;  -- /usr/include/pulse/volume.h:231
    pragma Import (C, pa_cvolume_channels_equal_to, "pa_cvolume_channels_equal_to");
 
    function pa_sw_volume_multiply (a : pa_volume_t; b : pa_volume_t) return pa_volume_t;  -- /usr/include/pulse/volume.h:242
@@ -154,16 +154,16 @@ package Pulse.Volume with SPARK_Mode => Off is
       b : pa_volume_t) return access pa_cvolume;  -- /usr/include/pulse/volume.h:270
    pragma Import (C, pa_sw_cvolume_divide_scalar, "pa_sw_cvolume_divide_scalar");
 
-   function pa_sw_volume_from_dB (f : double) return pa_volume_t;  -- /usr/include/pulse/volume.h:273
+   function pa_sw_volume_from_dB (f : Interfaces.C.double) return pa_volume_t;  -- /usr/include/pulse/volume.h:273
    pragma Import (C, pa_sw_volume_from_dB, "pa_sw_volume_from_dB");
 
-   function pa_sw_volume_to_dB (v : pa_volume_t) return double;  -- /usr/include/pulse/volume.h:276
+   function pa_sw_volume_to_dB (v : pa_volume_t) return Interfaces.C.double;  -- /usr/include/pulse/volume.h:276
    pragma Import (C, pa_sw_volume_to_dB, "pa_sw_volume_to_dB");
 
-   function pa_sw_volume_from_linear (v : double) return pa_volume_t;  -- /usr/include/pulse/volume.h:280
+   function pa_sw_volume_from_linear (v : Interfaces.C.double) return pa_volume_t;  -- /usr/include/pulse/volume.h:280
    pragma Import (C, pa_sw_volume_from_linear, "pa_sw_volume_from_linear");
 
-   function pa_sw_volume_to_linear (v : pa_volume_t) return double;  -- /usr/include/pulse/volume.h:283
+   function pa_sw_volume_to_linear (v : pa_volume_t) return Interfaces.C.double;  -- /usr/include/pulse/volume.h:283
    pragma Import (C, pa_sw_volume_to_linear, "pa_sw_volume_to_linear");
 
    function pa_cvolume_remap
@@ -172,28 +172,28 @@ package Pulse.Volume with SPARK_Mode => Off is
       to : access constant Pulse.Channelmap.pa_channel_map) return access pa_cvolume;  -- /usr/include/pulse/volume.h:293
    pragma Import (C, pa_cvolume_remap, "pa_cvolume_remap");
 
-   function pa_cvolume_compatible (v : System.Address; ss : access constant Pulse.Sample.pa_sample_spec) return int;  -- /usr/include/pulse/volume.h:297
+   function pa_cvolume_compatible (v : System.Address; ss : access constant Pulse.Sample.pa_sample_spec) return Interfaces.C.int;  -- /usr/include/pulse/volume.h:297
    pragma Import (C, pa_cvolume_compatible, "pa_cvolume_compatible");
 
-   function pa_cvolume_compatible_with_channel_map (v : System.Address; cm : access constant Pulse.Channelmap.pa_channel_map) return int;  -- /usr/include/pulse/volume.h:301
+   function pa_cvolume_compatible_with_channel_map (v : System.Address; cm : access constant Pulse.Channelmap.pa_channel_map) return Interfaces.C.int;  -- /usr/include/pulse/volume.h:301
    pragma Import (C, pa_cvolume_compatible_with_channel_map, "pa_cvolume_compatible_with_channel_map");
 
-   function pa_cvolume_get_balance (v : System.Address; map : access constant Pulse.Channelmap.pa_channel_map) return float;  -- /usr/include/pulse/volume.h:308
+   function pa_cvolume_get_balance (v : System.Address; map : access constant Pulse.Channelmap.pa_channel_map) return Interfaces.C.C_float;  -- /usr/include/pulse/volume.h:308
    pragma Import (C, pa_cvolume_get_balance, "pa_cvolume_get_balance");
 
    function pa_cvolume_set_balance
      (v : access pa_cvolume;
       map : access constant Pulse.Channelmap.pa_channel_map;
-      new_balance : float) return access pa_cvolume;  -- /usr/include/pulse/volume.h:319
+      new_balance : Interfaces.C.C_float) return access pa_cvolume;  -- /usr/include/pulse/volume.h:319
    pragma Import (C, pa_cvolume_set_balance, "pa_cvolume_set_balance");
 
-   function pa_cvolume_get_fade (v : System.Address; map : access constant Pulse.Channelmap.pa_channel_map) return float;  -- /usr/include/pulse/volume.h:326
+   function pa_cvolume_get_fade (v : System.Address; map : access constant Pulse.Channelmap.pa_channel_map) return Interfaces.C.C_float;  -- /usr/include/pulse/volume.h:326
    pragma Import (C, pa_cvolume_get_fade, "pa_cvolume_get_fade");
 
    function pa_cvolume_set_fade
      (v : access pa_cvolume;
       map : access constant Pulse.Channelmap.pa_channel_map;
-      new_fade : float) return access pa_cvolume;  -- /usr/include/pulse/volume.h:337
+      new_fade : Interfaces.C.C_float) return access pa_cvolume;  -- /usr/include/pulse/volume.h:337
    pragma Import (C, pa_cvolume_set_fade, "pa_cvolume_set_fade");
 
    function pa_cvolume_scale (v : access pa_cvolume; max : pa_volume_t) return access pa_cvolume;  -- /usr/include/pulse/volume.h:342

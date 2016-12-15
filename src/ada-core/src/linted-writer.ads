@@ -26,7 +26,7 @@ package Linted.Writer is
 
    generic
    package Worker is
-      procedure Write (Object : Linted.KOS.KO;
+      procedure Write (Object : Linted.KOs.KO;
 		       Buf : System.Address;
 		       Count : Interfaces.C.size_t);
       function Poll return Option_Events.Option;

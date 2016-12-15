@@ -21,26 +21,21 @@ private with Linted.KOs;
 private with Linted.Timer;
 private with Linted.Update_Writer;
 private with Linted.Simulate;
+private with Linted.Types;
 
 package body Linted.Simulator with Spark_MODE => Off is
 
    package Command_Line renames Ada.Command_Line;
    package Real_Time renames Ada.Real_Time;
-   package Simulate renames Linted.Simulate;
 
    Event_Trigger : aliased Ada.Synchronous_Task_Control.Suspension_Object;
-
-   procedure Signal is
-   begin
-      null;
-   end Signal;
 
    package Controls_Reader is new Linted.Controls_Reader.Worker;
    package Update_Writer is new Linted.Update_Writer.Worker;
    package Timer is new Linted.Timer.Worker;
 
    use type Errors.Error;
-   use type Simulate.Int;
+   use type Types.Int;
 
    Controller_KO : KOs.KO;
    Updater_KO : KOs.KO;
@@ -49,8 +44,8 @@ package body Linted.Simulator with Spark_MODE => Off is
 				      (10 * 1024, 10 * 1024),
 				      (0, 0)),
 
-			Z_Rotation => Simulate.Sim_Angles.To_Angle (0, 1),
-			X_Rotation => Simulate.Sim_Angles.To_Angle (3, 16),
+			Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
+			X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
 
 			Controls => (Z_Tilt => 0, X_Tilt => 0,
 				     Back => False,
@@ -127,12 +122,12 @@ package body Linted.Simulator with Spark_MODE => Off is
 	 begin
 	    if not Option_Event.Empty then
 	       Simulate.Tick (My_State);
-	       Update_Writer.Write (Updater_KO, (X_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Simulate.X).Value),
-						 Y_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Simulate.Y).Value),
-						 Z_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Simulate.Z).Value),
+	       Update_Writer.Write (Updater_KO, (X_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.X).Value),
+						 Y_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.Y).Value),
+						 Z_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.Z).Value),
 
-						 Z_Rotation => Linted.Update_Writer.Update_Nat (Simulate.Sim_Angles.From_Angle (My_State.Z_Rotation)),
-						 X_Rotation => Linted.Update_Writer.Update_Nat (Simulate.Sim_Angles.From_Angle (My_State.X_Rotation))));
+						 Z_Rotation => Linted.Update_Writer.Update_Nat (Types.Sim_Angles.From_Angle (My_State.Z_Rotation)),
+						 X_Rotation => Linted.Update_Writer.Update_Nat (Types.Sim_Angles.From_Angle (My_State.X_Rotation))));
 
 	       Next_Time := Next_Time + Real_Time.Nanoseconds ((1000000000 / 60) / 2);
 	       Timer.Wait_Until (Next_Time);

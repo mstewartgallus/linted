@@ -13,7 +13,6 @@
 -- permissions and limitations under the License.
 with Ada.Synchronous_Task_Control;
 
-with Libc.Sys.Poll;
 with Libc.Sys.Types;
 with Libc.Unistd;
 with Libc.Errno.POSIX_2008;

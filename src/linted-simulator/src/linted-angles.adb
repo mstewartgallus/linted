@@ -90,12 +90,9 @@ package body Linted.Angles is
 
       -- Sin (x) = x - x^3/ 6 + x^5 / 120
       declare
-   	 F : My_Float := My_Float (A) * (2.0 * 3.1459265359 / (My_Float (Element_T'Last) + 1.0));
-   	 F_Cubed : My_Float := F * F * F;
-   	 F_5 : My_Float :=  F_Cubed * (F * F);
-   	 F_7 : My_Float :=  F_5 * (F * F);
-   	 F_9 : My_Float :=  F_7 * (F * F);
-   	 M : My_Float := F - F_Cubed / 6.0 + F_5 / 120.0 - F_7 / 5040.0 + F_9 / 362880.0;
+   	 F : My_Float := My_Float (A) * (2.0 * 3.1459265358979324 / (My_Float (Element_T'Last) + 1.0));
+   	 F_2 : My_Float := F * F;
+   	 M : My_Float := F * (1.0 - (1.0 / 6.0 + (1.0 / 120.0 - (1.0 / 5040.0 + F_2 / 362880.0) * F_2) * F_2) * F_2);
    	 -- M : My_Float := F * 2.0 / 3.1459265359;
    	 N : My_Float := My_Float (Element_U'Last) * M;
    	 U : Element_U;
@@ -112,6 +109,6 @@ package body Linted.Angles is
    function Cos (X : Angle) return Element_U is
       function My_Sin is new Sin (Element_U);
    begin
-      return My_Sin (To_Angle (From_Angle (X) + Element_T'Last / 4));
+      return My_Sin (To_Angle (From_Angle (X) + (Element_T'Last / 4)));
    end Cos;
 end Linted.Angles;

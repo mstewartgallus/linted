@@ -12,11 +12,10 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Real_Time;
-with Ada.Synchronous_Task_Control;
 
 with Linted.Options;
 
-package Linted.Timer with SPARK_Mode => Off Is
+package Linted.Timer with SPARK_Mode => Off is
    pragma Elaborate_Body;
 
    type Event is record
