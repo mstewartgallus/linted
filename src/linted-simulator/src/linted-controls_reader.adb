@@ -11,7 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Synchronous_Task_Control;
 private with Ada.Unchecked_Conversion;
 private with Interfaces.C;
 private with Interfaces;
@@ -21,7 +20,7 @@ private with System;
 private with Linted.Reader;
 private with Linted.MVars;
 
-package body Linted.Controls_Reader is
+package body Linted.Controls_Reader with SPARK_Mode => Off is
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -32,6 +31,7 @@ package body Linted.Controls_Reader is
    use type Storage_Elements.Storage_Element;
    use type Storage_Elements.Storage_Offset;
 
+   type Storage_Access is not null access all Storage_Elements.Storage_Element;
    subtype Tuple is Storage_Elements.Storage_Array (1 .. 4);
 
    function From_Bytes (T : Tuple) return Controls_Int;
@@ -44,7 +44,7 @@ package body Linted.Controls_Reader is
    package Command_MVars is new Linted.MVars (KOs.KO);
    package Read_Done_Event_MVars is new Linted.MVars (Read_Done_Event);
 
-   package body Worker with SPARK_Mode => Off is
+   package body Worker is
       task Reader_Task;
 
       package Worker is new Linted.Reader.Worker;
@@ -94,8 +94,6 @@ package body Linted.Controls_Reader is
       Object_Initialized : Boolean := False;
 
       task body Reader_Task is
-	 type Storage_Access is not null access all Storage_Elements.Storage_Element;
-
 	 function Convert is new Ada.Unchecked_Conversion (Storage_Access, System.Address);
 	 use type Errors.Error;
       begin
@@ -142,17 +140,15 @@ package body Linted.Controls_Reader is
 
    function From_Bytes (T : Tuple) return Controls_Int is
       X : Interfaces.Unsigned_32;
-      Y : Controls_Int;
    begin
 	 X := Interfaces.Unsigned_32 (T (4)) or
 	   Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
 	   Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
 	   Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24);
 	 if X <= Interfaces.Unsigned_32 (Controls_Int'Last) then
-	    Y := Controls_Int (X);
+	    return Controls_Int (X);
 	 else
-	    Y := -Controls_Int (not X + 1);
+	    return -Controls_Int (not X + 1);
 	 end if;
-	 return Y;
    end From_Bytes;
 end Linted.Controls_Reader;

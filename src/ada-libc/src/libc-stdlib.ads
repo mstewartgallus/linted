@@ -34,11 +34,11 @@ package Libc.Stdlib with SPARK_Mode => Off is
    end record;
    pragma Convention (C_Pass_By_Copy, ldiv_t);  -- /usr/include/stdlib.h:109
 
-   --  type lldiv_t is record
-   --     quot : aliased Long_Long_Integer;  -- /usr/include/stdlib.h:119
-   --     c_rem : aliased Long_Long_Integer;  -- /usr/include/stdlib.h:120
-   --  end record;
-   --  pragma Convention (C_Pass_By_Copy, lldiv_t);  -- /usr/include/stdlib.h:121
+   type lldiv_t is record
+      quot : aliased Long_Long_Integer;  -- /usr/include/stdlib.h:119
+      c_rem : aliased Long_Long_Integer;  -- /usr/include/stdlib.h:120
+   end record;
+   pragma Convention (C_Pass_By_Copy, lldiv_t);  -- /usr/include/stdlib.h:121
 
    RAND_MAX : constant := 2147483647;
    EXIT_FAILURE : constant := 1;
@@ -54,8 +54,8 @@ package Libc.Stdlib with SPARK_Mode => Off is
    function atol (nptr : Interfaces.C.Strings.chars_ptr) return long;  -- /usr/include/stdlib.h:150
    pragma Import (C, atol, "atol");
 
-   --  function atoll (nptr : Interfaces.C.Strings.chars_ptr) return Long_Long_Integer;  -- /usr/include/stdlib.h:157
-   --  pragma Import (C, atoll, "atoll");
+   function atoll (nptr : Interfaces.C.Strings.chars_ptr) return Long_Long_Integer;  -- /usr/include/stdlib.h:157
+   pragma Import (C, atoll, "atoll");
 
    function strtod (nptr : Interfaces.C.Strings.chars_ptr; endptr : System.Address) return double;  -- /usr/include/stdlib.h:164
    pragma Import (C, strtod, "strtod");
@@ -72,11 +72,11 @@ package Libc.Stdlib with SPARK_Mode => Off is
       base : int) return long;  -- /usr/include/stdlib.h:183
    pragma Import (C, strtol, "strtol");
 
-   --  function strtoll
-   --    (nptr : Interfaces.C.Strings.chars_ptr;
-   --     endptr : System.Address;
-   --     base : int) return Long_Long_Integer;  -- /usr/include/stdlib.h:209
-   --  pragma Import (C, strtoll, "strtoll");
+   function strtoll
+     (nptr : Interfaces.C.Strings.chars_ptr;
+      endptr : System.Address;
+      base : int) return Long_Long_Integer;  -- /usr/include/stdlib.h:209
+   pragma Import (C, strtoll, "strtoll");
 
    function strtoul
      (nptr : Interfaces.C.Strings.chars_ptr;
@@ -149,8 +149,8 @@ package Libc.Stdlib with SPARK_Mode => Off is
    function labs (x : long) return long;  -- /usr/include/stdlib.h:776
    pragma Import (C, labs, "labs");
 
-   --  function llabs (x : Long_Long_Integer) return Long_Long_Integer;  -- /usr/include/stdlib.h:780
-   --  pragma Import (C, llabs, "llabs");
+   function llabs (x : Long_Long_Integer) return Long_Long_Integer;  -- /usr/include/stdlib.h:780
+   pragma Import (C, llabs, "llabs");
 
    function div (numer : int; denom : int) return div_t;  -- /usr/include/stdlib.h:789
    pragma Import (C, div, "div");
@@ -158,8 +158,8 @@ package Libc.Stdlib with SPARK_Mode => Off is
    function ldiv (numer : long; denom : long) return ldiv_t;  -- /usr/include/stdlib.h:791
    pragma Import (C, ldiv, "ldiv");
 
-   --  function lldiv (numer : Long_Long_Integer; denom : Long_Long_Integer) return lldiv_t;  -- /usr/include/stdlib.h:797
-   --  pragma Import (C, lldiv, "lldiv");
+   function lldiv (numer : Long_Long_Integer; denom : Long_Long_Integer) return lldiv_t;  -- /usr/include/stdlib.h:797
+   pragma Import (C, lldiv, "lldiv");
 
       function mblen (s : Interfaces.C.Strings.chars_ptr; n : size_t) return int;  -- /usr/include/stdlib.h:863
    pragma Import (C, mblen, "mblen");

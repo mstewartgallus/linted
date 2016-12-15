@@ -33,11 +33,11 @@ package Libc.Stdlib.GNU with SPARK_Mode => Off is
    --  arg-macro: procedure WIFCONTINUED (status)
    --    __WIFCONTINUED (__WAIT_INT (status))
 
-   --  function strtoq
-   --    (nptr : Interfaces.C.Strings.chars_ptr;
-   --     endptr : System.Address;
-   --     base : int) return Long_Long_Integer;  -- /usr/include/stdlib.h:195
-   --  pragma Import (C, strtoq, "strtoq");
+   function strtoq
+     (nptr : Interfaces.C.Strings.chars_ptr;
+      endptr : System.Address;
+      base : int) return Long_Long_Integer;  -- /usr/include/stdlib.h:195
+   pragma Import (C, strtoq, "strtoq");
 
    function strtouq
      (nptr : Interfaces.C.Strings.chars_ptr;

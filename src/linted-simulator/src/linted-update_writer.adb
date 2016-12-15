@@ -20,7 +20,7 @@ private with System;
 private with Linted.MVars;
 private with Linted.Writer;
 
-package body Linted.Update_Writer is
+package body Linted.Update_Writer with SPARK_Mode => Off is
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -28,6 +28,7 @@ package body Linted.Update_Writer is
    use type Storage_Elements.Storage_Offset;
    use type C.size_t;
 
+   type Storage_Access is not null access all Storage_Elements.Storage_Element;
    subtype Tuple is Storage_Elements.Storage_Array (1 .. 4);
 
    function To_Bytes (Number : Update_Nat) return Tuple;
@@ -45,10 +46,8 @@ package body Linted.Update_Writer is
    package Write_Command_MVars is new Linted.MVars (Write_Command);
    package Write_Done_Event_MVars is new Linted.MVars (Write_Done_Event);
 
-   package body Worker with SPARK_Mode => Off is
+   package body Worker is
       task Writer_Task;
-
-      type Storage_Access is not null access all Storage_Elements.Storage_Element;
 
       Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
       My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
@@ -145,24 +144,23 @@ package body Linted.Update_Writer is
    end Worker;
 
    function To_Nat (Number : Update_Int) return Update_Nat is
-      Y : Update_Nat;
    begin
       if Number < 0 then
-	 Y := Update_Nat (Number + Update_Int'Last) - Update_Nat (Update_Int'Last);
+	 return Update_Nat (Number + Update_Int'Last) - Update_Nat (Update_Int'Last);
       else
-	 Y := Update_Nat (Number);
+	 return Update_Nat (Number);
       end if;
-      return Y;
    end To_Nat;
 
    -- Big Endian
    function To_Bytes (Number : Update_Nat) return Tuple is
-      X : Storage_Elements.Storage_Array (1 .. 4) := (0, 0, 0, 0);
+      X : Storage_Elements.Storage_Array (1 .. 4);
    begin
       X (1) := Storage_Elements.Storage_Element (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 24) and 16#FF#);
       X (2) := Storage_Elements.Storage_Element (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 16) and 16#FF#);
       X (3) := Storage_Elements.Storage_Element (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 8) and 16#FF#);
       X (4) := Storage_Elements.Storage_Element (Number and 16#FF#);
+
       return X;
    end To_Bytes;
 end Linted.Update_Writer;

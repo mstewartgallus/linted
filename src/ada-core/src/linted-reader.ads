@@ -17,7 +17,7 @@ with System;
 with Linted.IO_Pool;
 with Linted.KOs;
 
-package Linted.Reader is
+package Linted.Reader with SPARK_Mode => Off  is
    pragma Elaborate_Body;
 
    subtype Event is Linted.IO_Pool.Reader_Event;
@@ -28,8 +28,7 @@ package Linted.Reader is
    package Worker is
       procedure Read (Object : Linted.KOs.KO;
 		      Buf : System.Address;
-		      Count : Interfaces.C.size_t) with
-	Global => null;
+		      Count : Interfaces.C.size_t);
       function Poll return Option_Events.Option;
       procedure Wait;
    end Worker;

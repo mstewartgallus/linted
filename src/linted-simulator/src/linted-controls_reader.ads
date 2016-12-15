@@ -14,8 +14,9 @@
 with Linted.Errors;
 with Linted.KOs;
 with Linted.Options;
+with Ada.Synchronous_Task_Control;
 
-package Linted.Controls_Reader is
+package Linted.Controls_Reader with SPARK_Mode => Off is
    pragma Elaborate_Body;
 
    type Controls_Int is range -2 ** (32 - 1) .. 2 ** (32 - 1) - 1;
@@ -40,7 +41,7 @@ package Linted.Controls_Reader is
    package Option_Events is new Linted.Options (Event);
 
    generic
-   package Worker with SPARK_Mode => Off is
+   package Worker is
       procedure Start (Object : KOs.KO);
       function Poll return Option_Events.Option;
 

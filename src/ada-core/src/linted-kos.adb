@@ -16,11 +16,11 @@ with Libc.Unistd;
 with Libc.Errno;
 with Interfaces.C.Strings;
 
-package body Linted.KOs is
+package body Linted.KOs with SPARK_Mode => Off is
    package C renames Interfaces.C;
    package Errno renames Libc.Errno;
 
-   function Open (Pathname : String; Flags : Open_Flags) return KO_Results.Result with SPARK_Mode => Off is
+   function Open (Pathname : String; Flags : Open_Flags) return KO_Results.Result is
       use type Errors.Error;
       use type C.unsigned;
 
@@ -76,7 +76,7 @@ package body Linted.KOs is
       end if;
    end Open;
 
-   function Close (Object : KOs.KO) return Errors.Error with SPARK_Mode => Off is
+   function Close (Object : KOs.KO) return Errors.Error is
    begin
       if Libc.Unistd.close (C.int (Object)) < 0 then
 	 return Errors.Error (Errno.Errno);
