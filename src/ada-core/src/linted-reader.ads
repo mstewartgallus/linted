@@ -17,7 +17,7 @@ with System;
 with Linted.IO_Pool;
 with Linted.KOs;
 
-package Linted.Reader with SPARK_Mode => Off  is
+package Linted.Reader is
    pragma Elaborate_Body;
 
    subtype Event is Linted.IO_Pool.Reader_Event;

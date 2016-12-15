@@ -11,13 +11,11 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Synchronous_Task_Control;
-
 with Linted.Errors;
 with Linted.KOs;
 with Linted.Options;
 
-package Linted.Update_Writer with SPARK_Mode => Off is
+package Linted.Update_Writer is
    pragma Elaborate_Body;
 
    package Option_Events is new Linted.Options (Linted.Errors.Error);
@@ -26,16 +24,16 @@ package Linted.Update_Writer with SPARK_Mode => Off is
    type Update_Nat is mod 2 ** 32;
 
    type Update is record
-      X_Position : Update_Int;
-      Y_Position : Update_Int;
-      Z_Position : Update_Int;
+      X_Position : Update_Int := 0;
+      Y_Position : Update_Int := 0;
+      Z_Position : Update_Int := 0;
 
-      Z_Rotation : Update_Nat;
-      X_Rotation : Update_Nat;
+      Z_Rotation : Update_Nat := 0;
+      X_Rotation : Update_Nat := 0;
    end record;
 
    generic
-   package Worker is
+   package Worker with SPARK_Mode => Off is
       procedure Write (Object : Linted.KOs.KO; Data : Update);
       function Poll return Option_Events.Option;
 

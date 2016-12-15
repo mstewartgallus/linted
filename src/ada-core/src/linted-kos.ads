@@ -16,7 +16,7 @@ with Interfaces.C;
 with Linted.Errors;
 with Linted.Results;
 
-package Linted.KOs with SPARK_Mode => Off is
+package Linted.KOs is
    pragma Preelaborate;
 
    use type Interfaces.C.int;
@@ -37,8 +37,8 @@ package Linted.KOs with SPARK_Mode => Off is
 
    package KO_Results is new Linted.Results (KO);
 
-   function Open (Pathname : String; Flags : Open_Flags) return KO_Results.Result;
-   function Close (Object : KO) return Errors.Error;
+   function Open (Pathname : String; Flags : Open_Flags) return KO_Results.Result with SPARK_Mode => Off;
+   function Close (Object : KO) return Errors.Error with SPARK_Mode => Off;
 
 private
    Invalid : constant KO := -1;

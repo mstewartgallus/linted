@@ -22,4 +22,4 @@ EXTRA_DIST+=\
 LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(builddir)/%D%/pulse.gpr
+	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/pulse.gpr
