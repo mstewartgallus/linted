@@ -22,15 +22,12 @@ package Linted.Writer is
 
    subtype Event is Linted.IO_Pool.Writer_Event;
 
-   package Option_Events renames Linted.IO_Pool.Option_Writer_Events;
-
    generic
    package Worker is
       procedure Write (Object : Linted.KOs.KO;
 		       Buf : System.Address;
 		       Count : Interfaces.C.size_t);
-      function Poll return Option_Events.Option;
 
-      procedure Wait;
+      function Wait return Event;
    end Worker;
 end Linted.Writer;

@@ -16,7 +16,7 @@ with "shared.gpr";
 project Libc is
   for Languages use ("Ada", "C");
   for Source_Dirs use ("src");
-  for Library_Kind use "static";
+  for Library_Kind use Shared'Library_Kind;
 
   for Object_Dir use Shared'Object_Dir & "/libc";
   package Builder renames Shared.Builder;

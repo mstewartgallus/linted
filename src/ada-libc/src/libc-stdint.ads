@@ -110,7 +110,7 @@ package Libc.Stdint is
    PTRDIFF_MIN : constant := ptrdiff_t'First;
    PTRDIFF_MAX : constant := ptrdiff_t'Last;
 
-   SIG_ATOMIC_MIN : constant := -2147483647 -1;
+   SIG_ATOMIC_MIN : constant := -2147483647 - 1;
    SIG_ATOMIC_MAX : constant := 2147483647;
 
    SIZE_MAX : constant := size_t'Last;

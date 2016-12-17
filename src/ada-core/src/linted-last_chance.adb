@@ -33,6 +33,7 @@ package body Linted.Last_Chance with SPARK_Mode => Off is
       Res : Interfaces.C.long;
    begin
       Res := Libc.Unistd.write (2, Convert (P), Interfaces.C.Strings.Strlen (P));
+      pragma Unreferenced (Res);
       Libc.Unistd.u_exit (1);
       loop
 	 null;

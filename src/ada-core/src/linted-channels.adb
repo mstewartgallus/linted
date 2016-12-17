@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,10 +11,28 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package Libc.Limits is
-   pragma Pure;
-   --  unsupported macro: MB_LEN_MAX 16
-   --  unsupported macro: LLONG_MIN (-LLONG_MAX-1)
-   --  unsupported macro: LLONG_MAX __LONG_LONG_MAX__
-   --  unsupported macro: ULLONG_MAX (LLONG_MAX * 2ULL + 1)
-end Libc.Limits;
+package body Linted.Channels is
+   protected body Channel is
+      procedure Push (D : Element_T) is
+      begin
+	 Current := D;
+	 Full := True;
+      end Push;
+
+      entry Pop (D : out Element_T) when Full is
+      begin
+	 D := Current;
+	 Full := False;
+      end Pop;
+
+      procedure Poll (Option : out Option_Element_Ts.Option) is
+      begin
+	 if not Full then
+	    return;
+	 end if;
+
+	 Option := (Empty => False, Data => Current);
+	 Full := False;
+      end Poll;
+   end Channel;
+end Linted.Channels;

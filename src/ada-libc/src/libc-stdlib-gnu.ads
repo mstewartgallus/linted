@@ -15,7 +15,6 @@ with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with System;
 with Interfaces.C.Extensions;
-with Libc.Stddef;
 
 package Libc.Stdlib.GNU with SPARK_Mode => Off is
    --  arg-macro: procedure WEXITSTATUS (status)
@@ -44,8 +43,6 @@ package Libc.Stdlib.GNU with SPARK_Mode => Off is
       endptr : System.Address;
       base : int) return Extensions.unsigned_long_long;  -- /usr/include/stdlib.h:200
    pragma Import (C, strtouq, "strtouq");
-
-
 
    --  function strtol_l
    --    (nptr : Interfaces.C.Strings.chars_ptr;
@@ -141,7 +138,6 @@ package Libc.Stdlib.GNU with SPARK_Mode => Off is
    --  function setstate_r (statebuf : Interfaces.C.Strings.chars_ptr; buf : access random_data) return int;  -- /usr/include/stdlib.h:365
    --  pragma Import (C, setstate_r, "setstate_r");
 
-
    function rand_r (seed : access unsigned) return int;  -- /usr/include/stdlib.h:381
    pragma Import (C, rand_r, "rand_r");
 
@@ -219,7 +215,6 @@ package Libc.Stdlib.GNU with SPARK_Mode => Off is
    function lcong48_r (param : access unsigned_short; buffer : access drand48_data) return int;  -- /usr/include/stdlib.h:454
    pragma Import (C, lcong48_r, "lcong48_r");
 
-
    procedure cfree (ptr : System.Address);  -- /usr/include/stdlib.h:488
    pragma Import (C, cfree, "cfree");
 
@@ -235,7 +230,6 @@ package Libc.Stdlib.GNU with SPARK_Mode => Off is
    function aligned_alloc (alignment : size_t; size : size_t) return System.Address;  -- /usr/include/stdlib.h:509
    pragma Import (C, aligned_alloc, "aligned_alloc");
 
-
    function at_quick_exit (func : access procedure) return int;  -- /usr/include/stdlib.h:524
    pragma Import (C, at_quick_exit, "at_quick_exit");
 
@@ -244,7 +238,6 @@ package Libc.Stdlib.GNU with SPARK_Mode => Off is
 
    procedure quick_exit (status : int);  -- /usr/include/stdlib.h:549
    pragma Import (C, quick_exit, "quick_exit");
-
 
    function secure_getenv (name : Interfaces.C.Strings.chars_ptr) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/stdlib.h:570
    pragma Import (C, secure_getenv, "secure_getenv");
@@ -322,7 +315,6 @@ package Libc.Stdlib.GNU with SPARK_Mode => Off is
       arg : System.Address);  -- /usr/include/stdlib.h:768
    pragma Import (C, qsort_r, "qsort_r");
 
-
    function ecvt
      (value : double;
       ndigit : int;
@@ -399,7 +391,6 @@ package Libc.Stdlib.GNU with SPARK_Mode => Off is
       len : size_t) return int;  -- /usr/include/stdlib.h:853
    pragma Import (C, qfcvt_r, "qfcvt_r");
 
-   
    function rpmatch (response : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/stdlib.h:888
    pragma Import (C, rpmatch, "rpmatch");
 

@@ -18,6 +18,7 @@ private with Interfaces;
 private with System.Storage_Elements;
 private with System;
 
+private with Linted.Channels;
 private with Linted.Reader;
 private with Linted.MVars;
 
@@ -43,6 +44,7 @@ package body Linted.Controls_Reader is
 
    package Command_MVars is new Linted.MVars (KOs.KO);
    package Read_Done_Event_MVars is new Linted.MVars (Read_Done_Event);
+   package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
 
    package body Worker with SPARK_Mode => Off is
       task Reader_Task;
@@ -55,6 +57,7 @@ package body Linted.Controls_Reader is
       Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 2 * 4 + 1);
 
       My_Command_MVar : Command_MVars.MVar;
+      Work_Event : Worker_Event_Channels.Channel;
       My_Event_MVar : Read_Done_Event_MVars.MVar;
 
       procedure Start (Object : KOs.KO) is
@@ -81,9 +84,11 @@ package body Linted.Controls_Reader is
 
       task A;
       task body A is
+	 Worker_Event : Linted.Reader.Event;
       begin
 	 loop
-	    Worker.Wait;
+	    Worker_Event := Worker.Wait;
+	    Work_Event.Push (Worker_Event);
 	    Ada.Synchronous_Task_Control.Set_True (My_Trigger);
 	 end loop;
       end A;
@@ -113,8 +118,9 @@ package body Linted.Controls_Reader is
 	    end;
 
 	    declare
-	       Options_Event : constant Linted.Reader.Option_Events.Option := Worker.Poll;
+	       Options_Event : Worker_Event_Channels.Option_Element_Ts.Option;
 	    begin
+	       Work_Event.Poll (Options_Event);
 	       if not Options_Event.Empty then
 		  Err := Options_Event.Data.Err;
 		  if Err = Linted.Errors.Success then

@@ -49,7 +49,6 @@ package Libc.Ctype.GNU with SPARK_Mode => Off is
    --  arg-macro: procedure toascii_l (c, l)
    --    __toascii_l ((c), (l))
 
-
    function isctype (c : int; mask : int) return int;  -- /usr/include/ctype.h:143
    pragma Import (C, isctype, "isctype");
 

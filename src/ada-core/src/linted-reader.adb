@@ -20,7 +20,6 @@ package body Linted.Reader is
       procedure Read (Object : Linted.KOs.KO;
 		      Buf : System.Address;
 		      Count : C.size_t) renames IO_Worker.Read;
-      function Poll return Option_Events.Option renames IO_Worker.Poll;
-      procedure Wait renames IO_Worker.Wait;
+      function Wait return IO_Pool.Reader_Event renames IO_Worker.Wait;
    end Worker;
 end Linted.Reader;

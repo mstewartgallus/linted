@@ -16,7 +16,7 @@ with "libc.gpr";
 
 project Pulse is
   for Library_Name use "Pulse";
-  for Library_Kind use "static";
+  for Library_Kind use Shared'Library_Kind;
 
   for Languages use ("Ada");
   for Source_Dirs use ("src");

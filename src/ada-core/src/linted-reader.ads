@@ -22,14 +22,11 @@ package Linted.Reader is
 
    subtype Event is Linted.IO_Pool.Reader_Event;
 
-   package Option_Events renames Linted.IO_Pool.Option_Reader_Events;
-
    generic
    package Worker is
       procedure Read (Object : Linted.KOs.KO;
 		      Buf : System.Address;
 		      Count : Interfaces.C.size_t);
-      function Poll return Option_Events.Option;
-      procedure Wait;
+      function Wait return Event;
    end Worker;
 end Linted.Reader;

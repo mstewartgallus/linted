@@ -19,7 +19,7 @@ private with Interfaces;
 private with System.Storage_Elements;
 private with System;
 
-private with Linted.MVars;
+private with Linted.Channels;
 private with Linted.Writer;
 
 package body Linted.Update_Writer is
@@ -44,50 +44,45 @@ package body Linted.Update_Writer is
       Err : Errors.Error;
    end record;
 
-   package Write_Command_MVars is new Linted.MVars (Write_Command);
-   package Write_Done_Event_MVars is new Linted.MVars (Write_Done_Event);
+   package Write_Command_Channels is new Linted.Channels (Write_Command);
+   package Write_Done_Event_Channels is new Linted.Channels (Write_Done_Event);
+   package Worker_Event_Channels is new Linted.Channels (Linted.Writer.Event);
 
    package body Worker with SPARK_Mode => Off is
       task Writer_Task;
 
       type Storage_Access is not null access all Storage_Elements.Storage_Element;
 
-      Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
       My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
       package Worker is new Linted.Writer.Worker;
 
-      Write_Command_MVar : Write_Command_MVars.MVar;
-      Write_Done_Event_MVar : Write_Done_Event_MVars.MVar;
+      Write_Command_Channel : Write_Command_Channels.Channel;
+      Work_Event : Worker_Event_Channels.Channel;
+      Write_Done_Event_Channel : Write_Done_Event_Channels.Channel;
 
       task A;
       task body A is
+	 Worker_Event : Linted.Writer.Event;
       begin
 	 loop
-	    Worker.Wait;
+	    Worker_Event := Worker.Wait;
+	    Work_Event.Push (Worker_Event);
 	    Ada.Synchronous_Task_Control.Set_True (My_Trigger);
 	 end loop;
       end A;
 
       procedure Write (Object : KOs.KO; Data : Update) is
       begin
-	 Write_Command_MVar.Set ((Object, Data));
+	 Write_Command_Channel.Push ((Object, Data));
 	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Write;
 
-      function Poll return Option_Events.Option is
-	 Option_Event : Write_Done_Event_MVars.Option_Element_Ts.Option;
+      function Wait return Linted.Errors.Error is
+	 Event : Write_Done_Event;
       begin
-	 Write_Done_Event_MVar.Poll (Option_Event);
-	 if Option_Event.Empty then
-	       return (Empty => True);
-	 else
-	       return (False, Option_Event.Data.Err);
-	 end if;
-      end Poll;
-
-      procedure Wait is begin
-	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+	 Write_Done_Event_Channel.Pop (Event);
+	 return Event.Err;
       end Wait;
 
       Data_Being_Written : aliased Storage_Elements.Storage_Array (1 .. 5 * 4);
@@ -107,22 +102,22 @@ package body Linted.Update_Writer is
 	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
 	    declare
-	       Option_Event : constant Linted.Writer.Option_Events.Option := Worker.Poll;
+	       Option_Event : Worker_Event_Channels.Option_Element_Ts.Option;
 	    begin
+	       Work_Event.Poll (Option_Event);
 	       if not Option_Event.Empty then
 		  Err := Option_Event.Data.Err;
 
 		  Update_In_Progress := False;
 
-		  Write_Done_Event_MVar.Set (Write_Done_Event'(Err => Err));
-		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+		  Write_Done_Event_Channel.Push (Write_Done_Event'(Err => Err));
 	       end if;
 	    end;
 
 	    declare
-	       Option_Command : Write_Command_MVars.Option_Element_Ts.Option;
+	       Option_Command : Write_Command_Channels.Option_Element_Ts.Option;
 	    begin
-	       Write_Command_MVar.Poll (Option_Command);
+	       Write_Command_Channel.Poll (Option_Command);
 	       if not Option_Command.Empty then
 		  Object := Option_Command.Data.Object;
 		  Pending_Update := Option_Command.Data.Data;

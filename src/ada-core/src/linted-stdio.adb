@@ -49,18 +49,11 @@ package body Linted.Stdio with SPARK_Mode => Off is
    begin
       Writer.Write (Object, Buf, Count);
 
-      loop
-	 Writer.Wait;
-
-	 declare
-	    Option_Event : constant Linted.Writer.Option_Events.Option := Writer.Poll;
-	 begin
-	    if not Option_Event.Empty then
-	       Bytes_Written := Option_Event.Data.Bytes_Written;
-	       Err := Option_Event.Data.Err;
-	       exit;
-	    end if;
-	 end;
-      end loop;
+      declare
+	 Event : constant Linted.Writer.Event := Writer.Wait;
+      begin
+	 Bytes_Written := Event.Bytes_Written;
+	 Err := Event.Err;
+      end;
    end Write;
 end Linted.Stdio;

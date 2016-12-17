@@ -98,13 +98,13 @@ AM_LDFLAGS+=\
 
 AM_GPRBUILDFLAGS=-q\
   --create-missing-dirs\
-  --config=$(builddir)/src/ada/config.cgpr\
-  -aP$(builddir)/src/ada\
-  -aP$(srcdir)/src/ada-libc\
-  -aP$(srcdir)/src/ada-xcb\
-  -aP$(srcdir)/src/ada-xkb\
-  -aP$(srcdir)/src/ada-pulse\
-  -aP$(srcdir)/src/ada-core
+  --autoconf=$(builddir)/default.cgpr\
+  -aP $(builddir)/src/ada\
+  -aP $(srcdir)/src/ada-libc\
+  -aP $(srcdir)/src/ada-xcb\
+  -aP $(srcdir)/src/ada-xkb\
+  -aP $(srcdir)/src/ada-pulse\
+  -aP $(srcdir)/src/ada-core
 GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
   -aP$(builddir)/src/ada\
   -aP$(srcdir)/src/ada-libc\
@@ -114,7 +114,7 @@ GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
   -aP$(srcdir)/src/ada-core
 
 GPRPROVEFLAGS=\
-  -j3 -k --level=0 --pedantic -U\
+  -j3 --level=0 --pedantic -U\
   -aP=$(builddir)/src/ada\
   -aP=$(srcdir)/src/ada-libc\
   -aP=$(srcdir)/src/ada-xcb\
@@ -142,6 +142,10 @@ clean-%C%:
 .PHONY: prove
 prove: src/ada/shared.gpr src/ada/config.cgpr
 	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
+
+.PHONY: prove-simple
+prove-simple: src/ada/shared.gpr src/ada/config.cgpr
+	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr --limit-line=linted-angles.adb:136:47:VC_PRECONDITION --prover=Coq
 
 .PHONY: indent
 indent:

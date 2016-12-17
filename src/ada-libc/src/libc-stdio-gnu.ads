@@ -11,23 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with System;
-with Libc.Stddef;
 
 package Libc.Stdio.GNU with SPARK_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: BUFSIZ _IO_BUFSIZ
-   SEEK_SET : constant := 0;
-   SEEK_CUR : constant := 1;
    SEEK_END : constant := 2;
    SEEK_DATA : constant := 3;
    SEEK_HOLE : constant := 4;
-   --  unsupported macro: P_tmpdir "/tmp"
-
-   type FILE is limited private;
+   P_tmpdir : constant String := "/tmp";
 
    --  subtype off_t is Libc.Sys.Types.uu_off_t;  -- /usr/include/stdio.h:90
    --  subtype off64_t is Libc.Sys.Types.uu_off64_t;  -- /usr/include/stdio.h:97
@@ -36,15 +30,6 @@ package Libc.Stdio.GNU with SPARK_Mode => Off is
 
    --  subtype fpos_t is Libc.uG_config_h.u_G_fpos_t;
    --  subtype fpos64_t is Libc.uG_config_h.u_G_fpos64_t;
-
-   stdin : access FILE;  -- /usr/include/stdio.h:168
-   pragma Import (C, stdin, "stdin");
-
-   stdout : access FILE;  -- /usr/include/stdio.h:169
-   pragma Import (C, stdout, "stdout");
-
-   stderr : access FILE;  -- /usr/include/stdio.h:170
-   pragma Import (C, stderr, "stderr");
 
    function remove (uu_filename : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/stdio.h:178
    pragma Import (C, remove, "remove");

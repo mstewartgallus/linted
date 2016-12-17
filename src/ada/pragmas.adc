@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2016 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,14 +11,34 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+pragma Ada_12;
+
+pragma Wide_Character_Encoding (UTF8);
+
+pragma License (Restricted);
+
+pragma Profile (Restricted);
 pragma Profile (Ravenscar);
 pragma Partition_Elaboration_Policy (Sequential);
-pragma Initialize_Scalars;
+pragma Extensions_Allowed (Off);
+pragma Polling (On);
 
 -- Debug Checks
+pragma Initialize_Scalars;
 pragma Assertion_Policy (CHECK);
 pragma Debug_Policy (CHECK);
 pragma Check_Float_Overflow;
+pragma Overflow_Mode (Strict);
+pragma Unsuppress (Overflow_Check);
+pragma Validity_Checks (ALL_CHECKS);
+
+pragma Prefix_Exception_Messages;
+
+pragma Style_Checks (On);
+pragma Style_Checks ("3aAbCdefiIklnprsStu");
+
+pragma Warnings (On);
+pragma Warnings ("ah.i.ktFK");
 
 -- TODO: Look into these restrictions
 -- pragma Restrictions (No_Initialize_Scalars);
@@ -26,6 +46,7 @@ pragma Check_Float_Overflow;
 -- pragma Restrictions (No_Dynamic_Sized_Objects);
 -- pragma Restrictions (No_Implicit_Conditionals);
 -- pragma Restrictions (No_Floating_Point);
+pragma Discard_Names;
 
 pragma Restrictions (Immediate_Reclamation);
 pragma Restrictions (Max_Asynchronous_Select_Nesting => 0);

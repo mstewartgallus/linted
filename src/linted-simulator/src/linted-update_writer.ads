@@ -13,12 +13,9 @@
 -- permissions and limitations under the License.
 with Linted.Errors;
 with Linted.KOs;
-with Linted.Options;
 
 package Linted.Update_Writer is
    pragma Elaborate_Body;
-
-   package Option_Events is new Linted.Options (Linted.Errors.Error);
 
    type Update_Int is range -2 ** (32 - 1) ..  2 ** (32 - 1) - 1;
    type Update_Nat is mod 2 ** 32;
@@ -35,8 +32,6 @@ package Linted.Update_Writer is
    generic
    package Worker with SPARK_Mode => Off is
       procedure Write (Object : Linted.KOs.KO; Data : Update);
-      function Poll return Option_Events.Option;
-
-      procedure Wait;
+      function Wait return Linted.Errors.Error;
    end Worker;
 end Linted.Update_Writer;

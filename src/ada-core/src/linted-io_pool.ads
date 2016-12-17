@@ -16,7 +16,6 @@ with System;
 
 with Linted.Errors;
 with Linted.KOs;
-with Linted.Options;
 
 package Linted.IO_Pool is
    pragma Elaborate_Body;
@@ -27,14 +26,10 @@ package Linted.IO_Pool is
       Err : Errors.Error;
    end record;
 
-   package Option_Writer_Events is new Linted.Options (Writer_Event);
-
    generic
    package Writer_Worker is
       procedure Write (Object : KOs.KO; Buf : System.Address; Count : Interfaces.C.size_t);
-      function Poll return Option_Writer_Events.Option;
-
-      procedure Wait;
+      function Wait return Writer_Event;
    end Writer_Worker;
 
    type Reader_Event is record
@@ -42,12 +37,9 @@ package Linted.IO_Pool is
       Err : Errors.Error;
    end record;
 
-   package Option_Reader_Events is new Linted.Options (Reader_Event);
-
    generic
    package Reader_Worker is
       procedure Read (Object : KOs.KO; Buf : System.Address; Count : Interfaces.C.size_t);
-      function Poll return Option_Reader_Events.Option;
-      procedure Wait;
+      function Wait return Reader_Event;
    end Reader_Worker;
 end Linted.IO_Pool;
