@@ -33,7 +33,7 @@ private with Linted.KOs;
 private with Linted.Stdio;
 private with Libc.Stddef;
 
-package body Linted.Audio is
+package body Linted.Audio with SPARK_Mode => Off is
    use Interfaces.C.Strings;
    use Interfaces.C;
 

@@ -28,6 +28,6 @@ package Linted.Writer is
 		       Buf : System.Address;
 		       Count : Interfaces.C.size_t);
 
-      function Wait return Event;
+      procedure Wait (E : out Event);
    end Worker;
 end Linted.Writer;

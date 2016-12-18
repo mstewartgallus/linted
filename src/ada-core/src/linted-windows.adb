@@ -39,7 +39,10 @@ package body Linted.Windows with SPARK_Mode => Off is
 
    function From_Bytes (T : Tuple) return Window;
 
-   procedure Read (KO : KOs.KO; Win : out Window; Err : out Errors.Error) is
+   procedure Read (KO : KOs.KO;
+		   Win : out Window;
+		   Err : out Errors.Error) with SPARK_Mode => Off
+   is
       function Convert is new Ada.Unchecked_Conversion (Storage_Access, System.Address);
    begin
       declare

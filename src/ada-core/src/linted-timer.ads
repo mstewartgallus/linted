@@ -13,21 +13,19 @@
 -- permissions and limitations under the License.
 with Ada.Real_Time;
 
-with Linted.Options;
-
-package Linted.Timer with SPARK_Mode => Off is
+package Linted.Timer is
    pragma Elaborate_Body;
 
-   type Event is record
-      null;
-   end record;
-
-   package Option_Events is new Linted.Options (Event);
-
    generic
-   package Worker is
-      procedure Wait_Until (Time : Ada.Real_Time.Time);
-      function Poll return Option_Events.Option;
-      procedure Wait;
+   package Worker with
+     Abstract_State => ((Reader with External),
+			(Writer with External))
+   is
+      procedure Wait_Until (Time : Ada.Real_Time.Time) with
+	Global => (In_Out => Writer),
+	Depends => (Writer => (Writer, Time));
+      procedure Wait with
+	Global => (In_Out => Reader),
+	Depends => (Reader => Reader);
    end Worker;
 end Linted.Timer;

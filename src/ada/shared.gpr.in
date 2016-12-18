@@ -21,87 +21,87 @@ abstract project Shared is
   end Builder;
 
   package Compiler is
-     for Default_Switches ("Ada") use ();
---      for Default_Switches ("Ada") use (
--- 				       "-g",
+     -- for Default_Switches ("Ada") use ();
+     for Default_Switches ("Ada") use (
+				       "-g",
 
--- 				       "-gnatn",
+				       "-gnatn",
 
--- 				       -- TODO: Debug optimization causes problems
--- 				       "-O0",
+				       -- TODO: Debug optimization causes problems
+				       "-O0",
 
--- 				       "-fvisibility=hidden",
--- 				       "-fdata-sections",
--- 				       "-ffunction-sections",
+				       "-fvisibility=hidden",
+				       "-fdata-sections",
+				       "-ffunction-sections",
 
--- 				       "-gno-record-gcc-switches",
+				       "-gno-record-gcc-switches",
 
--- 				       -- "-fpic", "-fPIC", "-fpie", "-fPIE",
+				       -- "-fpic", "-fPIC", "-fpie", "-fPIE",
 
--- 				       "-fverbose-asm",
--- 				       -- "-save-temps=cwd",
--- 				       -- "-gnatGL",
--- 				       "-gnattt",
+				       "-fverbose-asm",
+				       -- "-save-temps=cwd",
+				       -- "-gnatGL",
+				       "-gnattt",
 
--- 				       -- "-gnatD",
--- 				       --"-gnatR3s",
--- 				       "-fstack-usage",
+				       -- "-gnatD",
+				       --"-gnatR3s",
+				       "-fstack-usage",
 
--- 				       "-fstack-check",
--- 				       "-ftrapv",
--- 				       -- "-fsanitize=address",
--- 				       -- "-fsanitize=undefined",
--- 				       "-gnato",
--- 				       "-gnateA"
---   				      );
---      for Default_Switches ("C") use ("-Wall", "-Wextra",
+				       "-fstack-check",
+				       "-ftrapv",
+				       -- "-fsanitize=address",
+				       -- "-fsanitize=undefined",
+				       "-gnato",
+				       "-gnateA"
+  				      );
+     for Default_Switches ("C") use ("-Wall", "-Wextra",
 
--- 				     "-g",
+				     "-g",
 
--- 				     "-O3",
+				     "-O3",
 
--- 				     "-fno-working-directory", "-gno-record-gcc-switches",
+				     "-fno-working-directory", "-gno-record-gcc-switches",
 
--- --				     "-fpic", "-fPIC", "-fpie", "-fPIE",
+--				     "-fpic", "-fPIC", "-fpie", "-fPIE",
 
--- 				     "-fdata-sections",
--- 				     "-ffunction-sections",
+				     "-fdata-sections",
+				     "-ffunction-sections",
 
--- 				     "-fverbose-asm",
--- 				     "-save-temps=cwd",
--- 				     "-fstack-usage",
+				     "-fverbose-asm",
+				     "-save-temps=cwd",
+				     "-fstack-usage",
 
--- 				     "-fstack-check"
--- 				     -- "-fsanitize=address",
--- 				     --   "-fsanitize=undefined"
--- 				    );
+				     "-fstack-check"
+				     -- "-fsanitize=address",
+				     --   "-fsanitize=undefined"
+				    );
   end Compiler;
 
   package Binder is
   end Binder;
 
   package Linker is
-     -- for Default_Switches ("Ada") use ("-fuse-ld=gold",
-     -- 				       "-Wl,-z,relro",
-     -- 				       "-Wl,-z,now",
-     -- 				       "-Wl,--rosegment",
-     -- 				       -- "-pie", "-fpic", "-fPIC", "-fpie", "-fPIE",
+     for Default_Switches ("Ada") use ("-fuse-ld=gold",
+     				       "-Wl,-z,relro",
+     				       "-Wl,-z,now",
+     				       "-Wl,--rosegment",
+     				       -- "-pie", "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-     -- 				       "-Wl,-O1",
-     -- 				       "-Wl,-X", "-Wl,--discard-locals",
-     -- 				       "-Wl,--sort-common",
-     -- 				       "-Wl,--hash-style=gnu",
-     -- 				       "-Wl,--as-needed",
-     -- 				       "-Wl,--gc-sections",
-     -- 				       "-Wl,-z,combreloc",
-     -- 				       "-Wl,--icf=safe",
+     				       "-Wl,-O1",
+     				       "-Wl,-X", "-Wl,--discard-locals",
+     				       "-Wl,--sort-common",
+     				       "-Wl,--hash-style=gnu",
+     				       "-Wl,--as-needed",
+     				       "-Wl,--gc-sections",
+     				       "-Wl,-z,combreloc",
+     				       "-Wl,--icf=safe",
 
-     -- 				       "-Bsymbolic",
+     				       "-Bsymbolic",
 
-     -- 				       -- "-fsanitize=address",
-     -- 				       -- "-fsanitize=undefined",
+     				       -- "-fsanitize=address",
+     				       -- "-fsanitize=undefined",
 
-     -- 				       "-fstack-usage"
-     -- 				      );
+     				       "-fstack-usage"
+     				      );
   end Linker;
 end Shared;

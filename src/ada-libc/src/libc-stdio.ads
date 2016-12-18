@@ -14,7 +14,6 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with System;
-with Libc.Stddef;
 
 package Libc.Stdio with SPARK_Mode => Off is
    pragma Preelaborate;

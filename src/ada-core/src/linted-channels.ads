@@ -23,11 +23,14 @@ package Linted.Channels is
    protected type Channel is
       --  Overwrites old values
       procedure Push (D : Element_T) with
-	Global => null;
+	Global => null,
+	Depends => (Channel => (D, Channel));
       entry Pop (D : out Element_T) with
-	Global => null;
+	Global => null,
+	Depends => (D => Channel, Channel => Channel);
       procedure Poll (Option : out Option_Element_Ts.Option) with
-	Global => null;
+	Global => null,
+	Depends => (Option => Channel, Channel => Channel);
    private
       Current : Element_T;
       Full : Boolean := False;

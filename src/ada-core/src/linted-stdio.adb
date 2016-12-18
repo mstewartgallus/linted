@@ -50,8 +50,9 @@ package body Linted.Stdio with SPARK_Mode => Off is
       Writer.Write (Object, Buf, Count);
 
       declare
-	 Event : constant Linted.Writer.Event := Writer.Wait;
+	 Event : Linted.Writer.Event;
       begin
+	 Writer.Wait (Event);
 	 Bytes_Written := Event.Bytes_Written;
 	 Err := Event.Err;
       end;

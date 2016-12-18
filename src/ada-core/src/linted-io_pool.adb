@@ -32,17 +32,22 @@ package body Linted.IO_Pool is
    package Write_Command_Channels is new Linted.Channels (Write_Command);
    package Writer_Event_Channels is new Linted.Channels (Writer_Event);
 
-   package body Writer_Worker is
-      task Writer_Task;
+   type Read_Command is record
+      Object : KOs.KO;
+      Buf : System.Address := System.Null_Address;
+      Count : C.size_t := 0;
+   end record;
 
+   package Read_Command_Channels is new Linted.Channels (Read_Command);
+   package Reader_Event_Channels is new Linted.Channels (Reader_Event);
+
+   package body Writer_Worker with SPARK_Mode => Off is
+      task Writer_Task;
       My_Command_Channel : Write_Command_Channels.Channel;
       My_Event_Channel : Writer_Event_Channels.Channel;
 
-      function Wait return Writer_Event is
-	 Event : Writer_Event;
-      begin
+      procedure Wait (Event : out Writer_Event) is begin
 	 My_Event_Channel.Pop (Event);
-	 return Event;
       end Wait;
 
       procedure Write (Object : KOs.KO; Buf : System.Address; Count : C.size_t) is
@@ -50,12 +55,12 @@ package body Linted.IO_Pool is
 	 My_Command_Channel.Push ((Object, Buf, Count));
       end Write;
 
-      New_Write_Command : Write_Command;
-      Result : Libc.Sys.Types.ssize_t;
-
       task body Writer_Task is
 	 use type Libc.Sys.Types.ssize_t;
 	 use type C.size_t;
+
+	 New_Write_Command : Write_Command;
+	 Result : Libc.Sys.Types.ssize_t;
       begin
 	 loop
 	    My_Command_Channel.Pop (New_Write_Command);
@@ -90,26 +95,14 @@ package body Linted.IO_Pool is
       end Writer_Task;
    end Writer_Worker;
 
-   type Read_Command is record
-      Object : KOs.KO;
-      Buf : System.Address := System.Null_Address;
-      Count : C.size_t := 0;
-   end record;
-
-   package Read_Command_Channels is new Linted.Channels (Read_Command);
-   package Reader_Event_Channels is new Linted.Channels (Reader_Event);
-
-   package body Reader_Worker is
+   package body Reader_Worker with SPARK_Mode => Off is
       task Reader_Task;
 
       My_Command_Channel : Read_Command_Channels.Channel;
       My_Event_Channel : Reader_Event_Channels.Channel;
 
-      function Wait return Reader_Event is
-	 Event : Reader_Event;
-      begin
+      procedure Wait (Event : out Reader_Event) is begin
 	 My_Event_Channel.Pop (Event);
-	 return Event;
       end Wait;
 
       procedure Read (Object : KOs.KO; Buf : System.Address; Count : C.size_t) is
@@ -117,12 +110,12 @@ package body Linted.IO_Pool is
 	 My_Command_Channel.Push ((Object, Buf, Count));
       end Read;
 
-      New_Read_Command : Read_Command;
-      Result : Libc.Sys.Types.ssize_t;
-
       task body Reader_Task is
 	 use type Libc.Sys.Types.ssize_t;
 	 use type C.size_t;
+
+	 New_Read_Command : Read_Command;
+	 Result : Libc.Sys.Types.ssize_t;
       begin
 	 loop
 	    My_Command_Channel.Pop (New_Read_Command);

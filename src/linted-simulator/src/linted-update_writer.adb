@@ -66,7 +66,7 @@ package body Linted.Update_Writer is
 	 Worker_Event : Linted.Writer.Event;
       begin
 	 loop
-	    Worker_Event := Worker.Wait;
+	    Worker.Wait (Worker_Event);
 	    Work_Event.Push (Worker_Event);
 	    Ada.Synchronous_Task_Control.Set_True (My_Trigger);
 	 end loop;

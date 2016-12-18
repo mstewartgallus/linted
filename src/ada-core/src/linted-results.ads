@@ -15,7 +15,9 @@ with Linted.Errors;
 
 generic
    type Element_T is private;
-package Linted.Results is
+package Linted.Results with
+  Abstract_State => null
+is
    pragma Preelaborate;
 
    type Result (Erroneous : Boolean) is record

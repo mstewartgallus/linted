@@ -27,6 +27,6 @@ package Linted.Reader is
       procedure Read (Object : Linted.KOs.KO;
 		      Buf : System.Address;
 		      Count : Interfaces.C.size_t);
-      function Wait return Event;
+      procedure Wait (E : out Event);
    end Worker;
 end Linted.Reader;

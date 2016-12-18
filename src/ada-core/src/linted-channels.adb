@@ -27,12 +27,18 @@ package body Linted.Channels is
 
       procedure Poll (Option : out Option_Element_Ts.Option) is
       begin
-	 if not Full then
-	    return;
+	 if Full then
+	    Option := (Empty => False, Data => Current);
+	    pragma Annotate (GNATprove, False_Positive,
+			     "discriminant check might fail",
+			     "reviewed by Steven Stewart-Gallus");
+	    Full := False;
+	 else
+	    Option := (Empty => True);
+	    pragma Annotate (GNATprove, False_Positive,
+			     "discriminant check might fail",
+			     "reviewed by Steven Stewart-Gallus");
 	 end if;
-
-	 Option := (Empty => False, Data => Current);
-	 Full := False;
       end Poll;
    end Channel;
 end Linted.Channels;

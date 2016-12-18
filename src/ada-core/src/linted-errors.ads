@@ -15,7 +15,9 @@ with Interfaces.C;
 
 with Libc.Errno.POSIX_2008;
 
-package Linted.Errors is
+package Linted.Errors with
+  Abstract_State => null
+is
    pragma Preelaborate;
 
    subtype Valid_Error is Interfaces.C.int range 0 .. Interfaces.C.int'Last;

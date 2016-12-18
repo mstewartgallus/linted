@@ -37,13 +37,8 @@ package body Linted.Controls_Reader is
 
    function From_Bytes (T : Tuple) return Controls_Int;
 
-   type Read_Done_Event is record
-      Err : Errors.Error;
-      Data : Controls;
-   end record;
-
    package Command_MVars is new Linted.MVars (KOs.KO);
-   package Read_Done_Event_MVars is new Linted.MVars (Read_Done_Event);
+   package Read_Done_Event_MVars is new Linted.MVars (Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
 
    package body Worker with SPARK_Mode => Off is
@@ -66,20 +61,20 @@ package body Linted.Controls_Reader is
 	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Start;
 
-      function Poll return Option_Events.Option is
-	 New_Event : Read_Done_Event_MVars.Option_Element_Ts.Option;
+      function Wait return Event is
       begin
-	 My_Event_MVar.Poll (New_Event);
-	 if New_Event.Empty then
-	    return (Empty => True);
-	 else
-	    return (False, (New_Event.Data.Data, New_Event.Data.Err));
-	 end if;
-      end Poll;
+	 loop
+	    Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
 
-      procedure Wait is
-      begin
-	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+	    declare
+	       New_Event : Read_Done_Event_MVars.Option_Element_Ts.Option;
+	    begin
+	       My_Event_MVar.Poll (New_Event);
+	       if not New_Event.Empty then
+		  return (New_Event.Data.Data, New_Event.Data.Err);
+	       end if;
+	    end;
+	 end loop;
       end Wait;
 
       task A;
@@ -87,7 +82,7 @@ package body Linted.Controls_Reader is
 	 Worker_Event : Linted.Reader.Event;
       begin
 	 loop
-	    Worker_Event := Worker.Wait;
+	    Worker.Wait (Worker_Event);
 	    Work_Event.Push (Worker_Event);
 	    Ada.Synchronous_Task_Control.Set_True (My_Trigger);
 	 end loop;
@@ -134,7 +129,7 @@ package body Linted.Controls_Reader is
 
 		     C.Jumping := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 5)) /= 0;
 		  end if;
-		  My_Event_MVar.Set ((Err, C));
+		  My_Event_MVar.Set ((C, Err));
 		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
 	       end if;
 	    end;

@@ -14,7 +14,7 @@
 with Linted.Controls_Reader;
 with Linted.Types;
 
-package Linted.Simulate is
+package Linted.Simulate with Abstract_State => null is
    pragma Elaborate_Body;
 
    type State is record
@@ -28,5 +28,7 @@ package Linted.Simulate is
       X_Rotation : Types.Sim_Angle;
    end record;
 
-   procedure Tick (This : in out State);
+   procedure Tick (This : in out State) with
+     Global => null,
+     Depends => (This => This);
 end Linted.Simulate;

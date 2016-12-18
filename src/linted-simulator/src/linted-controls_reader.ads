@@ -13,7 +13,6 @@
 -- permissions and limitations under the License.
 with Linted.Errors;
 with Linted.KOs;
-with Linted.Options;
 
 package Linted.Controls_Reader is
    pragma Elaborate_Body;
@@ -37,13 +36,9 @@ package Linted.Controls_Reader is
       Err : Errors.Error := 0;
    end record;
 
-   package Option_Events is new Linted.Options (Event);
-
    generic
    package Worker with SPARK_Mode => Off is
       procedure Start (Object : KOs.KO);
-      function Poll return Option_Events.Option;
-
-      procedure Wait;
+      function Wait return Event;
    end Worker;
 end Linted.Controls_Reader;

@@ -15,6 +15,7 @@ private with Ada.Command_Line;
 private with Ada.Real_Time;
 private with Ada.Synchronous_Task_Control;
 
+private with Linted.Channels;
 private with Linted.Controls_Reader;
 private with Linted.Errors;
 private with Linted.KOs;
@@ -28,11 +29,21 @@ package body Linted.Simulator with Spark_MODE => Off is
    package Command_Line renames Ada.Command_Line;
    package Real_Time renames Ada.Real_Time;
 
-   Event_Trigger : aliased Ada.Synchronous_Task_Control.Suspension_Object;
+   Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
    package Controls_Reader is new Linted.Controls_Reader.Worker;
    package Update_Writer is new Linted.Update_Writer.Worker;
    package Timer is new Linted.Timer.Worker;
+
+   type Tick_Event is record
+      null;
+   end record;
+
+   package Control_Event_Channels is new Linted.Channels (Linted.Controls_Reader.Event);
+   package Timer_Event_Channels is new Linted.Channels (Tick_Event);
+
+   Control_Event_Channel : Control_Event_Channels.Channel;
+   Timer_Event_Channel : Timer_Event_Channels.Channel;
 
    use type Errors.Error;
    use type Types.Int;
@@ -59,16 +70,23 @@ package body Linted.Simulator with Spark_MODE => Off is
    task body A is
    begin
       loop
-	 Controls_Reader.Wait;
-	 Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+	 declare
+	    Event : Linted.Controls_Reader.Event;
+	 begin
+	    Event := Controls_Reader.Wait;
+	    Control_Event_Channel.Push (Event);
+	    Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+	 end;
       end loop;
    end A;
 
    task B;
    task body B is
+      T : Tick_Event;
    begin
       loop
 	 Timer.Wait;
+	 Timer_Event_Channel.Push (T);
 	 Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
       end loop;
    end B;
@@ -109,8 +127,9 @@ package body Linted.Simulator with Spark_MODE => Off is
 	 Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
 
 	 declare
-	    Option_Event : constant Linted.Controls_Reader.Option_Events.Option := Controls_Reader.Poll;
+	    Option_Event : Control_Event_Channels.Option_Element_Ts.Option;
 	 begin
+	    Control_Event_Channel.Poll (Option_Event);
 	    if not Option_Event.Empty then
 	       My_State.Controls := Option_Event.Data.Data;
 	    end if;
@@ -118,8 +137,9 @@ package body Linted.Simulator with Spark_MODE => Off is
 
 	 declare
 	    use type Real_Time.Time;
-	    Option_Event : constant Linted.Timer.Option_Events.Option := Timer.Poll;
+	    Option_Event : Timer_Event_Channels.Option_Element_Ts.Option;
 	 begin
+	    Timer_Event_Channel.Poll (Option_Event);
 	    if not Option_Event.Empty then
 	       Simulate.Tick (My_State);
 	       Update_Writer.Write (Updater_KO, (X_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.X).Value),

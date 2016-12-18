@@ -17,7 +17,9 @@ limited with System;
 with Linted.Errors;
 with Linted.KOs;
 
-package Linted.Stdio with SPARK_Mode => Off is
+package Linted.Stdio with
+  SPARK_Mode => Off
+is
    pragma Elaborate_Body;
 
    procedure Write_Line (Object : Linted.KOs.KO; Str : String);

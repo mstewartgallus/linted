@@ -114,7 +114,7 @@ GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
   -aP$(srcdir)/src/ada-core
 
 GPRPROVEFLAGS=\
-  -j3 --level=0 --pedantic -U\
+  -v -j3 --level=0 --pedantic -U\
   -aP=$(builddir)/src/ada\
   -aP=$(srcdir)/src/ada-libc\
   -aP=$(srcdir)/src/ada-xcb\
@@ -142,10 +142,6 @@ clean-%C%:
 .PHONY: prove
 prove: src/ada/shared.gpr src/ada/config.cgpr
 	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
-
-.PHONY: prove-simple
-prove-simple: src/ada/shared.gpr src/ada/config.cgpr
-	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr --limit-line=linted-angles.adb:136:47:VC_PRECONDITION --prover=Coq
 
 .PHONY: indent
 indent:

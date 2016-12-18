@@ -14,10 +14,12 @@
 with Linted.Errors;
 with Linted.KOs;
 
-package Linted.Windows with SPARK_Mode => Off is
+package Linted.Windows is
    pragma Elaborate_Body;
 
    type Window is mod 2 ** 32;
 
-   procedure Read (KO : KOs.KO; Win : out Window; Err : out Errors.Error);
+   procedure Read (KO : KOs.KO;
+		   Win : out Window;
+		   Err : out Errors.Error) with SPARK_Mode => Off;
 end Linted.Windows;
