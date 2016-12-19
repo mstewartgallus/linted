@@ -22,19 +22,28 @@ package body Linted.Simulate is
    use type Types.Sim_Angle;
 
    Rotation_Speed : constant Types.Nat := 2048;
-   Dead_Zone : constant Types.Nat := Types.Nat'Last / 8;
+   Dead_Zone : constant Types.Nat := Types.Nat'Last / 8 + 1;
+   Increment : constant Types.Sim_Angle := Types.Sim_Angles.To_Angle (1, Rotation_Speed);
 
    function Downscale (X : Types.Int; Y : Types.Int) return Types.Int;
 
    function Sim_Sin is new Types.Sim_Angles.Sin (Types.Int);
    function Sim_Cos is new Types.Sim_Angles.Cos (Types.Int);
 
-   function Tilt_Rotation (Rotation : Types.Sim_Angle; Tilt : Types.Int) return Types.Sim_Angle;
+   function Tilt_Rotation (Rotation : Types.Sim_Angle;
+			   Tilt : Types.Int) return Types.Sim_Angle with
+     Global => null,
+     Depends => (Tilt_Rotation'Result => (Rotation, Tilt));
    function Tilt_Clamped_Rotation (Rotation : Types.Sim_Angle;
-				   Tilt : Types.Int) return Types.Sim_Angle;
+				   Tilt : Types.Int) return Types.Sim_Angle with
+     Global => null,
+     Depends => (Tilt_Clamped_Rotation'Result => (Rotation, Tilt));
    function Min_Int (X : Types.Int; Y : Types.Int) return Types.Int;
    function Find_Sign (X : Types.Int) return Types.Int;
-   function Absolute (X : Types.Int) return Types.Nat;
+   function Absolute (X : Types.Int) return Types.Nat with
+     Post => Absolute'Result <= Types.Nat (Types.Int'Last),
+     Global => null,
+     Depends => (Absolute'Result => X);
 
    function Sim_Isatadd (X : Types.Int; Y : Types.Int) return Types.Int;
    function Saturate (X : Types.Large) return Types.Int;
@@ -44,10 +53,8 @@ package body Linted.Simulate is
    begin
       -- Avoid tricky arithmetic overflow possibilities
 
-      if Types.Int'First = X then
-	 Result := Types.Nat (-(Types.Int'First + 1)) + 1;
-      elsif X < 0 then
-	 Result := Types.Nat (-X);
+      if X < 0 then
+	 Result := Types.Nat (-(X + 1)) + 1;
       else
 	 Result := Types.Nat (X);
       end if;
@@ -55,21 +62,14 @@ package body Linted.Simulate is
    end Absolute;
 
    function Tilt_Rotation (Rotation : Types.Sim_Angle; Tilt : Types.Int) return Types.Sim_Angle is
-      Increment : Types.Sim_Angle;
       Result : Types.Sim_Angle;
    begin
-      Increment := Types.Sim_Angles.To_Angle (1, Rotation_Speed);
-
-      if Absolute (Tilt) <= Dead_Zone then
+      if Absolute (Tilt) <= Dead_Zone or 0 = Tilt then
 	 Result := Rotation;
+      elsif Tilt > 0 then
+	 Result := Rotation + Increment;
       else
-	 if 0 = Tilt then
-	    Result := Rotation;
-	 elsif Tilt > 0 then
-	    Result := Rotation + Increment;
-	 else
-	    Result := Rotation - Increment;
-	 end if;
+	 Result := Rotation - Increment;
       end if;
 
       return Result;
@@ -79,22 +79,17 @@ package body Linted.Simulate is
 				   Tilt : Types.Int) return Types.Sim_Angle is
       Minimum : constant Types.Sim_Angle := Types.Sim_Angles.To_Angle (3, 16);
       Maximum : constant Types.Sim_Angle := Types.Sim_Angles.To_Angle (5, 16);
-      Increment : Types.Sim_Angle;
+
+      Ab : Types.Nat := Absolute (Tilt);
 
       Result : Types.Sim_Angle;
    begin
-      Increment := Types.Sim_Angles.To_Angle (1, Rotation_Speed);
-
-      if Absolute (Tilt) <= Dead_Zone then
+      if 0 = Tilt or Dead_Zone >= Ab then
 	 Result := Rotation;
+      elsif Tilt > 0 then
+	 Result := Types.Sim_Angles.Add_Clamped (Minimum, Maximum, Rotation, Increment);
       else
-	 if 0 = Tilt then
-	    Result := Rotation;
-	 elsif Tilt > 0 then
-	    Result := Types.Sim_Angles.Add_Clamped (Minimum, Maximum, Rotation, Increment);
-	 else
-	    Result := Types.Sim_Angles.Subtract_Clamped (Minimum, Maximum, Rotation, Increment);
-	 end if;
+	 Result := Types.Sim_Angles.Subtract_Clamped (Minimum, Maximum, Rotation, Increment);
       end if;
 
       return Result;

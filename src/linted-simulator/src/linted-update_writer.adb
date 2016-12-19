@@ -61,6 +61,8 @@ package body Linted.Update_Writer is
       Work_Event : Worker_Event_Channels.Channel;
       Write_Done_Event_Channel : Write_Done_Event_Channels.Channel;
 
+      Data_Being_Written : aliased Storage_Elements.Storage_Array (1 .. 5 * 4);
+
       task A;
       task body A is
 	 Worker_Event : Linted.Writer.Event;
@@ -78,25 +80,23 @@ package body Linted.Update_Writer is
 	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Write;
 
-      function Wait return Linted.Errors.Error is
+      procedure Wait (E : out Linted.Errors.Error) is
 	 Event : Write_Done_Event;
       begin
 	 Write_Done_Event_Channel.Pop (Event);
-	 return Event.Err;
+	 E := Event.Err;
       end Wait;
-
-      Data_Being_Written : aliased Storage_Elements.Storage_Array (1 .. 5 * 4);
-
-      Err : Errors.Error;
-      Pending_Update : Update;
-      Object : KOs.KO;
-      Update_Pending : Boolean := False;
-      Update_In_Progress : Boolean := False;
 
       task body Writer_Task is
 	 use type Errors.Error;
 
 	 function Convert is new Ada.Unchecked_Conversion (Storage_Access, System.Address);
+
+	 Err : Errors.Error;
+	 Pending_Update : Update;
+	 Object : KOs.KO;
+	 Update_Pending : Boolean := False;
+	 Update_In_Progress : Boolean := False;
       begin
 	 loop
 	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);

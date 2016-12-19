@@ -114,7 +114,7 @@ GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
   -aP$(srcdir)/src/ada-core
 
 GPRPROVEFLAGS=\
-  -v -j3 --level=0 --pedantic -U\
+  -j3 --level=0 --pedantic -U\
   -aP=$(builddir)/src/ada\
   -aP=$(srcdir)/src/ada-libc\
   -aP=$(srcdir)/src/ada-xcb\
@@ -141,7 +141,7 @@ clean-%C%:
 
 .PHONY: prove
 prove: src/ada/shared.gpr src/ada/config.cgpr
-	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
+	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
 
 .PHONY: indent
 indent:

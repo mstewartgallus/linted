@@ -38,7 +38,7 @@ package body Linted.Controls_Reader is
    function From_Bytes (T : Tuple) return Controls_Int;
 
    package Command_MVars is new Linted.MVars (KOs.KO);
-   package Read_Done_Event_MVars is new Linted.MVars (Event);
+   package Read_Done_Event_Channels is new Linted.Channels (Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
 
    package body Worker with SPARK_Mode => Off is
@@ -47,13 +47,12 @@ package body Linted.Controls_Reader is
       package Worker is new Linted.Reader.Worker;
 
       My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
-      Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
       Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 2 * 4 + 1);
 
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
-      My_Event_MVar : Read_Done_Event_MVars.MVar;
+      My_Event_Channel : Read_Done_Event_Channels.Channel;
 
       procedure Start (Object : KOs.KO) is
       begin
@@ -61,20 +60,9 @@ package body Linted.Controls_Reader is
 	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Start;
 
-      function Wait return Event is
+      procedure Wait (E : out Event) is
       begin
-	 loop
-	    Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
-
-	    declare
-	       New_Event : Read_Done_Event_MVars.Option_Element_Ts.Option;
-	    begin
-	       My_Event_MVar.Poll (New_Event);
-	       if not New_Event.Empty then
-		  return (New_Event.Data.Data, New_Event.Data.Err);
-	       end if;
-	    end;
-	 end loop;
+	 My_Event_Channel.Pop (E);
       end Wait;
 
       task A;
@@ -129,8 +117,7 @@ package body Linted.Controls_Reader is
 
 		     C.Jumping := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 5)) /= 0;
 		  end if;
-		  My_Event_MVar.Set ((C, Err));
-		  Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+		  My_Event_Channel.Push ((C, Err));
 	       end if;
 	    end;
 

@@ -73,7 +73,7 @@ package body Linted.Simulator with Spark_MODE => Off is
 	 declare
 	    Event : Linted.Controls_Reader.Event;
 	 begin
-	    Event := Controls_Reader.Wait;
+	    Controls_Reader.Wait (Event);
 	    Control_Event_Channel.Push (Event);
 	    Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
 	 end;

@@ -32,6 +32,6 @@ package Linted.Update_Writer is
    generic
    package Worker with SPARK_Mode => Off is
       procedure Write (Object : Linted.KOs.KO; Data : Update);
-      function Wait return Linted.Errors.Error;
+      procedure Wait (E : out Linted.Errors.Error);
    end Worker;
 end Linted.Update_Writer;

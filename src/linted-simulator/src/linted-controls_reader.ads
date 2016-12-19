@@ -39,6 +39,6 @@ package Linted.Controls_Reader is
    generic
    package Worker with SPARK_Mode => Off is
       procedure Start (Object : KOs.KO);
-      function Wait return Event;
+      procedure Wait (E : out Event);
    end Worker;
 end Linted.Controls_Reader;

@@ -19,12 +19,14 @@ package Linted.Angles is
    type Angle is private;
 
    function To_Angle (X : Element_T) return Angle with
-     Global => null;
+     Global => null,
+     Depends => (To_Angle'Result => X);
 
    function To_Angle (X : Element_T;
 		      Y : Element_T) return Angle with
      Global => null,
-     Pre => X <= Y;
+     Pre => X <= Y,
+     Depends => (To_Angle'Result => (X,Y));
    function From_Angle (X : Angle) return Element_T with
      Global => null;
 
