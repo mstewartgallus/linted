@@ -27,12 +27,20 @@
 
 typedef float lntd_assets_point[3U];
 
+struct lntd_assets_asset {
+	uint16_t start;
+	uint16_t length;
+};
+
 extern size_t const lntd_assets_size;
 extern lntd_assets_point const *const lntd_assets_vertices;
 extern lntd_assets_point const *const lntd_assets_normals;
 
 extern uint16_t const *const lntd_assets_indices;
 extern size_t const lntd_assets_indices_size;
+
+extern struct lntd_assets_asset const *const lntd_assets_assets;
+extern size_t const lntd_assets_assets_size;
 
 extern char const *const lntd_assets_fragment_shader;
 extern char const *const lntd_assets_vertex_shader;

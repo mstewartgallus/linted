@@ -18,7 +18,9 @@ import os
 from string import Template
 
 def output():
-    def process_mesh(objct, indices, normals, vertices):
+    def process_mesh(objct, index_list, normals, vertices):
+        indices = []
+
         mesh = objct.data
         matrix = objct.matrix_world
         normal_matrix = matrix.inverted().transposed()
@@ -37,6 +39,8 @@ def output():
             normals.append(Array(3, GLfloat)((GLfloat(x_norm), GLfloat(y_norm), GLfloat(z_norm))))
             vertices.append(Array(3, GLfloat)((GLfloat(x), GLfloat(y), GLfloat(z))))
 
+        index_list.append(indices)
+
     # Compatibility shim for older Blender versions
     def polygons(mesh):
         if hasattr(mesh, "polygons"):
@@ -50,11 +54,20 @@ def output():
         bpy.ops.wm.open_mainfile(filepath = "scene.blend")
 
         mesh_objects = [objct for objct in bpy.data.objects if 'MESH' == objct.type]
-        indices = []
+
+        index_list = []
         normals = []
         vertices = []
         for objct in mesh_objects:
-            process_mesh(objct, indices, normals, vertices)
+            process_mesh(objct, index_list, normals, vertices)
+
+        indices = []
+        ix = 0
+        assets = []
+        for item in index_list:
+            indices.extend(item)
+            assets.append(Asset(start=GLuint(ix), length=GLuint(len(item))))
+            ix += len(item)
     finally:
         os.chdir(old_directory)
 
@@ -79,10 +92,16 @@ static uint16_t const indices_data[][3U] = $indices;
 
 uint16_t const * const lntd_assets_indices = &indices_data[0U][0U];
 size_t const lntd_assets_indices_size = LNTD_ARRAY_SIZE(indices_data);
+
+struct lntd_assets_asset const assets_data[] = $assets;
+
+struct lntd_assets_asset const * const lntd_assets_assets = assets_data;
+size_t const lntd_assets_assets_size = LNTD_ARRAY_SIZE(assets_data);
 """).substitute(
     normals=StaticArray(Array(3, GLfloat))(normals),
     vertices=StaticArray(Array(3, GLfloat))(vertices),
-    indices=StaticArray(Array(3, GLubyte))(indices))
+    indices=StaticArray(Array(3, GLubyte))(indices),
+    assets=StaticArray(Asset)(assets))
 
 class C:
     def __str__(self):
@@ -201,3 +220,5 @@ class GLuint(Unsigned):
     name = "GLuint"
 
 _spacing = "    "
+
+Asset = structure('asset', [('start', GLuint), ('length',GLuint)])

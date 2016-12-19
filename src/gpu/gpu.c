@@ -1422,13 +1422,6 @@ static lntd_error setup_gl(struct privates *privates,
 
 	gl->ReleaseShaderCompiler();
 
-	gl->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-	gl->BufferData(GL_ELEMENT_ARRAY_BUFFER,
-	               3U * lntd_assets_indices_size *
-	                   sizeof lntd_assets_indices[0U],
-	               lntd_assets_indices, GL_STATIC_DRAW);
-	/* Leave bound for DrawElements */
-
 	gl->ClearColor(0.94, 0.9, 1.0, 0.0);
 
 	privates->program = program;
@@ -1510,8 +1503,21 @@ static void real_draw(struct privates *privates,
 
 	gl->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 	          GL_STENCIL_BUFFER_BIT);
-	gl->DrawElements(GL_TRIANGLES, 3U * lntd_assets_indices_size,
-	                 GL_UNSIGNED_SHORT, 0);
+
+	GLuint index_buffer = privates->index_buffer;
+
+	for (size_t ii = 0U; ii < lntd_assets_assets_size; ++ii) {
+		uint16_t start = lntd_assets_assets[ii].start;
+		uint16_t length = lntd_assets_assets[ii].length;
+
+		gl->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+		gl->BufferData(
+		    GL_ELEMENT_ARRAY_BUFFER,
+		    3U * length * sizeof lntd_assets_indices[0U],
+		    lntd_assets_indices + 3U * start, GL_STATIC_DRAW);
+		gl->DrawElements(GL_TRIANGLES, 3U * length,
+		                 GL_UNSIGNED_SHORT, 0);
+	}
 }
 
 static void flush_gl_errors(struct privates *privates,
