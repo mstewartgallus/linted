@@ -189,7 +189,7 @@ package body Linted.Simulate is
       end loop;
 
       for II in Types.Position loop
-	 Forces (1, II) := Gravity (II);
+	 Forces (1, II) := Gravity (II) + (Types.Int (This.Counter) mod 61) - 30;
       end loop;
 
       for Ix in 0 .. 1 loop
@@ -244,10 +244,12 @@ package body Linted.Simulate is
 	    end;
 
 	 end loop;
-
-	 This.Z_Rotation := Tilt_Rotation (This.Z_Rotation, Types.Int (This.Controls.Z_Tilt));
-	 This.X_Rotation :=
-	   Tilt_Clamped_Rotation (This.X_Rotation, -Types.Int (This.Controls.X_Tilt));
       end loop;
+
+      This.Z_Rotation := Tilt_Rotation (This.Z_Rotation, Types.Int (This.Controls.Z_Tilt));
+      This.X_Rotation :=
+	Tilt_Clamped_Rotation (This.X_Rotation, -Types.Int (This.Controls.X_Tilt));
+
+      This.Counter := (1664525 * This.Counter + 1013904223) mod 2147483648;
    end Tick;
 end Linted.Simulate;

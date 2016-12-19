@@ -54,7 +54,7 @@ package body Linted.Simulator with Spark_MODE => Off is
    My_State : Simulate.State := (Objects => (0 => ((0, 0),
 						   (10 * 1024, 10 * 1024),
 						   (0, 0)),
-					     1 => ((0, 0), (0, 0), (-100000, -100000))),
+					     1 => ((0, 0), (0, 0), (-1000, -1000))),
 
 				 Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
 				 X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
@@ -64,7 +64,8 @@ package body Linted.Simulator with Spark_MODE => Off is
 					      Forward => False,
 					      Left => False,
 					      Right => False,
-					      Jumping => False));
+					      Jumping => False),
+				Counter => 750110405);
    Next_Time : Real_Time.Time;
 
    task A;

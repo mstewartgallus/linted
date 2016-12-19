@@ -26,6 +26,8 @@ package Linted.Simulate with Abstract_State => null is
 
       Z_Rotation : Types.Sim_Angle;
       X_Rotation : Types.Sim_Angle;
+
+      Counter : Types.Nat := 0;
    end record;
 
    procedure Tick (This : in out State) with
