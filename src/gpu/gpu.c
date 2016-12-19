@@ -1509,11 +1509,14 @@ static void real_draw(struct privates *privates,
 			GLfloat y_position = update->y_position;
 			GLfloat z_position = update->z_position;
 
-			GLfloat mx = 0;
-			if (0U == ii) {
-				static unsigned x = 0;
-				mx = x / 50.0f;
-				x = (x + 1) % 50;
+			GLfloat mx_position = update->mx_position;
+			GLfloat my_position = update->my_position;
+			GLfloat mz_position = update->mz_position;
+
+			if (ii != 0) {
+				mx_position = 0;
+				my_position = 0;
+				mz_position = 0;
 			}
 
 			if (mvp_matrix >= 0) {
@@ -1521,7 +1524,8 @@ static void real_draw(struct privates *privates,
 				model_view_projection(
 				    &mvp, x_rotation, z_rotation,
 				    x_position, y_position, z_position,
-				    mx, 0, 0, width, height);
+				    mx_position, my_position,
+				    mz_position, width, height);
 				gl->UniformMatrix4fv(
 				    mvp_matrix, 1U, false,
 				    (void const *)&mvp);

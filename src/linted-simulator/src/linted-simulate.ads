@@ -24,6 +24,10 @@ package Linted.Simulate with Abstract_State => null is
 					Types.Y => (Value => 0, Old => 0),
 					Types.Z => (Value => 0, Old => 0));
 
+      MX_Position : Types.Int := 0;
+      MY_Position : Types.Int := 0;
+      MZ_Position : Types.Int := 0;
+
       Z_Rotation : Types.Sim_Angle;
       X_Rotation : Types.Sim_Angle;
    end record;

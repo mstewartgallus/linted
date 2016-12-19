@@ -25,6 +25,10 @@ package Linted.Update_Writer is
       Y_Position : Update_Int := 0;
       Z_Position : Update_Int := 0;
 
+      MX_Position : Update_Int := 0;
+      MY_Position : Update_Int := 0;
+      MZ_Position : Update_Int := 0;
+
       Z_Rotation : Update_Nat := 0;
       X_Rotation : Update_Nat := 0;
    end record;

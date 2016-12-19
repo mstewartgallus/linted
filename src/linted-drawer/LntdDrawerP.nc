@@ -257,6 +257,10 @@ implementation
 		int_fast32_t y_position;
 		int_fast32_t z_position;
 
+		int_fast32_t mx_position;
+		int_fast32_t my_position;
+		int_fast32_t mz_position;
+
 		uint_fast32_t z_rotation;
 		uint_fast32_t x_rotation;
 
@@ -266,6 +270,10 @@ implementation
 		float gpu_x_position;
 		float gpu_y_position;
 		float gpu_z_position;
+
+		float gpu_mx_position;
+		float gpu_my_position;
+		float gpu_mz_position;
 
 		if (err != 0) {
 			finish(err);
@@ -279,6 +287,10 @@ implementation
 		y_position = update->y_position;
 		z_position = update->z_position;
 
+		mx_position = update->mx_position;
+		my_position = update->my_position;
+		mz_position = update->mz_position;
+
 		gpu_z_rotation =
 		    z_rotation * (6.2831853071795864769252867665590 /
 		                  (((uintmax_t)UINT32_MAX) + 1U));
@@ -290,6 +302,10 @@ implementation
 		gpu_y_position = y_position * (1 / 4096.0);
 		gpu_z_position = z_position * (1 / 4096.0);
 
+		gpu_mx_position = mx_position * (1 / 4096.0);
+		gpu_my_position = my_position * (1 / 4096.0);
+		gpu_mz_position = mz_position * (1 / 4096.0);
+
 		{
 			struct lntd_gpu_update gpu_update;
 
@@ -299,6 +315,10 @@ implementation
 			gpu_update.x_position = gpu_x_position;
 			gpu_update.y_position = gpu_y_position;
 			gpu_update.z_position = gpu_z_position;
+
+			gpu_update.mx_position = gpu_mx_position;
+			gpu_update.my_position = gpu_my_position;
+			gpu_update.mz_position = gpu_mz_position;
 
 			lntd_gpu_update_state(gpu_context, &gpu_update);
 		}

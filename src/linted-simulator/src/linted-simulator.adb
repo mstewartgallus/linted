@@ -53,7 +53,11 @@ package body Linted.Simulator with Spark_MODE => Off is
 
    My_State : Simulate.State := (Positions => ((0, 0),
 				      (10 * 1024, 10 * 1024),
-				      (0, 0)),
+					       (0, 0)),
+
+				 MX_Position => 0,
+				 MY_Position => 0,
+				 MZ_Position => 0,
 
 			Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
 			X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
@@ -145,6 +149,10 @@ package body Linted.Simulator with Spark_MODE => Off is
 	       Update_Writer.Write (Updater_KO, (X_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.X).Value),
 						 Y_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.Y).Value),
 						 Z_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.Z).Value),
+
+						 MX_Position => Linted.Update_Writer.Update_Int (My_State.MX_Position),
+						 MY_Position => Linted.Update_Writer.Update_Int (My_State.MY_Position),
+						 MZ_Position => Linted.Update_Writer.Update_Int (My_State.MZ_Position),
 
 						 Z_Rotation => Linted.Update_Writer.Update_Nat (Types.Sim_Angles.From_Angle (My_State.Z_Rotation)),
 						 X_Rotation => Linted.Update_Writer.Update_Nat (Types.Sim_Angles.From_Angle (My_State.X_Rotation))));

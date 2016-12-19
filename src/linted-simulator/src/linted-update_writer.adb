@@ -61,7 +61,7 @@ package body Linted.Update_Writer is
       Work_Event : Worker_Event_Channels.Channel;
       Write_Done_Event_Channel : Write_Done_Event_Channels.Channel;
 
-      Data_Being_Written : aliased Storage_Elements.Storage_Array (1 .. 5 * 4);
+      Data_Being_Written : aliased Storage_Elements.Storage_Array (1 .. 8 * 4);
 
       task A;
       task body A is
@@ -130,8 +130,12 @@ package body Linted.Update_Writer is
 	       Data_Being_Written (5 .. 8) := To_Bytes (To_Nat (Pending_Update.Y_Position));
 	       Data_Being_Written (9 .. 12) := To_Bytes (To_Nat (Pending_Update.Z_Position));
 
-	       Data_Being_Written (13 .. 16) := To_Bytes (Pending_Update.Z_Rotation);
-	       Data_Being_Written (17 .. 20) := To_Bytes (Pending_Update.X_Rotation);
+	       Data_Being_Written (13 .. 16) := To_Bytes (To_Nat (Pending_Update.MX_Position));
+	       Data_Being_Written (17 .. 20) := To_Bytes (To_Nat (Pending_Update.MY_Position));
+	       Data_Being_Written (21 .. 24) := To_Bytes (To_Nat (Pending_Update.MZ_Position));
+
+	       Data_Being_Written (25 .. 28) := To_Bytes (Pending_Update.Z_Rotation);
+	       Data_Being_Written (29 .. 32) := To_Bytes (Pending_Update.X_Rotation);
 
 	       Worker.Write (Object, Convert (Data_Being_Written (1)'Access), Data_Being_Written'Size / C.char'Size);
 	       Update_In_Progress := True;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Steven Stewart-Gallus
+ * Copyright 2015,2016 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,10 @@ implementation
 
 		{
 			struct lntd_update_reader_input input;
+
+			input.mx_position = control_input.mx_position;
+			input.my_position = control_input.my_position;
+			input.mz_position = control_input.mz_position;
 
 			input.x_position = control_input.x_position;
 			input.y_position = control_input.y_position;

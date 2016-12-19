@@ -28,6 +28,10 @@ struct lntd_update_reader_input {
 	int_least32_t y_position;
 	int_least32_t z_position;
 
+	int_least32_t mx_position;
+	int_least32_t my_position;
+	int_least32_t mz_position;
+
 	uint_least32_t z_rotation;
 	uint_least32_t x_rotation;
 };

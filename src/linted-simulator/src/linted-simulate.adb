@@ -242,6 +242,8 @@ package body Linted.Simulate is
 	    This.Positions (II).Old := Position;
 	 end;
 
+	 This.MX_Position := (This.MX_Position + 10) mod 10000;
+
 	 This.Z_Rotation := Tilt_Rotation (This.Z_Rotation, Types.Int (This.Controls.Z_Tilt));
 	 This.X_Rotation :=
 	   Tilt_Clamped_Rotation (This.X_Rotation, -Types.Int (This.Controls.X_Tilt));

@@ -37,6 +37,10 @@ struct lntd_gpu_update {
 	float x_position;
 	float y_position;
 	float z_position;
+
+	float mx_position;
+	float my_position;
+	float mz_position;
 };
 
 lntd_error
