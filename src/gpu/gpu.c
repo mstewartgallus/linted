@@ -210,7 +210,8 @@ static void flush_gl_errors(struct privates *privates,
 static inline void model_view_projection(
     struct matrix *restrict resultp, GLfloat x_rotation,
     GLfloat z_rotation, GLfloat x_position, GLfloat y_position,
-    GLfloat z_position, unsigned width, unsigned height);
+    GLfloat z_position, GLfloat mx_position, GLfloat my_position,
+    GLfloat mz_position, unsigned width, unsigned height);
 
 static void matrix_multiply(struct matrix const *restrict a,
                             struct matrix const *restrict b,
@@ -1463,28 +1464,6 @@ static void real_draw(struct privates *privates,
 	GLint mvp_matrix = privates->model_view_projection_matrix;
 	GLint eye_vertex = privates->eye_vertex;
 
-	if (update_pending || resize_pending) {
-		/* X, Y, Z, W coords of the resultant vector are the
-		 * sums of the columns (row major order).
-		 */
-
-		GLfloat z_rotation = update->z_rotation;
-		GLfloat x_rotation = update->x_rotation;
-
-		GLfloat x_position = update->x_position;
-		GLfloat y_position = update->y_position;
-		GLfloat z_position = update->z_position;
-
-		if (mvp_matrix >= 0) {
-			struct matrix mvp;
-			model_view_projection(
-			    &mvp, x_rotation, z_rotation, x_position,
-			    y_position, z_position, width, height);
-			gl->UniformMatrix4fv(mvp_matrix, 1U, false,
-			                     (void const *)&mvp);
-		}
-	}
-
 	if (resize_pending) {
 		gl->Viewport(0, 0, width, height);
 		privates->resize_pending = false;
@@ -1506,15 +1485,49 @@ static void real_draw(struct privates *privates,
 
 	GLuint index_buffer = privates->index_buffer;
 
+	gl->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+
 	for (size_t ii = 0U; ii < lntd_assets_assets_size; ++ii) {
 		uint16_t start = lntd_assets_assets[ii].start;
 		uint16_t length = lntd_assets_assets[ii].length;
 
-		gl->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 		gl->BufferData(
 		    GL_ELEMENT_ARRAY_BUFFER,
 		    3U * length * sizeof lntd_assets_indices[0U],
-		    lntd_assets_indices + 3U * start, GL_STATIC_DRAW);
+		    lntd_assets_indices + 3U * start, GL_DYNAMIC_DRAW);
+
+		{
+			/* X, Y, Z, W coords of the resultant vector are
+			 * the
+			 * sums of the columns (row major order).
+			 */
+
+			GLfloat z_rotation = update->z_rotation;
+			GLfloat x_rotation = update->x_rotation;
+
+			GLfloat x_position = update->x_position;
+			GLfloat y_position = update->y_position;
+			GLfloat z_position = update->z_position;
+
+			GLfloat mx = 0;
+			if (0U == ii) {
+				static unsigned x = 0;
+				mx = x / 50.0f;
+				x = (x + 1) % 50;
+			}
+
+			if (mvp_matrix >= 0) {
+				struct matrix mvp;
+				model_view_projection(
+				    &mvp, x_rotation, z_rotation,
+				    x_position, y_position, z_position,
+				    mx, 0, 0, width, height);
+				gl->UniformMatrix4fv(
+				    mvp_matrix, 1U, false,
+				    (void const *)&mvp);
+			}
+		}
+
 		gl->DrawElements(GL_TRIANGLES, 3U * length,
 		                 GL_UNSIGNED_SHORT, 0);
 	}
@@ -1587,7 +1600,8 @@ static lntd_error get_gl_error(struct privates *privates,
 static inline void model_view_projection(
     struct matrix *restrict resultp, GLfloat x_rotation,
     GLfloat z_rotation, GLfloat x_position, GLfloat y_position,
-    GLfloat z_position, unsigned width, unsigned height)
+    GLfloat z_position, GLfloat mx_position, GLfloat my_position,
+    GLfloat mz_position, unsigned width, unsigned height)
 {
 	/* Rotate the camera */
 	GLfloat cos_x = cosf(x_rotation);
@@ -1607,11 +1621,24 @@ static inline void model_view_projection(
 	{
 		struct matrix rotations;
 		{
-			struct matrix const x_rotation_matrix = {
-			    {{1, 0, 0, 0},
-			     {0, cos_x, -sin_x, 0},
-			     {0, sin_x, cos_x, 0},
-			     {0, 0, 0, 1}}};
+			struct matrix m;
+			{
+				struct matrix const model = {
+				    {{1, 0, 0, 0},
+				     {0, 1, 0, 0},
+				     {0, 0, 1, 0},
+				     {mx_position, my_position,
+				      mz_position, 1}}};
+
+				struct matrix const x_rotation_matrix =
+				    {{{1, 0, 0, 0},
+				      {0, cos_x, -sin_x, 0},
+				      {0, sin_x, cos_x, 0},
+				      {0, 0, 0, 1}}};
+
+				matrix_multiply(&x_rotation_matrix,
+				                &model, &m);
+			}
 
 			struct matrix const z_rotation_matrix = {
 			    {{cos_z, sin_z, 0, 0},
@@ -1619,8 +1646,8 @@ static inline void model_view_projection(
 			     {0, 0, 1, 0},
 			     {0, 0, 0, 1}}};
 
-			matrix_multiply(&z_rotation_matrix,
-			                &x_rotation_matrix, &rotations);
+			matrix_multiply(&z_rotation_matrix, &m,
+			                &rotations);
 		}
 
 		/* Translate the camera */
