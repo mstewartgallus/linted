@@ -51,23 +51,20 @@ package body Linted.Simulator with Spark_MODE => Off is
    Controller_KO : KOs.KO;
    Updater_KO : KOs.KO;
 
-   My_State : Simulate.State := (Positions => ((0, 0),
-				      (10 * 1024, 10 * 1024),
-					       (0, 0)),
+   My_State : Simulate.State := (Objects => (0 => ((0, 0),
+						   (10 * 1024, 10 * 1024),
+						   (0, 0)),
+					     1 => ((0, 0), (0, 0), (-100000, -100000))),
 
-				 MX_Position => 0,
-				 MY_Position => 0,
-				 MZ_Position => 0,
+				 Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
+				 X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
 
-			Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
-			X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
-
-			Controls => (Z_Tilt => 0, X_Tilt => 0,
-				     Back => False,
-				     Forward => False,
-				     Left => False,
-				     Right => False,
-				     Jumping => False));
+				 Controls => (Z_Tilt => 0, X_Tilt => 0,
+					      Back => False,
+					      Forward => False,
+					      Left => False,
+					      Right => False,
+					      Jumping => False));
    Next_Time : Real_Time.Time;
 
    task A;
@@ -146,13 +143,13 @@ package body Linted.Simulator with Spark_MODE => Off is
 	    Timer_Event_Channel.Poll (Option_Event);
 	    if not Option_Event.Empty then
 	       Simulate.Tick (My_State);
-	       Update_Writer.Write (Updater_KO, (X_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.X).Value),
-						 Y_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.Y).Value),
-						 Z_Position => Linted.Update_Writer.Update_Int (My_State.Positions (Types.Z).Value),
+	       Update_Writer.Write (Updater_KO, (X_Position => Linted.Update_Writer.Update_Int (My_State.Objects (0) (Types.X).Value),
+						 Y_Position => Linted.Update_Writer.Update_Int (My_State.Objects (0) (Types.Y).Value),
+						 Z_Position => Linted.Update_Writer.Update_Int (My_State.Objects (0) (Types.Z).Value),
 
-						 MX_Position => Linted.Update_Writer.Update_Int (My_State.MX_Position),
-						 MY_Position => Linted.Update_Writer.Update_Int (My_State.MY_Position),
-						 MZ_Position => Linted.Update_Writer.Update_Int (My_State.MZ_Position),
+						 MX_Position => Linted.Update_Writer.Update_Int (My_State.Objects (1) (Types.X).Value),
+						 MY_Position => Linted.Update_Writer.Update_Int (My_State.Objects (1) (Types.Y).Value),
+						 MZ_Position => Linted.Update_Writer.Update_Int (My_State.Objects (1) (Types.Z).Value),
 
 						 Z_Rotation => Linted.Update_Writer.Update_Nat (Types.Sim_Angles.From_Angle (My_State.Z_Rotation)),
 						 X_Rotation => Linted.Update_Writer.Update_Nat (Types.Sim_Angles.From_Angle (My_State.X_Rotation))));

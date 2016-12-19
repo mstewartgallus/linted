@@ -17,16 +17,12 @@ with Linted.Types;
 package Linted.Simulate with Abstract_State => null is
    pragma Elaborate_Body;
 
+   type Object_State is array (0 .. 1) of Types.Varying_Positions;
+
    type State is record
       Controls : Linted.Controls_Reader.Controls;
 
-      Positions : Types.Varying_Positions := (Types.X => (Value => 0, Old => 0),
-					Types.Y => (Value => 0, Old => 0),
-					Types.Z => (Value => 0, Old => 0));
-
-      MX_Position : Types.Int := 0;
-      MY_Position : Types.Int := 0;
-      MZ_Position : Types.Int := 0;
+      Objects : Object_State;
 
       Z_Rotation : Types.Sim_Angle;
       X_Rotation : Types.Sim_Angle;

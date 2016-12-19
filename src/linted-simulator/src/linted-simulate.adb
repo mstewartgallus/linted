@@ -143,8 +143,6 @@ package body Linted.Simulate is
    end Downscale;
 
    procedure Tick (This : in out State) is
-      Contacting_Ground : Boolean;
-
       X_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
       Y_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
       Z_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
@@ -154,7 +152,7 @@ package body Linted.Simulate is
       Gravity : constant array (Types.Position) of Types.Int := (0, 0, 10);
       Normal_Force : array (Types.Position) of Types.Int := (0, 0, 0);
 
-      Forces : array (Types.Position) of Types.Int;
+      Forces : array (0..1, Types.Position) of Types.Int;
 
       Cos_Z : Types.Int;
       Sin_Z : Types.Int;
@@ -165,12 +163,10 @@ package body Linted.Simulate is
       Retreat_Or_Go_Forth := Boolean'Pos (This.Controls.Back) - Boolean'Pos (This.Controls.Forward);
       Strafe := Boolean'Pos (This.Controls.Left) - Boolean'Pos (This.Controls.Right);
 
-      Contacting_Ground := This.Positions (Types.Z).Value >= 0;
-
       Cos_Z := Downscale (Sim_Cos (This.Z_Rotation), 32);
       Sin_Z := Downscale (Sim_Sin (This.Z_Rotation), 32);
 
-      if Contacting_Ground then
+      if This.Objects (0) (Types.Z).Value >= 0 then
 	 Y_Thrust (Types.X) := Retreat_Or_Go_Forth * Sin_Z;
 	 Y_Thrust (Types.Y) := Retreat_Or_Go_Forth * Cos_Z;
 
@@ -189,60 +185,65 @@ package body Linted.Simulate is
       end loop;
 
       for II in Types.Position loop
-	 Forces (II) := Gravity (II) + (Normal_Force (II) + Thrusts (II));
+	 Forces (0, II) := Gravity (II) + (Normal_Force (II) + Thrusts (II));
       end loop;
 
       for II in Types.Position loop
-	 declare
-	    Position : Types.Int;
-	    Old_Position : Types.Int;
+	 Forces (1, II) := Gravity (II);
+      end loop;
 
-	    Old_Velocity : Types.Int;
+      for Ix in 0 .. 1 loop
+	 for II in Types.Position loop
+	    declare
+	       Position : Types.Int;
+	       Old_Position : Types.Int;
 
-	    Force : Types.Int;
+	       Old_Velocity : Types.Int;
 
-	    Guess_Velocity : Types.Int;
+	       Force : Types.Int;
 
-	    Mu : Types.Int;
-	    Friction : Types.Int;
-	    New_Velocity : Types.Int;
-	    New_Position : Types.Int;
-	 begin
-	    Position := This.Positions (II).Value;
-	    Old_Position := This.Positions (II).Old;
+	       Guess_Velocity : Types.Int;
 
-	    Force := Forces (II);
+	       Mu : Types.Int;
+	       Friction : Types.Int;
+	       New_Velocity : Types.Int;
+	       New_Position : Types.Int;
+	    begin
+	       Position := This.Objects (Ix) (II).Value;
+	       Old_Position := This.Objects (Ix) (II).Old;
 
-	    Old_Velocity := Position - Old_Position;
+	       Force := Forces (Ix, II);
 
-	    Guess_Velocity := Sim_Isatadd (Force, Old_Velocity);
+	       Old_Velocity := Position - Old_Position;
 
-	    if Types.X = II or Types.Y = II then
-	       if Contacting_Ground then
-		  Mu := 5;
+	       Guess_Velocity := Sim_Isatadd (Force, Old_Velocity);
+
+	       if Types.X = II or Types.Y = II then
+		  if This.Objects (Ix) (Types.Z).Value >= 0 then
+		     Mu := 5;
+		  else
+		     Mu := 0;
+		  end if;
 	       else
-		  Mu := 0;
+		  Mu := 5;
 	       end if;
-	    else
-	       Mu := 5;
-	    end if;
 
-	    Friction := Min_Int (Types.Int (Absolute (Guess_Velocity)), Mu) *
-	      (-Find_Sign (Guess_Velocity));
+	       Friction := Min_Int (Types.Int (Absolute (Guess_Velocity)), Mu) *
+		 (-Find_Sign (Guess_Velocity));
 
-	    New_Velocity := Sim_Isatadd (Guess_Velocity, Friction);
+	       New_Velocity := Sim_Isatadd (Guess_Velocity, Friction);
 
-	    if Types.Z = II and Contacting_Ground and New_Velocity > 0 then
-	       New_Velocity := 0;
-	    end if;
+	       if Types.Z = II and This.Objects (Ix) (Types.Z).Value >= 0 and New_Velocity > 0 then
+		  New_Velocity := 0;
+	       end if;
 
-	    New_Position := Sim_Isatadd (Position, New_Velocity);
+	       New_Position := Sim_Isatadd (Position, New_Velocity);
 
-	    This.Positions (II).Value := New_Position;
-	    This.Positions (II).Old := Position;
-	 end;
+	       This.Objects (Ix) (II).Value := New_Position;
+	       This.Objects (Ix) (II).Old := Position;
+	    end;
 
-	 This.MX_Position := (This.MX_Position + 10) mod 10000;
+	 end loop;
 
 	 This.Z_Rotation := Tilt_Rotation (This.Z_Rotation, Types.Int (This.Controls.Z_Tilt));
 	 This.X_Rotation :=
