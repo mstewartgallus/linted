@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2015 Steven Stewart-Gallus
+# Copyright 2015,2016 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ EXTRA_DIST+=\
 
 EXTRA_DIST+=\
   %D%/test.in\
+  %D%/blenderpython.in\
   %D%/check-cbmc.in\
   %D%/check-cpa.in\
   %D%/check-clang-analysis.in\
@@ -42,6 +43,7 @@ EXTRA_DIST+=\
   %D%/cpa-config.in
 MOSTLYCLEANFILES+=\
   %D%/test.out\
+  %D%/blenderpython.out\
   %D%/check-cbmc.out\
   %D%/check-cpa.out\
   %D%/check-clang-analysis.out\
@@ -53,6 +55,7 @@ MOSTLYCLEANFILES+=\
 
 all:\
   %D%/test.out\
+  %D%/blenderpython.out\
   %D%/check-cbmc.out\
   %D%/check-cpa.out\
   %D%/check-clang-analysis.out\

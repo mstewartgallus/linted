@@ -1,4 +1,4 @@
-# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
+# Copyright 2013, 2014, 2015, 2016 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You may
@@ -18,28 +18,51 @@ import os
 from string import Template
 
 def output():
-    def process_mesh(objct, index_list, normals, vertices):
-        indices = []
+    def process_mesh(mesh_objects):
+        index_list = [None] * len(mesh_objects)
 
-        mesh = objct.data
-        matrix = objct.matrix_world
-        normal_matrix = matrix.inverted().transposed()
+        total_vertex_length = 0
 
-        old_vertices_length = len(vertices)
+        for ii in range(0, len(mesh_objects)):
+            objct = mesh_objects[ii]
 
-        for polygon in polygons(mesh):
-            indices.append(Array(3, GLubyte)([GLubyte(index + old_vertices_length)
-                                              for index in polygon.vertices]))
+            mesh = objct.data
+            p = polygons(mesh)
 
-        for vertex in mesh.vertices:
-            world_normal = normal_matrix * vertex.normal
-            world_normal.normalize()
-            x_norm, y_norm, z_norm = world_normal.to_tuple()
-            x, y, z = (matrix * vertex.co).to_tuple()
-            normals.append(Array(3, GLfloat)((GLfloat(x_norm), GLfloat(y_norm), GLfloat(z_norm))))
-            vertices.append(Array(3, GLfloat)((GLfloat(x), GLfloat(y), GLfloat(z))))
+            total_vertex_length += len(mesh.vertices)
 
-        index_list.append(indices)
+            index_list[ii] = [None] * len(p)
+
+        vertices = [None] * total_vertex_length
+        normals = [None] * total_vertex_length
+
+        old_vertices_length = 0
+        for jj in range(0, len(mesh_objects)):
+            objct = mesh_objects[jj]
+            mesh = objct.data
+            matrix = objct.matrix_world
+            normal_matrix = matrix.inverted().transposed()
+
+            p = polygons(mesh)
+
+            for ii in range(0, len(p)):
+                polygon = p[ii]
+                index_list[jj][ii] = Array(3, GLubyte)([GLubyte(index + old_vertices_length)
+                                                 for index in polygon.vertices])
+
+            for ii in range(0, len(mesh.vertices)):
+                vertex = mesh.vertices[ii]
+                world_normal = normal_matrix * vertex.normal
+                world_normal.normalize()
+                x_norm, y_norm, z_norm = world_normal.to_tuple()
+                x, y, z = (matrix * vertex.co).to_tuple()
+
+                normals[ii + old_vertices_length] = Array(3, GLfloat)((GLfloat(x_norm), GLfloat(y_norm), GLfloat(z_norm)))
+                vertices[ii + old_vertices_length] = Array(3, GLfloat)((GLfloat(x), GLfloat(y), GLfloat(z)))
+
+            old_vertices_length += len(mesh.vertices)
+
+        return index_list, normals, vertices
 
     # Compatibility shim for older Blender versions
     def polygons(mesh):
@@ -55,11 +78,7 @@ def output():
 
         mesh_objects = [objct for objct in bpy.data.objects if 'MESH' == objct.type]
 
-        index_list = []
-        normals = []
-        vertices = []
-        for objct in mesh_objects:
-            process_mesh(objct, index_list, normals, vertices)
+        index_list, normals, vertices = process_mesh(mesh_objects)
 
         indices = []
         ix = 0
