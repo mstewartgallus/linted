@@ -15,26 +15,33 @@ with System;
 
 with Interfaces.C; use Interfaces.C;
 
-limited with Pulse.Mainloop.Api;
+limited with Pulse.Mainloop.API;
 
-package Pulse.Mainloop.Signal with SPARK_Mode => Off is
+package Pulse.Mainloop.Signal with
+     Spark_Mode => Off is
 
    --  skipped empty struct pa_signal_event
 
    type pa_signal_cb_t is access procedure
-        (arg1 : access Pulse.Mainloop.Api.pa_mainloop_api;
-         arg2 : System.Address;
-         arg3 : int;
-         arg4 : System.Address);
-   pragma Convention (C, pa_signal_cb_t);  -- /usr/include/pulse/mainloop-signal.h:44
+     (arg1 : access Pulse.Mainloop.API.pa_mainloop_api;
+      arg2 : System.Address;
+      arg3 : int;
+      arg4 : System.Address);
+   pragma Convention
+     (C,
+      pa_signal_cb_t);  -- /usr/include/pulse/mainloop-signal.h:44
 
    type pa_signal_destroy_cb_t is access procedure
-        (arg1 : access Pulse.Mainloop.Api.pa_mainloop_api;
-         arg2 : System.Address;
-         arg3 : System.Address);
-   pragma Convention (C, pa_signal_destroy_cb_t);  -- /usr/include/pulse/mainloop-signal.h:47
+     (arg1 : access Pulse.Mainloop.API.pa_mainloop_api;
+      arg2 : System.Address;
+      arg3 : System.Address);
+   pragma Convention
+     (C,
+      pa_signal_destroy_cb_t);  -- /usr/include/pulse/mainloop-signal.h:47
 
-   function pa_signal_init (api : access Pulse.Mainloop.Api.pa_mainloop_api) return int;  -- /usr/include/pulse/mainloop-signal.h:50
+   function pa_signal_init
+     (api : access Pulse.Mainloop.API.pa_mainloop_api)
+     return int;  -- /usr/include/pulse/mainloop-signal.h:50
    pragma Import (C, pa_signal_init, "pa_signal_init");
 
    procedure pa_signal_done;  -- /usr/include/pulse/mainloop-signal.h:53
@@ -43,13 +50,17 @@ package Pulse.Mainloop.Signal with SPARK_Mode => Off is
    function pa_signal_new
      (sig : int;
       callback : pa_signal_cb_t;
-      userdata : System.Address) return System.Address;  -- /usr/include/pulse/mainloop-signal.h:56
+      userdata : System.Address)
+     return System.Address;  -- /usr/include/pulse/mainloop-signal.h:56
    pragma Import (C, pa_signal_new, "pa_signal_new");
 
-   procedure pa_signal_free (e : System.Address);  -- /usr/include/pulse/mainloop-signal.h:59
+   procedure pa_signal_free
+     (e : System.Address);  -- /usr/include/pulse/mainloop-signal.h:59
    pragma Import (C, pa_signal_free, "pa_signal_free");
 
-   procedure pa_signal_set_destroy (e : System.Address; callback : pa_signal_destroy_cb_t);  -- /usr/include/pulse/mainloop-signal.h:62
+   procedure pa_signal_set_destroy
+     (e : System.Address;
+      callback : pa_signal_destroy_cb_t);  -- /usr/include/pulse/mainloop-signal.h:62
    pragma Import (C, pa_signal_set_destroy, "pa_signal_set_destroy");
 
 end Pulse.Mainloop.Signal;

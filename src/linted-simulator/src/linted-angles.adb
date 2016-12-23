@@ -17,14 +17,13 @@ package body Linted.Angles is
       return (Value => X);
    end To_Angle;
 
-   function To_Angle (X : Element_T;
-		      Y : Element_T) return Angle is
+   function To_Angle (X : Element_T; Y : Element_T) return Angle is
       Result : Element_T;
    begin
       if 0 = Y then
-	 Result := X;
+         Result := X;
       else
-	 Result := (Element_T'Last / Y) * X  + X / Y;
+         Result := (Element_T'Last / Y) * X + X / Y;
       end if;
       return (Value => Result);
    end To_Angle;
@@ -44,33 +43,37 @@ package body Linted.Angles is
       return To_Angle (From_Angle (Theta) - From_Angle (Phi));
    end "-";
 
-   function Add_Clamped (Min : Angle;
-			 Max : Angle;
-			 Theta : Angle;
-			 Phi : Angle) return Angle is
+   function Add_Clamped
+     (Min : Angle;
+      Max : Angle;
+      Theta : Angle;
+      Phi : Angle) return Angle
+   is
       X : Angle;
    begin
       X := Theta + Phi;
 
       if From_Angle (X) > From_Angle (Max) then
-	 return Max;
+         return Max;
       else
-	 return X;
+         return X;
       end if;
    end Add_Clamped;
 
-   function Subtract_Clamped (Min : Angle;
-			      Max : Angle;
-			      Theta : Angle;
-			      Phi : Angle) return Angle is
+   function Subtract_Clamped
+     (Min : Angle;
+      Max : Angle;
+      Theta : Angle;
+      Phi : Angle) return Angle
+   is
       X : Angle;
    begin
       X := Theta - Phi;
 
       if From_Angle (X) > From_Angle (Min) then
-	 return X;
+         return X;
       else
-	 return Min;
+         return Min;
       end if;
    end Subtract_Clamped;
 
@@ -80,39 +83,39 @@ package body Linted.Angles is
       Tau : constant My_Float := 2.0 * 3.1459265358979324;
 
       function Core (F : My_Float) return My_Float with
-	Pre => F >= 0.0 and F <= Tau / 4.0,
-	Post => Core'Result >= 0.0 and Core'Result <= 1.0;
+         Pre => F >= 0.0 and F <= Tau / 4.0,
+         Post => Core'Result >= 0.0 and Core'Result <= 1.0;
 
-      -- Sin (x) = x - x^3/ 6 + x^5 / 120
+         -- Sin (x) = x - x^3/ 6 + x^5 / 120
       function Core (F : My_Float) return My_Float is
-   	 F_2 : My_Float;
-	 X : My_Float;
-	 Y : My_Float;
-	 Z : My_Float;
-	 W : My_Float;
+         F_2 : My_Float;
+         X : My_Float;
+         Y : My_Float;
+         Z : My_Float;
+         W : My_Float;
       begin
-	 F_2 := F * F;
-	 pragma Assert (F_2 >= 0.0);
-	 pragma Assert (F_2 <= 2.47421344232);
+         F_2 := F * F;
+         pragma Assert (F_2 >= 0.0);
+         pragma Assert (F_2 <= 2.47421344232);
 
-	 X := 1.0 / 5040.0 + F_2 / 362880.0;
-	 pragma Assert (X <= 2.05230967379E-4);
-	 pragma Assert (X >= 1.98412698412E-4);
+         X := 1.0 / 5040.0 + F_2 / 362880.0;
+         pragma Assert (X <= 2.05230967379E-4);
+         pragma Assert (X >= 1.98412698412E-4);
 
-	 Y := 1.0 / 120.0 - X * F_2;
-	 pragma Assert (Y >= 7.82554811505E-3);
-	 pragma Assert (Y <= 8.33333333334E-3);
+         Y := 1.0 / 120.0 - X * F_2;
+         pragma Assert (Y >= 7.82554811505E-3);
+         pragma Assert (Y <= 8.33333333334E-3);
 
-	 Z := 1.0 / 6.0 + Y * F_2;
-	 pragma Assert (Z >= 0.166666666666);
-	 pragma Assert (Z <= 0.18728511203);
+         Z := 1.0 / 6.0 + Y * F_2;
+         pragma Assert (Z >= 0.166666666666);
+         pragma Assert (Z <= 0.18728511203);
 
-	 W := 1.0 - Z * F_2;
-	 pragma Assert (W >= 0.536616658268);
-	 pragma Assert (W <= 1.0);
+         W := 1.0 - Z * F_2;
+         pragma Assert (W >= 0.536616658268);
+         pragma Assert (W <= 1.0);
 
-   	 return F * W;
-   	 -- M : My_Float := F * 2.0 / 3.1459265359;
+         return F * W;
+         -- M : My_Float := F * 2.0 / 3.1459265359;
       end Core;
 
       Sign : Element_U := 1;
@@ -123,22 +126,26 @@ package body Linted.Angles is
       My_Input_Angle := From_Angle (X);
 
       if My_Input_Angle >= Element_T'Last / 2 + 1 then
-   	 My_Input_Angle := My_Input_Angle - (Element_T'Last / 2 + 1);
-   	 Sign := -1;
+         My_Input_Angle := My_Input_Angle - (Element_T'Last / 2 + 1);
+         Sign := -1;
       end if;
       pragma Assert (My_Input_Angle < Element_T'Last / 2 + 1);
 
       if My_Input_Angle >= Element_T'Last / 4 + 1 then
-   	 My_Input_Angle := Element_T'Last / 2 - My_Input_Angle;
+         My_Input_Angle := Element_T'Last / 2 - My_Input_Angle;
       end if;
       pragma Assert (My_Input_Angle < Element_T'Last / 4 + 1);
 
-      Result_F := My_Float (Element_U'Last) * Core (My_Float (My_Input_Angle) * (Tau / (My_Float (Element_T'Last) + 1.0)));
+      Result_F :=
+        My_Float (Element_U'Last) *
+        Core
+          (My_Float (My_Input_Angle) *
+           (Tau / (My_Float (Element_T'Last) + 1.0)));
 
       if Result_F > My_Float (Element_U'Last) then
-	 Result := Element_U'Last;
+         Result := Element_U'Last;
       else
-	 Result := Element_U (Result_F);
+         Result := Element_U (Result_F);
       end if;
       return Sign * Result;
    end Sin;

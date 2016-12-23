@@ -21,7 +21,8 @@ with Libc.Time.GNU;
 
 with Pulse.Sample;
 
-package Pulse.Def with SPARK_Mode => Off is
+package Pulse.Def with
+     Spark_Mode => Off is
 
    --  unsupported macro: PA_CONTEXT_UNCONNECTED PA_CONTEXT_UNCONNECTED
    --  unsupported macro: PA_CONTEXT_CONNECTING PA_CONTEXT_CONNECTING
@@ -181,7 +182,8 @@ package Pulse.Def with SPARK_Mode => Off is
 
    subtype pa_context_state_t is pa_context_state;
 
-   function PA_CONTEXT_IS_GOOD (x : pa_context_state_t) return int;  -- /usr/include/pulse/def.h:50
+   function PA_CONTEXT_IS_GOOD
+     (x : pa_context_state_t) return int;  -- /usr/include/pulse/def.h:50
    pragma Import (C, PA_CONTEXT_IS_GOOD, "PA_CONTEXT_IS_GOOD");
 
    type pa_stream_state is
@@ -194,34 +196,30 @@ package Pulse.Def with SPARK_Mode => Off is
 
    subtype pa_stream_state_t is pa_stream_state;
 
-   function PA_STREAM_IS_GOOD (x : pa_stream_state_t) return int;  -- /usr/include/pulse/def.h:79
+   function PA_STREAM_IS_GOOD
+     (x : pa_stream_state_t) return int;  -- /usr/include/pulse/def.h:79
    pragma Import (C, PA_STREAM_IS_GOOD, "PA_STREAM_IS_GOOD");
 
    type pa_operation_state is
-     (PA_OPERATION_RUNNING,
-      PA_OPERATION_DONE,
-      PA_OPERATION_CANCELLED);
+     (PA_OPERATION_RUNNING, PA_OPERATION_DONE, PA_OPERATION_CANCELLED);
    pragma Convention (C, pa_operation_state);  -- /usr/include/pulse/def.h:95
 
    subtype pa_operation_state_t is pa_operation_state;
 
    type pa_context_flags is
-     (PA_CONTEXT_NOFLAGS,
-      PA_CONTEXT_NOAUTOSPAWN,
-      PA_CONTEXT_NOFAIL);
+     (PA_CONTEXT_NOFLAGS, PA_CONTEXT_NOAUTOSPAWN, PA_CONTEXT_NOFAIL);
    pragma Convention (C, pa_context_flags);  -- /usr/include/pulse/def.h:117
 
    subtype pa_context_flags_t is pa_context_flags;
 
    subtype pa_direction is unsigned;
    PA_DIRECTION_OUTPUT : constant pa_direction := 1;
-   PA_DIRECTION_INPUT : constant pa_direction := 2;  -- /usr/include/pulse/def.h:136
+   PA_DIRECTION_INPUT : constant pa_direction :=
+     2;  -- /usr/include/pulse/def.h:136
 
    subtype pa_direction_t is pa_direction;
 
-   type pa_device_type is
-     (PA_DEVICE_TYPE_SINK,
-      PA_DEVICE_TYPE_SOURCE);
+   type pa_device_type is (PA_DEVICE_TYPE_SINK, PA_DEVICE_TYPE_SOURCE);
    pragma Convention (C, pa_device_type);  -- /usr/include/pulse/def.h:147
 
    subtype pa_device_type_t is pa_device_type;
@@ -256,18 +254,22 @@ package Pulse.Def with SPARK_Mode => Off is
    PA_STREAM_START_UNMUTED : constant pa_stream_flags := 65536;
    PA_STREAM_FAIL_ON_SUSPEND : constant pa_stream_flags := 131072;
    PA_STREAM_RELATIVE_VOLUME : constant pa_stream_flags := 262144;
-   PA_STREAM_PASSTHROUGH : constant pa_stream_flags := 524288;  -- /usr/include/pulse/def.h:173
+   PA_STREAM_PASSTHROUGH : constant pa_stream_flags :=
+     524288;  -- /usr/include/pulse/def.h:173
 
    subtype pa_stream_flags_t is pa_stream_flags;
 
    type pa_buffer_attr is record
-      maxlength : aliased Libc.Stdint.uint32_t;  -- /usr/include/pulse/def.h:360
+      maxlength : aliased Libc.Stdint
+        .uint32_t;  -- /usr/include/pulse/def.h:360
       tlength : aliased Libc.Stdint.uint32_t;  -- /usr/include/pulse/def.h:371
       prebuf : aliased Libc.Stdint.uint32_t;  -- /usr/include/pulse/def.h:389
       minreq : aliased Libc.Stdint.uint32_t;  -- /usr/include/pulse/def.h:400
       fragsize : aliased Libc.Stdint.uint32_t;  -- /usr/include/pulse/def.h:410
    end record;
-   pragma Convention (C_Pass_By_Copy, pa_buffer_attr);  -- /usr/include/pulse/def.h:359
+   pragma Convention
+     (C_Pass_By_Copy,
+      pa_buffer_attr);  -- /usr/include/pulse/def.h:359
 
    type pa_error_code is
      (PA_OK,
@@ -314,7 +316,8 @@ package Pulse.Def with SPARK_Mode => Off is
    PA_SUBSCRIPTION_MASK_SERVER : constant pa_subscription_mask := 128;
    PA_SUBSCRIPTION_MASK_AUTOLOAD : constant pa_subscription_mask := 256;
    PA_SUBSCRIPTION_MASK_CARD : constant pa_subscription_mask := 512;
-   PA_SUBSCRIPTION_MASK_ALL : constant pa_subscription_mask := 767;  -- /usr/include/pulse/def.h:488
+   PA_SUBSCRIPTION_MASK_ALL : constant pa_subscription_mask :=
+     767;  -- /usr/include/pulse/def.h:488
 
    subtype pa_subscription_mask_t is pa_subscription_mask;
 
@@ -322,44 +325,61 @@ package Pulse.Def with SPARK_Mode => Off is
    PA_SUBSCRIPTION_EVENT_SINK : constant pa_subscription_event_type := 0;
    PA_SUBSCRIPTION_EVENT_SOURCE : constant pa_subscription_event_type := 1;
    PA_SUBSCRIPTION_EVENT_SINK_INPUT : constant pa_subscription_event_type := 2;
-   PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT : constant pa_subscription_event_type := 3;
+   PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT : constant pa_subscription_event_type :=
+     3;
    PA_SUBSCRIPTION_EVENT_MODULE : constant pa_subscription_event_type := 4;
    PA_SUBSCRIPTION_EVENT_CLIENT : constant pa_subscription_event_type := 5;
-   PA_SUBSCRIPTION_EVENT_SAMPLE_CACHE : constant pa_subscription_event_type := 6;
+   PA_SUBSCRIPTION_EVENT_SAMPLE_CACHE : constant pa_subscription_event_type :=
+     6;
    PA_SUBSCRIPTION_EVENT_SERVER : constant pa_subscription_event_type := 7;
    PA_SUBSCRIPTION_EVENT_AUTOLOAD : constant pa_subscription_event_type := 8;
    PA_SUBSCRIPTION_EVENT_CARD : constant pa_subscription_event_type := 9;
-   PA_SUBSCRIPTION_EVENT_FACILITY_MASK : constant pa_subscription_event_type := 15;
+   PA_SUBSCRIPTION_EVENT_FACILITY_MASK : constant pa_subscription_event_type :=
+     15;
    PA_SUBSCRIPTION_EVENT_NEW : constant pa_subscription_event_type := 0;
    PA_SUBSCRIPTION_EVENT_CHANGE : constant pa_subscription_event_type := 16;
    PA_SUBSCRIPTION_EVENT_REMOVE : constant pa_subscription_event_type := 32;
-   PA_SUBSCRIPTION_EVENT_TYPE_MASK : constant pa_subscription_event_type := 48;  -- /usr/include/pulse/def.h:529
+   PA_SUBSCRIPTION_EVENT_TYPE_MASK : constant pa_subscription_event_type :=
+     48;  -- /usr/include/pulse/def.h:529
 
    subtype pa_subscription_event_type_t is pa_subscription_event_type;
 
    type pa_timing_info is record
-      timestamp : aliased Libc.Time.GNU.timeval;  -- /usr/include/pulse/def.h:631
+      timestamp : aliased Libc.Time.GNU
+        .timeval;  -- /usr/include/pulse/def.h:631
       synchronized_clocks : aliased int;  -- /usr/include/pulse/def.h:634
-      sink_usec : aliased Pulse.Sample.pa_usec_t;  -- /usr/include/pulse/def.h:641
-      source_usec : aliased Pulse.Sample.pa_usec_t;  -- /usr/include/pulse/def.h:646
-      transport_usec : aliased Pulse.Sample.pa_usec_t;  -- /usr/include/pulse/def.h:650
+      sink_usec : aliased Pulse.Sample
+        .pa_usec_t;  -- /usr/include/pulse/def.h:641
+      source_usec : aliased Pulse.Sample
+        .pa_usec_t;  -- /usr/include/pulse/def.h:646
+      transport_usec : aliased Pulse.Sample
+        .pa_usec_t;  -- /usr/include/pulse/def.h:650
       playing : aliased int;  -- /usr/include/pulse/def.h:654
       write_index_corrupt : aliased int;  -- /usr/include/pulse/def.h:661
-      write_index : aliased Libc.Stdint.int64_t;  -- /usr/include/pulse/def.h:668
+      write_index : aliased Libc.Stdint
+        .int64_t;  -- /usr/include/pulse/def.h:668
       read_index_corrupt : aliased int;  -- /usr/include/pulse/def.h:674
-      read_index : aliased Libc.Stdint.int64_t;  -- /usr/include/pulse/def.h:679
-      configured_sink_usec : aliased Pulse.Sample.pa_usec_t;  -- /usr/include/pulse/def.h:685
-      configured_source_usec : aliased Pulse.Sample.pa_usec_t;  -- /usr/include/pulse/def.h:688
-      since_underrun : aliased Libc.Stdint.int64_t;  -- /usr/include/pulse/def.h:691
+      read_index : aliased Libc.Stdint
+        .int64_t;  -- /usr/include/pulse/def.h:679
+      configured_sink_usec : aliased Pulse.Sample
+        .pa_usec_t;  -- /usr/include/pulse/def.h:685
+      configured_source_usec : aliased Pulse.Sample
+        .pa_usec_t;  -- /usr/include/pulse/def.h:688
+      since_underrun : aliased Libc.Stdint
+        .int64_t;  -- /usr/include/pulse/def.h:691
    end record;
-   pragma Convention (C_Pass_By_Copy, pa_timing_info);  -- /usr/include/pulse/def.h:630
+   pragma Convention
+     (C_Pass_By_Copy,
+      pa_timing_info);  -- /usr/include/pulse/def.h:630
 
    type pa_spawn_api is record
       prefork : access procedure;  -- /usr/include/pulse/def.h:707
       postfork : access procedure;  -- /usr/include/pulse/def.h:711
       atfork : access procedure;  -- /usr/include/pulse/def.h:715
    end record;
-   pragma Convention (C_Pass_By_Copy, pa_spawn_api);  -- /usr/include/pulse/def.h:706
+   pragma Convention
+     (C_Pass_By_Copy,
+      pa_spawn_api);  -- /usr/include/pulse/def.h:706
 
    type pa_seek_mode is
      (PA_SEEK_RELATIVE,
@@ -380,7 +400,8 @@ package Pulse.Def with SPARK_Mode => Off is
    PA_SINK_DECIBEL_VOLUME : constant pa_sink_flags := 32;
    PA_SINK_FLAT_VOLUME : constant pa_sink_flags := 64;
    PA_SINK_DYNAMIC_LATENCY : constant pa_sink_flags := 128;
-   PA_SINK_SET_FORMATS : constant pa_sink_flags := 256;  -- /usr/include/pulse/def.h:746
+   PA_SINK_SET_FORMATS : constant pa_sink_flags :=
+     256;  -- /usr/include/pulse/def.h:746
 
    subtype pa_sink_flags_t is pa_sink_flags;
 
@@ -390,14 +411,17 @@ package Pulse.Def with SPARK_Mode => Off is
    PA_SINK_IDLE : constant pa_sink_state := 1;
    PA_SINK_SUSPENDED : constant pa_sink_state := 2;
    PA_SINK_INIT : constant pa_sink_state := -2;
-   PA_SINK_UNLINKED : constant pa_sink_state := -3;  -- /usr/include/pulse/def.h:820
+   PA_SINK_UNLINKED : constant pa_sink_state :=
+     -3;  -- /usr/include/pulse/def.h:820
 
    subtype pa_sink_state_t is pa_sink_state;
 
-   function PA_SINK_IS_OPENED (x : pa_sink_state_t) return int;  -- /usr/include/pulse/def.h:850
+   function PA_SINK_IS_OPENED
+     (x : pa_sink_state_t) return int;  -- /usr/include/pulse/def.h:850
    pragma Import (C, PA_SINK_IS_OPENED, "PA_SINK_IS_OPENED");
 
-   function PA_SINK_IS_RUNNING (x : pa_sink_state_t) return int;  -- /usr/include/pulse/def.h:855
+   function PA_SINK_IS_RUNNING
+     (x : pa_sink_state_t) return int;  -- /usr/include/pulse/def.h:855
    pragma Import (C, PA_SINK_IS_RUNNING, "PA_SINK_IS_RUNNING");
 
    subtype pa_source_flags is unsigned;
@@ -409,7 +433,8 @@ package Pulse.Def with SPARK_Mode => Off is
    PA_SOURCE_HW_MUTE_CTRL : constant pa_source_flags := 16;
    PA_SOURCE_DECIBEL_VOLUME : constant pa_source_flags := 32;
    PA_SOURCE_DYNAMIC_LATENCY : constant pa_source_flags := 64;
-   PA_SOURCE_FLAT_VOLUME : constant pa_source_flags := 128;  -- /usr/include/pulse/def.h:870
+   PA_SOURCE_FLAT_VOLUME : constant pa_source_flags :=
+     128;  -- /usr/include/pulse/def.h:870
 
    subtype pa_source_flags_t is pa_source_flags;
 
@@ -419,23 +444,24 @@ package Pulse.Def with SPARK_Mode => Off is
    PA_SOURCE_IDLE : constant pa_source_state := 1;
    PA_SOURCE_SUSPENDED : constant pa_source_state := 2;
    PA_SOURCE_INIT : constant pa_source_state := -2;
-   PA_SOURCE_UNLINKED : constant pa_source_state := -3;  -- /usr/include/pulse/def.h:936
+   PA_SOURCE_UNLINKED : constant pa_source_state :=
+     -3;  -- /usr/include/pulse/def.h:936
 
    subtype pa_source_state_t is pa_source_state;
 
-   function PA_SOURCE_IS_OPENED (x : pa_source_state_t) return int;  -- /usr/include/pulse/def.h:966
+   function PA_SOURCE_IS_OPENED
+     (x : pa_source_state_t) return int;  -- /usr/include/pulse/def.h:966
    pragma Import (C, PA_SOURCE_IS_OPENED, "PA_SOURCE_IS_OPENED");
 
-   function PA_SOURCE_IS_RUNNING (x : pa_source_state_t) return int;  -- /usr/include/pulse/def.h:971
+   function PA_SOURCE_IS_RUNNING
+     (x : pa_source_state_t) return int;  -- /usr/include/pulse/def.h:971
    pragma Import (C, PA_SOURCE_IS_RUNNING, "PA_SOURCE_IS_RUNNING");
 
    type pa_free_cb_t is access procedure (arg1 : System.Address);
    pragma Convention (C, pa_free_cb_t);  -- /usr/include/pulse/def.h:986
 
    type pa_port_available is
-     (PA_PORT_AVAILABLE_UNKNOWN,
-      PA_PORT_AVAILABLE_NO,
-      PA_PORT_AVAILABLE_YES);
+     (PA_PORT_AVAILABLE_UNKNOWN, PA_PORT_AVAILABLE_NO, PA_PORT_AVAILABLE_YES);
    pragma Convention (C, pa_port_available);  -- /usr/include/pulse/def.h:1008
 
    subtype pa_port_available_t is pa_port_available;

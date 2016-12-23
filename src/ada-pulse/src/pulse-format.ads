@@ -21,7 +21,8 @@ with Libc.Stddef;
 with Pulse.Sample;
 limited with Pulse.Channelmap;
 
-package Pulse.Format with SPARK_Mode => Off is
+package Pulse.Format with
+     Spark_Mode => Off is
 
    --  unsupported macro: PA_ENCODING_ANY PA_ENCODING_ANY
    --  unsupported macro: PA_ENCODING_PCM PA_ENCODING_PCM
@@ -48,57 +49,89 @@ package Pulse.Format with SPARK_Mode => Off is
    PA_ENCODING_DTS_IEC61937 : constant pa_encoding := 5;
    PA_ENCODING_MPEG2_AAC_IEC61937 : constant pa_encoding := 6;
    PA_ENCODING_MAX : constant pa_encoding := 7;
-   PA_ENCODING_INVALID : constant pa_encoding := -1;  -- /usr/include/pulse/format.h:39
+   PA_ENCODING_INVALID : constant pa_encoding :=
+     -1;  -- /usr/include/pulse/format.h:39
 
    subtype pa_encoding_t is pa_encoding;
 
-   function pa_encoding_to_string (e : pa_encoding_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/format.h:81
+   function pa_encoding_to_string
+     (e : pa_encoding_t)
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/format.h:81
    pragma Import (C, pa_encoding_to_string, "pa_encoding_to_string");
 
-   function pa_encoding_from_string (encoding : Interfaces.C.Strings.chars_ptr) return pa_encoding_t;  -- /usr/include/pulse/format.h:84
+   function pa_encoding_from_string
+     (encoding : Interfaces.C.Strings.chars_ptr)
+     return pa_encoding_t;  -- /usr/include/pulse/format.h:84
    pragma Import (C, pa_encoding_from_string, "pa_encoding_from_string");
 
    type pa_format_info is record
       encoding : aliased pa_encoding_t;  -- /usr/include/pulse/format.h:88
       plist : System.Address;  -- /usr/include/pulse/format.h:91
    end record;
-   pragma Convention (C_Pass_By_Copy, pa_format_info);  -- /usr/include/pulse/format.h:87
+   pragma Convention
+     (C_Pass_By_Copy,
+      pa_format_info);  -- /usr/include/pulse/format.h:87
 
-   function pa_format_info_new return access pa_format_info;  -- /usr/include/pulse/format.h:96
+   function pa_format_info_new
+     return access pa_format_info;  -- /usr/include/pulse/format.h:96
    pragma Import (C, pa_format_info_new, "pa_format_info_new");
 
-   function pa_format_info_copy (src : System.Address) return access pa_format_info;  -- /usr/include/pulse/format.h:99
+   function pa_format_info_copy
+     (src : System.Address)
+     return access pa_format_info;  -- /usr/include/pulse/format.h:99
    pragma Import (C, pa_format_info_copy, "pa_format_info_copy");
 
-   procedure pa_format_info_free (f : access pa_format_info);  -- /usr/include/pulse/format.h:102
+   procedure pa_format_info_free
+     (f : access pa_format_info);  -- /usr/include/pulse/format.h:102
    pragma Import (C, pa_format_info_free, "pa_format_info_free");
 
-   function pa_format_info_valid (f : System.Address) return int;  -- /usr/include/pulse/format.h:105
+   function pa_format_info_valid
+     (f : System.Address) return int;  -- /usr/include/pulse/format.h:105
    pragma Import (C, pa_format_info_valid, "pa_format_info_valid");
 
-   function pa_format_info_is_pcm (f : System.Address) return int;  -- /usr/include/pulse/format.h:108
+   function pa_format_info_is_pcm
+     (f : System.Address) return int;  -- /usr/include/pulse/format.h:108
    pragma Import (C, pa_format_info_is_pcm, "pa_format_info_is_pcm");
 
-   function pa_format_info_is_compatible (first : access pa_format_info; second : access pa_format_info) return int;  -- /usr/include/pulse/format.h:117
-   pragma Import (C, pa_format_info_is_compatible, "pa_format_info_is_compatible");
+   function pa_format_info_is_compatible
+     (first : access pa_format_info;
+      second : access pa_format_info)
+     return int;  -- /usr/include/pulse/format.h:117
+   pragma Import
+     (C,
+      pa_format_info_is_compatible,
+      "pa_format_info_is_compatible");
 
    function pa_format_info_snprint
      (s : Interfaces.C.Strings.chars_ptr;
       l : Libc.Stddef.size_t;
-      f : System.Address) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/format.h:127
+      f : System.Address)
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/format.h:127
    pragma Import (C, pa_format_info_snprint, "pa_format_info_snprint");
 
-   function pa_format_info_from_string (str : Interfaces.C.Strings.chars_ptr) return access pa_format_info;  -- /usr/include/pulse/format.h:131
+   function pa_format_info_from_string
+     (str : Interfaces.C.Strings.chars_ptr)
+     return access pa_format_info;  -- /usr/include/pulse/format.h:131
    pragma Import (C, pa_format_info_from_string, "pa_format_info_from_string");
 
-   function pa_format_info_from_sample_spec (ss : access Pulse.Sample.pa_sample_spec; map : access Pulse.Channelmap.pa_channel_map) return access pa_format_info;  -- /usr/include/pulse/format.h:134
-   pragma Import (C, pa_format_info_from_sample_spec, "pa_format_info_from_sample_spec");
+   function pa_format_info_from_sample_spec
+     (ss : access Pulse.Sample.pa_sample_spec;
+      map : access Pulse.Channelmap.pa_channel_map)
+      return access pa_format_info;  -- /usr/include/pulse/format.h:134
+   pragma Import
+     (C,
+      pa_format_info_from_sample_spec,
+      "pa_format_info_from_sample_spec");
 
    function pa_format_info_to_sample_spec
      (f : access pa_format_info;
       ss : access Pulse.Sample.pa_sample_spec;
-      map : access Pulse.Channelmap.pa_channel_map) return int;  -- /usr/include/pulse/format.h:141
-   pragma Import (C, pa_format_info_to_sample_spec, "pa_format_info_to_sample_spec");
+      map : access Pulse.Channelmap.pa_channel_map)
+     return int;  -- /usr/include/pulse/format.h:141
+   pragma Import
+     (C,
+      pa_format_info_to_sample_spec,
+      "pa_format_info_to_sample_spec");
 
    subtype pa_prop_type_t is unsigned;
    PA_PROP_TYPE_INT : constant pa_prop_type_t := 0;
@@ -106,90 +139,152 @@ package Pulse.Format with SPARK_Mode => Off is
    PA_PROP_TYPE_INT_ARRAY : constant pa_prop_type_t := 2;
    PA_PROP_TYPE_STRING : constant pa_prop_type_t := 3;
    PA_PROP_TYPE_STRING_ARRAY : constant pa_prop_type_t := 4;
-   PA_PROP_TYPE_INVALID : constant pa_prop_type_t := -1;  -- /usr/include/pulse/format.h:144
+   PA_PROP_TYPE_INVALID : constant pa_prop_type_t :=
+     -1;  -- /usr/include/pulse/format.h:144
 
-   function pa_format_info_get_prop_type (f : access pa_format_info; key : Interfaces.C.Strings.chars_ptr) return pa_prop_type_t;  -- /usr/include/pulse/format.h:174
-   pragma Import (C, pa_format_info_get_prop_type, "pa_format_info_get_prop_type");
+   function pa_format_info_get_prop_type
+     (f : access pa_format_info;
+      key : Interfaces.C.Strings.chars_ptr)
+     return pa_prop_type_t;  -- /usr/include/pulse/format.h:174
+   pragma Import
+     (C,
+      pa_format_info_get_prop_type,
+      "pa_format_info_get_prop_type");
 
    function pa_format_info_get_prop_int
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       v : access int) return int;  -- /usr/include/pulse/format.h:177
-   pragma Import (C, pa_format_info_get_prop_int, "pa_format_info_get_prop_int");
+   pragma Import
+     (C,
+      pa_format_info_get_prop_int,
+      "pa_format_info_get_prop_int");
 
    function pa_format_info_get_prop_int_range
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       min : access int;
       max : access int) return int;  -- /usr/include/pulse/format.h:180
-   pragma Import (C, pa_format_info_get_prop_int_range, "pa_format_info_get_prop_int_range");
+   pragma Import
+     (C,
+      pa_format_info_get_prop_int_range,
+      "pa_format_info_get_prop_int_range");
 
    function pa_format_info_get_prop_int_array
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       values : System.Address;
       n_values : access int) return int;  -- /usr/include/pulse/format.h:184
-   pragma Import (C, pa_format_info_get_prop_int_array, "pa_format_info_get_prop_int_array");
+   pragma Import
+     (C,
+      pa_format_info_get_prop_int_array,
+      "pa_format_info_get_prop_int_array");
 
    function pa_format_info_get_prop_string
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       v : System.Address) return int;  -- /usr/include/pulse/format.h:187
-   pragma Import (C, pa_format_info_get_prop_string, "pa_format_info_get_prop_string");
+   pragma Import
+     (C,
+      pa_format_info_get_prop_string,
+      "pa_format_info_get_prop_string");
 
    function pa_format_info_get_prop_string_array
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       values : System.Address;
       n_values : access int) return int;  -- /usr/include/pulse/format.h:191
-   pragma Import (C, pa_format_info_get_prop_string_array, "pa_format_info_get_prop_string_array");
+   pragma Import
+     (C,
+      pa_format_info_get_prop_string_array,
+      "pa_format_info_get_prop_string_array");
 
-   procedure pa_format_info_free_string_array (values : System.Address; n_values : int);  -- /usr/include/pulse/format.h:194
-   pragma Import (C, pa_format_info_free_string_array, "pa_format_info_free_string_array");
+   procedure pa_format_info_free_string_array
+     (values : System.Address;
+      n_values : int);  -- /usr/include/pulse/format.h:194
+   pragma Import
+     (C,
+      pa_format_info_free_string_array,
+      "pa_format_info_free_string_array");
 
    procedure pa_format_info_set_prop_int
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       value : int);  -- /usr/include/pulse/format.h:197
-   pragma Import (C, pa_format_info_set_prop_int, "pa_format_info_set_prop_int");
+   pragma Import
+     (C,
+      pa_format_info_set_prop_int,
+      "pa_format_info_set_prop_int");
 
    procedure pa_format_info_set_prop_int_array
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       values : access int;
       n_values : int);  -- /usr/include/pulse/format.h:199
-   pragma Import (C, pa_format_info_set_prop_int_array, "pa_format_info_set_prop_int_array");
+   pragma Import
+     (C,
+      pa_format_info_set_prop_int_array,
+      "pa_format_info_set_prop_int_array");
 
    procedure pa_format_info_set_prop_int_range
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       min : int;
       max : int);  -- /usr/include/pulse/format.h:201
-   pragma Import (C, pa_format_info_set_prop_int_range, "pa_format_info_set_prop_int_range");
+   pragma Import
+     (C,
+      pa_format_info_set_prop_int_range,
+      "pa_format_info_set_prop_int_range");
 
    procedure pa_format_info_set_prop_string
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
-      value : Interfaces.C.Strings.chars_ptr);  -- /usr/include/pulse/format.h:203
-   pragma Import (C, pa_format_info_set_prop_string, "pa_format_info_set_prop_string");
+      value : Interfaces.C.Strings
+        .chars_ptr);  -- /usr/include/pulse/format.h:203
+   pragma Import
+     (C,
+      pa_format_info_set_prop_string,
+      "pa_format_info_set_prop_string");
 
    procedure pa_format_info_set_prop_string_array
      (f : access pa_format_info;
       key : Interfaces.C.Strings.chars_ptr;
       values : System.Address;
       n_values : int);  -- /usr/include/pulse/format.h:205
-   pragma Import (C, pa_format_info_set_prop_string_array, "pa_format_info_set_prop_string_array");
+   pragma Import
+     (C,
+      pa_format_info_set_prop_string_array,
+      "pa_format_info_set_prop_string_array");
 
-   procedure pa_format_info_set_sample_format (f : access pa_format_info; sf : Pulse.Sample.pa_sample_format_t);  -- /usr/include/pulse/format.h:208
-   pragma Import (C, pa_format_info_set_sample_format, "pa_format_info_set_sample_format");
+   procedure pa_format_info_set_sample_format
+     (f : access pa_format_info;
+      sf : Pulse.Sample
+        .pa_sample_format_t);  -- /usr/include/pulse/format.h:208
+   pragma Import
+     (C,
+      pa_format_info_set_sample_format,
+      "pa_format_info_set_sample_format");
 
-   procedure pa_format_info_set_rate (f : access pa_format_info; rate : int);  -- /usr/include/pulse/format.h:210
+   procedure pa_format_info_set_rate
+     (f : access pa_format_info;
+      rate : int);  -- /usr/include/pulse/format.h:210
    pragma Import (C, pa_format_info_set_rate, "pa_format_info_set_rate");
 
-   procedure pa_format_info_set_channels (f : access pa_format_info; channels : int);  -- /usr/include/pulse/format.h:212
-   pragma Import (C, pa_format_info_set_channels, "pa_format_info_set_channels");
+   procedure pa_format_info_set_channels
+     (f : access pa_format_info;
+      channels : int);  -- /usr/include/pulse/format.h:212
+   pragma Import
+     (C,
+      pa_format_info_set_channels,
+      "pa_format_info_set_channels");
 
-   procedure pa_format_info_set_channel_map (f : access pa_format_info; map : access constant Pulse.Channelmap.pa_channel_map);  -- /usr/include/pulse/format.h:214
-   pragma Import (C, pa_format_info_set_channel_map, "pa_format_info_set_channel_map");
+   procedure pa_format_info_set_channel_map
+     (f : access pa_format_info;
+      map : access constant Pulse.Channelmap
+        .pa_channel_map);  -- /usr/include/pulse/format.h:214
+   pragma Import
+     (C,
+      pa_format_info_set_channel_map,
+      "pa_format_info_set_channel_map");
 
 end Pulse.Format;

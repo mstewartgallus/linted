@@ -14,7 +14,8 @@
 with Linted.Controls_Reader;
 with Linted.Types;
 
-package Linted.Simulate with Abstract_State => null is
+package Linted.Simulate with
+     Abstract_State => null is
    pragma Elaborate_Body;
 
    type Object_State is array (0 .. 1) of Types.Varying_Positions;
@@ -31,6 +32,6 @@ package Linted.Simulate with Abstract_State => null is
    end record;
 
    procedure Tick (This : in out State) with
-     Global => null,
-     Depends => (This => This);
+      Global => null,
+      Depends => (This => This);
 end Linted.Simulate;

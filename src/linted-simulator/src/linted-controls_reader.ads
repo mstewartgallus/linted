@@ -17,7 +17,7 @@ with Linted.KOs;
 package Linted.Controls_Reader is
    pragma Elaborate_Body;
 
-   type Controls_Int is range -2 ** (32 - 1) .. 2 ** (32 - 1) - 1;
+   type Controls_Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
 
    type Controls is record
       Z_Tilt : Controls_Int := 0;
@@ -37,7 +37,8 @@ package Linted.Controls_Reader is
    end record;
 
    generic
-   package Worker with SPARK_Mode => Off is
+   package Worker with
+      Spark_Mode => Off is
       procedure Start (Object : KOs.KO);
       procedure Wait (E : out Event);
    end Worker;

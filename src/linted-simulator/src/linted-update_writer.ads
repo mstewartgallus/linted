@@ -17,8 +17,8 @@ with Linted.KOs;
 package Linted.Update_Writer is
    pragma Elaborate_Body;
 
-   type Update_Int is range -2 ** (32 - 1) ..  2 ** (32 - 1) - 1;
-   type Update_Nat is mod 2 ** 32;
+   type Update_Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
+   type Update_Nat is mod 2**32;
 
    type Update is record
       X_Position : Update_Int := 0;
@@ -34,7 +34,8 @@ package Linted.Update_Writer is
    end record;
 
    generic
-   package Worker with SPARK_Mode => Off is
+   package Worker with
+      Spark_Mode => Off is
       procedure Write (Object : Linted.KOs.KO; Data : Update);
       procedure Wait (E : out Linted.Errors.Error);
    end Worker;

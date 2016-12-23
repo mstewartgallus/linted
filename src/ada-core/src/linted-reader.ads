@@ -24,9 +24,10 @@ package Linted.Reader is
 
    generic
    package Worker is
-      procedure Read (Object : Linted.KOs.KO;
-		      Buf : System.Address;
-		      Count : Interfaces.C.size_t);
+      procedure Read
+        (Object : Linted.KOs.KO;
+         Buf : System.Address;
+         Count : Interfaces.C.size_t);
       procedure Wait (E : out Event);
    end Worker;
 end Linted.Reader;

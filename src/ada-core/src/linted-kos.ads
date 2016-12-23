@@ -22,14 +22,14 @@ package Linted.KOs is
    use type Interfaces.C.int;
 
    subtype Valid_KO is Interfaces.C.int range -1 .. Interfaces.C.int'Last;
-   type KO is new Valid_KO
-     with Default_Value => -1;
+   type KO is new Valid_KO with
+        Default_Value => -1;
 
    Standard_Input : constant KO;
    Standard_Output : constant KO;
    Standard_Error : constant KO;
 
-   type Open_Flags is mod 2 ** 32;
+   type Open_Flags is mod 2**32;
 
    Read_Only : constant Open_Flags := 1;
    Write_Only : constant Open_Flags := 2;
@@ -37,8 +37,12 @@ package Linted.KOs is
 
    package KO_Results is new Linted.Results (KO);
 
-   function Open (Pathname : String; Flags : Open_Flags) return KO_Results.Result with SPARK_Mode => Off;
-   function Close (Object : KO) return Errors.Error with SPARK_Mode => Off;
+   function Open
+     (Pathname : String;
+      Flags : Open_Flags) return KO_Results.Result with
+      Spark_Mode => Off;
+   function Close (Object : KO) return Errors.Error with
+      Spark_Mode => Off;
 
 private
    Invalid : constant KO := -1;

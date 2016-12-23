@@ -20,26 +20,30 @@ package body Linted.Errors is
    use type Interfaces.C.int;
    use type Interfaces.C.size_t;
 
-   function To_String (E : Error) return String with SPARK_Mode => Off is
+   function To_String (E : Error) return String with
+      Spark_Mode => Off is
       N : Interfaces.C.size_t := 20;
-      Err : Interfaces.C.Int;
+      Err : Interfaces.C.int;
    begin
       loop
-	 declare
-	    Buf : aliased Interfaces.C.Char_Array :=  (1 .. N + 1 => Interfaces.C.nul);
-	 begin
-	    Err := Libc.String.strerror_r (Interfaces.C.int (E),
-					   Interfaces.C.Strings.To_Chars_Ptr (Buf'Unchecked_Access),
-					   N);
-	    if Err /= Libc.Errno.ERANGE then
-	       if 0 = Err then
-		  Buf (N) := Interfaces.C.nul;
-		  return Interfaces.C.To_Ada (Buf);
-	       end if;
-	       raise Constraint_Error;
-	    end if;
-	    N := 2 * N + 10;
-	 end;
+         declare
+            Buf : aliased Interfaces.C.char_array :=
+              (1 .. N + 1 => Interfaces.C.nul);
+         begin
+            Err :=
+              Libc.String.strerror_r
+                (Interfaces.C.int (E),
+                 Interfaces.C.Strings.To_Chars_Ptr (Buf'Unchecked_Access),
+                 N);
+            if Err /= Libc.Errno.ERANGE then
+               if 0 = Err then
+                  Buf (N) := Interfaces.C.nul;
+                  return Interfaces.C.To_Ada (Buf);
+               end if;
+               raise Constraint_Error;
+            end if;
+            N := 2 * N + 10;
+         end;
       end loop;
    end To_String;
 end Linted.Errors;

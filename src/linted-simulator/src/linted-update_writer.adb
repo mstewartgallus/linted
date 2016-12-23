@@ -48,10 +48,12 @@ package body Linted.Update_Writer is
    package Write_Done_Event_Channels is new Linted.Channels (Write_Done_Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Writer.Event);
 
-   package body Worker with SPARK_Mode => Off is
+   package body Worker with
+        Spark_Mode => Off is
       task Writer_Task;
 
-      type Storage_Access is not null access all Storage_Elements.Storage_Element;
+      type Storage_Access is
+        not null access all Storage_Elements.Storage_Element;
 
       My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
@@ -65,83 +67,98 @@ package body Linted.Update_Writer is
 
       task A;
       task body A is
-	 Worker_Event : Linted.Writer.Event;
+         Worker_Event : Linted.Writer.Event;
       begin
-	 loop
-	    Worker.Wait (Worker_Event);
-	    Work_Event.Push (Worker_Event);
-	    Ada.Synchronous_Task_Control.Set_True (My_Trigger);
-	 end loop;
+         loop
+            Worker.Wait (Worker_Event);
+            Work_Event.Push (Worker_Event);
+            Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+         end loop;
       end A;
 
       procedure Write (Object : KOs.KO; Data : Update) is
       begin
-	 Write_Command_Channel.Push ((Object, Data));
-	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+         Write_Command_Channel.Push ((Object, Data));
+         Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Write;
 
       procedure Wait (E : out Linted.Errors.Error) is
-	 Event : Write_Done_Event;
+         Event : Write_Done_Event;
       begin
-	 Write_Done_Event_Channel.Pop (Event);
-	 E := Event.Err;
+         Write_Done_Event_Channel.Pop (Event);
+         E := Event.Err;
       end Wait;
 
       task body Writer_Task is
-	 use type Errors.Error;
+         use type Errors.Error;
 
-	 function Convert is new Ada.Unchecked_Conversion (Storage_Access, System.Address);
+         function Convert is new Ada.Unchecked_Conversion
+           (Storage_Access,
+            System.Address);
 
-	 Err : Errors.Error;
-	 Pending_Update : Update;
-	 Object : KOs.KO;
-	 Update_Pending : Boolean := False;
-	 Update_In_Progress : Boolean := False;
+         Err : Errors.Error;
+         Pending_Update : Update;
+         Object : KOs.KO;
+         Update_Pending : Boolean := False;
+         Update_In_Progress : Boolean := False;
       begin
-	 loop
-	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
+         loop
+            Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
-	    declare
-	       Option_Event : Worker_Event_Channels.Option_Element_Ts.Option;
-	    begin
-	       Work_Event.Poll (Option_Event);
-	       if not Option_Event.Empty then
-		  Err := Option_Event.Data.Err;
+            declare
+               Option_Event : Worker_Event_Channels.Option_Element_Ts.Option;
+            begin
+               Work_Event.Poll (Option_Event);
+               if not Option_Event.Empty then
+                  Err := Option_Event.Data.Err;
 
-		  Update_In_Progress := False;
+                  Update_In_Progress := False;
 
-		  Write_Done_Event_Channel.Push (Write_Done_Event'(Err => Err));
-	       end if;
-	    end;
+                  Write_Done_Event_Channel.Push
+                    (Write_Done_Event'(Err => Err));
+               end if;
+            end;
 
-	    declare
-	       Option_Command : Write_Command_Channels.Option_Element_Ts.Option;
-	    begin
-	       Write_Command_Channel.Poll (Option_Command);
-	       if not Option_Command.Empty then
-		  Object := Option_Command.Data.Object;
-		  Pending_Update := Option_Command.Data.Data;
-		  Update_Pending := True;
-	       end if;
-	    end;
+            declare
+               Option_Command : Write_Command_Channels.Option_Element_Ts
+                 .Option;
+            begin
+               Write_Command_Channel.Poll (Option_Command);
+               if not Option_Command.Empty then
+                  Object := Option_Command.Data.Object;
+                  Pending_Update := Option_Command.Data.Data;
+                  Update_Pending := True;
+               end if;
+            end;
 
-	    if Update_Pending and not Update_In_Progress then
-	       Data_Being_Written (1 .. 4) := To_Bytes (To_Nat (Pending_Update.X_Position));
-	       Data_Being_Written (5 .. 8) := To_Bytes (To_Nat (Pending_Update.Y_Position));
-	       Data_Being_Written (9 .. 12) := To_Bytes (To_Nat (Pending_Update.Z_Position));
+            if Update_Pending and not Update_In_Progress then
+               Data_Being_Written (1 .. 4) :=
+                 To_Bytes (To_Nat (Pending_Update.X_Position));
+               Data_Being_Written (5 .. 8) :=
+                 To_Bytes (To_Nat (Pending_Update.Y_Position));
+               Data_Being_Written (9 .. 12) :=
+                 To_Bytes (To_Nat (Pending_Update.Z_Position));
 
-	       Data_Being_Written (13 .. 16) := To_Bytes (To_Nat (Pending_Update.MX_Position));
-	       Data_Being_Written (17 .. 20) := To_Bytes (To_Nat (Pending_Update.MY_Position));
-	       Data_Being_Written (21 .. 24) := To_Bytes (To_Nat (Pending_Update.MZ_Position));
+               Data_Being_Written (13 .. 16) :=
+                 To_Bytes (To_Nat (Pending_Update.MX_Position));
+               Data_Being_Written (17 .. 20) :=
+                 To_Bytes (To_Nat (Pending_Update.MY_Position));
+               Data_Being_Written (21 .. 24) :=
+                 To_Bytes (To_Nat (Pending_Update.MZ_Position));
 
-	       Data_Being_Written (25 .. 28) := To_Bytes (Pending_Update.Z_Rotation);
-	       Data_Being_Written (29 .. 32) := To_Bytes (Pending_Update.X_Rotation);
+               Data_Being_Written (25 .. 28) :=
+                 To_Bytes (Pending_Update.Z_Rotation);
+               Data_Being_Written (29 .. 32) :=
+                 To_Bytes (Pending_Update.X_Rotation);
 
-	       Worker.Write (Object, Convert (Data_Being_Written (1)'Access), Data_Being_Written'Size / C.char'Size);
-	       Update_In_Progress := True;
-	       Update_Pending := False;
-	    end if;
-	 end loop;
+               Worker.Write
+                 (Object,
+                  Convert (Data_Being_Written (1)'Access),
+                  Data_Being_Written'Size / C.char'Size);
+               Update_In_Progress := True;
+               Update_Pending := False;
+            end if;
+         end loop;
       end Writer_Task;
    end Worker;
 
@@ -149,9 +166,11 @@ package body Linted.Update_Writer is
       Y : Update_Nat;
    begin
       if Number < 0 then
-	 Y := Update_Nat (Number + Update_Int'Last) - Update_Nat (Update_Int'Last);
+         Y :=
+           Update_Nat (Number + Update_Int'Last) -
+           Update_Nat (Update_Int'Last);
       else
-	 Y := Update_Nat (Number);
+         Y := Update_Nat (Number);
       end if;
       return Y;
    end To_Nat;
@@ -160,9 +179,18 @@ package body Linted.Update_Writer is
    function To_Bytes (Number : Update_Nat) return Tuple is
       X : Storage_Elements.Storage_Array (1 .. 4) := (0, 0, 0, 0);
    begin
-      X (1) := Storage_Elements.Storage_Element (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 24) and 16#FF#);
-      X (2) := Storage_Elements.Storage_Element (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 16) and 16#FF#);
-      X (3) := Storage_Elements.Storage_Element (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 8) and 16#FF#);
+      X (1) :=
+        Storage_Elements.Storage_Element
+          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 24) and
+           16#FF#);
+      X (2) :=
+        Storage_Elements.Storage_Element
+          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 16) and
+           16#FF#);
+      X (3) :=
+        Storage_Elements.Storage_Element
+          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 8) and
+           16#FF#);
       X (4) := Storage_Elements.Storage_Element (Number and 16#FF#);
       return X;
    end To_Bytes;

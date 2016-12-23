@@ -32,18 +32,22 @@ package Linted.IO_Pool is
    end record;
 
    generic
-   package Writer_Worker with SPARK_Mode => Off is
-      procedure Write (Object : KOs.KO;
-		       Buf : System.Address;
-		       Count : Interfaces.C.size_t);
+   package Writer_Worker with
+      Spark_Mode => Off is
+      procedure Write
+        (Object : KOs.KO;
+         Buf : System.Address;
+         Count : Interfaces.C.size_t);
       procedure Wait (Event : out Writer_Event);
    end Writer_Worker;
 
    generic
-   package Reader_Worker with SPARK_Mode => Off is
-      procedure Read (Object : KOs.KO;
-		      Buf : System.Address;
-		      Count : Interfaces.C.size_t);
+   package Reader_Worker with
+      Spark_Mode => Off is
+      procedure Read
+        (Object : KOs.KO;
+         Buf : System.Address;
+         Count : Interfaces.C.size_t);
       procedure Wait (Event : out Reader_Event);
    end Reader_Worker;
 end Linted.IO_Pool;

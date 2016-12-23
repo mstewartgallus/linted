@@ -45,28 +45,66 @@ procedure Main is
    Envvars_Count : constant Positive := 18;
 
    function Default_Envvars (X : Positive) return Envvar with
-     Pre => X <= Envvars_Count;
+      Pre => X <= Envvars_Count;
 
-   function Default_Envvars (X : Positive) return Envvar is (case X is
-      when 1 => (U.To_Unbounded_String ("LINTED_PROCESS_NAME"), U.To_Unbounded_String ("linted")),
-      when 2 => (U.To_Unbounded_String ("LINTED_SYSTEM_CONF_PATH"), U.To_Unbounded_String (Linted.Settings.LNTD_SYSTEM_CONF_PATH)),
-      when 3 => (U.To_Unbounded_String ("LINTED_UNIT_PATH"), U.To_Unbounded_String (Linted.Settings.LNTD_UNIT_PATH)),
-      when 4 => (U.To_Unbounded_String ("LINTED_INIT"), U.To_Unbounded_String (Linted.Settings.LNTD_INIT)),
-      when 5 => (U.To_Unbounded_String ("LINTED_MONITOR"), U.To_Unbounded_String (Linted.Settings.LNTD_MONITOR)),
-      when 6 => (U.To_Unbounded_String ("LINTED_STARTUP"), U.To_Unbounded_String (Linted.Settings.LNTD_STARTUP)),
-      when 7 => (U.To_Unbounded_String ("LINTED_SANDBOX"), U.To_Unbounded_String (Linted.Settings.LNTD_SANDBOX)),
-      when 8 => (U.To_Unbounded_String ("LINTED_WAITER"), U.To_Unbounded_String (Linted.Settings.LNTD_WAITER)),
-      when 9 => (U.To_Unbounded_String ("LINTED_AUDIO"), U.To_Unbounded_String (Linted.Settings.LNTD_AUDIO)),
-      when 10 => (U.To_Unbounded_String ("LINTED_AUDIO_FSTAB"), U.To_Unbounded_String (Linted.Settings.LNTD_AUDIO_FSTAB)),
-      when 11 => (U.To_Unbounded_String ("LINTED_GUI"), U.To_Unbounded_String (Linted.Settings.LNTD_GUI)),
-      when 12 => (U.To_Unbounded_String ("LINTED_GUI_FSTAB"), U.To_Unbounded_String (Linted.Settings.LNTD_GUI_FSTAB)),
-      when 13 => (U.To_Unbounded_String ("LINTED_SIMULATOR"), U.To_Unbounded_String (Linted.Settings.LNTD_SIMULATOR)),
-      when 14 => (U.To_Unbounded_String ("LINTED_SIMULATOR_FSTAB"), U.To_Unbounded_String (Linted.Settings.LNTD_SIMULATOR_FSTAB)),
-      when 15 => (U.To_Unbounded_String ("LINTED_DRAWER"), U.To_Unbounded_String (Linted.Settings.LNTD_DRAWER)),
-      when 16 => (U.To_Unbounded_String ("LINTED_DRAWER_FSTAB"), U.To_Unbounded_String (Linted.Settings.LNTD_DRAWER_FSTAB)),
-      when 17 => (U.To_Unbounded_String ("LINTED_WINDOW"), U.To_Unbounded_String (Linted.Settings.LNTD_WINDOW)),
-      when 18 => (U.To_Unbounded_String ("LINTED_WINDOW_FSTAB"), U.To_Unbounded_String (Linted.Settings.LNTD_WINDOW_FSTAB)),
-      when others => raise Constraint_Error);
+   function Default_Envvars
+     (X : Positive) return Envvar is
+     (case X is
+        when 1 =>
+          (U.To_Unbounded_String ("LINTED_PROCESS_NAME"),
+           U.To_Unbounded_String ("linted")),
+        when 2 =>
+          (U.To_Unbounded_String ("LINTED_SYSTEM_CONF_PATH"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_SYSTEM_CONF_PATH)),
+        when 3 =>
+          (U.To_Unbounded_String ("LINTED_UNIT_PATH"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_UNIT_PATH)),
+        when 4 =>
+          (U.To_Unbounded_String ("LINTED_INIT"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_INIT)),
+        when 5 =>
+          (U.To_Unbounded_String ("LINTED_MONITOR"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_MONITOR)),
+        when 6 =>
+          (U.To_Unbounded_String ("LINTED_STARTUP"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_STARTUP)),
+        when 7 =>
+          (U.To_Unbounded_String ("LINTED_SANDBOX"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_SANDBOX)),
+        when 8 =>
+          (U.To_Unbounded_String ("LINTED_WAITER"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_WAITER)),
+        when 9 =>
+          (U.To_Unbounded_String ("LINTED_AUDIO"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_AUDIO)),
+        when 10 =>
+          (U.To_Unbounded_String ("LINTED_AUDIO_FSTAB"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_AUDIO_FSTAB)),
+        when 11 =>
+          (U.To_Unbounded_String ("LINTED_GUI"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_GUI)),
+        when 12 =>
+          (U.To_Unbounded_String ("LINTED_GUI_FSTAB"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_GUI_FSTAB)),
+        when 13 =>
+          (U.To_Unbounded_String ("LINTED_SIMULATOR"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_SIMULATOR)),
+        when 14 =>
+          (U.To_Unbounded_String ("LINTED_SIMULATOR_FSTAB"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_SIMULATOR_FSTAB)),
+        when 15 =>
+          (U.To_Unbounded_String ("LINTED_DRAWER"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_DRAWER)),
+        when 16 =>
+          (U.To_Unbounded_String ("LINTED_DRAWER_FSTAB"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_DRAWER_FSTAB)),
+        when 17 =>
+          (U.To_Unbounded_String ("LINTED_WINDOW"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_WINDOW)),
+        when 18 =>
+          (U.To_Unbounded_String ("LINTED_WINDOW_FSTAB"),
+           U.To_Unbounded_String (Linted.Settings.LNTD_WINDOW_FSTAB)),
+        when others => raise Constraint_Error);
 
    Arg_Count : Integer;
 
@@ -81,15 +119,15 @@ begin
    Arg_Count := Command_Line.Argument_Count;
    for II in 1 .. Arg_Count loop
       declare
-	 Argument : String := Command_Line.Argument (1);
+         Argument : String := Command_Line.Argument (1);
       begin
-	 if "--help" = Argument then
-	    Need_Help := True;
-	 elsif "--version" = Argument then
-	    Need_Version := True;
-	 else
-	    Bad_Option := True;
-	 end if;
+         if "--help" = Argument then
+            Need_Help := True;
+         elsif "--version" = Argument then
+            Need_Version := True;
+         else
+            Bad_Option := True;
+         end if;
       end;
    end loop;
 
@@ -107,20 +145,24 @@ begin
 
    for II in 1 .. Envvars_Count loop
       declare
-	 Key : U.Unbounded_String;
-	 Default_Value : U.Unbounded_String;
+         Key : U.Unbounded_String;
+         Default_Value : U.Unbounded_String;
       begin
-	 declare
-	    E : Envvar := Default_Envvars (II);
-	 begin
-	    Key := E.Key;
-	    Default_Value := E.Value;
-	 end;
+         declare
+            E : Envvar := Default_Envvars (II);
+         begin
+            Key := E.Key;
+            Default_Value := E.Value;
+         end;
 
-	 Err := Linted.Env.Set (U.To_String (Key), U.To_String (Default_Value), False);
-	 if Err /= 0 then
-	    goto On_Err;
-	 end if;
+         Err :=
+           Linted.Env.Set
+             (U.To_String (Key),
+              U.To_String (Default_Value),
+              False);
+         if Err /= 0 then
+            goto On_Err;
+         end if;
       end;
    end loop;
 
@@ -131,7 +173,7 @@ begin
    begin
       Err := Linted.Env.Set ("MANAGERPID", V, True);
       if Err /= 0 then
-	 goto On_Err;
+         goto On_Err;
       end if;
 
       Linted.Stdio.Write_Line (Linted.KOs.Standard_Output, "LINTED_PID=" & V);
@@ -140,19 +182,24 @@ begin
    declare
       Init : String := Linted.Env.Get ("LINTED_INIT");
       Arr : aliased Interfaces.C.char_array := Interfaces.C.To_C (Init);
-      P : Interfaces.C.Strings.chars_ptr := Interfaces.C.Strings.To_Chars_Ptr (Arr'Unchecked_Access);
-      Argv : aliased array (1 .. 2) of aliased Interfaces.C.Strings.Chars_Ptr
-	:= (
-	    P,
-	    Interfaces.C.Strings.Null_Ptr
-	   );
-      type Ptr_Access is access all Interfaces.C.Strings.Chars_Ptr;
-      function Convert is new Ada.Unchecked_Conversion (Ptr_Access, System.Address);
+      P : Interfaces.C.Strings.chars_ptr :=
+        Interfaces.C.Strings.To_Chars_Ptr (Arr'Unchecked_Access);
+      Argv : aliased array
+      (1 .. 2) of aliased Interfaces.C.Strings.chars_ptr :=
+        (P, Interfaces.C.Strings.Null_Ptr);
+      type Ptr_Access is access all Interfaces.C.Strings.chars_ptr;
+      function Convert is new Ada.Unchecked_Conversion
+        (Ptr_Access,
+         System.Address);
    begin
-      Err := Linted.Errors.Error (Libc.Unistd.execv (P, Convert (Argv (1)'Unchecked_Access)));
+      Err :=
+        Linted.Errors.Error
+          (Libc.Unistd.execv (P, Convert (Argv (1)'Unchecked_Access)));
    end;
 
-<<On_Err>>
-   Linted.Stdio.Write_Line (Linted.KOs.Standard_Error, Linted.Errors.To_String (Err));
+   <<On_Err>>
+   Linted.Stdio.Write_Line
+     (Linted.KOs.Standard_Error,
+      Linted.Errors.To_String (Err));
    Libc.Unistd.u_exit (1);
 end Main;

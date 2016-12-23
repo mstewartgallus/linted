@@ -24,9 +24,10 @@ package Linted.Writer is
 
    generic
    package Worker is
-      procedure Write (Object : Linted.KOs.KO;
-		       Buf : System.Address;
-		       Count : Interfaces.C.size_t);
+      procedure Write
+        (Object : Linted.KOs.KO;
+         Buf : System.Address;
+         Count : Interfaces.C.size_t);
 
       procedure Wait (E : out Event);
    end Worker;

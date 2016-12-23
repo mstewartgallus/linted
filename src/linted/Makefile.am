@@ -24,13 +24,13 @@ EXTRA_DIST+=\
    $(builddir)/%D%/start.gpr
 
 .PHONY: %D%/linted$(EXEEXT)
-%D%/linted$(EXEEXT): $(builddir)/%D%/start.gpr src/ada/shared.gpr src/ada/config.cgpr $(builddir)/%D%/src/linted-settings.ads
-	$(linted_V_GPRBUILD) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(builddir)/%D%/start.gpr
+%D%/linted$(EXEEXT): $(builddir)/%D%/start.gpr src/ada/shared.gpr $(builddir)/%D%/src/linted-settings.ads
+	$(linted_V_GPRBUILD) env ADA_PROJECT_PATH=$(GPRPROJECTPATH) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(builddir)/%D%/start.gpr
 
 LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/start.gpr
+	- env ADA_PROJECT_PATH=$(GPRPROJECTPATH) $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/start.gpr
 
 EXTRA_DIST+=%D%/src/linted-settings.ads.in
 MOSTLYCLEANFILES+=%D%/src/linted-settings.ads

@@ -22,25 +22,33 @@ with Libc.Stddef;
 with Pulse.Context;
 with Pulse.Volume;
 
-package Pulse.Scache with SPARK_Mode => Off is
+package Pulse.Scache with
+     Spark_Mode => Off is
 
    type pa_context_play_sample_cb_t is access procedure
-        (arg1 : System.Address;
-         arg2 : Libc.Stdint.uint32_t;
-         arg3 : System.Address);
-   pragma Convention (C, pa_context_play_sample_cb_t);  -- /usr/include/pulse/scache.h:87
+     (arg1 : System.Address;
+      arg2 : Libc.Stdint.uint32_t;
+      arg3 : System.Address);
+   pragma Convention
+     (C,
+      pa_context_play_sample_cb_t);  -- /usr/include/pulse/scache.h:87
 
-   function pa_stream_connect_upload (s : System.Address; length : Libc.Stddef.size_t) return int;  -- /usr/include/pulse/scache.h:90
+   function pa_stream_connect_upload
+     (s : System.Address;
+      length : Libc.Stddef.size_t)
+     return int;  -- /usr/include/pulse/scache.h:90
    pragma Import (C, pa_stream_connect_upload, "pa_stream_connect_upload");
 
-   function pa_stream_finish_upload (s : System.Address) return int;  -- /usr/include/pulse/scache.h:95
+   function pa_stream_finish_upload
+     (s : System.Address) return int;  -- /usr/include/pulse/scache.h:95
    pragma Import (C, pa_stream_finish_upload, "pa_stream_finish_upload");
 
    function pa_context_remove_sample
      (c : System.Address;
       name : Interfaces.C.Strings.chars_ptr;
       cb : Pulse.Context.pa_context_success_cb_t;
-      userdata : System.Address) return System.Address;  -- /usr/include/pulse/scache.h:98
+      userdata : System.Address)
+     return System.Address;  -- /usr/include/pulse/scache.h:98
    pragma Import (C, pa_context_remove_sample, "pa_context_remove_sample");
 
    function pa_context_play_sample
@@ -49,7 +57,8 @@ package Pulse.Scache with SPARK_Mode => Off is
       dev : Interfaces.C.Strings.chars_ptr;
       volume : Pulse.Volume.pa_volume_t;
       cb : Pulse.Context.pa_context_success_cb_t;
-      userdata : System.Address) return System.Address;  -- /usr/include/pulse/scache.h:103
+      userdata : System.Address)
+     return System.Address;  -- /usr/include/pulse/scache.h:103
    pragma Import (C, pa_context_play_sample, "pa_context_play_sample");
 
    function pa_context_play_sample_with_proplist
@@ -59,7 +68,11 @@ package Pulse.Scache with SPARK_Mode => Off is
       volume : Pulse.Volume.pa_volume_t;
       proplist : System.Address;
       cb : pa_context_play_sample_cb_t;
-      userdata : System.Address) return System.Address;  -- /usr/include/pulse/scache.h:115
-   pragma Import (C, pa_context_play_sample_with_proplist, "pa_context_play_sample_with_proplist");
+      userdata : System.Address)
+     return System.Address;  -- /usr/include/pulse/scache.h:115
+   pragma Import
+     (C,
+      pa_context_play_sample_with_proplist,
+      "pa_context_play_sample_with_proplist");
 
 end Pulse.Scache;

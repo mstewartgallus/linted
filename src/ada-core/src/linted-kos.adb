@@ -20,7 +20,10 @@ package body Linted.KOs is
    package C renames Interfaces.C;
    package Errno renames Libc.Errno;
 
-   function Open (Pathname : String; Flags : Open_Flags) return KO_Results.Result with SPARK_Mode => Off is
+   function Open
+     (Pathname : String;
+      Flags : Open_Flags) return KO_Results.Result with
+      Spark_Mode => Off is
       use type Errors.Error;
       use type C.unsigned;
 
@@ -35,53 +38,58 @@ package body Linted.KOs is
       Has_Read_Write : constant Boolean := (Flags and Read_Write) /= 0;
    begin
       if (Flags and not (Read_Only or Write_Only or Read_Write)) /= 0 then
-	 return (Erroneous => True, Err => Errors.Invalid_Parameter);
+         return (Erroneous => True, Err => Errors.Invalid_Parameter);
       end if;
 
       if Has_Read_Only and Has_Write_Only then
-	 return (Erroneous => True, Err => Errors.Invalid_Parameter);
+         return (Erroneous => True, Err => Errors.Invalid_Parameter);
       end if;
 
       if Has_Read_Only and Has_Read_Write then
-	 return (Erroneous => True, Err => Errors.Invalid_Parameter);
+         return (Erroneous => True, Err => Errors.Invalid_Parameter);
       end if;
 
       if Has_Write_Only and Has_Read_Write then
-	 return (Erroneous => True, Err => Errors.Invalid_Parameter);
+         return (Erroneous => True, Err => Errors.Invalid_Parameter);
       end if;
 
       if Has_Read_Only then
-	 C_Flags := C_Flags or Libc.Fcntl.O_RDONLY;
+         C_Flags := C_Flags or Libc.Fcntl.O_RDONLY;
       end if;
 
       if Has_Write_Only then
-	 C_Flags := C_Flags or Libc.Fcntl.O_WRONLY;
+         C_Flags := C_Flags or Libc.Fcntl.O_WRONLY;
       end if;
 
       if Has_Read_Write then
-	 C_Flags := C_Flags or Libc.Fcntl.O_RDWR;
+         C_Flags := C_Flags or Libc.Fcntl.O_RDWR;
       end if;
 
-      Fd := Libc.Fcntl.open (Interfaces.C.Strings.To_Chars_Ptr (X'Unchecked_Access), C.int (C_Flags), 0);
+      Fd :=
+        Libc.Fcntl.open
+          (Interfaces.C.Strings.To_Chars_Ptr (X'Unchecked_Access),
+           C.int (C_Flags),
+           0);
       if Fd < 0 then
-	 Err := Errors.Error (Errno.Errno);
+         Err := Errors.Error (Errno.Errno);
       else
-	 Err := 0;
+         Err := 0;
       end if;
 
       if Err /= 0 then
-	 return (Erroneous => True, Err => Err);
+         return (Erroneous => True, Err => Err);
       else
-	 return (Erroneous => False, Data => KO (Fd));
+         return (Erroneous => False, Data => KO (Fd));
       end if;
    end Open;
 
-   function Close (Object : KOs.KO) return Errors.Error with SPARK_Mode => Off is
+   function Close (Object : KOs.KO) return Errors.Error with
+      Spark_Mode => Off is
    begin
       if Libc.Unistd.close (C.int (Object)) < 0 then
-	 return Errors.Error (Errno.Errno);
+         return Errors.Error (Errno.Errno);
       else
-	 return 0;
+         return 0;
       end if;
    end Close;
 end Linted.KOs;

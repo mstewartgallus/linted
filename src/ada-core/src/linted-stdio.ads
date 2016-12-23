@@ -18,19 +18,20 @@ with Linted.Errors;
 with Linted.KOs;
 
 package Linted.Stdio with
-  SPARK_Mode => Off
-is
+     Spark_Mode => Off is
    pragma Elaborate_Body;
 
    procedure Write_Line (Object : Linted.KOs.KO; Str : String);
 
-   procedure Write_String (Object : Linted.KOs.KO;
-			   Str : String;
-			   Err : out Linted.Errors.Error);
+   procedure Write_String
+     (Object : Linted.KOs.KO;
+      Str : String;
+      Err : out Linted.Errors.Error);
 
-   procedure Write (Object : Linted.KOs.KO;
-		    Buf : System.Address;
-		    Count :  Interfaces.C.size_t;
-		    Bytes_Written : out Interfaces.C.size_t;
-		    Err : out Linted.Errors.Error);
+   procedure Write
+     (Object : Linted.KOs.KO;
+      Buf : System.Address;
+      Count : Interfaces.C.size_t;
+      Bytes_Written : out Interfaces.C.size_t;
+      Err : out Linted.Errors.Error);
 end Linted.Stdio;

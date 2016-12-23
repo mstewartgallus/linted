@@ -19,37 +19,38 @@ package Linted.Angles is
    type Angle is private;
 
    function To_Angle (X : Element_T) return Angle with
-     Global => null,
-     Depends => (To_Angle'Result => X);
+      Global => null,
+      Depends => (To_Angle'Result => X);
 
-   function To_Angle (X : Element_T;
-		      Y : Element_T) return Angle with
-     Global => null,
-     Pre => X <= Y,
-     Depends => (To_Angle'Result => (X,Y));
+   function To_Angle (X : Element_T; Y : Element_T) return Angle with
+      Global => null,
+      Pre => X <= Y,
+      Depends => (To_Angle'Result => (X, Y));
    function From_Angle (X : Angle) return Element_T with
-     Global => null;
+      Global => null;
 
    function "+" (Theta : Angle; Phi : Angle) return Angle with
-     Global => null;
+      Global => null;
    function "-" (Theta : Angle; Phi : Angle) return Angle with
-     Global => null;
+      Global => null;
 
-   function Add_Clamped (Min : Angle;
-			 Max : Angle;
-			 Theta : Angle;
-			 Phi : Angle) return Angle with
-     Global => null,
-     Pre => From_Angle (Max) <= Element_T'Last / 2 and
-     From_Angle (Min) <= Element_T'Last / 2;
+   function Add_Clamped
+     (Min : Angle;
+      Max : Angle;
+      Theta : Angle;
+      Phi : Angle) return Angle with
+      Global => null,
+      Pre => From_Angle (Max) <= Element_T'Last / 2 and
+      From_Angle (Min) <= Element_T'Last / 2;
 
-   function Subtract_Clamped (Min : Angle;
-			      Max : Angle;
-			      Theta : Angle;
-			      Phi : Angle) return Angle with
-     Global => null,
-     Pre => From_Angle (Max) <= Element_T'Last / 2 and
-     From_Angle (Min) <= Element_T'Last / 2;
+   function Subtract_Clamped
+     (Min : Angle;
+      Max : Angle;
+      Theta : Angle;
+      Phi : Angle) return Angle with
+      Global => null,
+      Pre => From_Angle (Max) <= Element_T'Last / 2 and
+      From_Angle (Min) <= Element_T'Last / 2;
 
    generic
       type Element_U is range <>;

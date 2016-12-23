@@ -17,7 +17,8 @@ private with Interfaces.C.Strings;
 
 private with Linted.Writer;
 
-package body Linted.Stdio with SPARK_Mode => Off is
+package body Linted.Stdio with
+     Spark_Mode => Off is
    package C renames Interfaces.C;
 
    use Linted.Errors;
@@ -30,31 +31,40 @@ package body Linted.Stdio with SPARK_Mode => Off is
    end Write_Line;
 
    procedure Write_String (Object : KO; Str : String; Err : out Error) is
-      function Convert is new Ada.Unchecked_Conversion (Interfaces.C.Strings.chars_ptr, System.Address);
+      function Convert is new Ada.Unchecked_Conversion
+        (Interfaces.C.Strings.chars_ptr,
+         System.Address);
       X : Interfaces.C.Strings.chars_ptr;
       Bytes_Written : C.size_t;
    begin
       X := Interfaces.C.Strings.New_String (Str);
-      Write (Object, Convert (X), Interfaces.C.Strings.Strlen (X), Bytes_Written, Err);
+      Write
+        (Object,
+         Convert (X),
+         Interfaces.C.Strings.Strlen (X),
+         Bytes_Written,
+         Err);
       Interfaces.C.Strings.Free (X);
    end Write_String;
 
    package Writer is new Linted.Writer.Worker;
 
-   procedure Write (Object : KO;
-		   Buf : System.Address;
-		   Count : C.size_t;
-		   Bytes_Written : out C.size_t;
-		   Err : out Error) is
+   procedure Write
+     (Object : KO;
+      Buf : System.Address;
+      Count : C.size_t;
+      Bytes_Written : out C.size_t;
+      Err : out Error)
+   is
    begin
       Writer.Write (Object, Buf, Count);
 
       declare
-	 Event : Linted.Writer.Event;
+         Event : Linted.Writer.Event;
       begin
-	 Writer.Wait (Event);
-	 Bytes_Written := Event.Bytes_Written;
-	 Err := Event.Err;
+         Writer.Wait (Event);
+         Bytes_Written := Event.Bytes_Written;
+         Err := Event.Err;
       end;
    end Write;
 end Linted.Stdio;

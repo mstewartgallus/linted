@@ -16,14 +16,15 @@ with Linted.Errors;
 generic
    type Element_T is private;
 package Linted.Results with
-  Abstract_State => null
-is
+   Abstract_State => null is
    pragma Preelaborate;
 
    type Result (Erroneous : Boolean) is record
       case Erroneous is
-	 when True => Err : Errors.Error := 0;
-	 when False => Data : Element_T;
+         when True =>
+            Err : Errors.Error := 0;
+         when False =>
+            Data : Element_T;
       end case;
    end record;
 end Linted.Results;

@@ -21,7 +21,8 @@ private with Libc.Sys.Types;
 private with Libc.Unistd;
 private with Libc.Errno;
 
-package body Linted.Windows with SPARK_Mode => Off is
+package body Linted.Windows with
+     Spark_Mode => Off is
    package Errno renames Libc.Errno;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
@@ -39,21 +40,27 @@ package body Linted.Windows with SPARK_Mode => Off is
 
    function From_Bytes (T : Tuple) return Window;
 
-   procedure Read (KO : KOs.KO;
-		   Win : out Window;
-		   Err : out Errors.Error) with SPARK_Mode => Off
-   is
-      function Convert is new Ada.Unchecked_Conversion (Storage_Access, System.Address);
+   procedure Read (KO : KOs.KO; Win : out Window; Err : out Errors.Error) with
+      Spark_Mode => Off is
+      function Convert is new Ada.Unchecked_Conversion
+        (Storage_Access,
+         System.Address);
    begin
       declare
-	 Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
+         Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
       begin
-	 if Libc.Unistd.pread (C.int (KO), Convert (Buf (1)'Unchecked_Access), 4, 0) < 0 then
-	    Win := 0;
-	    Err := Errors.Error (Errno.Errno);
-	    return;
-	 end if;
-	 Win := From_Bytes (Buf);
+         if Libc.Unistd.pread
+             (C.int (KO),
+              Convert (Buf (1)'Unchecked_Access),
+              4,
+              0) <
+           0
+         then
+            Win := 0;
+            Err := Errors.Error (Errno.Errno);
+            return;
+         end if;
+         Win := From_Bytes (Buf);
       end;
       Err := 0;
    end Read;
@@ -61,10 +68,11 @@ package body Linted.Windows with SPARK_Mode => Off is
    function From_Bytes (T : Tuple) return Window is
       X : Interfaces.Unsigned_32;
    begin
-      X := Interfaces.Unsigned_32 (T (4)) or
-	Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
-	Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
-	Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24);
+      X :=
+        Interfaces.Unsigned_32 (T (4)) or
+        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
+        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
+        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24);
       return Window (X);
    end From_Bytes;
 end Linted.Windows;

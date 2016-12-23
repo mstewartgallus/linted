@@ -14,8 +14,9 @@
 with Linted.Errors;
 
 package Linted.Env is
-   function Set (Name : String;
-		 Value : String;
-		 Overwrite : Boolean) return Linted.Errors.Error;
+   function Set
+     (Name : String;
+      Value : String;
+      Overwrite : Boolean) return Linted.Errors.Error;
    function Get (Name : String) return String;
 end Linted.Env;

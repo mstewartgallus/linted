@@ -18,7 +18,8 @@ with Interfaces.C.Strings;
 
 with Libc.Stddef;
 
-package Pulse.Proplist with SPARK_Mode => Off is
+package Pulse.Proplist with
+     Spark_Mode => Off is
 
    --  unsupported macro: PA_PROP_MEDIA_NAME "media.name"
    --  unsupported macro: PA_PROP_MEDIA_TITLE "media.title"
@@ -103,22 +104,30 @@ package Pulse.Proplist with SPARK_Mode => Off is
    type pa_proplist is limited private;
    type pa_proplist_access is access all pa_proplist;
 
-   function pa_proplist_new return pa_proplist_access;  -- /usr/include/pulse/proplist.h:277
+   function pa_proplist_new
+     return pa_proplist_access;  -- /usr/include/pulse/proplist.h:277
    pragma Import (C, pa_proplist_new, "pa_proplist_new");
 
-   procedure pa_proplist_free (p : pa_proplist_access);  -- /usr/include/pulse/proplist.h:280
+   procedure pa_proplist_free
+     (p : pa_proplist_access);  -- /usr/include/pulse/proplist.h:280
    pragma Import (C, pa_proplist_free, "pa_proplist_free");
 
-   function pa_proplist_key_valid (key : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/pulse/proplist.h:283
+   function pa_proplist_key_valid
+     (key : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/pulse/proplist.h:283
    pragma Import (C, pa_proplist_key_valid, "pa_proplist_key_valid");
 
    function pa_proplist_sets
      (p : pa_proplist_access;
       key : Interfaces.C.Strings.chars_ptr;
-      value : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/pulse/proplist.h:289
+      value : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/pulse/proplist.h:289
    pragma Import (C, pa_proplist_sets, "pa_proplist_sets");
 
-   function pa_proplist_setp (p : pa_proplist_access; pair : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/pulse/proplist.h:297
+   function pa_proplist_setp
+     (p : pa_proplist_access;
+      pair : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/pulse/proplist.h:297
    pragma Import (C, pa_proplist_setp, "pa_proplist_setp");
 
    function pa_proplist_setf
@@ -132,23 +141,26 @@ package Pulse.Proplist with SPARK_Mode => Off is
      (p : pa_proplist_access;
       key : Interfaces.C.Strings.chars_ptr;
       data : System.Address;
-      nbytes : Libc.Stddef.size_t) return int;  -- /usr/include/pulse/proplist.h:309
+      nbytes : Libc.Stddef.size_t)
+     return int;  -- /usr/include/pulse/proplist.h:309
    pragma Import (C, pa_proplist_set, "pa_proplist_set");
 
-   function pa_proplist_gets (p : pa_proplist_access; key : Interfaces.C.Strings.chars_ptr) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/proplist.h:315
+   function pa_proplist_gets
+     (p : pa_proplist_access;
+      key : Interfaces.C.Strings.chars_ptr)
+      return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/proplist.h:315
    pragma Import (C, pa_proplist_gets, "pa_proplist_gets");
 
    function pa_proplist_get
      (p : pa_proplist_access;
       key : Interfaces.C.Strings.chars_ptr;
       data : System.Address;
-      nbytes : access Libc.Stddef.size_t) return int;  -- /usr/include/pulse/proplist.h:322
+      nbytes : access Libc.Stddef.size_t)
+     return int;  -- /usr/include/pulse/proplist.h:322
    pragma Import (C, pa_proplist_get, "pa_proplist_get");
 
-   type pa_update_mode is
-     (PA_UPDATE_SET,
-      PA_UPDATE_MERGE,
-      PA_UPDATE_REPLACE);
+   type pa_update_mode is (PA_UPDATE_SET, PA_UPDATE_MERGE, PA_UPDATE_REPLACE);
    pragma Convention (C, pa_update_mode);  -- /usr/include/pulse/proplist.h:325
 
    subtype pa_update_mode_t is pa_update_mode;
@@ -159,42 +171,73 @@ package Pulse.Proplist with SPARK_Mode => Off is
       other : System.Address);  -- /usr/include/pulse/proplist.h:349
    pragma Import (C, pa_proplist_update, "pa_proplist_update");
 
-   function pa_proplist_unset (p : pa_proplist_access; key : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/pulse/proplist.h:353
+   function pa_proplist_unset
+     (p : pa_proplist_access;
+      key : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/pulse/proplist.h:353
    pragma Import (C, pa_proplist_unset, "pa_proplist_unset");
 
-   function pa_proplist_unset_many (p : pa_proplist_access; keys : System.Address) return int;  -- /usr/include/pulse/proplist.h:360
+   function pa_proplist_unset_many
+     (p : pa_proplist_access;
+      keys : System.Address) return int;  -- /usr/include/pulse/proplist.h:360
    pragma Import (C, pa_proplist_unset_many, "pa_proplist_unset_many");
 
-   function pa_proplist_iterate (p : pa_proplist_access; state : System.Address) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/proplist.h:371
+   function pa_proplist_iterate
+     (p : pa_proplist_access;
+      state : System.Address)
+     return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/proplist.h:371
    pragma Import (C, pa_proplist_iterate, "pa_proplist_iterate");
 
-   function pa_proplisto_string (p : pa_proplist_access) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/proplist.h:377
+   function pa_proplisto_string
+     (p : pa_proplist_access)
+     return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/proplist.h:377
    pragma Import (C, pa_proplisto_string, "pa_proplisto_string");
 
-   function pa_proplisto_string_sep (p : pa_proplist_access; sep : Interfaces.C.Strings.chars_ptr) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/proplist.h:382
+   function pa_proplisto_string_sep
+     (p : pa_proplist_access;
+      sep : Interfaces.C.Strings.chars_ptr)
+      return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/proplist.h:382
    pragma Import (C, pa_proplisto_string_sep, "pa_proplisto_string_sep");
 
-   function pa_proplist_from_string (str : Interfaces.C.Strings.chars_ptr) return System.Address;  -- /usr/include/pulse/proplist.h:386
+   function pa_proplist_from_string
+     (str : Interfaces.C.Strings.chars_ptr)
+     return System.Address;  -- /usr/include/pulse/proplist.h:386
    pragma Import (C, pa_proplist_from_string, "pa_proplist_from_string");
 
-   function pa_proplist_contains (p : pa_proplist_access; key : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/pulse/proplist.h:390
+   function pa_proplist_contains
+     (p : pa_proplist_access;
+      key : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/pulse/proplist.h:390
    pragma Import (C, pa_proplist_contains, "pa_proplist_contains");
 
-   procedure pa_proplist_clear (p : pa_proplist_access);  -- /usr/include/pulse/proplist.h:393
+   procedure pa_proplist_clear
+     (p : pa_proplist_access);  -- /usr/include/pulse/proplist.h:393
    pragma Import (C, pa_proplist_clear, "pa_proplist_clear");
 
-   function pa_proplist_copy (p : pa_proplist_access) return System.Address;  -- /usr/include/pulse/proplist.h:397
+   function pa_proplist_copy
+     (p : pa_proplist_access)
+     return System.Address;  -- /usr/include/pulse/proplist.h:397
    pragma Import (C, pa_proplist_copy, "pa_proplist_copy");
 
-   function pa_proplist_size (p : pa_proplist_access) return unsigned;  -- /usr/include/pulse/proplist.h:400
+   function pa_proplist_size
+     (p : pa_proplist_access)
+     return unsigned;  -- /usr/include/pulse/proplist.h:400
    pragma Import (C, pa_proplist_size, "pa_proplist_size");
 
-   function pa_proplist_isempty (p : pa_proplist_access) return int;  -- /usr/include/pulse/proplist.h:403
+   function pa_proplist_isempty
+     (p : pa_proplist_access) return int;  -- /usr/include/pulse/proplist.h:403
    pragma Import (C, pa_proplist_isempty, "pa_proplist_isempty");
 
-   function pa_proplist_equal (a : System.Address; b : System.Address) return int;  -- /usr/include/pulse/proplist.h:407
+   function pa_proplist_equal
+     (a : System.Address;
+      b : System.Address) return int;  -- /usr/include/pulse/proplist.h:407
    pragma Import (C, pa_proplist_equal, "pa_proplist_equal");
 
 private
-   type pa_proplist is limited record null; end record;
+   type pa_proplist is limited record
+      null;
+   end record;
 end Pulse.Proplist;

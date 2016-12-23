@@ -21,44 +21,51 @@ package body Linted.Env is
    use type Interfaces.C.Strings.chars_ptr;
 
    protected type Env_Lock is
-      function Set (Name : String;
-		    Value : String;
-		    Overwrite : Boolean) return Linted.Errors.Error;
+      function Set
+        (Name : String;
+         Value : String;
+         Overwrite : Boolean) return Linted.Errors.Error;
       function Get (Name : String) return String;
    end Env_Lock;
 
    L : Env_Lock;
 
-   function Set (Name : String;
-		 Value : String;
-		 Overwrite : Boolean) return Linted.Errors.Error
-   is (L.Set (Name, Value, Overwrite));
+   function Set
+     (Name : String;
+      Value : String;
+      Overwrite : Boolean) return Linted.Errors.Error is
+     (L.Set (Name, Value, Overwrite));
 
-   function Get (Name : String) return String
-   is (L.Get (Name));
+   function Get (Name : String) return String is (L.Get (Name));
 
    protected body Env_Lock is
-      function Set (Name : String;
-		    Value : String;
-		    Overwrite : Boolean) return Linted.Errors.Error is
-	 N : aliased Interfaces.C.char_array := Interfaces.C.To_C (Name);
-	 V : aliased Interfaces.C.char_array := Interfaces.C.To_C (Value);
+      function Set
+        (Name : String;
+         Value : String;
+         Overwrite : Boolean) return Linted.Errors.Error
+      is
+         N : aliased Interfaces.C.char_array := Interfaces.C.To_C (Name);
+         V : aliased Interfaces.C.char_array := Interfaces.C.To_C (Value);
       begin
-	 return Linted.Errors.Error (Libc.Stdlib.GNU.setenv (Interfaces.C.Strings.To_Chars_Ptr (N'Unchecked_Access),
-							     Interfaces.C.Strings.To_Chars_Ptr (V'Unchecked_Access),
-							     (if Overwrite then 1 else 0)));
+         return Linted.Errors.Error
+             (Libc.Stdlib.GNU.setenv
+                (Interfaces.C.Strings.To_Chars_Ptr (N'Unchecked_Access),
+                 Interfaces.C.Strings.To_Chars_Ptr (V'Unchecked_Access),
+                 (if Overwrite then 1 else 0)));
       end Set;
 
       function Get (Name : String) return String is
-	 N : aliased Interfaces.C.char_array := Interfaces.C.To_C (Name);
-	 P : Interfaces.C.Strings.chars_ptr;
+         N : aliased Interfaces.C.char_array := Interfaces.C.To_C (Name);
+         P : Interfaces.C.Strings.chars_ptr;
       begin
-	 P := Libc.Stdlib.getenv (Interfaces.C.Strings.To_Chars_Ptr (N'Unchecked_Access));
-	 if P = Interfaces.C.Strings.Null_Ptr then
-	    return "";
-	 else
-	    return Interfaces.C.Strings.Value (P);
-	 end if;
+         P :=
+           Libc.Stdlib.getenv
+             (Interfaces.C.Strings.To_Chars_Ptr (N'Unchecked_Access));
+         if P = Interfaces.C.Strings.Null_Ptr then
+            return "";
+         else
+            return Interfaces.C.Strings.Value (P);
+         end if;
       end Get;
 
    end Env_Lock;

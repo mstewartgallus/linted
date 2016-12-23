@@ -41,14 +41,17 @@ package body Linted.Controls_Reader is
    package Read_Done_Event_Channels is new Linted.Channels (Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
 
-   package body Worker with SPARK_Mode => Off is
+   package body Worker with
+        Spark_Mode => Off is
       task Reader_Task;
 
       package Worker is new Linted.Reader.Worker;
 
       My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
 
-      Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 2 * 4 + 1);
+      Data_Being_Read : aliased Storage_Elements
+        .Storage_Array
+      (1 .. 2 * 4 + 1);
 
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
@@ -56,24 +59,24 @@ package body Linted.Controls_Reader is
 
       procedure Start (Object : KOs.KO) is
       begin
-	 My_Command_MVar.Set (Object);
-	 Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+         My_Command_MVar.Set (Object);
+         Ada.Synchronous_Task_Control.Set_True (My_Trigger);
       end Start;
 
       procedure Wait (E : out Event) is
       begin
-	 My_Event_Channel.Pop (E);
+         My_Event_Channel.Pop (E);
       end Wait;
 
       task A;
       task body A is
-	 Worker_Event : Linted.Reader.Event;
+         Worker_Event : Linted.Reader.Event;
       begin
-	 loop
-	    Worker.Wait (Worker_Event);
-	    Work_Event.Push (Worker_Event);
-	    Ada.Synchronous_Task_Control.Set_True (My_Trigger);
-	 end loop;
+         loop
+            Worker.Wait (Worker_Event);
+            Work_Event.Push (Worker_Event);
+            Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+         end loop;
       end A;
 
       Err : Errors.Error;
@@ -82,49 +85,70 @@ package body Linted.Controls_Reader is
       Object_Initialized : Boolean := False;
 
       task body Reader_Task is
-	 type Storage_Access is not null access all Storage_Elements.Storage_Element;
+         type Storage_Access is
+           not null access all Storage_Elements.Storage_Element;
 
-	 function Convert is new Ada.Unchecked_Conversion (Storage_Access, System.Address);
-	 use type Errors.Error;
+         function Convert is new Ada.Unchecked_Conversion
+           (Storage_Access,
+            System.Address);
+         use type Errors.Error;
       begin
-	 loop
-	    Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
+         loop
+            Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
 
-	    declare
-	       New_Command : Command_MVars.Option_Element_Ts.Option;
-	    begin
-	       My_Command_MVar.Poll (New_Command);
-	       if not New_Command.Empty then
-		  Object := New_Command.Data;
-		  Object_Initialized := True;
-	       end if;
-	    end;
+            declare
+               New_Command : Command_MVars.Option_Element_Ts.Option;
+            begin
+               My_Command_MVar.Poll (New_Command);
+               if not New_Command.Empty then
+                  Object := New_Command.Data;
+                  Object_Initialized := True;
+               end if;
+            end;
 
-	    declare
-	       Options_Event : Worker_Event_Channels.Option_Element_Ts.Option;
-	    begin
-	       Work_Event.Poll (Options_Event);
-	       if not Options_Event.Empty then
-		  Err := Options_Event.Data.Err;
-		  if Err = Linted.Errors.Success then
-		     C.Z_Tilt := From_Bytes (Data_Being_Read (1 .. 4));
-		     C.X_Tilt := From_Bytes (Data_Being_Read (5 .. 8));
+            declare
+               Options_Event : Worker_Event_Channels.Option_Element_Ts.Option;
+            begin
+               Work_Event.Poll (Options_Event);
+               if not Options_Event.Empty then
+                  Err := Options_Event.Data.Err;
+                  if Err = Linted.Errors.Success then
+                     C.Z_Tilt := From_Bytes (Data_Being_Read (1 .. 4));
+                     C.X_Tilt := From_Bytes (Data_Being_Read (5 .. 8));
 
-		     C.Left := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 1)) /= 0;
-		     C.Right := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 2)) /= 0;
-		     C.Forward := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 3)) /= 0;
-		     C.Back := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 4)) /= 0;
+                     C.Left :=
+                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
+                        Interfaces.Shift_Left (1, 8 - 1)) /=
+                       0;
+                     C.Right :=
+                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
+                        Interfaces.Shift_Left (1, 8 - 2)) /=
+                       0;
+                     C.Forward :=
+                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
+                        Interfaces.Shift_Left (1, 8 - 3)) /=
+                       0;
+                     C.Back :=
+                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
+                        Interfaces.Shift_Left (1, 8 - 4)) /=
+                       0;
 
-		     C.Jumping := (Interfaces.Unsigned_8 (Data_Being_Read (9)) and Interfaces.Shift_Left (1, 8 - 5)) /= 0;
-		  end if;
-		  My_Event_Channel.Push ((C, Err));
-	       end if;
-	    end;
+                     C.Jumping :=
+                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
+                        Interfaces.Shift_Left (1, 8 - 5)) /=
+                       0;
+                  end if;
+                  My_Event_Channel.Push ((C, Err));
+               end if;
+            end;
 
-	    if Object_Initialized then
-	       Worker.Read (Object, Convert (Data_Being_Read (1)'Access), Data_Being_Read'Size / Interfaces.C.char'Size);
-	    end if;
-	 end loop;
+            if Object_Initialized then
+               Worker.Read
+                 (Object,
+                  Convert (Data_Being_Read (1)'Access),
+                  Data_Being_Read'Size / Interfaces.C.char'Size);
+            end if;
+         end loop;
       end Reader_Task;
    end Worker;
 
@@ -132,15 +156,16 @@ package body Linted.Controls_Reader is
       X : Interfaces.Unsigned_32;
       Y : Controls_Int;
    begin
-	 X := Interfaces.Unsigned_32 (T (4)) or
-	   Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
-	   Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
-	   Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24);
-	 if X <= Interfaces.Unsigned_32 (Controls_Int'Last) then
-	    Y := Controls_Int (X);
-	 else
-	    Y := -Controls_Int (not X + 1);
-	 end if;
-	 return Y;
+      X :=
+        Interfaces.Unsigned_32 (T (4)) or
+        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
+        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
+        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24);
+      if X <= Interfaces.Unsigned_32 (Controls_Int'Last) then
+         Y := Controls_Int (X);
+      else
+         Y := -Controls_Int (not X + 1);
+      end if;
+      return Y;
    end From_Bytes;
 end Linted.Controls_Reader;

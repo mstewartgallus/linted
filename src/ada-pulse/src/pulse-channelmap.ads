@@ -21,7 +21,8 @@ with Libc.Stddef;
 
 limited with Pulse.Sample;
 
-package Pulse.Channelmap with SPARK_Mode => Off is
+package Pulse.Channelmap with
+     Spark_Mode => Off is
 
    --  unsupported macro: PA_CHANNEL_POSITION_INVALID PA_CHANNEL_POSITION_INVALID
    --  unsupported macro: PA_CHANNEL_POSITION_MONO PA_CHANNEL_POSITION_MONO
@@ -104,8 +105,10 @@ package Pulse.Channelmap with SPARK_Mode => Off is
    PA_CHANNEL_POSITION_REAR_RIGHT : constant pa_channel_position := 6;
    PA_CHANNEL_POSITION_LFE : constant pa_channel_position := 7;
    PA_CHANNEL_POSITION_SUBWOOFER : constant pa_channel_position := 7;
-   PA_CHANNEL_POSITION_FRONT_LEFT_OF_CENTER : constant pa_channel_position := 8;
-   PA_CHANNEL_POSITION_FRONT_RIGHT_OF_CENTER : constant pa_channel_position := 9;
+   PA_CHANNEL_POSITION_FRONT_LEFT_OF_CENTER : constant pa_channel_position :=
+     8;
+   PA_CHANNEL_POSITION_FRONT_RIGHT_OF_CENTER : constant pa_channel_position :=
+     9;
    PA_CHANNEL_POSITION_SIDE_LEFT : constant pa_channel_position := 10;
    PA_CHANNEL_POSITION_SIDE_RIGHT : constant pa_channel_position := 11;
    PA_CHANNEL_POSITION_AUX0 : constant pa_channel_position := 12;
@@ -147,11 +150,13 @@ package Pulse.Channelmap with SPARK_Mode => Off is
    PA_CHANNEL_POSITION_TOP_REAR_LEFT : constant pa_channel_position := 48;
    PA_CHANNEL_POSITION_TOP_REAR_RIGHT : constant pa_channel_position := 49;
    PA_CHANNEL_POSITION_TOP_REAR_CENTER : constant pa_channel_position := 50;
-   PA_CHANNEL_POSITION_MAX : constant pa_channel_position := 51;  -- /usr/include/pulse/channelmap.h:76
+   PA_CHANNEL_POSITION_MAX : constant pa_channel_position :=
+     51;  -- /usr/include/pulse/channelmap.h:76
 
    subtype pa_channel_position_t is pa_channel_position;
 
-   subtype pa_channel_position_mask_t is Libc.Stdint.uint64_t;  -- /usr/include/pulse/channelmap.h:212
+   subtype pa_channel_position_mask_t is
+     Libc.Stdint.uint64_t;  -- /usr/include/pulse/channelmap.h:212
 
    subtype pa_channel_map_def is unsigned;
    PA_CHANNEL_MAP_AIFF : constant pa_channel_map_def := 0;
@@ -160,84 +165,146 @@ package Pulse.Channelmap with SPARK_Mode => Off is
    PA_CHANNEL_MAP_WAVEEX : constant pa_channel_map_def := 3;
    PA_CHANNEL_MAP_OSS : constant pa_channel_map_def := 4;
    PA_CHANNEL_MAP_DEF_MAX : constant pa_channel_map_def := 5;
-   PA_CHANNEL_MAP_DEFAULT : constant pa_channel_map_def := 0;  -- /usr/include/pulse/channelmap.h:218
+   PA_CHANNEL_MAP_DEFAULT : constant pa_channel_map_def :=
+     0;  -- /usr/include/pulse/channelmap.h:218
 
    subtype pa_channel_map_def_t is pa_channel_map_def;
 
-   type pa_channel_map_map_array is array (0 .. 31) of aliased pa_channel_position_t;
+   type pa_channel_map_map_array is
+     array (0 .. 31) of aliased pa_channel_position_t;
    type pa_channel_map is record
-      channels : aliased Libc.Stdint.uint8_t;  -- /usr/include/pulse/channelmap.h:265
+      channels : aliased Libc.Stdint
+        .uint8_t;  -- /usr/include/pulse/channelmap.h:265
       map : aliased pa_channel_map_map_array;  -- /usr/include/pulse/channelmap.h:268
    end record;
-   pragma Convention (C_Pass_By_Copy, pa_channel_map);  -- /usr/include/pulse/channelmap.h:264
+   pragma Convention
+     (C_Pass_By_Copy,
+      pa_channel_map);  -- /usr/include/pulse/channelmap.h:264
 
-   function pa_channel_map_init (m : access pa_channel_map) return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:275
+   function pa_channel_map_init
+     (m : access pa_channel_map)
+     return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:275
    pragma Import (C, pa_channel_map_init, "pa_channel_map_init");
 
-   function pa_channel_map_init_mono (m : access pa_channel_map) return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:278
+   function pa_channel_map_init_mono
+     (m : access pa_channel_map)
+     return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:278
    pragma Import (C, pa_channel_map_init_mono, "pa_channel_map_init_mono");
 
-   function pa_channel_map_init_stereo (m : access pa_channel_map) return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:281
+   function pa_channel_map_init_stereo
+     (m : access pa_channel_map)
+     return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:281
    pragma Import (C, pa_channel_map_init_stereo, "pa_channel_map_init_stereo");
 
    function pa_channel_map_init_auto
      (m : access pa_channel_map;
       channels : unsigned;
-      def : pa_channel_map_def_t) return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:287
+      def : pa_channel_map_def_t)
+     return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:287
    pragma Import (C, pa_channel_map_init_auto, "pa_channel_map_init_auto");
 
    function pa_channel_map_init_extend
      (m : access pa_channel_map;
       channels : unsigned;
-      def : pa_channel_map_def_t) return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:293
+      def : pa_channel_map_def_t)
+     return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:293
    pragma Import (C, pa_channel_map_init_extend, "pa_channel_map_init_extend");
 
-   function pa_channel_position_to_string (pos : pa_channel_position_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/channelmap.h:296
-   pragma Import (C, pa_channel_position_to_string, "pa_channel_position_to_string");
+   function pa_channel_position_to_string
+     (pos : pa_channel_position_t)
+     return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/channelmap.h:296
+   pragma Import
+     (C,
+      pa_channel_position_to_string,
+      "pa_channel_position_to_string");
 
-   function pa_channel_position_from_string (s : Interfaces.C.Strings.chars_ptr) return pa_channel_position_t;  -- /usr/include/pulse/channelmap.h:299
-   pragma Import (C, pa_channel_position_from_string, "pa_channel_position_from_string");
+   function pa_channel_position_from_string
+     (s : Interfaces.C.Strings.chars_ptr)
+     return pa_channel_position_t;  -- /usr/include/pulse/channelmap.h:299
+   pragma Import
+     (C,
+      pa_channel_position_from_string,
+      "pa_channel_position_from_string");
 
-   function pa_channel_position_to_pretty_string (pos : pa_channel_position_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/channelmap.h:302
-   pragma Import (C, pa_channel_position_to_pretty_string, "pa_channel_position_to_pretty_string");
+   function pa_channel_position_to_pretty_string
+     (pos : pa_channel_position_t)
+     return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/channelmap.h:302
+   pragma Import
+     (C,
+      pa_channel_position_to_pretty_string,
+      "pa_channel_position_to_pretty_string");
 
    function pa_channel_map_snprint
      (s : Interfaces.C.Strings.chars_ptr;
       l : Libc.Stddef.size_t;
-      map : System.Address) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/channelmap.h:312
+      map : System.Address)
+     return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/channelmap.h:312
    pragma Import (C, pa_channel_map_snprint, "pa_channel_map_snprint");
 
-   function pa_channel_map_parse (map : access pa_channel_map; s : Interfaces.C.Strings.chars_ptr) return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:318
+   function pa_channel_map_parse
+     (map : access pa_channel_map;
+      s : Interfaces.C.Strings.chars_ptr)
+     return access pa_channel_map;  -- /usr/include/pulse/channelmap.h:318
    pragma Import (C, pa_channel_map_parse, "pa_channel_map_parse");
 
-   function pa_channel_map_equal (a : System.Address; b : System.Address) return int;  -- /usr/include/pulse/channelmap.h:321
+   function pa_channel_map_equal
+     (a : System.Address;
+      b : System.Address) return int;  -- /usr/include/pulse/channelmap.h:321
    pragma Import (C, pa_channel_map_equal, "pa_channel_map_equal");
 
-   function pa_channel_map_valid (map : System.Address) return int;  -- /usr/include/pulse/channelmap.h:324
+   function pa_channel_map_valid
+     (map : System.Address) return int;  -- /usr/include/pulse/channelmap.h:324
    pragma Import (C, pa_channel_map_valid, "pa_channel_map_valid");
 
-   function pa_channel_map_compatible (map : System.Address; ss : access constant Pulse.Sample.pa_sample_spec) return int;  -- /usr/include/pulse/channelmap.h:328
+   function pa_channel_map_compatible
+     (map : System.Address;
+      ss : access constant Pulse.Sample.pa_sample_spec)
+     return int;  -- /usr/include/pulse/channelmap.h:328
    pragma Import (C, pa_channel_map_compatible, "pa_channel_map_compatible");
 
-   function pa_channel_map_superset (a : System.Address; b : System.Address) return int;  -- /usr/include/pulse/channelmap.h:331
+   function pa_channel_map_superset
+     (a : System.Address;
+      b : System.Address) return int;  -- /usr/include/pulse/channelmap.h:331
    pragma Import (C, pa_channel_map_superset, "pa_channel_map_superset");
 
-   function pa_channel_map_can_balance (map : System.Address) return int;  -- /usr/include/pulse/channelmap.h:336
+   function pa_channel_map_can_balance
+     (map : System.Address) return int;  -- /usr/include/pulse/channelmap.h:336
    pragma Import (C, pa_channel_map_can_balance, "pa_channel_map_can_balance");
 
-   function pa_channel_map_can_fade (map : System.Address) return int;  -- /usr/include/pulse/channelmap.h:341
+   function pa_channel_map_can_fade
+     (map : System.Address) return int;  -- /usr/include/pulse/channelmap.h:341
    pragma Import (C, pa_channel_map_can_fade, "pa_channel_map_can_fade");
 
-   function pa_channel_map_to_name (map : System.Address) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/channelmap.h:347
+   function pa_channel_map_to_name
+     (map : System.Address)
+     return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/channelmap.h:347
    pragma Import (C, pa_channel_map_to_name, "pa_channel_map_to_name");
 
-   function pa_channel_map_to_pretty_name (map : System.Address) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/channelmap.h:352
-   pragma Import (C, pa_channel_map_to_pretty_name, "pa_channel_map_to_pretty_name");
+   function pa_channel_map_to_pretty_name
+     (map : System.Address)
+     return Interfaces.C.Strings
+       .chars_ptr;  -- /usr/include/pulse/channelmap.h:352
+   pragma Import
+     (C,
+      pa_channel_map_to_pretty_name,
+      "pa_channel_map_to_pretty_name");
 
-   function pa_channel_map_has_position (map : System.Address; p : pa_channel_position_t) return int;  -- /usr/include/pulse/channelmap.h:356
-   pragma Import (C, pa_channel_map_has_position, "pa_channel_map_has_position");
+   function pa_channel_map_has_position
+     (map : System.Address;
+      p : pa_channel_position_t)
+     return int;  -- /usr/include/pulse/channelmap.h:356
+   pragma Import
+     (C,
+      pa_channel_map_has_position,
+      "pa_channel_map_has_position");
 
-   function pa_channel_map_mask (map : System.Address) return pa_channel_position_mask_t;  -- /usr/include/pulse/channelmap.h:359
+   function pa_channel_map_mask
+     (map : System.Address)
+     return pa_channel_position_mask_t;  -- /usr/include/pulse/channelmap.h:359
    pragma Import (C, pa_channel_map_mask, "pa_channel_map_mask");
 
 end Pulse.Channelmap;

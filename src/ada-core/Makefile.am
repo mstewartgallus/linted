@@ -22,4 +22,4 @@ EXTRA_DIST+=\
 LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/linted.gpr
+	- env ADA_PROJECT_PATH=$(GPRPROJECTPATH) $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/linted.gpr

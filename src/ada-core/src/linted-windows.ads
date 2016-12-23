@@ -17,9 +17,8 @@ with Linted.KOs;
 package Linted.Windows is
    pragma Elaborate_Body;
 
-   type Window is mod 2 ** 32;
+   type Window is mod 2**32;
 
-   procedure Read (KO : KOs.KO;
-		   Win : out Window;
-		   Err : out Errors.Error) with SPARK_Mode => Off;
+   procedure Read (KO : KOs.KO; Win : out Window; Err : out Errors.Error) with
+      Spark_Mode => Off;
 end Linted.Windows;

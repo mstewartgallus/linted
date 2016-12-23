@@ -16,13 +16,12 @@ with Interfaces.C;
 with Libc.Errno.POSIX_2008;
 
 package Linted.Errors with
-  Abstract_State => null
-is
+     Abstract_State => null is
    pragma Preelaborate;
 
    subtype Valid_Error is Interfaces.C.int range 0 .. Interfaces.C.int'Last;
-   type Error is new Valid_Error
-     with Default_Value => 0;
+   type Error is new Valid_Error with
+        Default_Value => 0;
 
    Success : constant Error;
    Permission : constant Error;
@@ -31,7 +30,8 @@ is
    Out_Of_Memory : constant Error;
    Invalid_Parameter : constant Error;
 
-   function To_String (E : Error) return String with SPARK_Mode => Off;
+   function To_String (E : Error) return String with
+      Spark_Mode => Off;
 
 private
    Success : constant Error := 0;

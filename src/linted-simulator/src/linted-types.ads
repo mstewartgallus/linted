@@ -16,10 +16,10 @@ with Linted.Angles;
 package Linted.Types is
    pragma Pure;
 
-   type Large is range -2 ** (64 - 1) ..  2 ** (64 - 1) - 1;
+   type Large is range -2**(64 - 1) .. 2**(64 - 1) - 1;
 
-   type Nat is mod 2 ** 32;
-   type Int is range -2 ** (32 - 1) ..  2 ** (32 - 1) - 1;
+   type Nat is mod 2**32;
+   type Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
 
    package Sim_Angles is new Linted.Angles (Nat);
 

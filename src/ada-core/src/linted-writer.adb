@@ -17,7 +17,11 @@ package body Linted.Writer is
    package body Worker is
       package IO_Worker is new IO_Pool.Writer_Worker;
 
-      procedure Write (Object : Linted.KOs.KO; Buf : System.Address; Count : C.size_t) renames IO_Worker.Write;
+      procedure Write
+        (Object : Linted.KOs.KO;
+         Buf : System.Address;
+         Count : C.size_t) renames
+        IO_Worker.Write;
       procedure Wait (E : out IO_Pool.Writer_Event) renames IO_Worker.Wait;
    end Worker;
 end Linted.Writer;

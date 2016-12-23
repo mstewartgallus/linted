@@ -20,26 +20,33 @@ with Libc.Stdint;
 with Pulse.Def;
 with Pulse.Context;
 
-package Pulse.Subscribe with SPARK_Mode => Off is
+package Pulse.Subscribe with
+     Spark_Mode => Off is
 
    type pa_context_subscribe_cb_t is access procedure
-        (arg1 : System.Address;
-         arg2 : Pulse.Def.pa_subscription_event_type_t;
-         arg3 : Libc.Stdint.uint32_t;
-         arg4 : System.Address);
-   pragma Convention (C, pa_context_subscribe_cb_t);  -- /usr/include/pulse/subscribe.h:76
+     (arg1 : System.Address;
+      arg2 : Pulse.Def.pa_subscription_event_type_t;
+      arg3 : Libc.Stdint.uint32_t;
+      arg4 : System.Address);
+   pragma Convention
+     (C,
+      pa_context_subscribe_cb_t);  -- /usr/include/pulse/subscribe.h:76
 
    function pa_context_subscribe
      (c : System.Address;
       m : Pulse.Def.pa_subscription_mask_t;
       cb : Pulse.Context.pa_context_success_cb_t;
-      userdata : System.Address) return System.Address;  -- /usr/include/pulse/subscribe.h:79
+      userdata : System.Address)
+     return System.Address;  -- /usr/include/pulse/subscribe.h:79
    pragma Import (C, pa_context_subscribe, "pa_context_subscribe");
 
    procedure pa_context_set_subscribe_callback
      (c : System.Address;
       cb : pa_context_subscribe_cb_t;
       userdata : System.Address);  -- /usr/include/pulse/subscribe.h:82
-   pragma Import (C, pa_context_set_subscribe_callback, "pa_context_set_subscribe_callback");
+   pragma Import
+     (C,
+      pa_context_set_subscribe_callback,
+      "pa_context_set_subscribe_callback");
 
 end Pulse.Subscribe;
