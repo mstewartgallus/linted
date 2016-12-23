@@ -16,7 +16,8 @@ with Libc.Stdint;
 with Interfaces.C.Strings;
 with System;
 
-package Libc.Inttypes with SPARK_Mode => Off is
+package Libc.Inttypes with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: PRId8 "d"
@@ -177,26 +178,35 @@ package Libc.Inttypes with SPARK_Mode => Off is
       quot : aliased long;  -- /usr/include/inttypes.h:273
       c_rem : aliased long;  -- /usr/include/inttypes.h:274
    end record;
-   pragma Convention (C_Pass_By_Copy, imaxdiv_t);  -- /usr/include/inttypes.h:275
+   pragma Convention
+     (C_Pass_By_Copy,
+      imaxdiv_t);  -- /usr/include/inttypes.h:275
 
    --  skipped anonymous struct anon_0
 
-   function imaxabs (uu_n : Libc.Stdint.intmax_t) return Libc.Stdint.intmax_t;  -- /usr/include/inttypes.h:290
+   function imaxabs
+     (uu_n : Libc.Stdint.intmax_t)
+     return Libc.Stdint.intmax_t;  -- /usr/include/inttypes.h:290
    pragma Import (C, imaxabs, "imaxabs");
 
-   function imaxdiv (uu_numer : Libc.Stdint.intmax_t; uu_denom : Libc.Stdint.intmax_t) return imaxdiv_t;  -- /usr/include/inttypes.h:293
+   function imaxdiv
+     (uu_numer : Libc.Stdint.intmax_t;
+      uu_denom : Libc.Stdint.intmax_t)
+     return imaxdiv_t;  -- /usr/include/inttypes.h:293
    pragma Import (C, imaxdiv, "imaxdiv");
 
    function strtoimax
      (uu_nptr : Interfaces.C.Strings.chars_ptr;
       uu_endptr : System.Address;
-      uu_base : int) return Libc.Stdint.intmax_t;  -- /usr/include/inttypes.h:297
+      uu_base : int)
+     return Libc.Stdint.intmax_t;  -- /usr/include/inttypes.h:297
    pragma Import (C, strtoimax, "strtoimax");
 
    function strtoumax
      (uu_nptr : Interfaces.C.Strings.chars_ptr;
       uu_endptr : System.Address;
-      uu_base : int) return Libc.Stdint.uintmax_t;  -- /usr/include/inttypes.h:301
+      uu_base : int)
+     return Libc.Stdint.uintmax_t;  -- /usr/include/inttypes.h:301
    pragma Import (C, strtoumax, "strtoumax");
 
    --  function wcstoimax

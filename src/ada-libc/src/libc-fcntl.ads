@@ -15,7 +15,8 @@ with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with Libc.Sys.Types;
 
-package Libc.Fcntl with SPARK_Mode => Off is
+package Libc.Fcntl with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    O_ACCMODE : constant := 8#3#;
@@ -90,15 +91,19 @@ package Libc.Fcntl with SPARK_Mode => Off is
    F_TEST : constant := 3;
 
    function fcntl (fd : int; cmd : int  -- , ...
-      ) return int;  -- /usr/include/fcntl.h:137
+   ) return int;  -- /usr/include/fcntl.h:137
    pragma Import (C, fcntl, "fcntl");
 
-   function open (file : Interfaces.C.Strings.chars_ptr; oflag : int; mode : Libc.Sys.Types.mode_t
-      ) return int;  -- /usr/include/fcntl.h:146
+   function open
+     (file : Interfaces.C.Strings.chars_ptr;
+      oflag : int;
+      mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:146
    pragma Import (C, open, "open");
 
-   function open64 (file : Interfaces.C.Strings.chars_ptr; oflag : int; mode : Libc.Sys.Types.mode_t
-      ) return int;  -- /usr/include/fcntl.h:156
+   function open64
+     (file : Interfaces.C.Strings.chars_ptr;
+      oflag : int;
+      mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:156
    pragma Import (C, open64, "open64");
 
    function openat
@@ -115,10 +120,14 @@ package Libc.Fcntl with SPARK_Mode => Off is
       ) return int;  -- /usr/include/fcntl.h:181
    pragma Import (C, openat64, "openat64");
 
-   function creat (file : Interfaces.C.Strings.chars_ptr; mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:192
+   function creat
+     (file : Interfaces.C.Strings.chars_ptr;
+      mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:192
    pragma Import (C, creat, "creat");
 
-   function creat64 (file : Interfaces.C.Strings.chars_ptr; mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:202
+   function creat64
+     (file : Interfaces.C.Strings.chars_ptr;
+      mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:202
    pragma Import (C, creat64, "creat64");
 
    function lockf

@@ -16,19 +16,18 @@ with Linted.Options;
 generic
    type Element_T is private;
 package Linted.MVars with
-  Abstract_State => null
-is
+   Abstract_State => null is
    pragma Pure;
 
    package Option_Element_Ts is new Linted.Options (Element_T);
 
    protected type MVar is
       procedure Poll (Option : out Option_Element_Ts.Option) with
-	Global => null,
-	Depends => (Option => MVar, MVar => MVar);
+         Global => null,
+         Depends => (Option => MVar, MVar => MVar);
       procedure Set (D : Element_T) with
-	Global => null,
-	Depends => (MVar => (D, MVar));
+         Global => null,
+         Depends => (MVar => (D, MVar));
    private
       Current : Option_Element_Ts.Option;
    end MVar;

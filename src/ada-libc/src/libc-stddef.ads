@@ -19,9 +19,13 @@ package Libc.Stddef is
    --  unsupported macro: NULL __null
    --  arg-macro: procedure offsetof (TYPE, MEMBER)
    --    __builtin_offsetof (TYPE, MEMBER)
-   subtype ptrdiff_t is Interfaces.C.ptrdiff_t;  -- /usr/lib/gcc/x86_64-linux-gnu/4.6/include/stddef.h:150
+   subtype ptrdiff_t is
+     Interfaces.C
+       .ptrdiff_t;  -- /usr/lib/gcc/x86_64-linux-gnu/4.6/include/stddef.h:150
 
-   subtype size_t is Interfaces.C.size_t;  -- /usr/lib/gcc/x86_64-linux-gnu/4.6/include/stddef.h:212
+   subtype size_t is
+     Interfaces.C
+       .size_t;  -- /usr/lib/gcc/x86_64-linux-gnu/4.6/include/stddef.h:212
 
    --  subtype wchar_t is Interfaces.C.wchar_t;
    --  subtype wint_t is Interfaces.C.unsigned;

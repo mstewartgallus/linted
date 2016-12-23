@@ -14,7 +14,8 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 
-package Libc.Locale with SPARK_Mode => Off is
+package Libc.Locale with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: LC_ALL __LC_ALL
@@ -25,16 +26,25 @@ package Libc.Locale with SPARK_Mode => Off is
    --  unsupported macro: LC_TIME __LC_TIME
 
    type lconv is record
-      decimal_point : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:57
-      thousands_sep : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:58
+      decimal_point : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:57
+      thousands_sep : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:58
       grouping : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:64
-      int_curr_symbol : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:70
-      currency_symbol : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:71
-      mon_decimal_point : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:72
-      mon_thousands_sep : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:73
-      mon_grouping : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:74
-      positive_sign : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:75
-      negative_sign : Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:76
+      int_curr_symbol : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:70
+      currency_symbol : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:71
+      mon_decimal_point : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:72
+      mon_thousands_sep : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:73
+      mon_grouping : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:74
+      positive_sign : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:75
+      negative_sign : Interfaces.C.Strings
+        .chars_ptr;  -- /usr/include/locale.h:76
       int_frac_digits : aliased char;  -- /usr/include/locale.h:77
       frac_digits : aliased char;  -- /usr/include/locale.h:78
       p_cs_precedes : aliased char;  -- /usr/include/locale.h:80
@@ -52,7 +62,10 @@ package Libc.Locale with SPARK_Mode => Off is
    end record;
    pragma Convention (C_Pass_By_Copy, lconv);  -- /usr/include/locale.h:53
 
-   function setlocale (category : int; locale : Interfaces.C.Strings.chars_ptr) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:124
+   function setlocale
+     (category : int;
+      locale : Interfaces.C.Strings.chars_ptr)
+      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/locale.h:124
    pragma Import (C, setlocale, "setlocale");
 
    function localeconv return access lconv;  -- /usr/include/locale.h:127

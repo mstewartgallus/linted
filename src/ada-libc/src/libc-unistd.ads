@@ -17,7 +17,8 @@ with System;
 with Libc.Sys.Types;
 with Libc.Stdint;
 
-package Libc.Unistd with SPARK_Mode => Off is
+package Libc.Unistd with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    STDIN_FILENO : constant := 0;
@@ -47,13 +48,19 @@ package Libc.Unistd with SPARK_Mode => Off is
    --  arg-macro: function TEMP_FAILURE_RETRY (expression)
    --    return __extension__ ({ long int __result; do __result := (long int) (expression); while (__result = -1L  and then  errno = EINTR); __result; });
 
-   function c_access (name : Interfaces.C.Strings.chars_ptr; c_type : int) return int;  -- /usr/include/unistd.h:287
+   function c_access
+     (name : Interfaces.C.Strings.chars_ptr;
+      c_type : int) return int;  -- /usr/include/unistd.h:287
    pragma Import (C, c_access, "access");
 
-   function euidaccess (name : Interfaces.C.Strings.chars_ptr; c_type : int) return int;  -- /usr/include/unistd.h:292
+   function euidaccess
+     (name : Interfaces.C.Strings.chars_ptr;
+      c_type : int) return int;  -- /usr/include/unistd.h:292
    pragma Import (C, euidaccess, "euidaccess");
 
-   function eaccess (name : Interfaces.C.Strings.chars_ptr; c_type : int) return int;  -- /usr/include/unistd.h:296
+   function eaccess
+     (name : Interfaces.C.Strings.chars_ptr;
+      c_type : int) return int;  -- /usr/include/unistd.h:296
    pragma Import (C, eaccess, "eaccess");
 
    function faccessat
@@ -72,7 +79,8 @@ package Libc.Unistd with SPARK_Mode => Off is
    function lseek64
      (fd : int;
       offset : Libc.Sys.Types.off64_t;
-      whence : int) return Libc.Sys.Types.off64_t;  -- /usr/include/unistd.h:345
+      whence : int)
+     return Libc.Sys.Types.off64_t;  -- /usr/include/unistd.h:345
    pragma Import (C, lseek64, "lseek64");
 
    function close (fd : int) return int;  -- /usr/include/unistd.h:353
@@ -81,7 +89,8 @@ package Libc.Unistd with SPARK_Mode => Off is
    function read
      (fd : int;
       buf : System.Address;
-      nbytes : size_t) return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:360
+      nbytes : size_t)
+     return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:360
    pragma Import (C, read, "read");
 
    function write
@@ -94,46 +103,60 @@ package Libc.Unistd with SPARK_Mode => Off is
      (fd : int;
       buf : System.Address;
       nbytes : size_t;
-      offset : Libc.Sys.Types.off_t) return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:376
+      offset : Libc.Sys.Types.off_t)
+     return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:376
    pragma Import (C, pread, "pread");
 
    function pwrite
      (fd : int;
       buf : System.Address;
       n : size_t;
-      offset : Libc.Sys.Types.off_t) return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:384
+      offset : Libc.Sys.Types.off_t)
+     return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:384
    pragma Import (C, pwrite, "pwrite");
 
    function pread64
      (fd : int;
       buf : System.Address;
       nbytes : size_t;
-      offset : Libc.Sys.Types.off64_t) return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:404
+      offset : Libc.Sys.Types.off64_t)
+     return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:404
    pragma Import (C, pread64, "pread64");
 
    function pwrite64
      (fd : int;
       buf : System.Address;
       n : size_t;
-      offset : Libc.Sys.Types.off64_t) return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:408
+      offset : Libc.Sys.Types.off64_t)
+     return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:408
    pragma Import (C, pwrite64, "pwrite64");
 
-   function pipe (pipedes : access int) return int;  -- /usr/include/unistd.h:417
+   function pipe
+     (pipedes : access int) return int;  -- /usr/include/unistd.h:417
    pragma Import (C, pipe, "pipe");
 
-   function pipe2 (pipedes : access int; flags : int) return int;  -- /usr/include/unistd.h:422
+   function pipe2
+     (pipedes : access int;
+      flags : int) return int;  -- /usr/include/unistd.h:422
    pragma Import (C, pipe2, "pipe2");
 
-   function alarm (seconds : unsigned) return unsigned;  -- /usr/include/unistd.h:432
+   function alarm
+     (seconds : unsigned) return unsigned;  -- /usr/include/unistd.h:432
    pragma Import (C, alarm, "alarm");
 
-   function sleep (seconds : unsigned) return unsigned;  -- /usr/include/unistd.h:444
+   function sleep
+     (seconds : unsigned) return unsigned;  -- /usr/include/unistd.h:444
    pragma Import (C, sleep, "sleep");
 
-   function ualarm (value : Libc.Sys.Types.useconds_t; interval : Libc.Sys.Types.useconds_t) return Libc.Sys.Types.useconds_t;  -- /usr/include/unistd.h:452
+   function ualarm
+     (value : Libc.Sys.Types.useconds_t;
+      interval : Libc.Sys.Types.useconds_t)
+     return Libc.Sys.Types.useconds_t;  -- /usr/include/unistd.h:452
    pragma Import (C, ualarm, "ualarm");
 
-   function usleep (useconds : Libc.Sys.Types.useconds_t) return int;  -- /usr/include/unistd.h:460
+   function usleep
+     (useconds : Libc.Sys.Types.useconds_t)
+     return int;  -- /usr/include/unistd.h:460
    pragma Import (C, usleep, "usleep");
 
    function pause return int;  -- /usr/include/unistd.h:469
@@ -165,25 +188,35 @@ package Libc.Unistd with SPARK_Mode => Off is
       flag : int) return int;  -- /usr/include/unistd.h:491
    pragma Import (C, fchownat, "fchownat");
 
-   function chdir (path : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:497
+   function chdir
+     (path : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:497
    pragma Import (C, chdir, "chdir");
 
    function fchdir (fd : int) return int;  -- /usr/include/unistd.h:501
    pragma Import (C, fchdir, "fchdir");
 
-   function getcwd (buf : Interfaces.C.Strings.chars_ptr; size : size_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:511
+   function getcwd
+     (buf : Interfaces.C.Strings.chars_ptr;
+      size : size_t)
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:511
    pragma Import (C, getcwd, "getcwd");
 
-   function get_current_dir_name return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:517
+   function get_current_dir_name
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:517
    pragma Import (C, get_current_dir_name, "get_current_dir_name");
 
-   function getwd (buf : Interfaces.C.Strings.chars_ptr) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:525
+   function getwd
+     (buf : Interfaces.C.Strings.chars_ptr)
+      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:525
    pragma Import (C, getwd, "getwd");
 
    function dup (fd : int) return int;  -- /usr/include/unistd.h:531
    pragma Import (C, dup, "dup");
 
-   function dup2 (fd : int; fd2 : int) return int;  -- /usr/include/unistd.h:534
+   function dup2
+     (fd : int;
+      fd2 : int) return int;  -- /usr/include/unistd.h:534
    pragma Import (C, dup2, "dup2");
 
    function dup3
@@ -207,21 +240,31 @@ package Libc.Unistd with SPARK_Mode => Off is
       envp : System.Address) return int;  -- /usr/include/unistd.h:557
    pragma Import (C, fexecve, "fexecve");
 
-   function execv (path : Interfaces.C.Strings.chars_ptr; argv : System.Address) return int;  -- /usr/include/unistd.h:563
+   function execv
+     (path : Interfaces.C.Strings.chars_ptr;
+      argv : System.Address) return int;  -- /usr/include/unistd.h:563
    pragma Import (C, execv, "execv");
 
-   function execle (path : Interfaces.C.Strings.chars_ptr; arg : Interfaces.C.Strings.chars_ptr  -- , ...
+   function execle
+     (path : Interfaces.C.Strings.chars_ptr;
+      arg : Interfaces.C.Strings.chars_ptr  -- , ...
       ) return int;  -- /usr/include/unistd.h:568
    pragma Import (C, execle, "execle");
 
-   function execl (path : Interfaces.C.Strings.chars_ptr; arg : Interfaces.C.Strings.chars_ptr  -- , ...
+   function execl
+     (path : Interfaces.C.Strings.chars_ptr;
+      arg : Interfaces.C.Strings.chars_ptr  -- , ...
       ) return int;  -- /usr/include/unistd.h:573
    pragma Import (C, execl, "execl");
 
-   function execvp (file : Interfaces.C.Strings.chars_ptr; argv : System.Address) return int;  -- /usr/include/unistd.h:578
+   function execvp
+     (file : Interfaces.C.Strings.chars_ptr;
+      argv : System.Address) return int;  -- /usr/include/unistd.h:578
    pragma Import (C, execvp, "execvp");
 
-   function execlp (file : Interfaces.C.Strings.chars_ptr; arg : Interfaces.C.Strings.chars_ptr  -- , ...
+   function execlp
+     (file : Interfaces.C.Strings.chars_ptr;
+      arg : Interfaces.C.Strings.chars_ptr  -- , ...
       ) return int;  -- /usr/include/unistd.h:584
    pragma Import (C, execlp, "execlp");
 
@@ -237,10 +280,14 @@ package Libc.Unistd with SPARK_Mode => Off is
    procedure u_exit (status : int);
    pragma Import (C, u_exit, "_exit");
 
-   function pathconf (path : Interfaces.C.Strings.chars_ptr; name : int) return long;  -- /usr/include/unistd.h:612
+   function pathconf
+     (path : Interfaces.C.Strings.chars_ptr;
+      name : int) return long;  -- /usr/include/unistd.h:612
    pragma Import (C, pathconf, "pathconf");
 
-   function fpathconf (fd : int; name : int) return long;  -- /usr/include/unistd.h:616
+   function fpathconf
+     (fd : int;
+      name : int) return long;  -- /usr/include/unistd.h:616
    pragma Import (C, fpathconf, "fpathconf");
 
    function sysconf (name : int) return long;  -- /usr/include/unistd.h:619
@@ -261,10 +308,14 @@ package Libc.Unistd with SPARK_Mode => Off is
    function getpgrp return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:634
    pragma Import (C, getpgrp, "getpgrp");
 
-   function getpgid (pid : Libc.Sys.Types.pid_t) return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:639
+   function getpgid
+     (pid : Libc.Sys.Types.pid_t)
+     return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:639
    pragma Import (C, getpgid, "getpgid");
 
-   function setpgid (pid : Libc.Sys.Types.pid_t; pgid : Libc.Sys.Types.pid_t) return int;  -- /usr/include/unistd.h:646
+   function setpgid
+     (pid : Libc.Sys.Types.pid_t;
+      pgid : Libc.Sys.Types.pid_t) return int;  -- /usr/include/unistd.h:646
    pragma Import (C, setpgid, "setpgid");
 
    function setpgrp return int;  -- /usr/include/unistd.h:660
@@ -273,7 +324,9 @@ package Libc.Unistd with SPARK_Mode => Off is
    function setsid return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:667
    pragma Import (C, setsid, "setsid");
 
-   function getsid (pid : Libc.Sys.Types.pid_t) return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:671
+   function getsid
+     (pid : Libc.Sys.Types.pid_t)
+     return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:671
    pragma Import (C, getsid, "getsid");
 
    function getuid return Libc.Sys.Types.uid_t;  -- /usr/include/unistd.h:675
@@ -288,40 +341,54 @@ package Libc.Unistd with SPARK_Mode => Off is
    function getegid return Libc.Sys.Types.gid_t;  -- /usr/include/unistd.h:684
    pragma Import (C, getegid, "getegid");
 
-   function getgroups (size : int; list : access Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:689
+   function getgroups
+     (size : int;
+      list : access Libc.Sys.Types.gid_t)
+     return int;  -- /usr/include/unistd.h:689
    pragma Import (C, getgroups, "getgroups");
 
-   function group_member (gid : Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:693
+   function group_member
+     (gid : Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:693
    pragma Import (C, group_member, "group_member");
 
-   function setuid (uid : Libc.Sys.Types.uid_t) return int;  -- /usr/include/unistd.h:700
+   function setuid
+     (uid : Libc.Sys.Types.uid_t) return int;  -- /usr/include/unistd.h:700
    pragma Import (C, setuid, "setuid");
 
-   function setreuid (ruid : Libc.Sys.Types.uid_t; euid : Libc.Sys.Types.uid_t) return int;  -- /usr/include/unistd.h:705
+   function setreuid
+     (ruid : Libc.Sys.Types.uid_t;
+      euid : Libc.Sys.Types.uid_t) return int;  -- /usr/include/unistd.h:705
    pragma Import (C, setreuid, "setreuid");
 
-   function seteuid (uid : Libc.Sys.Types.uid_t) return int;  -- /usr/include/unistd.h:710
+   function seteuid
+     (uid : Libc.Sys.Types.uid_t) return int;  -- /usr/include/unistd.h:710
    pragma Import (C, seteuid, "seteuid");
 
-   function setgid (gid : Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:717
+   function setgid
+     (gid : Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:717
    pragma Import (C, setgid, "setgid");
 
-   function setregid (rgid : Libc.Sys.Types.gid_t; egid : Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:722
+   function setregid
+     (rgid : Libc.Sys.Types.gid_t;
+      egid : Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:722
    pragma Import (C, setregid, "setregid");
 
-   function setegid (gid : Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:727
+   function setegid
+     (gid : Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:727
    pragma Import (C, setegid, "setegid");
 
    function getresuid
      (ruid : access Libc.Sys.Types.uid_t;
       euid : access Libc.Sys.Types.uid_t;
-      suid : access Libc.Sys.Types.uid_t) return int;  -- /usr/include/unistd.h:733
+      suid : access Libc.Sys.Types.uid_t)
+     return int;  -- /usr/include/unistd.h:733
    pragma Import (C, getresuid, "getresuid");
 
    function getresgid
      (rgid : access Libc.Sys.Types.gid_t;
       egid : access Libc.Sys.Types.gid_t;
-      sgid : access Libc.Sys.Types.gid_t) return int;  -- /usr/include/unistd.h:738
+      sgid : access Libc.Sys.Types.gid_t)
+     return int;  -- /usr/include/unistd.h:738
    pragma Import (C, getresgid, "getresgid");
 
    function setresuid
@@ -342,7 +409,9 @@ package Libc.Unistd with SPARK_Mode => Off is
    function vfork return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:764
    pragma Import (C, vfork, "vfork");
 
-   function ttyname (fd : int) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:770
+   function ttyname
+     (fd : int)
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:770
    pragma Import (C, ttyname, "ttyname");
 
    function ttyname_r
@@ -357,7 +426,10 @@ package Libc.Unistd with SPARK_Mode => Off is
    function ttyslot return int;  -- /usr/include/unistd.h:785
    pragma Import (C, ttyslot, "ttyslot");
 
-   function link (from : Interfaces.C.Strings.chars_ptr; to : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:790
+   function link
+     (from : Interfaces.C.Strings.chars_ptr;
+      to : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:790
    pragma Import (C, link, "link");
 
    function linkat
@@ -368,29 +440,37 @@ package Libc.Unistd with SPARK_Mode => Off is
       flags : int) return int;  -- /usr/include/unistd.h:796
    pragma Import (C, linkat, "linkat");
 
-   function symlink (from : Interfaces.C.Strings.chars_ptr; to : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:803
+   function symlink
+     (from : Interfaces.C.Strings.chars_ptr;
+      to : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:803
    pragma Import (C, symlink, "symlink");
 
    function readlink
      (path : Interfaces.C.Strings.chars_ptr;
       buf : Interfaces.C.Strings.chars_ptr;
-      len : size_t) return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:809
+      len : size_t)
+     return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:809
    pragma Import (C, readlink, "readlink");
 
    function symlinkat
      (from : Interfaces.C.Strings.chars_ptr;
       tofd : int;
-      to : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:816
+      to : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:816
    pragma Import (C, symlinkat, "symlinkat");
 
    function readlinkat
      (fd : int;
       path : Interfaces.C.Strings.chars_ptr;
       buf : Interfaces.C.Strings.chars_ptr;
-      len : size_t) return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:820
+      len : size_t)
+     return Libc.Sys.Types.ssize_t;  -- /usr/include/unistd.h:820
    pragma Import (C, readlinkat, "readlinkat");
 
-   function unlink (name : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:826
+   function unlink
+     (name : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:826
    pragma Import (C, unlink, "unlink");
 
    function unlinkat
@@ -399,43 +479,63 @@ package Libc.Unistd with SPARK_Mode => Off is
       flag : int) return int;  -- /usr/include/unistd.h:830
    pragma Import (C, unlinkat, "unlinkat");
 
-   function rmdir (path : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:835
+   function rmdir
+     (path : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:835
    pragma Import (C, rmdir, "rmdir");
 
-   function tcgetpgrp (fd : int) return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:839
+   function tcgetpgrp
+     (fd : int) return Libc.Sys.Types.pid_t;  -- /usr/include/unistd.h:839
    pragma Import (C, tcgetpgrp, "tcgetpgrp");
 
-   function tcsetpgrp (fd : int; pgrp_id : Libc.Sys.Types.pid_t) return int;  -- /usr/include/unistd.h:842
+   function tcsetpgrp
+     (fd : int;
+      pgrp_id : Libc.Sys.Types.pid_t) return int;  -- /usr/include/unistd.h:842
    pragma Import (C, tcsetpgrp, "tcsetpgrp");
 
-   function getlogin return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:849
+   function getlogin
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:849
    pragma Import (C, getlogin, "getlogin");
 
-   function getlogin_r (name : Interfaces.C.Strings.chars_ptr; name_len : size_t) return int;  -- /usr/include/unistd.h:857
+   function getlogin_r
+     (name : Interfaces.C.Strings.chars_ptr;
+      name_len : size_t) return int;  -- /usr/include/unistd.h:857
    pragma Import (C, getlogin_r, "getlogin_r");
 
-   function setlogin (name : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:862
+   function setlogin
+     (name : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:862
    pragma Import (C, setlogin, "setlogin");
 
-   function gethostname (name : Interfaces.C.Strings.chars_ptr; len : size_t) return int;  -- /usr/include/unistd.h:879
+   function gethostname
+     (name : Interfaces.C.Strings.chars_ptr;
+      len : size_t) return int;  -- /usr/include/unistd.h:879
    pragma Import (C, gethostname, "gethostname");
 
-   function sethostname (name : Interfaces.C.Strings.chars_ptr; len : size_t) return int;  -- /usr/include/unistd.h:886
+   function sethostname
+     (name : Interfaces.C.Strings.chars_ptr;
+      len : size_t) return int;  -- /usr/include/unistd.h:886
    pragma Import (C, sethostname, "sethostname");
 
    function sethostid (id : long) return int;  -- /usr/include/unistd.h:891
    pragma Import (C, sethostid, "sethostid");
 
-   function getdomainname (name : Interfaces.C.Strings.chars_ptr; len : size_t) return int;  -- /usr/include/unistd.h:897
+   function getdomainname
+     (name : Interfaces.C.Strings.chars_ptr;
+      len : size_t) return int;  -- /usr/include/unistd.h:897
    pragma Import (C, getdomainname, "getdomainname");
 
-   function setdomainname (name : Interfaces.C.Strings.chars_ptr; len : size_t) return int;  -- /usr/include/unistd.h:899
+   function setdomainname
+     (name : Interfaces.C.Strings.chars_ptr;
+      len : size_t) return int;  -- /usr/include/unistd.h:899
    pragma Import (C, setdomainname, "setdomainname");
 
    function vhangup return int;  -- /usr/include/unistd.h:906
    pragma Import (C, vhangup, "vhangup");
 
-   function revoke (file : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:909
+   function revoke
+     (file : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:909
    pragma Import (C, revoke, "revoke");
 
    function profil
@@ -445,10 +545,13 @@ package Libc.Unistd with SPARK_Mode => Off is
       scale : unsigned) return int;  -- /usr/include/unistd.h:917
    pragma Import (C, profil, "profil");
 
-   function acct (name : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:925
+   function acct
+     (name : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:925
    pragma Import (C, acct, "acct");
 
-   function getusershell return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:929
+   function getusershell
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:929
    pragma Import (C, getusershell, "getusershell");
 
    procedure endusershell;  -- /usr/include/unistd.h:930
@@ -457,13 +560,19 @@ package Libc.Unistd with SPARK_Mode => Off is
    procedure setusershell;  -- /usr/include/unistd.h:931
    pragma Import (C, setusershell, "setusershell");
 
-   function daemon (nochdir : int; noclose : int) return int;  -- /usr/include/unistd.h:937
+   function daemon
+     (nochdir : int;
+      noclose : int) return int;  -- /usr/include/unistd.h:937
    pragma Import (C, daemon, "daemon");
 
-   function chroot (path : Interfaces.C.Strings.chars_ptr) return int;  -- /usr/include/unistd.h:944
+   function chroot
+     (path : Interfaces.C.Strings.chars_ptr)
+     return int;  -- /usr/include/unistd.h:944
    pragma Import (C, chroot, "chroot");
 
-   function getpass (prompt : Interfaces.C.Strings.chars_ptr) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:948
+   function getpass
+     (prompt : Interfaces.C.Strings.chars_ptr)
+      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:948
    pragma Import (C, getpass, "getpass");
 
    function fsync (fd : int) return int;  -- /usr/include/unistd.h:956
@@ -484,26 +593,39 @@ package Libc.Unistd with SPARK_Mode => Off is
    function getdtablesize return int;  -- /usr/include/unistd.h:983
    pragma Import (C, getdtablesize, "getdtablesize");
 
-   function truncate (file : Interfaces.C.Strings.chars_ptr; length : Libc.Sys.Types.off_t) return int;  -- /usr/include/unistd.h:993
+   function truncate
+     (file : Interfaces.C.Strings.chars_ptr;
+      length : Libc.Sys.Types.off_t) return int;  -- /usr/include/unistd.h:993
    pragma Import (C, truncate, "truncate");
 
-   function truncate64 (file : Interfaces.C.Strings.chars_ptr; length : Libc.Sys.Types.off64_t) return int;  -- /usr/include/unistd.h:1005
+   function truncate64
+     (file : Interfaces.C.Strings.chars_ptr;
+      length : Libc.Sys.Types.off64_t)
+     return int;  -- /usr/include/unistd.h:1005
    pragma Import (C, truncate64, "truncate64");
 
-   function ftruncate (fd : int; length : Libc.Sys.Types.off_t) return int;  -- /usr/include/unistd.h:1016
+   function ftruncate
+     (fd : int;
+      length : Libc.Sys.Types.off_t) return int;  -- /usr/include/unistd.h:1016
    pragma Import (C, ftruncate, "ftruncate");
 
-   function ftruncate64 (fd : int; length : Libc.Sys.Types.off64_t) return int;  -- /usr/include/unistd.h:1026
+   function ftruncate64
+     (fd : int;
+      length : Libc.Sys.Types.off64_t)
+     return int;  -- /usr/include/unistd.h:1026
    pragma Import (C, ftruncate64, "ftruncate64");
 
-   function brk (addr : System.Address) return int;  -- /usr/include/unistd.h:1037
+   function brk
+     (addr : System.Address) return int;  -- /usr/include/unistd.h:1037
    pragma Import (C, brk, "brk");
 
-   function sbrk (c_delta : Libc.Stdint.intptr_t) return System.Address;  -- /usr/include/unistd.h:1043
+   function sbrk
+     (c_delta : Libc.Stdint.intptr_t)
+     return System.Address;  -- /usr/include/unistd.h:1043
    pragma Import (C, sbrk, "sbrk");
 
    function syscall (sysno : long  -- , ...
-      ) return long;  -- /usr/include/unistd.h:1058
+   ) return long;  -- /usr/include/unistd.h:1058
    pragma Import (C, syscall, "syscall");
 
    function lockf
@@ -521,10 +643,15 @@ package Libc.Unistd with SPARK_Mode => Off is
    function fdatasync (fildes : int) return int;  -- /usr/include/unistd.h:1112
    pragma Import (C, fdatasync, "fdatasync");
 
-   function crypt (key : Interfaces.C.Strings.chars_ptr; salt : Interfaces.C.Strings.chars_ptr) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:1120
+   function crypt
+     (key : Interfaces.C.Strings.chars_ptr;
+      salt : Interfaces.C.Strings.chars_ptr)
+      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/unistd.h:1120
    pragma Import (C, crypt, "crypt");
 
-   procedure encrypt (glibc_block : Interfaces.C.Strings.chars_ptr; edflag : int);  -- /usr/include/unistd.h:1125
+   procedure encrypt
+     (glibc_block : Interfaces.C.Strings.chars_ptr;
+      edflag : int);  -- /usr/include/unistd.h:1125
    pragma Import (C, encrypt, "encrypt");
 
    procedure swab

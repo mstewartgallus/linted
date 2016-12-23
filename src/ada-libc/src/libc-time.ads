@@ -14,7 +14,8 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 
-package Libc.Time with SPARK_Mode => Off is
+package Libc.Time with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    subtype clock_t is long;
@@ -39,10 +40,13 @@ package Libc.Time with SPARK_Mode => Off is
    function clock return clock_t;  -- /usr/include/time.h:189
    pragma Import (C, clock, "clock");
 
-   function time (timer : access time_t) return time_t;  -- /usr/include/time.h:192
+   function time
+     (timer : access time_t) return time_t;  -- /usr/include/time.h:192
    pragma Import (C, time, "time");
 
-   function difftime (time1 : time_t; time0 : time_t) return double;  -- /usr/include/time.h:195
+   function difftime
+     (time1 : time_t;
+      time0 : time_t) return double;  -- /usr/include/time.h:195
    pragma Import (C, difftime, "difftime");
 
    function mktime (tp : access tm) return time_t;  -- /usr/include/time.h:199
@@ -55,15 +59,21 @@ package Libc.Time with SPARK_Mode => Off is
       tp : access constant tm) return size_t;  -- /usr/include/time.h:205
    pragma Import (C, strftime, "strftime");
 
-   function gmtime (timer : access time_t) return access tm;  -- /usr/include/time.h:239
+   function gmtime
+     (timer : access time_t) return access tm;  -- /usr/include/time.h:239
    pragma Import (C, gmtime, "gmtime");
 
-   function localtime (timer : access time_t) return access tm;  -- /usr/include/time.h:243
+   function localtime
+     (timer : access time_t) return access tm;  -- /usr/include/time.h:243
    pragma Import (C, localtime, "localtime");
 
-   function asctime (tp : access constant tm) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/time.h:261
+   function asctime
+     (tp : access constant tm)
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/time.h:261
    pragma Import (C, asctime, "asctime");
 
-   function ctime (timer : access time_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/time.h:264
+   function ctime
+     (timer : access time_t)
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/time.h:264
    pragma Import (C, ctime, "ctime");
 end Libc.Time;

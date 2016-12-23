@@ -11,6 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package Linted.Last_Chance with SPARK_Mode => Off is
+package Linted.Last_Chance with
+     Spark_Mode => Off is
    pragma Elaborate_Body;
 end Linted.Last_Chance;

@@ -13,13 +13,16 @@
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 
-package Libc.Fenv with SPARK_Mode => Off is
+package Libc.Fenv with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
-   function feenableexcept (excepts : int) return int;  -- /usr/include/fenv.h:122
+   function feenableexcept
+     (excepts : int) return int;  -- /usr/include/fenv.h:122
    pragma Import (C, feenableexcept, "feenableexcept");
 
-   function fedisableexcept (excepts : int) return int;  -- /usr/include/fenv.h:127
+   function fedisableexcept
+     (excepts : int) return int;  -- /usr/include/fenv.h:127
    pragma Import (C, fedisableexcept, "fedisableexcept");
 
    function fegetexcept return int;  -- /usr/include/fenv.h:130

@@ -105,6 +105,7 @@ AM_GPRBUILDFLAGS=-q\
   -aP $(srcdir)/src/ada-xkb\
   -aP $(srcdir)/src/ada-pulse\
   -aP $(srcdir)/src/ada-core
+AM_GNATPPFLAGS=-q -A0 -rnb
 GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
   -aP$(builddir)/src/ada\
   -aP$(srcdir)/src/ada-libc\
@@ -147,6 +148,8 @@ prove: src/ada/shared.gpr src/ada/config.cgpr
 indent:
 	find $(srcdir)/src $(srcdir)/include/lntd  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -\( -name '*.[ch]' -o -name '*.nc' -\) -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
+	find $(srcdir)/src  -type f -\( -name '*.ads' -o -name '*.adb' -\) -exec \
+	   gnatpp $(AM_GNATPPFLAGS)  '{}' '+'
 
 CPROGRAMS=\
   src/linted/linted\

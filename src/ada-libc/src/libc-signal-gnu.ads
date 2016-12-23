@@ -17,7 +17,8 @@ with Libc.Sys.Types;
 with Libc.Time;
 with Libc.Time.GNU;
 
-package Libc.Signal.GNU with SPARK_Mode => Off is
+package Libc.Signal.GNU with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    --  unsupported macro: si_pid _sifields._kill.si_pid
@@ -94,11 +95,13 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
          when 0 =>
             sival_int : aliased int;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:34
          when others =>
-            sival_ptr : System.Address;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:35
+            sival_ptr : System
+              .Address;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:35
       end case;
    end record;
    pragma Convention (C_Pass_By_Copy, sigval);
-   pragma Unchecked_Union (sigval);  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:32
+   pragma Unchecked_Union
+     (sigval);  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:32
 
    subtype sigval_t is sigval;
 
@@ -106,13 +109,17 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
    type sigset_t is record
       uu_val : aliased uu_sigset_t_uu_val_array;  -- /usr/include/x86_64-linux-gnu/bits/sigset.h:29
    end record;
-   pragma Convention (C_Pass_By_Copy, sigset_t);  -- /usr/include/x86_64-linux-gnu/bits/sigset.h:30
+   pragma Convention
+     (C_Pass_By_Copy,
+      sigset_t);  -- /usr/include/x86_64-linux-gnu/bits/sigset.h:30
 
    type siginfo_t_u_pad_array is array (0 .. 27) of aliased int;
    type anon_14;
    type anon_15 is record
-      si_pid : aliased Libc.Sys.Types.pid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:76
-      si_uid : aliased Libc.Sys.Types.uid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:77
+      si_pid : aliased Libc.Sys.Types
+        .pid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:76
+      si_uid : aliased Libc.Sys.Types
+        .uid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:77
    end record;
    pragma Convention (C_Pass_By_Copy, anon_15);
    type anon_16 is record
@@ -122,21 +129,28 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
    end record;
    pragma Convention (C_Pass_By_Copy, anon_16);
    type anon_17 is record
-      si_pid : aliased Libc.Sys.Types.pid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:91
-      si_uid : aliased Libc.Sys.Types.uid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:92
+      si_pid : aliased Libc.Sys.Types
+        .pid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:91
+      si_uid : aliased Libc.Sys.Types
+        .uid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:92
       si_sigval : sigval_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:93
    end record;
    pragma Convention (C_Pass_By_Copy, anon_17);
    type anon_18 is record
-      si_pid : aliased Libc.Sys.Types.pid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:99
-      si_uid : aliased Libc.Sys.Types.uid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:100
+      si_pid : aliased Libc.Sys.Types
+        .pid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:99
+      si_uid : aliased Libc.Sys.Types
+        .uid_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:100
       si_status : aliased int;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:101
-      si_utime : aliased Libc.Time.clock_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:102
-      si_stime : aliased Libc.Time.clock_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:103
+      si_utime : aliased Libc.Time
+        .clock_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:102
+      si_stime : aliased Libc.Time
+        .clock_t;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:103
    end record;
    pragma Convention (C_Pass_By_Copy, anon_18);
    type anon_19 is record
-      si_addr : System.Address;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:109
+      si_addr : System
+        .Address;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:109
       si_addr_lsb : aliased short;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:110
    end record;
    pragma Convention (C_Pass_By_Copy, anon_19);
@@ -146,7 +160,8 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
    end record;
    pragma Convention (C_Pass_By_Copy, anon_20);
    type anon_21 is record
-      u_call_addr : System.Address;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:123
+      u_call_addr : System
+        .Address;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:123
       u_syscall : aliased int;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:124
       u_arch : aliased unsigned;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:125
    end record;
@@ -179,7 +194,9 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       si_code : aliased int;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:67
       u_sifields : anon_14;  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:127
    end record;
-   pragma Convention (C_Pass_By_Copy, siginfo_t);  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:128
+   pragma Convention
+     (C_Pass_By_Copy,
+      siginfo_t);  -- /usr/include/x86_64-linux-gnu/bits/siginfo.h:128
 
    --  skipped anonymous struct anon_13
 
@@ -232,9 +249,10 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       case discr is
          when others =>
             sa_sigaction : access procedure
-                 (arg1 : int;
-                  arg2 : access int;
-                  arg3 : System.Address);  -- /usr/include/x86_64-linux-gnu/bits/sigaction.h:33
+              (arg1 : int;
+               arg2 : access int;
+               arg3 : System
+                 .Address);  -- /usr/include/x86_64-linux-gnu/bits/sigaction.h:33
       end case;
    end record;
    pragma Convention (C_Pass_By_Copy, anon_13);
@@ -245,7 +263,9 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       sa_flags : aliased int;  -- /usr/include/x86_64-linux-gnu/bits/sigaction.h:46
       sa_restorer : access procedure;  -- /usr/include/x86_64-linux-gnu/bits/sigaction.h:49
    end record;
-   pragma Convention (C_Pass_By_Copy, sigaction);  -- /usr/include/x86_64-linux-gnu/bits/sigaction.h:24
+   pragma Convention
+     (C_Pass_By_Copy,
+      sigaction);  -- /usr/include/x86_64-linux-gnu/bits/sigaction.h:24
 
    --  unsupported macro: FP_XSTATE_MAGIC1 0x46505853U
    --  unsupported macro: FP_XSTATE_MAGIC2 0x46505845U
@@ -253,14 +273,18 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
    type u_fpx_sw_bytes is record
       null;
    end record;
-   pragma Convention (C_Pass_By_Copy, u_fpx_sw_bytes);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:29
+   pragma Convention
+     (C_Pass_By_Copy,
+      u_fpx_sw_bytes);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:29
 
    type u_fpreg_significand_array is array (0 .. 3) of aliased unsigned_short;
    type u_fpreg is record
       significand : aliased u_fpreg_significand_array;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:40
       exponent : aliased unsigned_short;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:41
    end record;
-   pragma Convention (C_Pass_By_Copy, u_fpreg);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:38
+   pragma Convention
+     (C_Pass_By_Copy,
+      u_fpreg);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:38
 
    type u_fpxreg_significand_array is array (0 .. 3) of aliased unsigned_short;
    type u_fpxreg_padding_array is array (0 .. 2) of aliased unsigned_short;
@@ -269,12 +293,16 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       exponent : aliased unsigned_short;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:47
       padding : aliased u_fpxreg_padding_array;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:48
    end record;
-   pragma Convention (C_Pass_By_Copy, u_fpxreg);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:44
+   pragma Convention
+     (C_Pass_By_Copy,
+      u_fpxreg);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:44
 
    type u_xmmreg is record
       null;
    end record;
-   pragma Convention (C_Pass_By_Copy, u_xmmreg);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:51
+   pragma Convention
+     (C_Pass_By_Copy,
+      u_xmmreg);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:51
 
    type u_fpstate_u_st_array is array (0 .. 7) of aliased u_fpxreg;
    type u_fpstate_u_xmm_array is array (0 .. 15) of aliased u_xmmreg;
@@ -282,7 +310,9 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       u_st : aliased u_fpstate_u_st_array;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:132
       u_xmm : aliased u_fpstate_u_xmm_array;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:133
    end record;
-   pragma Convention (C_Pass_By_Copy, u_fpstate);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:121
+   pragma Convention
+     (C_Pass_By_Copy,
+      u_fpstate);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:121
 
    type anon_0 (discr : unsigned := 0) is record
       case discr is
@@ -299,24 +329,32 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       uu_pad0 : aliased unsigned_short;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:160
       field_5 : aliased anon_0;
    end record;
-   pragma Convention (C_Pass_By_Copy, sigcontext);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:137
+   pragma Convention
+     (C_Pass_By_Copy,
+      sigcontext);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:137
 
    type u_xsave_hdr is record
       null;
    end record;
-   pragma Convention (C_Pass_By_Copy, u_xsave_hdr);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:175
+   pragma Convention
+     (C_Pass_By_Copy,
+      u_xsave_hdr);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:175
 
    type u_ymmh_state is record
       null;
    end record;
-   pragma Convention (C_Pass_By_Copy, u_ymmh_state);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:182
+   pragma Convention
+     (C_Pass_By_Copy,
+      u_ymmh_state);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:182
 
    type u_xstate is record
       fpstate : aliased u_fpstate;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:189
       xstate_hdr : aliased u_xsave_hdr;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:190
       ymmh : aliased u_ymmh_state;  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:191
    end record;
-   pragma Convention (C_Pass_By_Copy, u_xstate);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:187
+   pragma Convention
+     (C_Pass_By_Copy,
+      u_xstate);  -- /usr/include/x86_64-linux-gnu/bits/sigcontext.h:187
 
    --  arg-macro: procedure sigmask (sig)
    --    __sigmask(sig)
@@ -331,41 +369,63 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
    --  unsupported macro: MINSIGSTKSZ 2048
    --  unsupported macro: SIGSTKSZ 8192
    type sigstack is record
-      ss_sp : System.Address;  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:27
+      ss_sp : System
+        .Address;  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:27
       ss_onstack : aliased int;  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:28
    end record;
-   pragma Convention (C_Pass_By_Copy, sigstack);  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:25
+   pragma Convention
+     (C_Pass_By_Copy,
+      sigstack);  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:25
 
    type sigaltstack is record
-      ss_sp : System.Address;  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:51
+      ss_sp : System
+        .Address;  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:51
       ss_flags : aliased int;  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:52
    end record;
-   pragma Convention (C_Pass_By_Copy, sigaltstack);  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:49
+   pragma Convention
+     (C_Pass_By_Copy,
+      sigaltstack);  -- /usr/include/x86_64-linux-gnu/bits/sigstack.h:49
 
    subtype stack_t is sigaltstack;
 
-   function sysv_signal (sig : int; handler : sighandler_t) return sighandler_t;  -- /usr/include/signal.h:93
+   function sysv_signal
+     (sig : int;
+      handler : sighandler_t) return sighandler_t;  -- /usr/include/signal.h:93
    pragma Import (C, sysv_signal, "sysv_signal");
 
-   function bsd_signal (sig : int; handler : sighandler_t) return sighandler_t;  -- /usr/include/signal.h:119
+   function bsd_signal
+     (sig : int;
+      handler : sighandler_t)
+     return sighandler_t;  -- /usr/include/signal.h:119
    pragma Import (C, bsd_signal, "bsd_signal");
 
-   function kill (pid : Libc.Sys.Types.pid_t; sig : int) return int;  -- /usr/include/signal.h:127
+   function kill
+     (pid : Libc.Sys.Types.pid_t;
+      sig : int) return int;  -- /usr/include/signal.h:127
    pragma Import (C, kill, "kill");
 
-   function killpg (pgrp : Libc.Sys.Types.pid_t; sig : int) return int;  -- /usr/include/signal.h:134
+   function killpg
+     (pgrp : Libc.Sys.Types.pid_t;
+      sig : int) return int;  -- /usr/include/signal.h:134
    pragma Import (C, killpg, "killpg");
 
-   function ssignal (sig : int; handler : sighandler_t) return sighandler_t;  -- /usr/include/signal.h:144
+   function ssignal
+     (sig : int;
+      handler : sighandler_t)
+     return sighandler_t;  -- /usr/include/signal.h:144
    pragma Import (C, ssignal, "ssignal");
 
    function gsignal (sig : int) return int;  -- /usr/include/signal.h:146
    pragma Import (C, gsignal, "gsignal");
 
-   procedure psignal (sig : int; s : Interfaces.C.Strings.chars_ptr);  -- /usr/include/signal.h:151
+   procedure psignal
+     (sig : int;
+      s : Interfaces.C.Strings.chars_ptr);  -- /usr/include/signal.h:151
    pragma Import (C, psignal, "psignal");
 
-   procedure psiginfo (pinfo : access constant siginfo_t; s : Interfaces.C.Strings.chars_ptr);  -- /usr/include/signal.h:156
+   procedure psiginfo
+     (pinfo : access constant siginfo_t;
+      s : Interfaces.C.Strings.chars_ptr);  -- /usr/include/signal.h:156
    pragma Import (C, psiginfo, "psiginfo");
 
    function sigpause (sig : int) return int;  -- /usr/include/signal.h:171
@@ -382,22 +442,31 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
 
    subtype sig_t is sighandler_t;  -- /usr/include/signal.h:209
 
-   function sigemptyset (set : access sigset_t) return int;  -- /usr/include/signal.h:215
+   function sigemptyset
+     (set : access sigset_t) return int;  -- /usr/include/signal.h:215
    pragma Import (C, sigemptyset, "sigemptyset");
 
-   function sigfillset (set : access sigset_t) return int;  -- /usr/include/signal.h:218
+   function sigfillset
+     (set : access sigset_t) return int;  -- /usr/include/signal.h:218
    pragma Import (C, sigfillset, "sigfillset");
 
-   function sigaddset (set : access sigset_t; signo : int) return int;  -- /usr/include/signal.h:221
+   function sigaddset
+     (set : access sigset_t;
+      signo : int) return int;  -- /usr/include/signal.h:221
    pragma Import (C, sigaddset, "sigaddset");
 
-   function sigdelset (set : access sigset_t; signo : int) return int;  -- /usr/include/signal.h:224
+   function sigdelset
+     (set : access sigset_t;
+      signo : int) return int;  -- /usr/include/signal.h:224
    pragma Import (C, sigdelset, "sigdelset");
 
-   function sigismember (set : System.Address; signo : int) return int;  -- /usr/include/signal.h:227
+   function sigismember
+     (set : System.Address;
+      signo : int) return int;  -- /usr/include/signal.h:227
    pragma Import (C, sigismember, "sigismember");
 
-   function sigisemptyset (set : System.Address) return int;  -- /usr/include/signal.h:232
+   function sigisemptyset
+     (set : System.Address) return int;  -- /usr/include/signal.h:232
    pragma Import (C, sigisemptyset, "sigisemptyset");
 
    function sigandset
@@ -418,7 +487,8 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       oset : access sigset_t) return int;  -- /usr/include/signal.h:248
    pragma Import (C, sigprocmask, "sigprocmask");
 
-   function sigsuspend (set : System.Address) return int;  -- /usr/include/signal.h:256
+   function sigsuspend
+     (set : System.Address) return int;  -- /usr/include/signal.h:256
    pragma Import (C, sigsuspend, "sigsuspend");
 
    function f_sigaction
@@ -427,19 +497,25 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       oact : access sigaction) return int;  -- /usr/include/signal.h:259
    pragma Import (C, f_sigaction, "sigaction");
 
-   function sigpending (set : access sigset_t) return int;  -- /usr/include/signal.h:263
+   function sigpending
+     (set : access sigset_t) return int;  -- /usr/include/signal.h:263
    pragma Import (C, sigpending, "sigpending");
 
-   function sigwait (set : System.Address; sig : access int) return int;  -- /usr/include/signal.h:270
+   function sigwait
+     (set : System.Address;
+      sig : access int) return int;  -- /usr/include/signal.h:270
    pragma Import (C, sigwait, "sigwait");
 
-   function sigwaitinfo (set : System.Address; info : access siginfo_t) return int;  -- /usr/include/signal.h:278
+   function sigwaitinfo
+     (set : System.Address;
+      info : access siginfo_t) return int;  -- /usr/include/signal.h:278
    pragma Import (C, sigwaitinfo, "sigwaitinfo");
 
    function sigtimedwait
      (set : System.Address;
       info : access siginfo_t;
-      timeout : access constant Libc.Time.GNU.timespec) return int;  -- /usr/include/signal.h:286
+      timeout : access constant Libc.Time.GNU.timespec)
+     return int;  -- /usr/include/signal.h:286
    pragma Import (C, sigtimedwait, "sigtimedwait");
 
    function sigqueue
@@ -448,7 +524,8 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       val : sigval) return int;  -- /usr/include/signal.h:293
    pragma Import (C, sigqueue, "sigqueue");
 
-   sys_siglist : aliased array (0 .. 64) of Interfaces.C.Strings.chars_ptr;  -- /usr/include/signal.h:304
+   sys_siglist : aliased array
+   (0 .. 64) of Interfaces.C.Strings.chars_ptr;  -- /usr/include/signal.h:304
    pragma Import (C, sys_siglist, "sys_siglist");
 
    type sigvec is record
@@ -464,16 +541,23 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
       ovec : access sigvec) return int;  -- /usr/include/signal.h:327
    pragma Import (C, f_sigvec, "f_sigvec");
 
-   function sigreturn (scp : access sigcontext) return int;  -- /usr/include/signal.h:335
+   function sigreturn
+     (scp : access sigcontext) return int;  -- /usr/include/signal.h:335
    pragma Import (C, sigreturn, "sigreturn");
 
-   function siginterrupt (sig : int; interrupt : int) return int;  -- /usr/include/signal.h:347
+   function siginterrupt
+     (sig : int;
+      interrupt : int) return int;  -- /usr/include/signal.h:347
    pragma Import (C, siginterrupt, "siginterrupt");
 
-   function f_sigstack (ss : access sigstack; oss : access sigstack) return int;  -- /usr/include/signal.h:358
+   function f_sigstack
+     (ss : access sigstack;
+      oss : access sigstack) return int;  -- /usr/include/signal.h:358
    pragma Import (C, f_sigstack, "sigstack");
 
-   function f_sigaltstack (ss : access constant sigaltstack; oss : access sigaltstack) return int;  -- /usr/include/signal.h:363
+   function f_sigaltstack
+     (ss : access constant sigaltstack;
+      oss : access sigaltstack) return int;  -- /usr/include/signal.h:363
    pragma Import (C, f_sigaltstack, "sigaltstack");
 
    function sighold (sig : int) return int;  -- /usr/include/signal.h:372
@@ -485,6 +569,8 @@ package Libc.Signal.GNU with SPARK_Mode => Off is
    function sigignore (sig : int) return int;  -- /usr/include/signal.h:378
    pragma Import (C, sigignore, "sigignore");
 
-   function sigset (sig : int; disp : sighandler_t) return sighandler_t;  -- /usr/include/signal.h:381
+   function sigset
+     (sig : int;
+      disp : sighandler_t) return sighandler_t;  -- /usr/include/signal.h:381
    pragma Import (C, sigset, "sigset");
 end Libc.Signal.GNU;

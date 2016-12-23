@@ -23,7 +23,9 @@ package Libc.Sys.Types is
    type fsid_t is record
       uu_val : aliased uu_fsid_t_uu_val_array;  -- /usr/include/bits/types.h:134
    end record;
-   pragma Convention (C_Pass_By_Copy, fsid_t);  -- /usr/include/bits/types.h:134
+   pragma Convention
+     (C_Pass_By_Copy,
+      fsid_t);  -- /usr/include/bits/types.h:134
 
    subtype loff_t is long;  -- /usr/include/sys/types.h:44
 
@@ -53,7 +55,8 @@ package Libc.Sys.Types is
 
    subtype daddr_t is int;  -- /usr/include/sys/types.h:115
 
-   subtype caddr_t is Interfaces.C.Strings.chars_ptr;  -- /usr/include/sys/types.h:116
+   subtype caddr_t is
+     Interfaces.C.Strings.chars_ptr;  -- /usr/include/sys/types.h:116
 
    subtype key_t is int;  -- /usr/include/sys/types.h:122
 

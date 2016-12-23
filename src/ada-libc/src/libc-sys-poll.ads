@@ -15,7 +15,8 @@ with Interfaces.C; use Interfaces.C;
 limited with Libc.Signal.GNU;
 limited with Libc.Time.GNU;
 
-package Libc.Sys.Poll with SPARK_Mode => Off is
+package Libc.Sys.Poll with
+     Spark_Mode => Off is
 
    subtype nfds_t is unsigned_long;  -- /usr/include/sys/poll.h:36
 
@@ -36,7 +37,8 @@ package Libc.Sys.Poll with SPARK_Mode => Off is
      (fds : access pollfd;
       nfds : nfds_t;
       timeout : access constant Libc.Time.GNU.timespec;
-      ss : access constant Libc.Signal.GNU.sigset_t) return int;  -- /usr/include/sys/poll.h:66
+      ss : access constant Libc.Signal.GNU.sigset_t)
+     return int;  -- /usr/include/sys/poll.h:66
    pragma Import (C, ppoll, "ppoll");
 
    POLLIN : constant := 16#001#;

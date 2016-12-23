@@ -14,11 +14,13 @@
 with Interfaces.C.Strings;
 with System;
 
-package Libc.Locale.GNU with SPARK_Mode => Off is
+package Libc.Locale.GNU with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    type uu_locale_struct_uu_locales_array is array (0 .. 12) of System.Address;
-   type uu_locale_struct_uu_names_array is array (0 .. 12) of Interfaces.C.Strings.chars_ptr;
+   type uu_locale_struct_uu_names_array is
+     array (0 .. 12) of Interfaces.C.Strings.chars_ptr;
    type uu_locale_struct is record
       uu_locales : aliased uu_locale_struct_uu_locales_array;  -- /usr/include/xlocale.h:30
       uu_ctype_b : access unsigned_short;  -- /usr/include/xlocale.h:33
@@ -26,11 +28,14 @@ package Libc.Locale.GNU with SPARK_Mode => Off is
       uu_ctype_toupper : access int;  -- /usr/include/xlocale.h:35
       uu_names : aliased uu_locale_struct_uu_names_array;  -- /usr/include/xlocale.h:38
    end record;
-   pragma Convention (C_Pass_By_Copy, uu_locale_struct);  -- /usr/include/xlocale.h:27
+   pragma Convention
+     (C_Pass_By_Copy,
+      uu_locale_struct);  -- /usr/include/xlocale.h:27
 
    --  skipped empty struct uu_locale_data
 
-   type uu_locale_t is access all uu_locale_struct;  -- /usr/include/xlocale.h:39
+   type uu_locale_t is
+     access all uu_locale_struct;  -- /usr/include/xlocale.h:39
 
    subtype locale_t is uu_locale_t;  -- /usr/include/xlocale.h:42
 
@@ -62,13 +67,15 @@ package Libc.Locale.GNU with SPARK_Mode => Off is
       base : locale_t) return locale_t;  -- /usr/include/locale.h:151
    pragma Import (C, newlocale, "newlocale");
 
-   function duplocale (dataset : locale_t) return locale_t;  -- /usr/include/locale.h:186
+   function duplocale
+     (dataset : locale_t) return locale_t;  -- /usr/include/locale.h:186
    pragma Import (C, duplocale, "duplocale");
 
    procedure freelocale (dataset : locale_t);  -- /usr/include/locale.h:190
    pragma Import (C, freelocale, "freelocale");
 
-   function uselocale (dataset : locale_t) return locale_t;  -- /usr/include/locale.h:197
+   function uselocale
+     (dataset : locale_t) return locale_t;  -- /usr/include/locale.h:197
    pragma Import (C, uselocale, "uselocale");
 
 end Libc.Locale.GNU;

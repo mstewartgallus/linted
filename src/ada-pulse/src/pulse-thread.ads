@@ -11,6 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package Pulse.Thread with SPARK_Mode => Off is
+package Pulse.Thread with
+     Spark_Mode => Off is
    pragma Preelaborate;
 end Pulse.Thread;

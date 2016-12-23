@@ -13,7 +13,8 @@
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 
-package Libc.Ctype.GNU with SPARK_Mode => Off is
+package Libc.Ctype.GNU with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    --  arg-macro: procedure isascii (c)
@@ -49,7 +50,9 @@ package Libc.Ctype.GNU with SPARK_Mode => Off is
    --  arg-macro: procedure toascii_l (c, l)
    --    __toascii_l ((c), (l))
 
-   function isctype (c : int; mask : int) return int;  -- /usr/include/ctype.h:143
+   function isctype
+     (c : int;
+      mask : int) return int;  -- /usr/include/ctype.h:143
    pragma Import (C, isctype, "isctype");
 
    function isascii (c : int) return int;  -- /usr/include/ctype.h:150

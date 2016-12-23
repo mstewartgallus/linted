@@ -14,14 +14,15 @@
 generic
    type Element_T is private;
 package Linted.Options with
-  Abstract_State => null
-is
+   Abstract_State => null is
    pragma Pure;
 
    type Option (Empty : Boolean := True) is record
       case Empty is
-	 when True => null;
-	 when False => Data : Element_T;
+         when True =>
+            null;
+         when False =>
+            Data : Element_T;
       end case;
    end record;
 end Linted.Options;

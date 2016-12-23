@@ -15,30 +15,34 @@ package body Linted.Channels is
    protected body Channel is
       procedure Push (D : Element_T) is
       begin
-	 Current := D;
-	 Full := True;
+         Current := D;
+         Full := True;
       end Push;
 
       entry Pop (D : out Element_T) when Full is
       begin
-	 D := Current;
-	 Full := False;
+         D := Current;
+         Full := False;
       end Pop;
 
       procedure Poll (Option : out Option_Element_Ts.Option) is
       begin
-	 if Full then
-	    Option := (Empty => False, Data => Current);
-	    pragma Annotate (GNATprove, False_Positive,
-			     "discriminant check might fail",
-			     "reviewed by Steven Stewart-Gallus");
-	    Full := False;
-	 else
-	    Option := (Empty => True);
-	    pragma Annotate (GNATprove, False_Positive,
-			     "discriminant check might fail",
-			     "reviewed by Steven Stewart-Gallus");
-	 end if;
+         if Full then
+            Option := (Empty => False, Data => Current);
+            pragma Annotate
+              (Gnatprove,
+               False_Positive,
+               "discriminant check might fail",
+               "reviewed by Steven Stewart-Gallus");
+            Full := False;
+         else
+            Option := (Empty => True);
+            pragma Annotate
+              (Gnatprove,
+               False_Positive,
+               "discriminant check might fail",
+               "reviewed by Steven Stewart-Gallus");
+         end if;
       end Poll;
    end Channel;
 end Linted.Channels;

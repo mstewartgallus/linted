@@ -14,14 +14,20 @@
 with Interfaces.C.Strings;
 with Libc.Errno.POSIX_2008;
 
-package Libc.Errno.GNU with SPARK_Mode => Off is
+package Libc.Errno.GNU with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
-   program_invocation_name : Interfaces.C.Strings.chars_ptr;  -- /usr/include/errno.h:54
+   program_invocation_name : Interfaces.C.Strings
+     .chars_ptr;  -- /usr/include/errno.h:54
    pragma Import (C, program_invocation_name, "program_invocation_name");
 
-   program_invocation_short_name : Interfaces.C.Strings.chars_ptr;  -- /usr/include/errno.h:54
-   pragma Import (C, program_invocation_short_name, "program_invocation_short_name");
+   program_invocation_short_name : Interfaces.C.Strings
+     .chars_ptr;  -- /usr/include/errno.h:54
+   pragma Import
+     (C,
+      program_invocation_short_name,
+      "program_invocation_short_name");
 
    ENOTBLK : constant := 15;
    ECHRNG : constant := 44;

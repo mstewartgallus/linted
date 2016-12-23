@@ -13,7 +13,8 @@
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
 
-package Libc.Signal with SPARK_Mode => Off is
+package Libc.Signal with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    subtype sig_atomic_t is int;  -- /usr/include/signal.h:40
@@ -31,7 +32,10 @@ package Libc.Signal with SPARK_Mode => Off is
    type sighandler_t is access procedure (arg1 : int);
    pragma Convention (C, sighandler_t);  -- /usr/include/signal.h:85
 
-   function signal (sig : int; handler : sighandler_t) return sighandler_t;  -- /usr/include/signal.h:102
+   function signal
+     (sig : int;
+      handler : sighandler_t)
+     return sighandler_t;  -- /usr/include/signal.h:102
    pragma Import (C, signal, "signal");
 
    function c_raise (sig : int) return int;  -- /usr/include/signal.h:139

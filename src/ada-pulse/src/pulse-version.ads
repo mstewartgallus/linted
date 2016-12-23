@@ -14,7 +14,8 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 
-package Pulse.Version with SPARK_Mode => Off is
+package Pulse.Version with
+     Spark_Mode => Off is
 
    --  arg-macro: function pa_get_headers_version ()
    --    return "4.0.0";
@@ -27,7 +28,8 @@ package Pulse.Version with SPARK_Mode => Off is
 
    --  arg-macro: function PA_CHECK_VERSION (major, minor, m((PA_MAJOR > (major))  or else  (PA_MAJOR = (major)  and then  PA_MINOR > (minor))  or else  (PA_MAJOR = (major)  and then  PA_MINOR = (minor)  and then  PA_MICRO >= (micro))
    --    return (PA_MAJOR > (major))  or else  (PA_MAJOR = (major)  and then  PA_MINOR > (minor))  or else  (PA_MAJOR = (major)  and then  PA_MINOR = (minor)  and then  PA_MICRO >= (micro));
-   function pa_get_library_version return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/version.h:42
+   function pa_get_library_version
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/pulse/version.h:42
    pragma Import (C, pa_get_library_version, "pa_get_library_version");
 
 end Pulse.Version;
