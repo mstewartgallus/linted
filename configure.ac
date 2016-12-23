@@ -22,7 +22,7 @@ AM_INIT_AUTOMAKE([subdir-objects -Wall])
 AC_CONFIG_HEADER([config.h])
 dnl
 AC_PREREQ([2.62])
-AC_CONFIG_SRCDIR([src/linted/linted.c])
+AC_CONFIG_SRCDIR([src/linted/start.gpr.in])
 dnl
 AS_IF([test "x${CFLAGS}" = "x"], [
   [CFLAGS='']

@@ -17,15 +17,15 @@
 pkglibexec_PROGRAMS+=%D%/linted
 
 EXTRA_DIST+=\
-  %D%/start.gpr\
-  \
   %D%/src
 
-%C%_linted_DEPS=$(builddir)/%D%/src/linted-settings.ads
+%C%_linted_DEPS=\
+   $(builddir)/%D%/src/linted-settings.ads\
+   $(builddir)/%D%/start.gpr
 
 .PHONY: %D%/linted$(EXEEXT)
-%D%/linted$(EXEEXT): src/ada/shared.gpr src/ada/config.cgpr $(builddir)/%D%/src/linted-settings.ads
-	$(linted_V_GPRBUILD) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/start.gpr
+%D%/linted$(EXEEXT): $(builddir)/%D%/start.gpr src/ada/shared.gpr src/ada/config.cgpr $(builddir)/%D%/src/linted-settings.ads
+	$(linted_V_GPRBUILD) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(builddir)/%D%/start.gpr
 
 LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
@@ -54,4 +54,13 @@ MOSTLYCLEANFILES+=%D%/src/linted-settings.ads
 	  -e 's|[@]LNTD_DRAWER_FSTAB[@]|$(pkgdefaultconfdir)/drawer.fstab|g'\
 	  -e 's|[@]LNTD_WINDOW[@]|$(pkglibexecdir)/linted-window$(EXEEXT)|g'\
 	  -e 's|[@]LNTD_WINDOW_FSTAB[@]|$(pkgdefaultconfdir)/window.fstab|g'\
+	  $< > $@
+
+EXTRA_DIST+=%D%/start.gpr.in
+MOSTLYCLEANFILES+=%D%/start.gpr
+%D%/start.gpr: %D%/start.gpr.in Makefile
+	$(MKDIR_P) %D%/src
+	$(linted_V_SED) sed \
+	  -e 's|[@]abs_builddir[@]|$(abs_builddir)|g'\
+	  -e 's|[@]abs_srcdir[@]|$(abs_srcdir)|g'\
 	  $< > $@

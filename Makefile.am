@@ -97,8 +97,10 @@ AM_LDFLAGS+=\
   $(linted_LDFLAGS_WARNINGS); do echo -Xcompiler "$$II"; done)
 
 AM_GPRBUILDFLAGS=-q\
+  -s\
   --create-missing-dirs\
   --autoconf=$(builddir)/default.cgpr\
+  --single-compile-per-obj-dir\
   -aP $(builddir)/src/ada\
   -aP $(srcdir)/src/ada-libc\
   -aP $(srcdir)/src/ada-xcb\
@@ -106,7 +108,7 @@ AM_GPRBUILDFLAGS=-q\
   -aP $(srcdir)/src/ada-pulse\
   -aP $(srcdir)/src/ada-core
 AM_GNATPPFLAGS=-q -A0 -rnb
-GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
+GPRCLEANFLAGS=-q --config=$(builddir)/default.cgpr\
   -aP$(builddir)/src/ada\
   -aP$(srcdir)/src/ada-libc\
   -aP$(srcdir)/src/ada-xcb\
@@ -115,6 +117,7 @@ GPRCLEANFLAGS=-q --config=$(builddir)/src/ada/config.cgpr\
   -aP$(srcdir)/src/ada-core
 
 GPRPROVEFLAGS=\
+  --config=$(builddir)/default.cgpr\
   -j3 --level=0 --pedantic -U\
   -aP=$(builddir)/src/ada\
   -aP=$(srcdir)/src/ada-libc\
@@ -142,7 +145,7 @@ clean-%C%:
 
 .PHONY: prove
 prove: src/ada/shared.gpr src/ada/config.cgpr
-	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted/start.gpr
+	gnatprove $(GPRPROVEFLAGS) -P$(builddir)/src/linted/start.gpr
 
 .PHONY: indent
 indent:

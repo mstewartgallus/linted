@@ -17,15 +17,14 @@ with "libc.gpr";
 
 project Start is
   for Languages use ("Ada");
-  for Source_Dirs use (Shared'Object_Dir & "/../linted/src", "src");
+  for Source_Dirs use ("@abs_builddir@/src/linted/src", "@abs_srcdir@/src/linted/src");
   for Main use ("main.adb");
 
-  for Object_Dir use Shared'Object_Dir & "/linted-start";
+  for Object_Dir use Shared'Object_Dir & "/start";
   package Builder renames Shared.Builder;
   package Compiler is
-      for Local_Configuration_Pragmas use "pragmas.adc";
+      for Local_Configuration_Pragmas use "@abs_srcdir@/src/linted/pragmas.adc";
       for Default_Switches ("Ada") use Shared.Compiler'Default_Switches ("Ada");
-      for Default_Switches ("C") use Shared.Compiler'Default_Switches ("C");
       for Default_Switches ("C") use Shared.Compiler'Default_Switches ("C");
    end Compiler;
   package Binder renames Shared.Binder;
