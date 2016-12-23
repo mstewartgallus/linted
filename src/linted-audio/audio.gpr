@@ -13,6 +13,7 @@
 -- permissions and limitations under the License.
 with "shared.gpr";
 with "linted.gpr";
+with "libc.gpr";
 with "pulse.gpr";
 
 project Audio is
