@@ -14,31 +14,19 @@
 with Linted.Errors;
 with Linted.KOs;
 
-package Linted.Controls_Reader is
+with Linted.Types;
+
+package Linted.Controls_Reader with
+     Spark_Mode => Off is
    pragma Elaborate_Body;
 
-   type Controls_Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
-
-   type Controls is record
-      Z_Tilt : Controls_Int := 0;
-      X_Tilt : Controls_Int := 0;
-
-      Left : Boolean := False;
-      Right : Boolean := False;
-      Forward : Boolean := False;
-      Back : Boolean := False;
-
-      Jumping : Boolean := False;
-   end record;
-
    type Event is record
-      Data : Controls;
+      Data : Types.Controls;
       Err : Errors.Error := 0;
    end record;
 
    generic
-   package Worker with
-      Spark_Mode => Off is
+   package Worker is
       procedure Start (Object : KOs.KO);
       procedure Wait (E : out Event);
    end Worker;

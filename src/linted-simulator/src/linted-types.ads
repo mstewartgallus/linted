@@ -33,4 +33,18 @@ package Linted.Types is
 
    type Position is (X, Y, Z);
    type Varying_Positions is array (Position) of Differentiable;
+
+   type Controls_Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
+
+   type Controls is record
+      Z_Tilt : Controls_Int := 0;
+      X_Tilt : Controls_Int := 0;
+
+      Left : Boolean := False;
+      Right : Boolean := False;
+      Forward : Boolean := False;
+      Back : Boolean := False;
+
+      Jumping : Boolean := False;
+   end record;
 end Linted.Types;

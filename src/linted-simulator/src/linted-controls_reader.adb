@@ -22,10 +22,12 @@ private with Linted.Channels;
 private with Linted.Reader;
 private with Linted.MVars;
 
-package body Linted.Controls_Reader is
+package body Linted.Controls_Reader with
+     Spark_Mode => Off is
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
+   use type Linted.Types.Controls_Int;
    use type C.int;
    use type C.size_t;
    use type Interfaces.Unsigned_32;
@@ -35,14 +37,13 @@ package body Linted.Controls_Reader is
 
    subtype Tuple is Storage_Elements.Storage_Array (1 .. 4);
 
-   function From_Bytes (T : Tuple) return Controls_Int;
+   function From_Bytes (T : Tuple) return Types.Controls_Int;
 
    package Command_MVars is new Linted.MVars (KOs.KO);
    package Read_Done_Event_Channels is new Linted.Channels (Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
 
-   package body Worker with
-        Spark_Mode => Off is
+   package body Worker is
       task Reader_Task;
 
       package Worker is new Linted.Reader.Worker;
@@ -80,7 +81,7 @@ package body Linted.Controls_Reader is
       end A;
 
       Err : Errors.Error;
-      C : Controls;
+      C : Linted.Types.Controls;
       Object : KOs.KO;
       Object_Initialized : Boolean := False;
 
@@ -152,19 +153,19 @@ package body Linted.Controls_Reader is
       end Reader_Task;
    end Worker;
 
-   function From_Bytes (T : Tuple) return Controls_Int is
+   function From_Bytes (T : Tuple) return Types.Controls_Int is
       X : Interfaces.Unsigned_32;
-      Y : Controls_Int;
+      Y : Types.Controls_Int;
    begin
       X :=
         Interfaces.Unsigned_32 (T (4)) or
         Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
         Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
         Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24);
-      if X <= Interfaces.Unsigned_32 (Controls_Int'Last) then
-         Y := Controls_Int (X);
+      if X <= Interfaces.Unsigned_32 (Types.Controls_Int'Last) then
+         Y := Types.Controls_Int (X);
       else
-         Y := -Controls_Int (not X + 1);
+         Y := -Types.Controls_Int (not X + 1);
       end if;
       return Y;
    end From_Bytes;

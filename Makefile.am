@@ -96,7 +96,9 @@ AM_LDFLAGS+=\
   $(linted_LDFLAGS_META)\
   $(linted_LDFLAGS_WARNINGS); do echo -Xcompiler "$$II"; done)
 
-GPRPROJECTPATH=$(builddir)/src/ada:$(srcdir)/src/ada-libc:$(srcdir)/src/ada-xcb:$(srcdir)/src/ada-xkb:$(srcdir)/src/ada-pulse:$(srcdir)/src/ada-core
+GPRPROJECTPATH=$(builddir)/src/ada:$(srcdir)/src/ada-libc:$(srcdir)/src/ada-xcb:$(srcdir)/src/ada-xkb:$(srcdir)/src/ada-pulse:$(srcdir)/src/ada-core:$(srcdir)/src/spark_lemmas
+
+ADAENV=SPARK_LEMMAS_INSTALLED=False SPARK_LEMMAS_OBJECT_DIR=$(abs_builddir)/src/ada ADA_PROJECT_PATH=$(GPRPROJECTPATH)
 
 AM_GPRBUILDFLAGS=-q\
   -s\
@@ -108,9 +110,7 @@ AM_GNATPPFLAGS=-q -A0 -rnb
 
 GPRCLEANFLAGS=-q --config=$(builddir)/auto.cgpr
 
-GPRPROVEFLAGS=\
-  --config=$(builddir)/auto.cgpr\
-  -j3 --level=0 --pedantic -U
+GPRPROVEFLAGS=-j3 --level=0 --pedantic
 
 LINTED_CLEAN_RULES=
 
@@ -131,20 +131,20 @@ clean-%C%:
 
 .PHONY: prove
 prove: src/ada/shared.gpr
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatprove $(GPRPROVEFLAGS) -P$(builddir)/src/linted/start.gpr
+	env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
 
 .PHONY: indent
 indent:
 	find $(srcdir)/src $(srcdir)/include/lntd  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -\( -name '*.[ch]' -o -name '*.nc' -\) -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatpp $(AM_GNATPPFLAGS) -P$(builddir)/src/linted/start.gpr
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-libc/libc.gpr
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-pulse/pulse.gpr
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xcb/xcb.gpr
-	env ADA_PROJECT_PATH=$(GPRPROJECTPATH) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xkb/xkb.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(builddir)/src/linted/start.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-libc/libc.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-pulse/pulse.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xcb/xcb.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xkb/xkb.gpr
 
 CPROGRAMS=\
   src/linted/linted\

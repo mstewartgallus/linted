@@ -22,4 +22,4 @@ EXTRA_DIST+=\
 LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/xkb.gpr
+	- env $(ADAENV) $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/xkb.gpr

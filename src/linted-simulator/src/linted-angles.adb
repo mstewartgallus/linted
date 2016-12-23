@@ -11,7 +11,11 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with SPARK.Mod_Arithmetic_Lemmas;
+
 package body Linted.Angles is
+   package Mod_Lemmas is new SPARK.Mod_Arithmetic_Lemmas (Element_T);
+
    function To_Angle (X : Element_T) return Angle is
    begin
       return (Value => X);
@@ -125,11 +129,19 @@ package body Linted.Angles is
    begin
       My_Input_Angle := From_Angle (X);
 
-      if My_Input_Angle >= Element_T'Last / 2 + 1 then
-         My_Input_Angle := My_Input_Angle - (Element_T'Last / 2 + 1);
-         Sign := -1;
-      end if;
-      pragma Assert (My_Input_Angle < Element_T'Last / 2 + 1);
+      declare
+         Half : Element_T := Element_T'Last / 2 + 1;
+      begin
+         if My_Input_Angle >= Half then
+            Mod_Lemmas.Lemma_Div_Is_Monotonic
+              (My_Input_Angle,
+               Element_T'Last,
+               2);
+            My_Input_Angle := My_Input_Angle - Half;
+            Sign := -1;
+         end if;
+         pragma Assert (My_Input_Angle < Half);
+      end;
 
       if My_Input_Angle >= Element_T'Last / 4 + 1 then
          My_Input_Angle := Element_T'Last / 2 - My_Input_Angle;

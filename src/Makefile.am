@@ -103,3 +103,5 @@ endif
 if X11_API
 include %C%/xcb/Makefile.am
 endif
+
+EXTRA_DIST+=%C%/spark_lemmas

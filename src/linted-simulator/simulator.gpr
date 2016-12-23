@@ -13,6 +13,7 @@
 -- permissions and limitations under the License.
 with "shared.gpr";
 with "linted.gpr";
+with "spark_lemmas.gpr";
 
 project Simulator is
   for Languages use ("Ada");

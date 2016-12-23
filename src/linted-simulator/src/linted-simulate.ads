@@ -11,7 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Controls_Reader;
 with Linted.Types;
 
 package Linted.Simulate with
@@ -21,9 +20,9 @@ package Linted.Simulate with
    type Object_State is array (0 .. 1) of Types.Varying_Positions;
 
    type State is record
-      Controls : Linted.Controls_Reader.Controls;
+      Controls : Types.Controls;
 
-      Objects : Object_State;
+      Objects : Object_State := (0 .. 1 => (Types.X .. Types.Z => (0, 0)));
 
       Z_Rotation : Types.Sim_Angle;
       X_Rotation : Types.Sim_Angle;

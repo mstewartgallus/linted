@@ -23,9 +23,9 @@ EXTRA_DIST+=\
 
 .PHONY: %D%/linted-audio$(EXEEXT)
 %D%/linted-audio$(EXEEXT): src/ada/shared.gpr
-	$(linted_V_GPRBUILD) env ADA_PROJECT_PATH=$(GPRPROJECTPATH) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/audio.gpr
+	$(linted_V_GPRBUILD) env $(ADAENV) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/audio.gpr
 
 LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
-	- env ADA_PROJECT_PATH=$(GPRPROJECTPATH) $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/audio.gpr
+	- env $(ADAENV) $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/audio.gpr
