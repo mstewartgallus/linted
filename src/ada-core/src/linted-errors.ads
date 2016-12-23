@@ -21,7 +21,7 @@ is
    pragma Preelaborate;
 
    subtype Valid_Error is Interfaces.C.int range 0 .. Interfaces.C.int'Last;
-   type Error is  new Valid_Error
+   type Error is new Valid_Error
      with Default_Value => 0;
 
    Success : constant Error;
@@ -30,6 +30,8 @@ is
    Unimplemented : constant Error;
    Out_Of_Memory : constant Error;
    Invalid_Parameter : constant Error;
+
+   function To_String (E : Error) return String with SPARK_Mode => Off;
 
 private
    Success : constant Error := 0;

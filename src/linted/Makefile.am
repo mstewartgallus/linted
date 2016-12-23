@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014, 2015, 2016 Steven Stewart-Gallus
+# Copyright 2016 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,37 +14,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
-bin_PROGRAMS+=%D%/linted
+pkglibexec_PROGRAMS+=%D%/linted
 
-%C%_linted_DEPS=$(builddir)/%D%/settings.h
-%C%_linted_SOURCES=%D%/linted.c
-%C%_linted_CPPFLAGS=-I$(builddir)/%D%/ $(AM_CPPFLAGS)
-%C%_linted_LDADD=\
-  src/dir/libdir.la\
-  src/env/libenv.la\
-  src/io/libio.la\
-  src/locale/liblocale.la\
-  src/log/liblog.la\
-  src/path/libpath.la\
-  src/proc/libproc.la\
+EXTRA_DIST+=\
+  %D%/start.gpr\
   \
-  src/start/libstart.la
+  %D%/src
 
-if WINDOWS_API
-%C%_linted_SOURCES+=%D%/resources.rc %D%/linted.manifest
-%C%_linted_LDADD+=\
-  src/utf/libutf.la\
-  \
-  %D%/resources.$(OBJEXT)
+%C%_linted_DEPS=$(builddir)/%D%/src/linted-settings.ads
 
-%D%/resources.$(OBJEXT): %D%/linted.manifest
-endif
+.PHONY: %D%/linted$(EXEEXT)
+%D%/linted$(EXEEXT): src/ada/shared.gpr src/ada/config.cgpr $(builddir)/%D%/src/linted-settings.ads
+	$(linted_V_GPRBUILD) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/start.gpr
 
-%D%/%C%_linted-linted.$(OBJEXT): %D%/settings.h
+LINTED_CLEAN_RULES+=clean-%C%
+.PHONY: clean-%C%
+clean-%C%:
+	- $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/start.gpr
 
-EXTRA_DIST+=%D%/settings.h.in
-MOSTLYCLEANFILES+=%D%/settings.h
-%D%/settings.h: %D%/settings.h.in Makefile
+EXTRA_DIST+=%D%/src/linted-settings.ads.in
+MOSTLYCLEANFILES+=%D%/src/linted-settings.ads
+%D%/src/linted-settings.ads: %D%/src/linted-settings.ads.in Makefile
+	$(MKDIR_P) %D%/src
 	$(linted_V_SED) sed \
 	  -e 's|[@]LNTD_SYSTEM_CONF_PATH[@]|$(pkgconfdir)/system.conf:$(pkgdefaultconfdir)/system.conf|g'\
 	  -e 's|[@]LNTD_UNIT_PATH[@]|$(pkgunitsdir):$(pkgdefaultunitsdir)|g'\

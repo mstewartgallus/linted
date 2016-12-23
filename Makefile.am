@@ -141,7 +141,7 @@ clean-%C%:
 
 .PHONY: prove
 prove: src/ada/shared.gpr src/ada/config.cgpr
-	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
+	gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted/start.gpr
 
 .PHONY: indent
 indent:

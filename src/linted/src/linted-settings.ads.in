@@ -1,0 +1,45 @@
+-- Copyright 2016 Steven Stewart-Gallus
+--
+-- Licensed under the Apache License, Version 2.0 (the "License");
+-- you may not use this file except in compliance with the License.
+-- You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing, software
+-- distributed under the License is distributed on an "AS IS" BASIS,
+-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+-- implied.  See the License for the specific language governing
+-- permissions and limitations under the License.
+package Linted.Settings is
+   pragma Pure;
+
+   LNTD_SYSTEM_CONF_PATH : constant String := "@LNTD_SYSTEM_CONF_PATH@";
+   LNTD_UNIT_PATH : constant String := "@LNTD_UNIT_PATH@";
+
+   LNTD_INIT : constant String := "@LNTD_INIT@";
+
+   LNTD_MONITOR : constant String := "@LNTD_MONITOR@";
+
+   LNTD_STARTUP : constant String := "@LNTD_STARTUP@";
+
+   LNTD_SANDBOX : constant String := "@LNTD_SANDBOX@";
+
+   LNTD_WAITER : constant String := "@LNTD_WAITER@";
+
+   LNTD_AUDIO : constant String := "@LNTD_AUDIO@";
+   LNTD_AUDIO_FSTAB : constant String := "@LNTD_AUDIO_FSTAB@";
+
+   LNTD_GUI : constant String := "@LNTD_GUI@";
+   LNTD_GUI_FSTAB : constant String := "@LNTD_GUI_FSTAB@";
+
+   LNTD_SIMULATOR : constant String := "@LNTD_SIMULATOR@";
+   LNTD_SIMULATOR_FSTAB : constant String := "@LNTD_SIMULATOR_FSTAB@";
+
+   LNTD_DRAWER : constant String := "@LNTD_DRAWER@";
+   LNTD_DRAWER_FSTAB : constant String := "@LNTD_DRAWER_FSTAB@";
+
+   LNTD_WINDOW : constant String := "@LNTD_WINDOW@";
+   LNTD_WINDOW_FSTAB : constant String := "@LNTD_WINDOW_FSTAB@";
+
+end Linted.Settings;
