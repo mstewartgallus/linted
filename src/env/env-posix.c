@@ -89,8 +89,9 @@ unlock_mutex : {
 	}
 }
 
-	if (0 == err)
+	if (0 == err) {
 		*valuep = value_dup;
+	}
 
 	return err;
 }

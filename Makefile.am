@@ -98,7 +98,7 @@ AM_LDFLAGS+=\
 
 GPRPROJECTPATH=$(builddir)/src/ada:$(srcdir)/src/ada-libc:$(srcdir)/src/ada-xcb:$(srcdir)/src/ada-xkb:$(srcdir)/src/ada-pulse:$(srcdir)/src/ada-core:$(srcdir)/src/spark_lemmas
 
-ADAENV=SPARK_LEMMAS_INSTALLED=False SPARK_LEMMAS_OBJECT_DIR=$(abs_builddir)/src/ada ADA_PROJECT_PATH=$(GPRPROJECTPATH)
+ADAENV=SPARK_LEMMAS_INSTALLED=False SPARK_LEMMAS_OBJECT_DIR=$(abs_builddir)/src/ada GPR_PROJECT_PATH=$(GPRPROJECTPATH)
 
 AM_GPRBUILDFLAGS=-q\
   -s\
@@ -107,9 +107,7 @@ AM_GPRBUILDFLAGS=-q\
   --single-compile-per-obj-dir\
   --no-indirect-imports
 AM_GNATPPFLAGS=-q -A0 -rnb
-
 GPRCLEANFLAGS=-q --config=$(builddir)/auto.cgpr
-
 GPRPROVEFLAGS=-j3 --level=0 --pedantic
 
 LINTED_CLEAN_RULES=

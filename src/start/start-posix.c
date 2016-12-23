@@ -57,11 +57,6 @@ struct start_args {
 
 static void *start_routine(void *arg);
 
-static int do_init(struct lntd_start_config const *config,
-                   unsigned char (*start)(char const *process_name,
-                                          size_t argc,
-                                          char const *const argv[]),
-                   size_t argc, char const *const *argv);
 static void do_nothing(int signo);
 
 static lntd_error open_standard_handles(void);
@@ -73,59 +68,6 @@ int lntd_start__main(struct lntd_start_config const *config,
                                             size_t argc,
                                             char const *const argv[]),
                      int argc, char **argv)
-{
-	if (config->dont_fork_thread)
-		return do_init(config, start, argc,
-		               (char const *const *)argv);
-
-	lntd_error err = 0;
-
-	static struct start_args start_args = {0};
-	start_args.parent = pthread_self();
-	start_args.start = start;
-	start_args.config = config;
-	start_args.argc = argc;
-	start_args.argv = (char const *const *)argv;
-
-	static pthread_t child;
-
-	err = pthread_create(&child, 0, start_routine, &start_args);
-	if (err != 0)
-		return EXIT_FAILURE;
-
-	pthread_exit(0);
-}
-
-static void *start_routine(void *foo)
-{
-	struct start_args *args = foo;
-
-	pthread_t parent = args->parent;
-	unsigned char (*start)(char const *process_name, size_t argc,
-	                       char const *const argv[]) = args->start;
-	struct lntd_start_config const *config = args->config;
-	size_t argc = args->argc;
-	char const *const *argv = args->argv;
-
-	lntd_error err = pthread_join(parent, 0);
-	if (err != 0) {
-		lntd_log(LNTD_LOG_ERROR, "pthread_join: %s",
-		         lntd_error_string(err));
-		exit(EXIT_FAILURE);
-	}
-
-	err = pthread_detach(pthread_self());
-	if (err != 0)
-		exit(EXIT_FAILURE);
-
-	exit(do_init(config, start, argc, argv));
-}
-
-static int do_init(struct lntd_start_config const *config,
-                   unsigned char (*start)(char const *process_name,
-                                          size_t argc,
-                                          char const *const argv[]),
-                   size_t argc, char const *const *argv)
 {
 	lntd_error err = 0;
 
@@ -215,7 +157,7 @@ static int do_init(struct lntd_start_config const *config,
 
 	tzset();
 
-	return start(process_basename, argc, argv);
+	return start(process_basename, argc, (char const *const *)argv);
 }
 
 static void do_nothing(int signo)

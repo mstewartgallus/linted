@@ -936,11 +936,12 @@ service_activate(struct system_conf const *system_conf,
 
 	char *unit_name;
 	{
-		char *xx;
+		char *xx = 0;
 		err = lntd_str_dup_len(&xx, file_name, dot - file_name);
 		if (err != 0)
 			return err;
 		unit_name = xx;
+		LNTD_ASSERT(unit_name != 0);
 	}
 
 	char const *const *command = conf_service_exec_start(conf);
@@ -1129,64 +1130,81 @@ service_activate(struct system_conf const *system_conf,
 
 	char **envvars;
 	{
-		char **xx;
+		char **xx = 0;
 		err = filter_envvars(&xx, env_whitelist);
 		if (err != 0)
 			goto free_unit_name;
+		LNTD_ASSERT(xx != 0);
 		envvars = xx;
 	}
 
-	size_t envvars_size =
-	    null_list_size((char const *const *)envvars);
-
 	if (env != 0) {
+		size_t envvars_size =
+		    null_list_size((char const *const *)envvars);
+
 		for (size_t ii = 0U; env[ii] != 0; ++ii) {
-			void *xx = envvars;
-			err = lntd_mem_realloc_array(
-			    &xx, envvars, envvars_size + 2U,
-			    sizeof envvars[0U]);
-			if (err != 0)
-				goto free_unit_name;
-			envvars = xx;
+			{
+				void *xx = 0;
+				err = lntd_mem_realloc_array(
+				    &xx, envvars, envvars_size + 2U,
+				    sizeof envvars[0U]);
+				if (err != 0)
+					goto free_unit_name;
+				LNTD_ASSERT(xx != 0);
+				envvars = xx;
+			}
+
 			++envvars_size;
+
 			envvars[envvars_size] = 0;
 
-			char *yy = 0;
-			err = lntd_str_dup(&yy, env[ii]);
-			if (err != 0)
-				goto free_unit_name;
-			envvars[envvars_size - 1U] = yy;
+			{
+				char *yy = 0;
+				err = lntd_str_dup(&yy, env[ii]);
+				if (err != 0)
+					goto free_unit_name;
+				LNTD_ASSERT(yy != 0);
+				envvars[envvars_size - 1U] = yy;
+			}
 		}
 	}
 
 	char *service_name_setting;
 	{
-		char *xx;
+		char *xx = 0;
 		err = lntd_str_format(&xx, "LINTED_SERVICE=%s",
 		                      unit_name);
 		if (err != 0)
 			goto free_envvars;
+		LNTD_ASSERT(xx != 0);
 		service_name_setting = xx;
 	}
 
-	size_t new_size = envvars_size + 2U;
-	LNTD_ASSERT(new_size > 0U);
 	{
-		void *xx;
-		err = lntd_mem_realloc_array(&xx, envvars, new_size,
-		                             sizeof envvars[0U]);
-		if (err != 0)
-			goto envvar_allocate_failed;
-		envvars = xx;
-		goto envvar_allocate_succeeded;
-	}
-envvar_allocate_failed:
-	lntd_mem_free(service_name_setting);
-	goto free_envvars;
+		size_t envvars_size =
+		    null_list_size((char const *const *)envvars);
 
-envvar_allocate_succeeded:
-	envvars[envvars_size] = service_name_setting;
-	envvars[envvars_size + 1U] = 0;
+		size_t new_size = envvars_size + 2U;
+		LNTD_ASSERT(new_size > 0U);
+		{
+			void *xx = 0;
+			err = lntd_mem_realloc_array(
+			    &xx, envvars, new_size, sizeof envvars[0U]);
+			if (err != 0)
+				goto envvar_allocate_failed;
+			LNTD_ASSERT(xx != 0);
+			envvars = xx;
+			goto envvar_allocate_succeeded;
+		}
+	envvar_allocate_failed:
+		lntd_mem_free(service_name_setting);
+		service_name_setting = 0;
+		goto free_envvars;
+
+	envvar_allocate_succeeded:
+		envvars[envvars_size] = service_name_setting;
+		envvars[envvars_size + 1U] = 0;
+	}
 
 	char const *const *environment = (char const *const *)envvars;
 
@@ -1248,14 +1266,20 @@ envvar_allocate_succeeded:
 			goto free_envvars;
 	}
 
-free_envvars:
+free_envvars:;
+	size_t envvars_size =
+	    null_list_size((char const *const *)envvars);
+
 	for (size_t ii = 0U; ii < envvars_size; ++ii) {
 		lntd_mem_free(envvars[ii]);
+		envvars[ii] = 0;
 	}
 	lntd_mem_free(envvars);
+	envvars = 0;
 
 free_unit_name:
 	lntd_mem_free(unit_name);
+	unit_name = 0;
 
 	return err;
 }
@@ -1283,25 +1307,24 @@ static lntd_error filter_envvars(char ***result_envvarsp,
 		size_t size = null_list_size(envs);
 
 		{
-			void *xx;
+			void *xx = 0;
 			err = lntd_mem_alloc_array(
 			    &xx, size + 1U, sizeof result_envvars[0U]);
 			if (err != 0)
 				return err;
+			LNTD_ASSERT(xx != 0);
 			result_envvars = xx;
 		}
 
 		for (size_t ii = 0U; ii < size; ++ii) {
-			err =
-			    lntd_str_dup(&result_envvars[ii], envs[ii]);
-			if (err != 0) {
-				for (size_t jj = 0; jj <= ii; ++jj) {
-					lntd_mem_free(
-					    result_envvars[jj]);
-				}
-				lntd_mem_free(result_envvars);
-				return err;
-			}
+			char const *input = envs[ii];
+
+			char *xx = 0;
+			err = lntd_str_dup(&xx, input);
+			if (err != 0)
+				goto free_result_envvars;
+			LNTD_ASSERT(xx != 0);
+			result_envvars[ii] = xx;
 		}
 		result_envvars[size] = 0;
 		*result_envvarsp = result_envvars;
@@ -1310,12 +1333,13 @@ static lntd_error filter_envvars(char ***result_envvarsp,
 
 	size_t allowed_envvars_size = null_list_size(allowed_envvars);
 	{
-		void *xx;
+		void *xx = 0;
 		err =
 		    lntd_mem_alloc_array(&xx, allowed_envvars_size + 1U,
 		                         sizeof result_envvars[0U]);
 		if (err != 0)
 			return err;
+		LNTD_ASSERT(xx != 0);
 		result_envvars = xx;
 	}
 
@@ -1325,7 +1349,7 @@ static lntd_error filter_envvars(char ***result_envvarsp,
 
 		char *envvar_value;
 		{
-			char *xx;
+			char *xx = 0;
 			err = lntd_env_get(envvar_name, &xx);
 			if (err != 0)
 				goto free_result_envvars;
@@ -1336,14 +1360,20 @@ static lntd_error filter_envvars(char ***result_envvarsp,
 
 		++result_envvars_size;
 
-		err = lntd_str_format(
-		    &result_envvars[result_envvars_size - 1U], "%s=%s",
-		    envvar_name, envvar_value);
+		{
+			char *xx = 0;
+			err = lntd_str_format(&xx, "%s=%s", envvar_name,
+			                      envvar_value);
 
-		lntd_mem_free(envvar_value);
+			lntd_mem_free(envvar_value);
+			envvar_value = 0;
 
-		if (err != 0)
-			goto free_result_envvars;
+			if (err != 0)
+				goto free_result_envvars;
+
+			LNTD_ASSERT(xx != 0);
+			result_envvars[result_envvars_size - 1U] = xx;
+		}
 	}
 	result_envvars[result_envvars_size] = 0;
 
@@ -1352,9 +1382,12 @@ static lntd_error filter_envvars(char ***result_envvarsp,
 	return 0;
 
 free_result_envvars:
-	for (size_t ii = 0U; ii < result_envvars_size; ++ii)
+	for (size_t ii = 0U; ii < result_envvars_size; ++ii) {
 		lntd_mem_free(result_envvars[ii]);
+		result_envvars[ii] = 0;
+	}
 	lntd_mem_free(result_envvars);
+	result_envvars = 0;
 	return err;
 }
 

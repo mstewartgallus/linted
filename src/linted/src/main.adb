@@ -28,6 +28,7 @@ private with Linted.KOs;
 private with Linted.Process;
 private with Linted.Stdio;
 private with Linted.Settings;
+private with Linted.Logs;
 
 private with Linted.Last_Chance;
 
@@ -198,8 +199,6 @@ begin
    end;
 
    <<On_Err>>
-   Linted.Stdio.Write_Line
-     (Linted.KOs.Standard_Error,
-      Linted.Errors.To_String (Err));
+   Linted.Logs.Log (Linted.Logs.Error, Linted.Errors.To_String (Err));
    Libc.Unistd.u_exit (1);
 end Main;

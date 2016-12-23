@@ -41,13 +41,7 @@ static void do_nothing(int signo);
 
 static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-waiter",
-    .dont_init_signals = true,
-
-    /* Signals are strange for PID 1 so forking doesn't work well.
-     * As well we still rely on the hack of scanning environ for the
-     * unit name.
-     */
-    .dont_fork_thread = true};
+    .dont_init_signals = true};
 
 static int const various_sigs[] = {SIGCONT};
 
