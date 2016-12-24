@@ -17,14 +17,18 @@ with Interfaces.C.Strings;
 with Libc.Stdlib.GNU;
 with Libc.Stdlib;
 
-package body Linted.Env is
-   use type Interfaces.C.Strings.chars_ptr;
+package body Linted.Env with
+     Spark_Mode => Off is
+   package C renames Interfaces.C;
+   package C_Strings renames Interfaces.C.Strings;
+
+   use type C_Strings.chars_ptr;
 
    protected type Env_Lock is
       function Lock_Set
         (Name : String;
          Value : String;
-         Overwrite : Boolean) return Linted.Errors.Error;
+         Overwrite : Boolean) return Errors.Error;
       function Lock_Get (Name : String) return String;
    end Env_Lock;
 
@@ -33,7 +37,7 @@ package body Linted.Env is
    function Set
      (Name : String;
       Value : String;
-      Overwrite : Boolean) return Linted.Errors.Error is
+      Overwrite : Boolean) return Errors.Error is
      (L.Lock_Set (Name, Value, Overwrite));
 
    function Get (Name : String) return String is (L.Lock_Get (Name));
@@ -42,29 +46,27 @@ package body Linted.Env is
       function Lock_Set
         (Name : String;
          Value : String;
-         Overwrite : Boolean) return Linted.Errors.Error
+         Overwrite : Boolean) return Errors.Error
       is
-         N : aliased Interfaces.C.char_array := Interfaces.C.To_C (Name);
-         V : aliased Interfaces.C.char_array := Interfaces.C.To_C (Value);
+         N : aliased C.char_array := C.To_C (Name);
+         V : aliased C.char_array := C.To_C (Value);
       begin
-         return Linted.Errors.Error
+         return Errors.Error
              (Libc.Stdlib.GNU.setenv
-                (Interfaces.C.Strings.To_Chars_Ptr (N'Unchecked_Access),
-                 Interfaces.C.Strings.To_Chars_Ptr (V'Unchecked_Access),
+                (C.Strings.To_Chars_Ptr (N'Unchecked_Access),
+                 C.Strings.To_Chars_Ptr (V'Unchecked_Access),
                  (if Overwrite then 1 else 0)));
       end Lock_Set;
 
       function Lock_Get (Name : String) return String is
-         N : aliased Interfaces.C.char_array := Interfaces.C.To_C (Name);
-         P : Interfaces.C.Strings.chars_ptr;
+         N : aliased C.char_array := C.To_C (Name);
+         P : C.Strings.chars_ptr;
       begin
-         P :=
-           Libc.Stdlib.getenv
-             (Interfaces.C.Strings.To_Chars_Ptr (N'Unchecked_Access));
-         if P = Interfaces.C.Strings.Null_Ptr then
+         P := Libc.Stdlib.getenv (C.Strings.To_Chars_Ptr (N'Unchecked_Access));
+         if P = C.Strings.Null_Ptr then
             return "";
          else
-            return Interfaces.C.Strings.Value (P);
+            return C.Strings.Value (P);
          end if;
       end Lock_Get;
 

@@ -13,12 +13,13 @@
 -- permissions and limitations under the License.
 with Linted.Errors;
 
-package Linted.Env is
+package Linted.Env with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    function Set
      (Name : String;
       Value : String;
-      Overwrite : Boolean) return Linted.Errors.Error;
+      Overwrite : Boolean) return Errors.Error;
    function Get (Name : String) return String;
 end Linted.Env;
