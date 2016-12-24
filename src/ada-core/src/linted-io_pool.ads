@@ -31,6 +31,15 @@ package Linted.IO_Pool is
       Err : Errors.Error;
    end record;
 
+   type Poller_Event_Type is (Readable, Writable);
+   type Poller_Event_Set is array (Poller_Event_Type) of Boolean with
+        Pack;
+   type Poller_Event is record
+      Events : Poller_Event_Set :=
+        (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
+      Err : Errors.Error;
+   end record;
+
    generic
    package Writer_Worker with
       Spark_Mode => Off is
@@ -50,4 +59,11 @@ package Linted.IO_Pool is
          Count : Interfaces.C.size_t);
       procedure Wait (Event : out Reader_Event);
    end Reader_Worker;
+
+   generic
+   package Poller_Worker with
+      Spark_Mode => Off is
+      procedure Poll (Object : KOs.KO; Events : Poller_Event_Set);
+      procedure Wait (Event : out Poller_Event);
+   end Poller_Worker;
 end Linted.IO_Pool;

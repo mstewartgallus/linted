@@ -137,6 +137,7 @@ indent:
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
 	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(builddir)/src/linted/start.gpr
 	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
+	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-drawer/drawer.gpr
 	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
 	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
 	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-libc/libc.gpr

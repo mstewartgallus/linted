@@ -50,28 +50,6 @@ package body Linted.Simulator with
    use type Errors.Error;
    use type Types.Int;
 
-   Controller_KO : KOs.KO;
-   Updater_KO : KOs.KO;
-
-   My_State : Simulate.State :=
-     (Objects =>
-        (0 => ((0, 0), (10 * 1024, 10 * 1024), (0, 0)),
-         1 => ((0, 0), (0, 0), (-1000, -1000))),
-
-      Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
-      X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
-
-      Controls =>
-        (Z_Tilt => 0,
-         X_Tilt => 0,
-         Back => False,
-         Forward => False,
-         Left => False,
-         Right => False,
-         Jumping => False),
-      Counter => 750110405);
-   Next_Time : Real_Time.Time;
-
    task A;
    task body A is
    begin
@@ -100,6 +78,27 @@ package body Linted.Simulator with
    task Main_Task;
 
    task body Main_Task is
+      Controller_KO : KOs.KO;
+      Updater_KO : KOs.KO;
+
+      My_State : Simulate.State :=
+	(Objects =>
+	   (0 => ((0, 0), (10 * 1024, 10 * 1024), (0, 0)),
+	    1 => ((0, 0), (0, 0), (-1000, -1000))),
+
+	 Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
+	 X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
+
+	 Controls =>
+	   (Z_Tilt => 0,
+	    X_Tilt => 0,
+	    Back => False,
+	    Forward => False,
+	    Left => False,
+	    Right => False,
+	    Jumping => False),
+	 Counter => 750110405);
+      Next_Time : Real_Time.Time;
    begin
       if Command_Line.Argument_Count < 2 then
          raise Constraint_Error with "At least two arguments";

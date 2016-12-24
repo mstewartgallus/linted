@@ -13,6 +13,10 @@
 -- permissions and limitations under the License.
 with Interfaces.C;
 
+limited with System;
+
+with Libc.Sys.Types;
+
 with Linted.Errors;
 with Linted.Results;
 
@@ -42,6 +46,14 @@ package Linted.KOs is
       Flags : Open_Flags) return KO_Results.Result with
       Spark_Mode => Off;
    function Close (Object : KO) return Errors.Error with
+      Spark_Mode => Off;
+
+   function Pread
+     (Object : KO;
+      Buf : System.Address;
+      Count : Interfaces.C.size_t;
+      Offset : Libc.Sys.Types.off_t;
+      Bytes_Read : out Interfaces.C.size_t) return Errors.Error with
       Spark_Mode => Off;
 
 private

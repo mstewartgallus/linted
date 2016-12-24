@@ -14,11 +14,14 @@
 with Libc.Fcntl;
 with Libc.Unistd;
 with Libc.Errno;
+with Libc.Sys.Types;
 with Interfaces.C.Strings;
 
 package body Linted.KOs is
    package C renames Interfaces.C;
    package Errno renames Libc.Errno;
+
+   use type Libc.Sys.Types.ssize_t;
 
    function Open
      (Pathname : String;
@@ -87,9 +90,27 @@ package body Linted.KOs is
       Spark_Mode => Off is
    begin
       if Libc.Unistd.close (C.int (Object)) < 0 then
-         return Errors.Error (Errno.Errno);
+         return Errors.Error (Libc.Errno.Errno);
       else
          return 0;
       end if;
    end Close;
+
+   function Pread
+     (Object : KO;
+      Buf : System.Address;
+      Count : Interfaces.C.size_t;
+      Offset : Libc.Sys.Types.off_t;
+      Bytes_Read : out Interfaces.C.size_t) return Errors.Error with
+      Spark_Mode => Off is
+      Bytes : Libc.Sys.Types.ssize_t;
+   begin
+      Bytes :=
+        Libc.Unistd.pread (Interfaces.C.int (Object), Buf, Count, Offset);
+      if Bytes < 0 then
+         return Linted.Errors.Error (Libc.Errno.Errno);
+      end if;
+      Bytes_Read := Interfaces.C.size_t (Bytes);
+      return Linted.Errors.Success;
+   end Pread;
 end Linted.KOs;

@@ -12,6 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Libc.Sys.Types;
+with Libc.Sys.Poll;
 with Libc.Unistd;
 with Libc.Errno.POSIX_2008;
 with Libc.Errno;
@@ -40,6 +41,14 @@ package body Linted.IO_Pool is
 
    package Read_Command_Channels is new Linted.Channels (Read_Command);
    package Reader_Event_Channels is new Linted.Channels (Reader_Event);
+
+   type Poller_Command is record
+      Object : KOs.KO;
+      Events : Poller_Event_Set;
+   end record;
+
+   package Poller_Command_Channels is new Linted.Channels (Poller_Command);
+   package Poller_Event_Channels is new Linted.Channels (Poller_Event);
 
    package body Writer_Worker with
         Spark_Mode => Off is
@@ -173,4 +182,94 @@ package body Linted.IO_Pool is
          end loop;
       end Reader_Task;
    end Reader_Worker;
+
+   package body Poller_Worker with
+        Spark_Mode => Off is
+      task Poller_Task;
+
+      My_Command_Channel : Poller_Command_Channels.Channel;
+      My_Event_Channel : Poller_Event_Channels.Channel;
+
+      procedure Poll (Object : KOs.KO; Events : Poller_Event_Set) is
+      begin
+         My_Command_Channel.Push ((Object, Events));
+      end Poll;
+
+      procedure Wait (Event : out Poller_Event) is
+      begin
+         My_Event_Channel.Pop (Event);
+      end Wait;
+
+      task body Poller_Task is
+         use type Interfaces.C.unsigned;
+
+         New_Poller_Command : Poller_Command;
+      begin
+         loop
+            My_Command_Channel.Pop (New_Poller_Command);
+
+            declare
+               Err : C.int;
+
+               Object : constant KOs.KO := New_Poller_Command.Object;
+               Listen_Events : constant Poller_Event_Set :=
+                 New_Poller_Command.Events;
+               Heard_Events : Poller_Event_Set :=
+                 (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
+
+               Nfds : C.int;
+            begin
+               loop
+                  declare
+                     Pollfd : aliased Libc.Sys.Poll.pollfd :=
+                       (Interfaces.C.int (Object), 0, 0);
+                  begin
+                     if Listen_Events (Readable) then
+                        Pollfd.events :=
+                          Interfaces.C.short
+                            (Interfaces.C.unsigned (Pollfd.events) or
+                             Libc.Sys.Poll.POLLIN);
+                     end if;
+                     if Listen_Events (Writable) then
+                        Pollfd.events :=
+                          Interfaces.C.short
+                            (Interfaces.C.unsigned (Pollfd.events) or
+                             Libc.Sys.Poll.POLLOUT);
+                     end if;
+
+                     Nfds :=
+                       Libc.Sys.Poll.poll (Pollfd'Unchecked_Access, 1, -1);
+
+                     if
+                       (Interfaces.C.unsigned (Pollfd.events) and
+                        Libc.Sys.Poll.POLLIN) >
+                       0
+                     then
+                        Heard_Events (Readable) := True;
+                     end if;
+                     if
+                       (Interfaces.C.unsigned (Pollfd.events) and
+                        Libc.Sys.Poll.POLLOUT) >
+                       0
+                     then
+                        Heard_Events (Writable) := True;
+                     end if;
+                  end;
+                  if Nfds < 0 then
+                     Err := Errno.Errno;
+                     if Err /= Libc.Errno.POSIX_2008.EINTR then
+                        exit;
+                     end if;
+                  else
+                     Err := 0;
+                     exit;
+                  end if;
+               end loop;
+
+               My_Event_Channel.Push
+                 ((Err => Errors.Error (Err), Events => Heard_Events));
+            end;
+         end loop;
+      end Poller_Task;
+   end Poller_Worker;
 end Linted.IO_Pool;

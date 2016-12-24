@@ -1,7 +1,7 @@
 # Process this file with automake to produce Makefile.in (in this,
 # and all subdirectories).
 #
-# Copyright 2013, 2014, 2015 Steven Stewart-Gallus
+# Copyright 2016 Steven Stewart-Gallus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,42 +16,16 @@
 # permissions and limitations under the License.
 pkglibexec_PROGRAMS+=%D%/linted-drawer
 
-%C%_linted_drawer_SOURCES=
-%C%_linted_drawer_LDADD=\
-  %D%/drawer.o\
+EXTRA_DIST+=\
+  %D%/drawer.gpr\
   \
-  src/env/libenv.la\
-  src/error/liberror.la\
-  src/gpu/libgpu.la\
-  src/ko/libko.la\
-  src/xcb/libxcb.la\
-  \
-  src/window/libwindow.la\
-  \
-  $(XCB_LIBS)
+  %D%/src
 
-%C%_linted_drawer_CPPFLAGS=\
-  $(XCB_FLAGS)\
-  $(AM_CPPFLAGS)
+.PHONY: %D%/linted-drawer$(EXEEXT)
+%D%/linted-drawer$(EXEEXT): src/ada/shared.gpr src/gpu/libgpu.la
+	$(linted_V_GPRBUILD) env $(ADAENV) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/drawer.gpr
 
-%C%_linted_drawer_CFLAGS=\
-  $(linted_CFLAGS_LANGUAGE)\
-  $(linted_CFLAGS_DETERMINISTIC)\
-  $(linted_CFLAGS_OPTIMIZE)\
-  $(linted_CFLAGS_HARDEN)\
-  $(linted_CFLAGS_DEBUG)\
-  $(linted_CFLAGS_DEBUG_INFO)\
-  $(linted_CFLAGS_META)\
-  $(linted_CFLAGS_WARNINGS)
-
-EXTRA_DIST+=%D%/LntdDrawerC.nc %D%/LntdDrawerP.nc
-
-MOSTLYCLEANFILES+=%D%/drawer.c
-BUILT_SOURCES+=%D%/drawer.c
-%D%/drawer.c: %D%/LntdDrawerC.nc %D%/LntdDrawerP.nc $(NESC_FILES)
-	$(MKDIR_P) %D%
-	$(linted_V_NESCC) $(NESCC) $(AM_NESCFLAGS) -fnesc-path=$(abs_srcdir)/%D%:$(abs_srcdir)/src/nesc $(NESCFLAGS) -fnesc-cfile=$@ $<
-	test -f $@
-
-%D%/drawer.o: %D%/drawer.c
-	$(AM_V_CC) $(CC) $(%C%_linted_drawer_CFLAGS) $(CFLAGS) -c -o $@ $^
+LINTED_CLEAN_RULES+=clean-%C%
+.PHONY: clean-%C%
+clean-%C%:
+	- env $(ADAENV) $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/drawer.gpr

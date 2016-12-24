@@ -19,7 +19,11 @@ package Linted.Errors with
      Abstract_State => null is
    pragma Preelaborate;
 
-   subtype Valid_Error is Interfaces.C.int range 0 .. Interfaces.C.int'Last;
+   subtype Valid_Error is
+     Interfaces.C
+       .unsigned range
+       0 ..
+         Interfaces.C.unsigned (Interfaces.C.int'Last);
    type Error is new Valid_Error with
         Default_Value => 0;
 
