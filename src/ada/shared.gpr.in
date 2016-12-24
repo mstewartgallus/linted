@@ -43,7 +43,7 @@ abstract project Shared is
 				       -- "-gnatGL",
 				       "-gnattt",
 
-				       "-gnatD",
+				       -- "-gnatD",
 				       -- "-gnatR3s",
 				       "-fstack-usage",
 

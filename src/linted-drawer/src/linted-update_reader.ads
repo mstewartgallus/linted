@@ -13,29 +13,14 @@
 -- permissions and limitations under the License.
 with Linted.Errors;
 with Linted.KOs;
+with Linted.Update;
 
 package Linted.Update_Reader with
      Spark_Mode => Off is
    pragma Elaborate_Body;
 
-   type Update_Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
-   type Update_Nat is mod 2**32;
-
-   type Update is record
-      X_Position : Update_Int := 0;
-      Y_Position : Update_Int := 0;
-      Z_Position : Update_Int := 0;
-
-      MX_Position : Update_Int := 0;
-      MY_Position : Update_Int := 0;
-      MZ_Position : Update_Int := 0;
-
-      Z_Rotation : Update_Nat := 0;
-      X_Rotation : Update_Nat := 0;
-   end record;
-
    type Event is record
-      Data : Update;
+      Data : Update.Packet;
       Err : Errors.Error := 0;
    end record;
 

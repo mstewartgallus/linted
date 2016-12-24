@@ -32,14 +32,9 @@ package body Linted.Update_Writer is
    use type Storage_Elements.Storage_Offset;
    use type C.size_t;
 
-   subtype Tuple is Storage_Elements.Storage_Array (1 .. 4);
-
-   function To_Bytes (Number : Update_Nat) return Tuple;
-   function To_Nat (Number : Update_Int) return Update_Nat;
-
    type Write_Command is record
       Object : KOs.KO;
-      Data : Update;
+      Data : Update.Packet;
    end record;
 
    type Write_Done_Event is record
@@ -72,7 +67,7 @@ package body Linted.Update_Writer is
       Work_Event : Worker_Event_Channels.Channel;
       Write_Done_Event_Channel : Write_Done_Event_Channels.Channel;
 
-      Data_Being_Written : aliased Storage_Elements.Storage_Array (1 .. 8 * 4);
+      Data_Being_Written : aliased Update.Storage;
 
       task body A is
          Worker_Event : Linted.Writer.Event;
@@ -84,13 +79,13 @@ package body Linted.Update_Writer is
          end loop;
       end A;
 
-      procedure Write (Object : KOs.KO; Data : Update) is
+      procedure Write (Object : KOs.KO; Data : Update.Packet) is
       begin
          Write_Command_Channel.Push ((Object, Data));
          STC.Set_True (My_Trigger);
       end Write;
 
-      procedure Wait (E : out Linted.Errors.Error) is
+      procedure Wait (E : out Errors.Error) is
          Event : Write_Done_Event;
       begin
          Write_Done_Event_Channel.Pop (Event);
@@ -99,7 +94,7 @@ package body Linted.Update_Writer is
 
       task body Writer_Task is
          Err : Errors.Error;
-         Pending_Update : Update;
+         Pending_Update : Update.Packet;
          Object : KOs.KO;
          Update_Pending : Boolean := False;
          Update_In_Progress : Boolean := False;
@@ -134,25 +129,7 @@ package body Linted.Update_Writer is
             end;
 
             if Update_Pending and not Update_In_Progress then
-               Data_Being_Written (1 .. 4) :=
-                 To_Bytes (To_Nat (Pending_Update.X_Position));
-               Data_Being_Written (5 .. 8) :=
-                 To_Bytes (To_Nat (Pending_Update.Y_Position));
-               Data_Being_Written (9 .. 12) :=
-                 To_Bytes (To_Nat (Pending_Update.Z_Position));
-
-               Data_Being_Written (13 .. 16) :=
-                 To_Bytes (To_Nat (Pending_Update.MX_Position));
-               Data_Being_Written (17 .. 20) :=
-                 To_Bytes (To_Nat (Pending_Update.MY_Position));
-               Data_Being_Written (21 .. 24) :=
-                 To_Bytes (To_Nat (Pending_Update.MZ_Position));
-
-               Data_Being_Written (25 .. 28) :=
-                 To_Bytes (Pending_Update.Z_Rotation);
-               Data_Being_Written (29 .. 32) :=
-                 To_Bytes (Pending_Update.X_Rotation);
-
+               Update.To_Storage (Pending_Update, Data_Being_Written);
                My_Worker.Write
                  (Object,
                   Convert (Data_Being_Written (1)'Access),
@@ -163,37 +140,4 @@ package body Linted.Update_Writer is
          end loop;
       end Writer_Task;
    end Worker;
-
-   function To_Nat (Number : Update_Int) return Update_Nat is
-      Y : Update_Nat;
-   begin
-      if Number < 0 then
-         Y :=
-           Update_Nat (Number + Update_Int'Last) -
-           Update_Nat (Update_Int'Last);
-      else
-         Y := Update_Nat (Number);
-      end if;
-      return Y;
-   end To_Nat;
-
-   -- Big Endian
-   function To_Bytes (Number : Update_Nat) return Tuple is
-      X : Storage_Elements.Storage_Array (1 .. 4) := (0, 0, 0, 0);
-   begin
-      X (1) :=
-        Storage_Elements.Storage_Element
-          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 24) and
-           16#FF#);
-      X (2) :=
-        Storage_Elements.Storage_Element
-          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 16) and
-           16#FF#);
-      X (3) :=
-        Storage_Elements.Storage_Element
-          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 8) and
-           16#FF#);
-      X (4) := Storage_Elements.Storage_Element (Number and 16#FF#);
-      return X;
-   end To_Bytes;
 end Linted.Update_Writer;

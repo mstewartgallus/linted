@@ -13,30 +13,15 @@
 -- permissions and limitations under the License.
 with Linted.Errors;
 with Linted.KOs;
+with Linted.Update;
 
 package Linted.Update_Writer is
    pragma Elaborate_Body;
 
-   type Update_Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
-   type Update_Nat is mod 2**32;
-
-   type Update is record
-      X_Position : Update_Int := 0;
-      Y_Position : Update_Int := 0;
-      Z_Position : Update_Int := 0;
-
-      MX_Position : Update_Int := 0;
-      MY_Position : Update_Int := 0;
-      MZ_Position : Update_Int := 0;
-
-      Z_Rotation : Update_Nat := 0;
-      X_Rotation : Update_Nat := 0;
-   end record;
-
    generic
    package Worker with
       Spark_Mode => Off is
-      procedure Write (Object : Linted.KOs.KO; Data : Update);
+      procedure Write (Object : Linted.KOs.KO; Data : Update.Packet);
       procedure Wait (E : out Linted.Errors.Error);
    end Worker;
 end Linted.Update_Writer;

@@ -21,6 +21,7 @@ private with Linted.Errors;
 private with Linted.KOs;
 private with Linted.Timer;
 private with Linted.Update_Writer;
+private with Linted.Update;
 private with Linted.Simulate;
 private with Linted.Types;
 
@@ -129,30 +130,24 @@ package body Linted.Simulator with
                My_Update_Writer.Write
                  (Updater_KO,
                   (X_Position =>
-                     Update_Writer.Update_Int
-                       (My_State.Objects (0) (Types.X).Value),
+                     Update.Int (My_State.Objects (0) (Types.X).Value),
                    Y_Position =>
-                     Update_Writer.Update_Int
-                       (My_State.Objects (0) (Types.Y).Value),
+                     Update.Int (My_State.Objects (0) (Types.Y).Value),
                    Z_Position =>
-                     Update_Writer.Update_Int
-                       (My_State.Objects (0) (Types.Z).Value),
+                     Update.Int (My_State.Objects (0) (Types.Z).Value),
 
                    MX_Position =>
-                     Update_Writer.Update_Int
-                       (My_State.Objects (1) (Types.X).Value),
+                     Update.Int (My_State.Objects (1) (Types.X).Value),
                    MY_Position =>
-                     Update_Writer.Update_Int
-                       (My_State.Objects (1) (Types.Y).Value),
+                     Update.Int (My_State.Objects (1) (Types.Y).Value),
                    MZ_Position =>
-                     Update_Writer.Update_Int
-                       (My_State.Objects (1) (Types.Z).Value),
+                     Update.Int (My_State.Objects (1) (Types.Z).Value),
 
                    Z_Rotation =>
-                     Update_Writer.Update_Nat
+                     Update.Nat
                        (Types.Sim_Angles.From_Angle (My_State.Z_Rotation)),
                    X_Rotation =>
-                     Update_Writer.Update_Nat
+                     Update.Nat
                        (Types.Sim_Angles.From_Angle (My_State.X_Rotation))));
 
                Next_Time :=

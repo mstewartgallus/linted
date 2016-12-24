@@ -34,6 +34,7 @@ with Linted.KOs;
 with Linted.Logs;
 with Linted.Poller;
 with Linted.Update_Reader;
+with Linted.Update;
 with Linted.Window_Notifier;
 
 package body Linted.Drawer with
@@ -196,11 +197,11 @@ package body Linted.Drawer with
                   GPU_Update.Z_Rotation :=
                     C.C_float (Option_Event.Data.Data.Z_Rotation) *
                     (6.28318530717958647692528 /
-                     (C.C_float (Update_Reader.Update_Nat'Last) + 1.0));
+                     (C.C_float (Update.Nat'Last) + 1.0));
                   GPU_Update.X_Rotation :=
                     C.C_float (Option_Event.Data.Data.X_Rotation) *
                     (6.28318530717958647692528 /
-                     (C.C_float (Update_Reader.Update_Nat'Last) + 1.0));
+                     (C.C_float (Update.Nat'Last) + 1.0));
 
                   GPU.Update_State (Context, GPU_Update'Unchecked_Access);
                end;

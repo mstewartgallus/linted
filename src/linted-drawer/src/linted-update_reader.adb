@@ -35,11 +35,6 @@ package body Linted.Update_Reader with
    use type Storage_Elements.Storage_Element;
    use type Storage_Elements.Storage_Offset;
 
-   subtype Tuple is Storage_Elements.Storage_Array (1 .. 4);
-
-   function To_Int (T : Tuple) return Update_Int;
-   function To_Nat (T : Tuple) return Update_Nat;
-
    package Command_MVars is new MVars (KOs.KO);
    package Read_Done_Event_Channels is new Channels (Event);
    package Worker_Event_Channels is new Channels (Reader.Event);
@@ -59,7 +54,7 @@ package body Linted.Update_Reader with
 
       My_Trigger : STC.Suspension_Object;
 
-      Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 8 * 4);
+      Data_Being_Read : aliased Update.Storage;
 
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
@@ -89,7 +84,7 @@ package body Linted.Update_Reader with
 
       task body Reader_Task is
          Err : Errors.Error;
-         U : Update;
+         U : Update.Packet;
          Object : KOs.KO;
          Object_Initialized : Boolean := False;
       begin
@@ -113,14 +108,7 @@ package body Linted.Update_Reader with
                if not Options_Event.Empty then
                   Err := Options_Event.Data.Err;
                   if Err = Errors.Success then
-                     U.X_Position := To_Int (Data_Being_Read (1 .. 4));
-                     U.Y_Position := To_Int (Data_Being_Read (5 .. 8));
-                     U.Z_Position := To_Int (Data_Being_Read (9 .. 12));
-                     U.MX_Position := To_Int (Data_Being_Read (13 .. 16));
-                     U.MY_Position := To_Int (Data_Being_Read (17 .. 20));
-                     U.MZ_Position := To_Int (Data_Being_Read (21 .. 24));
-                     U.Z_Rotation := To_Nat (Data_Being_Read (25 .. 28));
-                     U.X_Rotation := To_Nat (Data_Being_Read (29 .. 32));
+		     Update.From_Storage (Data_Being_Read, U);
                   end if;
                   My_Event_Channel.Push ((U, Err));
                end if;
@@ -135,27 +123,5 @@ package body Linted.Update_Reader with
          end loop;
       end Reader_Task;
    end Worker;
-
-   function To_Int (T : Tuple) return Update_Int is
-      X : Update_Nat;
-      Y : Update_Int;
-   begin
-      X := To_Nat (T);
-      if X <= Update_Nat (Update_Int'Last) then
-         Y := Update_Int (X);
-      else
-         Y := -Update_Int (not X + 1);
-      end if;
-      return Y;
-   end To_Int;
-
-   function To_Nat (T : Tuple) return Update_Nat is
-   begin
-      return Update_Nat
-          (Interfaces.Unsigned_32 (T (4)) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24));
-   end To_Nat;
 
 end Linted.Update_Reader;
