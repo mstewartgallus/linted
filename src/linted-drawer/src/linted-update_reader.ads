@@ -12,7 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Linted.Errors;
-limited with Linted.KOs;
+with Linted.KOs;
 
 package Linted.Update_Reader with
      Spark_Mode => Off is

@@ -19,7 +19,6 @@ with System.Storage_Elements;
 with System;
 
 with Linted.Channels;
-with Linted.KOs;
 with Linted.Reader;
 with Linted.MVars;
 
@@ -41,14 +40,22 @@ package body Linted.Update_Reader with
    function To_Int (T : Tuple) return Update_Int;
    function To_Nat (T : Tuple) return Update_Nat;
 
-   package Command_MVars is new Linted.MVars (KOs.KO);
-   package Read_Done_Event_Channels is new Linted.Channels (Event);
-   package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
+   package Command_MVars is new MVars (KOs.KO);
+   package Read_Done_Event_Channels is new Channels (Event);
+   package Worker_Event_Channels is new Channels (Reader.Event);
 
    package body Worker is
       task Reader_Task;
 
-      package Worker is new Linted.Reader.Worker;
+      package Reader_Worker is new Reader.Worker;
+
+      type Storage_Access is
+        not null access all Storage_Elements.Storage_Element;
+
+      function Convert is new Ada.Unchecked_Conversion
+        (Storage_Access,
+         System.Address);
+      use type Errors.Error;
 
       My_Trigger : STC.Suspension_Object;
 
@@ -71,24 +78,16 @@ package body Linted.Update_Reader with
 
       task A;
       task body A is
-         Worker_Event : Linted.Reader.Event;
+         Worker_Event : Reader.Event;
       begin
          loop
-            Worker.Wait (Worker_Event);
+            Reader_Worker.Wait (Worker_Event);
             Work_Event.Push (Worker_Event);
             STC.Set_True (My_Trigger);
          end loop;
       end A;
 
       task body Reader_Task is
-         type Storage_Access is
-           not null access all Storage_Elements.Storage_Element;
-
-         function Convert is new Ada.Unchecked_Conversion
-           (Storage_Access,
-            System.Address);
-         use type Errors.Error;
-
          Err : Errors.Error;
          U : Update;
          Object : KOs.KO;
@@ -113,7 +112,7 @@ package body Linted.Update_Reader with
                Work_Event.Poll (Options_Event);
                if not Options_Event.Empty then
                   Err := Options_Event.Data.Err;
-                  if Err = Linted.Errors.Success then
+                  if Err = Errors.Success then
                      U.X_Position := To_Int (Data_Being_Read (1 .. 4));
                      U.Y_Position := To_Int (Data_Being_Read (5 .. 8));
                      U.Z_Position := To_Int (Data_Being_Read (9 .. 12));
@@ -128,7 +127,7 @@ package body Linted.Update_Reader with
             end;
 
             if Object_Initialized then
-               Worker.Read
+               Reader_Worker.Read
                  (Object,
                   Convert (Data_Being_Read (1)'Access),
                   Data_Being_Read'Size / Interfaces.C.char'Size);

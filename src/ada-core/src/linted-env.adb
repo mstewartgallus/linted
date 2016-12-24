@@ -17,17 +17,15 @@ with Interfaces.C.Strings;
 with Libc.Stdlib.GNU;
 with Libc.Stdlib;
 
-with Linted.Errors;
-
 package body Linted.Env is
    use type Interfaces.C.Strings.chars_ptr;
 
    protected type Env_Lock is
-      function Set
+      function Lock_Set
         (Name : String;
          Value : String;
          Overwrite : Boolean) return Linted.Errors.Error;
-      function Get (Name : String) return String;
+      function Lock_Get (Name : String) return String;
    end Env_Lock;
 
    L : Env_Lock;
@@ -36,12 +34,12 @@ package body Linted.Env is
      (Name : String;
       Value : String;
       Overwrite : Boolean) return Linted.Errors.Error is
-     (L.Set (Name, Value, Overwrite));
+     (L.Lock_Set (Name, Value, Overwrite));
 
-   function Get (Name : String) return String is (L.Get (Name));
+   function Get (Name : String) return String is (L.Lock_Get (Name));
 
    protected body Env_Lock is
-      function Set
+      function Lock_Set
         (Name : String;
          Value : String;
          Overwrite : Boolean) return Linted.Errors.Error
@@ -54,9 +52,9 @@ package body Linted.Env is
                 (Interfaces.C.Strings.To_Chars_Ptr (N'Unchecked_Access),
                  Interfaces.C.Strings.To_Chars_Ptr (V'Unchecked_Access),
                  (if Overwrite then 1 else 0)));
-      end Set;
+      end Lock_Set;
 
-      function Get (Name : String) return String is
+      function Lock_Get (Name : String) return String is
          N : aliased Interfaces.C.char_array := Interfaces.C.To_C (Name);
          P : Interfaces.C.Strings.chars_ptr;
       begin
@@ -68,7 +66,7 @@ package body Linted.Env is
          else
             return Interfaces.C.Strings.Value (P);
          end if;
-      end Get;
+      end Lock_Get;
 
    end Env_Lock;
 

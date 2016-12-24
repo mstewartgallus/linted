@@ -20,12 +20,11 @@ with System;
 
 with Linted.Channels;
 with Linted.Errors;
-with Linted.KOs;
 with Linted.Reader;
 with Linted.MVars;
 
 package body Linted.Window_Notifier with
-  Spark_Mode => Off is
+     Spark_Mode => Off is
    package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
@@ -41,22 +40,30 @@ package body Linted.Window_Notifier with
       Err : Errors.Error;
    end record;
 
-   package Command_MVars is new Linted.MVars (KOs.KO);
-   package Read_Done_Event_Channels is new Linted.Channels (Event);
-   package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
+   package Command_MVars is new MVars (KOs.KO);
+   package Read_Done_Event_Channels is new Channels (Event);
+   package Worker_Event_Channels is new Channels (Reader.Event);
 
    package body Worker is
+      type Storage_Access is
+        not null access all Storage_Elements.Storage_Element;
+
+      package Reader_Worker is new Reader.Worker;
+      function Convert is new Ada.Unchecked_Conversion
+        (Storage_Access,
+         System.Address);
+
+      use type Errors.Error;
+
       task Reader_Task;
 
-      package Worker is new Linted.Reader.Worker;
-
       My_Trigger : STC.Suspension_Object;
-
-      Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 1);
 
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
       My_Event_Channel : Read_Done_Event_Channels.Channel;
+
+      Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 1);
 
       procedure Start (Object : KOs.KO) is
       begin
@@ -72,24 +79,16 @@ package body Linted.Window_Notifier with
 
       task A;
       task body A is
-         Worker_Event : Linted.Reader.Event;
+         Worker_Event : Reader.Event;
       begin
          loop
-            Worker.Wait (Worker_Event);
+            Reader_Worker.Wait (Worker_Event);
             Work_Event.Push (Worker_Event);
             STC.Set_True (My_Trigger);
          end loop;
       end A;
 
       task body Reader_Task is
-         type Storage_Access is
-           not null access all Storage_Elements.Storage_Element;
-
-         function Convert is new Ada.Unchecked_Conversion
-           (Storage_Access,
-            System.Address);
-         use type Errors.Error;
-
          Err : Errors.Error;
          Object : KOs.KO;
          Object_Initialized : Boolean := False;
@@ -118,7 +117,7 @@ package body Linted.Window_Notifier with
             end;
 
             if Object_Initialized then
-               Worker.Read
+               Reader_Worker.Read
                  (Object,
                   Convert (Data_Being_Read (1)'Access),
                   Data_Being_Read'Size / Interfaces.C.char'Size);

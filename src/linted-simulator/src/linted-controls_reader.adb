@@ -26,7 +26,7 @@ with Linted.Reader;
 with Linted.MVars;
 
 package body Linted.Controls_Reader with
-  Spark_Mode => Off is
+     Spark_Mode => Off is
    package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;

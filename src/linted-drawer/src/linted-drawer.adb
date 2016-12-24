@@ -56,14 +56,13 @@ package body Linted.Drawer with
       null;
    end record;
 
-   package Notifier is new Linted.Window_Notifier.Worker;
-   package My_Poller is new Linted.Poller.Worker;
-   package Update_Reader is new Linted.Update_Reader.Worker;
+   package Notifier is new Window_Notifier.Worker;
+   package My_Poller is new Poller.Worker;
+   package My_Update_Reader is new Update_Reader.Worker;
 
-   package Update_Event_Channels is new Linted.Channels
-     (Linted.Update_Reader.Event);
-   package Poller_Event_Channels is new Linted.Channels (Linted.Poller.Event);
-   package Notifier_Event_Channels is new Linted.Channels (Notifier_Event);
+   package Update_Event_Channels is new Channels (Update_Reader.Event);
+   package Poller_Event_Channels is new Channels (Poller.Event);
+   package Notifier_Event_Channels is new Channels (Notifier_Event);
 
    task A;
    task B;
@@ -78,15 +77,15 @@ package body Linted.Drawer with
    Window_Opts : aliased array (1 .. 2) of aliased Libc.Stdint.uint32_t :=
      (XCB.XProto.XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0);
 
-   function Read_Window (Object : KOs.KO) return Linted.GPU.X11_Window;
+   function Read_Window (Object : KOs.KO) return GPU.X11_Window;
 
    function XCB_Conn_Error
      (Connection : XCB.xcb_connection_t_access) return Errors.Error;
-   procedure New_Window
+   procedure Get_New_Window
      (Window_KO : KOs.KO;
       Connection : XCB.xcb_connection_t_access;
-      Context : Linted.GPU.Context_Access;
-      Window : out Linted.GPU.X11_Window);
+      Context : GPU.Context_Access;
+      Window : out GPU.X11_Window);
 
    task body Main_Task is
       Err : Errors.Error;
@@ -97,7 +96,7 @@ package body Linted.Drawer with
 
       Connection : XCB.xcb_connection_t_access;
       Context : GPU.Context_Access;
-      Window : Linted.GPU.X11_Window;
+      Window : GPU.X11_Window;
    begin
       if Command_Line.Argument_Count < 3 then
          raise Constraint_Error with "At least three arguments";
@@ -134,15 +133,13 @@ package body Linted.Drawer with
       end;
 
       declare
-         Display : String := Linted.Env.Get ("DISPLAY");
-         Display_C_Str : aliased C.char_array :=
-           C.To_C (Display);
+         Display : String := Env.Get ("DISPLAY");
+         Display_C_Str : aliased C.char_array := C.To_C (Display);
       begin
-         Linted.Logs.Log (Linted.Logs.Info, "Display = " & Display);
+         Logs.Log (Logs.Info, "Display = " & Display);
          Connection :=
            XCB.xcb_connect
-             (C_Strings.To_Chars_Ptr
-                (Display_C_Str'Unchecked_Access),
+             (C_Strings.To_Chars_Ptr (Display_C_Str'Unchecked_Access),
               null);
       end;
       if null = Connection then
@@ -162,12 +159,10 @@ package body Linted.Drawer with
       My_Poller.Poll
         (KOs.KO (XCB.xcb_get_file_descriptor (Connection)),
          (Poller.Readable => True, Poller.Writable => False));
-      Update_Reader.Start (Updater_KO);
+      My_Update_Reader.Start (Updater_KO);
 
-      New_Window (Window_KO, Connection, Context, Window);
-      Linted.Logs.Log
-        (Linted.Logs.Info,
-         "Window: " & Linted.GPU.X11_Window'Image (Window));
+      Get_New_Window (Window_KO, Connection, Context, Window);
+      Logs.Log (Logs.Info, "Window: " & GPU.X11_Window'Image (Window));
       loop
          STC.Suspend_Until_True (Event_Trigger);
 
@@ -177,7 +172,7 @@ package body Linted.Drawer with
             Update_Event_Channel.Poll (Option_Event);
             if not Option_Event.Empty then
                declare
-                  GPU_Update : aliased Linted.GPU.Update;
+                  GPU_Update : aliased GPU.Update;
                begin
                   GPU_Update.X_Position :=
                     C.C_float (Option_Event.Data.Data.X_Position) *
@@ -200,19 +195,13 @@ package body Linted.Drawer with
                   GPU_Update.Z_Rotation :=
                     C.C_float (Option_Event.Data.Data.Z_Rotation) *
                     (6.28318530717958647692528 /
-                     (C.C_float
-                        (Linted.Update_Reader.Update_Nat'Last) +
-                      1.0));
+                     (C.C_float (Update_Reader.Update_Nat'Last) + 1.0));
                   GPU_Update.X_Rotation :=
                     C.C_float (Option_Event.Data.Data.X_Rotation) *
                     (6.28318530717958647692528 /
-                     (C.C_float
-                        (Linted.Update_Reader.Update_Nat'Last) +
-                      1.0));
+                     (C.C_float (Update_Reader.Update_Nat'Last) + 1.0));
 
-                  Linted.GPU.Update_State
-                    (Context,
-                     GPU_Update'Unchecked_Access);
+                  GPU.Update_State (Context, GPU_Update'Unchecked_Access);
                end;
             end if;
          end;
@@ -239,10 +228,10 @@ package body Linted.Drawer with
 
                X := XCB.xcb_flush (Connection);
 
-               New_Window (Window_KO, Connection, Context, Window);
-               Linted.Logs.Log
-                 (Linted.Logs.Info,
-                  "Window: " & Linted.GPU.X11_Window'Image (Window));
+               Get_New_Window (Window_KO, Connection, Context, Window);
+               Logs.Log
+                 (Logs.Info,
+                  "Window: " & GPU.X11_Window'Image (Window));
                X := XCB.xcb_flush (Connection);
             end if;
          end;
@@ -275,17 +264,17 @@ package body Linted.Drawer with
                               B);
                            Configure : B := Convert (My_Event);
                         begin
-                           Linted.GPU.Resize
+                           GPU.Resize
                              (Context,
                               C.unsigned (Configure.width),
                               C.unsigned (Configure.height));
                         end;
 
                      when XCB.XProto.XCB_UNMAP_NOTIFY =>
-                        Linted.GPU.Hide (Context);
+                        GPU.Hide (Context);
 
                      when XCB.XProto.XCB_MAP_NOTIFY =>
-                        Linted.GPU.Show (Context);
+                        GPU.Show (Context);
 
                      when XCB.XProto.XCB_DESTROY_NOTIFY =>
                         Window_Destroyed := True;
@@ -298,7 +287,7 @@ package body Linted.Drawer with
                end loop;
 
                if Window_Destroyed then
-                  Err := Linted.GPU.Remove_Window (Context);
+                  Err := GPU.Remove_Window (Context);
                   if Err /= 0 then
                      raise Program_Error with Errors.To_String (Err);
                   end if;
@@ -322,9 +311,9 @@ package body Linted.Drawer with
    begin
       loop
          declare
-            Event : Linted.Update_Reader.Event;
+            Event : Update_Reader.Event;
          begin
-            Update_Reader.Wait (Event);
+            My_Update_Reader.Wait (Event);
             Update_Event_Channel.Push (Event);
             STC.Set_True (Event_Trigger);
          end;
@@ -357,56 +346,51 @@ package body Linted.Drawer with
       end loop;
    end Task_C;
 
-   function Read_Window (Object : KOs.KO) return Linted.GPU.X11_Window is
-      Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
+   function Read_Window (Object : KOs.KO) return GPU.X11_Window is
       Bytes : C.size_t;
       Err : Errors.Error;
 
       type A is access all Storage_Elements.Storage_Element;
       function Convert is new Ada.Unchecked_Conversion (A, System.Address);
+
+      Data : Storage_Elements.Storage_Array (1 .. 4);
    begin
-      Err :=
-        KOs.Pread (Object, Convert (Buf (1)'Unchecked_Access), 4, 0, Bytes);
-      if Err /= 0 then
-         raise Program_Error with Errors.To_String (Err);
-      end if;
+      declare
+         Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
+      begin
+         Err :=
+           KOs.Pread (Object, Convert (Buf (1)'Unchecked_Access), 4, 0, Bytes);
+         if Err /= 0 then
+            raise Program_Error with Errors.To_String (Err);
+         end if;
+         Data := Buf;
+      end;
       pragma Assert (Bytes = 4);
-      return Linted.GPU.X11_Window
-          (Interfaces.Unsigned_32 (Buf (1)) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Buf (2)), 8) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Buf (3)), 16) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Buf (4)), 24));
+      return GPU.X11_Window
+          (Interfaces.Unsigned_32 (Data (1)) or
+           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Data (2)), 8) or
+           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Data (3)), 16) or
+           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Data (4)), 24));
    end Read_Window;
 
    function XCB_Conn_Error
-     (Connection : XCB.xcb_connection_t_access) return Errors.Error
-   is
-   begin
-      case XCB.xcb_connection_has_error (Connection) is
-         when 0 =>
-            return Errors.Success;
-         when XCB.XCB_CONN_ERROR =>
-            return Errors.Protocol;
-         when XCB.XCB_CONN_CLOSED_EXT_NOTSUPPORTED =>
-            return Errors.Unimplemented;
-         when XCB.XCB_CONN_CLOSED_MEM_INSUFFICIENT =>
-            return Errors.Out_Of_Memory;
-         when XCB.XCB_CONN_CLOSED_REQ_LEN_EXCEED =>
-            return Errors.Invalid_Parameter;
-         when XCB.XCB_CONN_CLOSED_PARSE_ERR =>
-            return Errors.Invalid_Parameter;
-         when others =>
-            raise Constraint_Error;
-      end case;
-   end XCB_Conn_Error;
+     (Connection : XCB.xcb_connection_t_access) return Errors.Error is
+     (case XCB.xcb_connection_has_error (Connection) is
+        when 0 => Errors.Success,
+        when XCB.XCB_CONN_ERROR => Errors.Protocol,
+        when XCB.XCB_CONN_CLOSED_EXT_NOTSUPPORTED => Errors.Unimplemented,
+        when XCB.XCB_CONN_CLOSED_MEM_INSUFFICIENT => Errors.Out_Of_Memory,
+        when XCB.XCB_CONN_CLOSED_REQ_LEN_EXCEED => Errors.Invalid_Parameter,
+        when XCB.XCB_CONN_CLOSED_PARSE_ERR => Errors.Invalid_Parameter,
+        when others => raise Constraint_Error);
 
-   procedure New_Window
+   procedure Get_New_Window
      (Window_KO : KOs.KO;
       Connection : XCB.xcb_connection_t_access;
-      Context : Linted.GPU.Context_Access;
-      Window : out Linted.GPU.X11_Window)
+      Context : GPU.Context_Access;
+      Window : out GPU.X11_Window)
    is
-      New_Window : Linted.GPU.X11_Window;
+      New_Window : GPU.X11_Window;
       Geom_CK : XCB.XProto.xcb_get_geometry_cookie_t;
       Width : C.unsigned;
       Height : C.unsigned;
@@ -415,9 +399,6 @@ package body Linted.Drawer with
       Err : Errors.Error;
    begin
       New_Window := Read_Window (Window_KO);
-      Linted.Logs.Log
-        (Linted.Logs.Info,
-         "Window: " & Linted.GPU.X11_Window'Image (Window));
 
       Ck :=
         XCB.XProto.xcb_change_window_attributes_checked
@@ -470,11 +451,22 @@ package body Linted.Drawer with
 
       X := XCB.xcb_flush (Connection);
 
-      Err := Linted.GPU.Remove_Window (Context);
-      Err := Linted.GPU.Set_X11_Window (Context, New_Window);
-      Linted.GPU.Resize (Context, Width, Height);
+      Err := GPU.Remove_Window (Context);
+      if Err /= 0 then
+         raise Program_Error with Errors.To_String (Err);
+      end if;
+
+      Err := GPU.Set_X11_Window (Context, New_Window);
+      if Err /= 0 then
+         raise Program_Error with Errors.To_String (Err);
+      end if;
+
+      GPU.Resize (Context, Width, Height);
+      if Err /= 0 then
+         raise Program_Error with Errors.To_String (Err);
+      end if;
 
       Window := New_Window;
-   end New_Window;
+   end Get_New_Window;
 
 end Linted.Drawer;

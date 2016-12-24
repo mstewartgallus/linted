@@ -11,11 +11,11 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-limited with Interfaces.C;
-limited with System;
+with Interfaces.C;
+with System;
 
 with Linted.IO_Pool;
-limited with Linted.KOs;
+with Linted.KOs;
 
 package Linted.Writer is
    pragma Elaborate_Body;

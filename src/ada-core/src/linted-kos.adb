@@ -16,9 +16,6 @@ with Interfaces.C.Strings;
 with Libc.Fcntl;
 with Libc.Unistd;
 with Libc.Errno;
-with Libc.Sys.Types;
-
-with Linted.Errors;
 
 package body Linted.KOs is
    package C renames Interfaces.C;

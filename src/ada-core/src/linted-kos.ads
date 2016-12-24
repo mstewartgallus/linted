@@ -13,11 +13,11 @@
 -- permissions and limitations under the License.
 with Interfaces.C;
 
-limited with System;
+with System;
 
 with Libc.Sys.Types;
 
-limited with Linted.Errors;
+with Linted.Errors;
 with Linted.Results;
 
 package Linted.KOs is

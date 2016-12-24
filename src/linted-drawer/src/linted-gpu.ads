@@ -15,7 +15,7 @@ with Interfaces.C;
 
 with Libc.Stdint;
 
-limited with Linted.Errors;
+with Linted.Errors;
 
 package Linted.GPU with
      Spark_Mode => Off is
@@ -41,7 +41,7 @@ package Linted.GPU with
    pragma Convention (C_Pass_By_Copy, Update);  -- lntd/gpu.h:33
 
    function Context_Create
-     (Con : out Context_Access) return Linted.Errors.Error;  -- lntd/gpu.h:47
+     (Con : out Context_Access) return Errors.Error;  -- lntd/gpu.h:47
    pragma Import (C, Context_Create, "lntd_gpu_context_create");
 
    function Context_Destroy

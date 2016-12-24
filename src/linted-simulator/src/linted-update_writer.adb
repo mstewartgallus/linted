@@ -21,8 +21,6 @@ with System;
 with System.Storage_Elements;
 
 with Linted.Channels;
-with Linted.Errors;
-with Linted.KOs;
 with Linted.Writer;
 
 package body Linted.Update_Writer is
@@ -54,14 +52,21 @@ package body Linted.Update_Writer is
 
    package body Worker with
         Spark_Mode => Off is
+      use type Errors.Error;
+
+      task A;
       task Writer_Task;
 
       type Storage_Access is
         not null access all Storage_Elements.Storage_Element;
 
+      function Convert is new Ada.Unchecked_Conversion
+        (Storage_Access,
+         System.Address);
+
       My_Trigger : STC.Suspension_Object;
 
-      package Worker is new Linted.Writer.Worker;
+      package My_Worker is new Writer.Worker;
 
       Write_Command_Channel : Write_Command_Channels.Channel;
       Work_Event : Worker_Event_Channels.Channel;
@@ -69,12 +74,11 @@ package body Linted.Update_Writer is
 
       Data_Being_Written : aliased Storage_Elements.Storage_Array (1 .. 8 * 4);
 
-      task A;
       task body A is
          Worker_Event : Linted.Writer.Event;
       begin
          loop
-            Worker.Wait (Worker_Event);
+            My_Worker.Wait (Worker_Event);
             Work_Event.Push (Worker_Event);
             STC.Set_True (My_Trigger);
          end loop;
@@ -94,12 +98,6 @@ package body Linted.Update_Writer is
       end Wait;
 
       task body Writer_Task is
-         use type Errors.Error;
-
-         function Convert is new Ada.Unchecked_Conversion
-           (Storage_Access,
-            System.Address);
-
          Err : Errors.Error;
          Pending_Update : Update;
          Object : KOs.KO;
@@ -155,7 +153,7 @@ package body Linted.Update_Writer is
                Data_Being_Written (29 .. 32) :=
                  To_Bytes (Pending_Update.X_Rotation);
 
-               Worker.Write
+               My_Worker.Write
                  (Object,
                   Convert (Data_Being_Written (1)'Access),
                   Data_Being_Written'Size / C.char'Size);

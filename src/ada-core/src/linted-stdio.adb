@@ -17,8 +17,6 @@ with Ada.Unchecked_Conversion;
 with Interfaces.C.Strings;
 
 with Linted.Writer;
-with Linted.Errors;
-with Linted.KOs;
 
 package body Linted.Stdio with
      Spark_Mode => Off is
@@ -27,6 +25,8 @@ package body Linted.Stdio with
 
    use Linted.Errors;
    use Linted.KOs;
+
+   package My_Writer is new Linted.Writer.Worker;
 
    procedure Write_Line (Object : KO; Str : String) is
       Dummy : Error;
@@ -46,8 +46,6 @@ package body Linted.Stdio with
       C_Strings.Free (X);
    end Write_String;
 
-   package Writer is new Linted.Writer.Worker;
-
    procedure Write
      (Object : KO;
       Buf : System.Address;
@@ -56,12 +54,12 @@ package body Linted.Stdio with
       Err : out Error)
    is
    begin
-      Writer.Write (Object, Buf, Count);
+      My_Writer.Write (Object, Buf, Count);
 
       declare
          Event : Linted.Writer.Event;
       begin
-         Writer.Wait (Event);
+         My_Writer.Wait (Event);
          Bytes_Written := Event.Bytes_Written;
          Err := Event.Err;
       end;

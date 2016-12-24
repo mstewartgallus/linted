@@ -12,7 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Linted.IO_Pool;
-limited with Linted.KOs;
+with Linted.KOs;
 
 package Linted.Poller is
    pragma Elaborate_Body;

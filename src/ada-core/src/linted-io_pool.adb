@@ -11,8 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with System;
-
 with Libc.Errno;
 with Libc.Errno.POSIX_2008;
 with Libc.Sys.Poll;
@@ -20,13 +18,15 @@ with Libc.Sys.Types;
 with Libc.Unistd;
 
 with Linted.Channels;
-with Linted.Errors;
-with Linted.KOs;
 
 package body Linted.IO_Pool is
    package C renames Interfaces.C;
 
    package Errno renames Libc.Errno;
+
+   use type Libc.Sys.Types.ssize_t;
+   use type C.size_t;
+   use type Interfaces.C.unsigned;
 
    type Write_Command is record
       Object : KOs.KO;
@@ -75,9 +75,6 @@ package body Linted.IO_Pool is
       end Write;
 
       task body Writer_Task is
-         use type Libc.Sys.Types.ssize_t;
-         use type C.size_t;
-
          New_Write_Command : Write_Command;
          Result : Libc.Sys.Types.ssize_t;
       begin
@@ -143,9 +140,6 @@ package body Linted.IO_Pool is
       end Read;
 
       task body Reader_Task is
-         use type Libc.Sys.Types.ssize_t;
-         use type C.size_t;
-
          New_Read_Command : Read_Command;
          Result : Libc.Sys.Types.ssize_t;
       begin
@@ -205,8 +199,6 @@ package body Linted.IO_Pool is
       end Wait;
 
       task body Poller_Task is
-         use type Interfaces.C.unsigned;
-
          New_Poller_Command : Poller_Command;
       begin
          loop
