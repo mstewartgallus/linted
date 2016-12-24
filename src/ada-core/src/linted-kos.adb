@@ -11,11 +11,14 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Interfaces.C.Strings;
+
 with Libc.Fcntl;
 with Libc.Unistd;
 with Libc.Errno;
 with Libc.Sys.Types;
-with Interfaces.C.Strings;
+
+with Linted.Errors;
 
 package body Linted.KOs is
    package C renames Interfaces.C;
@@ -27,7 +30,8 @@ package body Linted.KOs is
      (Pathname : String;
       Flags : Open_Flags) return KO_Results.Result with
       Spark_Mode => Off is
-      use type Errors.Error;
+
+      use type Linted.Errors.Error;
       use type C.unsigned;
 
       X : aliased C.char_array := C.To_C (Pathname);

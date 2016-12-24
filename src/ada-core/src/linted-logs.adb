@@ -18,32 +18,32 @@ with Interfaces.C.Strings;
 
 with Libc.Syslog;
 
+with Linted.Errors;
+with Linted.KOs;
+
 package body Linted.Logs with
      Spark_Mode => Off is
    package C renames Interfaces.C;
+   package C_Strings renames Interfaces.C.Strings;
 
-   use Linted.Errors;
-   use Linted.KOs;
-   use type Interfaces.C.unsigned;
+   use type C.unsigned;
 
    procedure syslog
-     (pri : Interfaces.C.int;
-      fmt : Interfaces.C.Strings.chars_ptr;
-      str : Interfaces.C.Strings.chars_ptr);
+     (pri : C.int;
+      fmt : C_Strings.chars_ptr;
+      str : C_Strings.chars_ptr);
    pragma Import (C, syslog, "syslog");
 
    procedure Log (Pri : Priority; Str : String) is
-      Sys_Pri : Interfaces.C.int;
+      Sys_Pri : C.int;
    begin
       declare
-         Ident : aliased Interfaces.C.char_array :=
-           Interfaces.C.To_C (Ada.Command_Line.Command_Name);
+         Ident : aliased C.char_array :=
+           C.To_C (Ada.Command_Line.Command_Name);
       begin
          Libc.Syslog.openlog
-           (Interfaces.C.Strings.To_Chars_Ptr (Ident'Unchecked_Access),
-            Interfaces.C.int
-              (Interfaces.C.unsigned (Libc.Syslog.LOG_PID) or
-               Libc.Syslog.LOG_NDELAY),
+           (C_Strings.To_Chars_Ptr (Ident'Unchecked_Access),
+            C.int (C.unsigned (Libc.Syslog.LOG_PID) or Libc.Syslog.LOG_NDELAY),
             Libc.Syslog.LOG_USER);
       end;
 
@@ -56,13 +56,13 @@ package body Linted.Logs with
             Sys_Pri := Libc.Syslog.LOG_INFO;
       end case;
       declare
-         Fmt : aliased Interfaces.C.char_array := Interfaces.C.To_C ("%s");
-         C : aliased Interfaces.C.char_array := Interfaces.C.To_C (Str);
+         Fmt : aliased C.char_array := C.To_C ("%s");
+         C_Str : aliased C.char_array := C.To_C (Str);
       begin
          syslog
            (Sys_Pri,
-            Interfaces.C.Strings.To_Chars_Ptr (Fmt'Unchecked_Access),
-            Interfaces.C.Strings.To_Chars_Ptr (C'Unchecked_Access));
+            C_Strings.To_Chars_Ptr (Fmt'Unchecked_Access),
+            C_Strings.To_Chars_Ptr (C_Str'Unchecked_Access));
       end;
    end Log;
 

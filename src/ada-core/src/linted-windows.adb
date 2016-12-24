@@ -11,15 +11,20 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Unchecked_Conversion;
-private with Interfaces.C;
-private with Interfaces;
-private with System.Storage_Elements;
-private with System;
+with Ada.Unchecked_Conversion;
 
-private with Libc.Sys.Types;
-private with Libc.Unistd;
-private with Libc.Errno;
+with Interfaces;
+with Interfaces.C;
+
+with System;
+with System.Storage_Elements;
+
+with Libc.Sys.Types;
+with Libc.Unistd;
+with Libc.Errno;
+
+with Linted.Errors;
+with Linted.KOs;
 
 package body Linted.Windows with
      Spark_Mode => Off is

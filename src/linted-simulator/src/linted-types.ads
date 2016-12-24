@@ -24,7 +24,6 @@ package Linted.Types is
    package Sim_Angles is new Linted.Angles (Nat);
 
    subtype Sim_Angle is Sim_Angles.Angle;
-   use type Sim_Angle;
 
    type Differentiable is record
       Value : Int;

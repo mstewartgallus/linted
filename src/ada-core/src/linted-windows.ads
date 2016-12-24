@@ -11,11 +11,11 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Errors;
-with Linted.KOs;
+limited with Linted.Errors;
+limited with Linted.KOs;
 
 package Linted.Windows is
-   pragma Elaborate_Body;
+   pragma Preelaborate;
 
    type Window is mod 2**32;
 

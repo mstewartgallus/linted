@@ -17,6 +17,8 @@ with Interfaces.C.Strings;
 with Libc.Stdlib.GNU;
 with Libc.Stdlib;
 
+with Linted.Errors;
+
 package body Linted.Env is
    use type Interfaces.C.Strings.chars_ptr;
 

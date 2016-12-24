@@ -12,8 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Linted.Errors;
-with Linted.KOs;
-
+limited with Linted.KOs;
 with Linted.Types;
 
 package Linted.Controls_Reader with

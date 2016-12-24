@@ -11,10 +11,10 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Real_Time;
+with Ada.Real_Time;
 
-private with Linted.Last_Chance;
-private with Linted.Simulator;
+with Linted.Last_Chance;
+with Linted.Simulator;
 
 procedure Main is
 begin

@@ -11,19 +11,21 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Synchronous_Task_Control;
-private with Ada.Unchecked_Conversion;
-private with Interfaces.C;
-private with Interfaces;
-private with System.Storage_Elements;
-private with System;
+with Ada.Synchronous_Task_Control;
+with Ada.Unchecked_Conversion;
+with Interfaces.C;
+with Interfaces;
+with System.Storage_Elements;
+with System;
 
-private with Linted.Channels;
-private with Linted.Reader;
-private with Linted.MVars;
+with Linted.Channels;
+with Linted.KOs;
+with Linted.Reader;
+with Linted.MVars;
 
 package body Linted.Update_Reader with
      Spark_Mode => Off is
+   package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -48,7 +50,7 @@ package body Linted.Update_Reader with
 
       package Worker is new Linted.Reader.Worker;
 
-      My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      My_Trigger : STC.Suspension_Object;
 
       Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 8 * 4);
 
@@ -59,7 +61,7 @@ package body Linted.Update_Reader with
       procedure Start (Object : KOs.KO) is
       begin
          My_Command_MVar.Set (Object);
-         Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+         STC.Set_True (My_Trigger);
       end Start;
 
       procedure Wait (E : out Event) is
@@ -74,7 +76,7 @@ package body Linted.Update_Reader with
          loop
             Worker.Wait (Worker_Event);
             Work_Event.Push (Worker_Event);
-            Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+            STC.Set_True (My_Trigger);
          end loop;
       end A;
 
@@ -93,7 +95,7 @@ package body Linted.Update_Reader with
          Object_Initialized : Boolean := False;
       begin
          loop
-            Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
+            STC.Suspend_Until_True (My_Trigger);
 
             declare
                New_Command : Command_MVars.Option_Element_Ts.Option;

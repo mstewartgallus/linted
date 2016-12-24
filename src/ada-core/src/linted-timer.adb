@@ -11,11 +11,13 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Synchronous_Task_Control;
+with Ada.Real_Time;
+with Ada.Synchronous_Task_Control;
 
-private with Linted.Channels;
+with Linted.Channels;
 
 package body Linted.Timer is
+   package STC renames Ada.Synchronous_Task_Control;
    package Real_Time renames Ada.Real_Time;
 
    type Command is record
@@ -31,7 +33,7 @@ package body Linted.Timer is
    is
       task Timer_Task;
       My_Command_Channel : Command_Channels.Channel;
-      My_Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      My_Event_Trigger : STC.Suspension_Object;
 
       procedure Wait_Until (Time : Real_Time.Time) is
       begin
@@ -40,7 +42,7 @@ package body Linted.Timer is
 
       procedure Wait is
       begin
-         Ada.Synchronous_Task_Control.Suspend_Until_True (My_Event_Trigger);
+         STC.Suspend_Until_True (My_Event_Trigger);
       end Wait;
 
       task body Timer_Task is
@@ -53,7 +55,7 @@ package body Linted.Timer is
                Time : constant Real_Time.Time := New_Command.Time;
             begin
                delay until Time;
-               Ada.Synchronous_Task_Control.Set_True (My_Event_Trigger);
+               STC.Set_True (My_Event_Trigger);
             end;
          end loop;
       end Timer_Task;

@@ -12,8 +12,6 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.Poller is
-   package C renames Interfaces.C;
-
    package body Worker is
       package IO_Worker is new IO_Pool.Poller_Worker;
 

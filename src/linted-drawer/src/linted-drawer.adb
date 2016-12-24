@@ -11,16 +11,15 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Command_Line;
-private with Ada.Real_Time;
-private with Ada.Synchronous_Task_Control;
-private with Ada.Unchecked_Conversion;
-private with System.Storage_Elements;
+with Ada.Command_Line;
+with Ada.Synchronous_Task_Control;
+with Ada.Unchecked_Conversion;
 
 with System;
+with System.Storage_Elements;
 
-private with Interfaces.C;
-private with Interfaces.C.Strings;
+with Interfaces.C;
+with Interfaces.C.Strings;
 
 with XCB;
 with XCB.XProto;
@@ -28,28 +27,30 @@ with XCB.XProto;
 with Libc.Stdint;
 
 with Linted.Channels;
-private with Linted.GPU;
-private with Linted.KOs;
-private with Linted.Env;
-private with Linted.Errors;
-private with Linted.Logs;
+with Linted.Env;
+with Linted.Errors;
+with Linted.GPU;
+with Linted.KOs;
+with Linted.Logs;
 with Linted.Poller;
-with Linted.Window_Notifier;
 with Linted.Update_Reader;
+with Linted.Window_Notifier;
 
 package body Linted.Drawer with
      Spark_Mode => Off is
-   package Storage_Elements renames System.Storage_Elements;
 
-   use type Interfaces.C.size_t;
+   package Command_Line renames Ada.Command_Line;
+   package STC renames Ada.Synchronous_Task_Control;
+   package Storage_Elements renames System.Storage_Elements;
+   package C renames Interfaces.C;
+   package C_Strings renames Interfaces.C.Strings;
+
+   use type C.size_t;
    use type Interfaces.Unsigned_32;
    use type Errors.Error;
    use type XCB.xcb_connection_t_access;
-   use type Interfaces.C.unsigned_char;
-   use type Interfaces.C.C_float;
-
-   package Command_Line renames Ada.Command_Line;
-   package Real_Time renames Ada.Real_Time;
+   use type C.unsigned_char;
+   use type C.C_float;
 
    type Notifier_Event is record
       null;
@@ -66,10 +67,10 @@ package body Linted.Drawer with
 
    task A;
    task B;
-   task C;
+   task Task_C;
    task Main_Task;
 
-   Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+   Event_Trigger : STC.Suspension_Object;
    Update_Event_Channel : Update_Event_Channels.Channel;
    Poller_Event_Channel : Poller_Event_Channels.Channel;
    Notifier_Event_Channel : Notifier_Event_Channels.Channel;
@@ -134,13 +135,13 @@ package body Linted.Drawer with
 
       declare
          Display : String := Linted.Env.Get ("DISPLAY");
-         Display_C_Str : aliased Interfaces.C.char_array :=
-           Interfaces.C.To_C (Display);
+         Display_C_Str : aliased C.char_array :=
+           C.To_C (Display);
       begin
          Linted.Logs.Log (Linted.Logs.Info, "Display = " & Display);
          Connection :=
            XCB.xcb_connect
-             (Interfaces.C.Strings.To_Chars_Ptr
+             (C_Strings.To_Chars_Ptr
                 (Display_C_Str'Unchecked_Access),
               null);
       end;
@@ -168,7 +169,7 @@ package body Linted.Drawer with
         (Linted.Logs.Info,
          "Window: " & Linted.GPU.X11_Window'Image (Window));
       loop
-         Ada.Synchronous_Task_Control.Suspend_Until_True (Event_Trigger);
+         STC.Suspend_Until_True (Event_Trigger);
 
          declare
             Option_Event : Update_Event_Channels.Option_Element_Ts.Option;
@@ -179,33 +180,33 @@ package body Linted.Drawer with
                   GPU_Update : aliased Linted.GPU.Update;
                begin
                   GPU_Update.X_Position :=
-                    Interfaces.C.C_float (Option_Event.Data.Data.X_Position) *
+                    C.C_float (Option_Event.Data.Data.X_Position) *
                     (1.0 / 4096.0);
                   GPU_Update.Y_Position :=
-                    Interfaces.C.C_float (Option_Event.Data.Data.Y_Position) *
+                    C.C_float (Option_Event.Data.Data.Y_Position) *
                     (1.0 / 4096.0);
                   GPU_Update.Z_Position :=
-                    Interfaces.C.C_float (Option_Event.Data.Data.Z_Position) *
+                    C.C_float (Option_Event.Data.Data.Z_Position) *
                     (1.0 / 4096.0);
                   GPU_Update.MX_Position :=
-                    Interfaces.C.C_float (Option_Event.Data.Data.MX_Position) *
+                    C.C_float (Option_Event.Data.Data.MX_Position) *
                     (1.0 / 4096.0);
                   GPU_Update.MY_Position :=
-                    Interfaces.C.C_float (Option_Event.Data.Data.MY_Position) *
+                    C.C_float (Option_Event.Data.Data.MY_Position) *
                     (1.0 / 4096.0);
                   GPU_Update.MZ_Position :=
-                    Interfaces.C.C_float (Option_Event.Data.Data.MZ_Position) *
+                    C.C_float (Option_Event.Data.Data.MZ_Position) *
                     (1.0 / 4096.0);
                   GPU_Update.Z_Rotation :=
-                    Interfaces.C.C_float (Option_Event.Data.Data.Z_Rotation) *
+                    C.C_float (Option_Event.Data.Data.Z_Rotation) *
                     (6.28318530717958647692528 /
-                     (Interfaces.C.C_float
+                     (C.C_float
                         (Linted.Update_Reader.Update_Nat'Last) +
                       1.0));
                   GPU_Update.X_Rotation :=
-                    Interfaces.C.C_float (Option_Event.Data.Data.X_Rotation) *
+                    C.C_float (Option_Event.Data.Data.X_Rotation) *
                     (6.28318530717958647692528 /
-                     (Interfaces.C.C_float
+                     (C.C_float
                         (Linted.Update_Reader.Update_Nat'Last) +
                       1.0));
 
@@ -218,7 +219,7 @@ package body Linted.Drawer with
          declare
             Option_Event : Notifier_Event_Channels.Option_Element_Ts.Option;
             Ck : XCB.xcb_void_cookie_t;
-            X : Interfaces.C.int;
+            X : C.int;
             No_Opts : aliased array (1 .. 2) of aliased Libc.Stdint.uint32_t :=
               (0, 0);
          begin
@@ -276,8 +277,8 @@ package body Linted.Drawer with
                         begin
                            Linted.GPU.Resize
                              (Context,
-                              Interfaces.C.unsigned (Configure.width),
-                              Interfaces.C.unsigned (Configure.height));
+                              C.unsigned (Configure.width),
+                              C.unsigned (Configure.height));
                         end;
 
                      when XCB.XProto.XCB_UNMAP_NOTIFY =>
@@ -304,7 +305,7 @@ package body Linted.Drawer with
                end if;
 
                declare
-                  X : Interfaces.C.int;
+                  X : C.int;
                begin
                   X := XCB.xcb_flush (Connection);
                end;
@@ -325,7 +326,7 @@ package body Linted.Drawer with
          begin
             Update_Reader.Wait (Event);
             Update_Event_Channel.Push (Event);
-            Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+            STC.Set_True (Event_Trigger);
          end;
       end loop;
    end A;
@@ -339,11 +340,11 @@ package body Linted.Drawer with
          begin
             Notifier_Event_Channel.Push (Event);
          end;
-         Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+         STC.Set_True (Event_Trigger);
       end loop;
    end B;
 
-   task body C is
+   task body Task_C is
    begin
       loop
          declare
@@ -352,13 +353,13 @@ package body Linted.Drawer with
             My_Poller.Wait (Event);
             Poller_Event_Channel.Push (Event);
          end;
-         Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+         STC.Set_True (Event_Trigger);
       end loop;
-   end C;
+   end Task_C;
 
    function Read_Window (Object : KOs.KO) return Linted.GPU.X11_Window is
       Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
-      Bytes : Interfaces.C.size_t;
+      Bytes : C.size_t;
       Err : Errors.Error;
 
       type A is access all Storage_Elements.Storage_Element;
@@ -407,9 +408,9 @@ package body Linted.Drawer with
    is
       New_Window : Linted.GPU.X11_Window;
       Geom_CK : XCB.XProto.xcb_get_geometry_cookie_t;
-      Width : Interfaces.C.unsigned;
-      Height : Interfaces.C.unsigned;
-      X : Interfaces.C.int;
+      Width : C.unsigned;
+      Height : C.unsigned;
+      X : C.int;
       Ck : XCB.xcb_void_cookie_t;
       Err : Errors.Error;
    begin
@@ -461,8 +462,8 @@ package body Linted.Drawer with
             raise Program_Error;
          end if;
 
-         Width := Interfaces.C.unsigned (Reply.width);
-         Height := Interfaces.C.unsigned (Reply.height);
+         Width := C.unsigned (Reply.width);
+         Height := C.unsigned (Reply.height);
 
          Free (Reply);
       end;

@@ -12,17 +12,21 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Synchronous_Task_Control;
+with Ada.Unchecked_Conversion;
 
-private with Ada.Unchecked_Conversion;
-private with Interfaces.C;
-private with Interfaces;
-private with System.Storage_Elements;
-private with System;
+with Interfaces;
+with Interfaces.C;
 
-private with Linted.Channels;
-private with Linted.Writer;
+with System;
+with System.Storage_Elements;
+
+with Linted.Channels;
+with Linted.Errors;
+with Linted.KOs;
+with Linted.Writer;
 
 package body Linted.Update_Writer is
+   package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -55,7 +59,7 @@ package body Linted.Update_Writer is
       type Storage_Access is
         not null access all Storage_Elements.Storage_Element;
 
-      My_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      My_Trigger : STC.Suspension_Object;
 
       package Worker is new Linted.Writer.Worker;
 
@@ -72,14 +76,14 @@ package body Linted.Update_Writer is
          loop
             Worker.Wait (Worker_Event);
             Work_Event.Push (Worker_Event);
-            Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+            STC.Set_True (My_Trigger);
          end loop;
       end A;
 
       procedure Write (Object : KOs.KO; Data : Update) is
       begin
          Write_Command_Channel.Push ((Object, Data));
-         Ada.Synchronous_Task_Control.Set_True (My_Trigger);
+         STC.Set_True (My_Trigger);
       end Write;
 
       procedure Wait (E : out Linted.Errors.Error) is
@@ -103,7 +107,7 @@ package body Linted.Update_Writer is
          Update_In_Progress : Boolean := False;
       begin
          loop
-            Ada.Synchronous_Task_Control.Suspend_Until_True (My_Trigger);
+            STC.Suspend_Until_True (My_Trigger);
 
             declare
                Option_Event : Worker_Event_Channels.Option_Element_Ts.Option;

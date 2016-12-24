@@ -17,7 +17,7 @@ limited with System;
 
 with Libc.Sys.Types;
 
-with Linted.Errors;
+limited with Linted.Errors;
 with Linted.Results;
 
 package Linted.KOs is

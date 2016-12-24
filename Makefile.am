@@ -133,17 +133,17 @@ prove: src/ada/shared.gpr
 
 .PHONY: indent
 indent:
-	find $(srcdir)/src $(srcdir)/include/lntd  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -\( -name '*.[ch]' -o -name '*.nc' -\) -exec \
+	- find $(srcdir)/src $(srcdir)/include/lntd  $(srcdir)/include/fake-stdatomic $(srcdir)/docs -type f -\( -name '*.[ch]' -o -name '*.nc' -\) -exec \
 	   $(CLANG_FORMAT) -style=file $(linted_CLANG_FORMATFLAGS) '{}' '+'
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(builddir)/src/linted/start.gpr
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-drawer/drawer.gpr
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-libc/libc.gpr
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-pulse/pulse.gpr
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xcb/xcb.gpr
-	env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xkb/xkb.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(builddir)/src/linted/start.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-drawer/drawer.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-libc/libc.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-pulse/pulse.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xcb/xcb.gpr
+	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xkb/xkb.gpr
 
 CPROGRAMS=\
   src/linted/linted\

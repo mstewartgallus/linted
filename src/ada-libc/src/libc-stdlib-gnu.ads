@@ -18,6 +18,8 @@ with Interfaces.C.Extensions;
 
 package Libc.Stdlib.GNU with
      Spark_Mode => Off is
+   pragma Preelaborate;
+
    --  arg-macro: procedure WEXITSTATUS (status)
    --    __WEXITSTATUS (__WAIT_INT (status))
    --  arg-macro: procedure WTERMSIG (status)

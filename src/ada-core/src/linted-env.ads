@@ -11,9 +11,11 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Errors;
+limited with Linted.Errors;
 
 package Linted.Env is
+   pragma Preelaborate;
+
    function Set
      (Name : String;
       Value : String;

@@ -11,13 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Libc.Sys.Types;
-with Libc.Sys.Poll;
-with Libc.Unistd;
-with Libc.Errno.POSIX_2008;
+with System;
+
 with Libc.Errno;
+with Libc.Errno.POSIX_2008;
+with Libc.Sys.Poll;
+with Libc.Sys.Types;
+with Libc.Unistd;
 
 with Linted.Channels;
+with Linted.Errors;
+with Linted.KOs;
 
 package body Linted.IO_Pool is
    package C renames Interfaces.C;

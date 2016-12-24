@@ -30,11 +30,8 @@ package body Linted.Simulator with
    package Command_Line renames Ada.Command_Line;
    package Real_Time renames Ada.Real_Time;
 
-   Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
-
-   package Controls_Reader is new Linted.Controls_Reader.Worker;
-   package Update_Writer is new Linted.Update_Writer.Worker;
-   package Timer is new Linted.Timer.Worker;
+   use type Errors.Error;
+   use type Types.Int;
 
    type Tick_Event is record
       null;
@@ -44,60 +41,39 @@ package body Linted.Simulator with
      (Linted.Controls_Reader.Event);
    package Timer_Event_Channels is new Linted.Channels (Tick_Event);
 
+   task A;
+   task B;
+   task Main_Task;
+
+   package Controls_Reader is new Linted.Controls_Reader.Worker;
+   package Update_Writer is new Linted.Update_Writer.Worker;
+   package Timer is new Linted.Timer.Worker;
+
+   Event_Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
    Control_Event_Channel : Control_Event_Channels.Channel;
    Timer_Event_Channel : Timer_Event_Channels.Channel;
-
-   use type Errors.Error;
-   use type Types.Int;
-
-   task A;
-   task body A is
-   begin
-      loop
-         declare
-            Event : Linted.Controls_Reader.Event;
-         begin
-            Controls_Reader.Wait (Event);
-            Control_Event_Channel.Push (Event);
-            Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
-         end;
-      end loop;
-   end A;
-
-   task B;
-   task body B is
-      T : Tick_Event;
-   begin
-      loop
-         Timer.Wait;
-         Timer_Event_Channel.Push (T);
-         Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
-      end loop;
-   end B;
-
-   task Main_Task;
 
    task body Main_Task is
       Controller_KO : KOs.KO;
       Updater_KO : KOs.KO;
 
       My_State : Simulate.State :=
-	(Objects =>
-	   (0 => ((0, 0), (10 * 1024, 10 * 1024), (0, 0)),
-	    1 => ((0, 0), (0, 0), (-1000, -1000))),
+        (Objects =>
+           (0 => ((0, 0), (10 * 1024, 10 * 1024), (0, 0)),
+            1 => ((0, 0), (0, 0), (-1000, -1000))),
 
-	 Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
-	 X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
+         Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
+         X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
 
-	 Controls =>
-	   (Z_Tilt => 0,
-	    X_Tilt => 0,
-	    Back => False,
-	    Forward => False,
-	    Left => False,
-	    Right => False,
-	    Jumping => False),
-	 Counter => 750110405);
+         Controls =>
+           (Z_Tilt => 0,
+            X_Tilt => 0,
+            Back => False,
+            Forward => False,
+            Left => False,
+            Right => False,
+            Jumping => False),
+         Counter => 750110405);
       Next_Time : Real_Time.Time;
    begin
       if Command_Line.Argument_Count < 2 then
@@ -185,4 +161,27 @@ package body Linted.Simulator with
          end;
       end loop;
    end Main_Task;
+
+   task body A is
+   begin
+      loop
+         declare
+            Event : Linted.Controls_Reader.Event;
+         begin
+            Controls_Reader.Wait (Event);
+            Control_Event_Channel.Push (Event);
+            Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+         end;
+      end loop;
+   end A;
+
+   task body B is
+      T : Tick_Event;
+   begin
+      loop
+         Timer.Wait;
+         Timer_Event_Channel.Push (T);
+         Ada.Synchronous_Task_Control.Set_True (Event_Trigger);
+      end loop;
+   end B;
 end Linted.Simulator;

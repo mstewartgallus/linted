@@ -11,10 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces.C;
-
 with Linted.IO_Pool;
-with Linted.KOs;
+limited with Linted.KOs;
 
 package Linted.Poller is
    pragma Elaborate_Body;

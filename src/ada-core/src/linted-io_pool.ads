@@ -12,10 +12,10 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Interfaces.C;
-with System;
+limited with System;
 
 with Linted.Errors;
-with Linted.KOs;
+limited with Linted.KOs;
 
 package Linted.IO_Pool is
    pragma Elaborate_Body;

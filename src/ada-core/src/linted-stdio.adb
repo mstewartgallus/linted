@@ -12,14 +12,18 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Characters.Latin_1;
-private with Ada.Unchecked_Conversion;
-private with Interfaces.C.Strings;
+with Ada.Unchecked_Conversion;
 
-private with Linted.Writer;
+with Interfaces.C.Strings;
+
+with Linted.Writer;
+with Linted.Errors;
+with Linted.KOs;
 
 package body Linted.Stdio with
      Spark_Mode => Off is
    package C renames Interfaces.C;
+   package C_Strings renames Interfaces.C.Strings;
 
    use Linted.Errors;
    use Linted.KOs;
@@ -32,19 +36,14 @@ package body Linted.Stdio with
 
    procedure Write_String (Object : KO; Str : String; Err : out Error) is
       function Convert is new Ada.Unchecked_Conversion
-        (Interfaces.C.Strings.chars_ptr,
+        (C_Strings.chars_ptr,
          System.Address);
-      X : Interfaces.C.Strings.chars_ptr;
+      X : C_Strings.chars_ptr;
       Bytes_Written : C.size_t;
    begin
-      X := Interfaces.C.Strings.New_String (Str);
-      Write
-        (Object,
-         Convert (X),
-         Interfaces.C.Strings.Strlen (X),
-         Bytes_Written,
-         Err);
-      Interfaces.C.Strings.Free (X);
+      X := C_Strings.New_String (Str);
+      Write (Object, Convert (X), C_Strings.Strlen (X), Bytes_Written, Err);
+      C_Strings.Free (X);
    end Write_String;
 
    package Writer is new Linted.Writer.Worker;
