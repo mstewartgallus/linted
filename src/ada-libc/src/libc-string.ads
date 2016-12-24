@@ -49,9 +49,9 @@ package Libc.String is
 
    -- Copy N bytes of SRC to DEST.
    function memcpy
-     (uu_dest : System.Address;
-      uu_src : System.Address;
-      uu_n : Libc.Stddef.size_t)
+     (dest : System.Address;
+      src : System.Address;
+      n : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:46
    pragma Import (C, memcpy, "memcpy");
 
@@ -59,9 +59,9 @@ package Libc.String is
    --   correct behavior for overlapping strings.
 
    function memmove
-     (uu_dest : System.Address;
-      uu_src : System.Address;
-      uu_n : Libc.Stddef.size_t)
+     (dest : System.Address;
+      src : System.Address;
+      n : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:50
    pragma Import (C, memmove, "memmove");
 
@@ -70,34 +70,34 @@ package Libc.String is
    --   or NULL if C was not found in the first N bytes of SRC.
 
    function memccpy
-     (uu_dest : System.Address;
-      uu_src : System.Address;
-      uu_c : Interfaces.C.int;
-      uu_n : Libc.Stddef.size_t)
+     (dest : System.Address;
+      src : System.Address;
+      c : Interfaces.C.int;
+      n : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:58
    pragma Import (C, memccpy, "memccpy");
 
    -- Set N bytes of S to C.
    function memset
-     (uu_s : System.Address;
-      uu_c : Interfaces.C.int;
-      uu_n : Libc.Stddef.size_t)
+     (s : System.Address;
+      c : Interfaces.C.int;
+      n : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:66
    pragma Import (C, memset, "memset");
 
    -- Compare N bytes of S1 and S2.
    function memcmp
-     (uu_s1 : System.Address;
-      uu_s2 : System.Address;
-      uu_n : Libc.Stddef.size_t)
+     (s1 : System.Address;
+      s2 : System.Address;
+      n : Libc.Stddef.size_t)
      return Interfaces.C.int;  -- /usr/include/string.h:69
    pragma Import (C, memcmp, "memcmp");
 
    -- Search N bytes of S for C.
    function memchr
-     (uu_s : System.Address;
-      uu_c : Interfaces.C.int;
-      uu_n : Libc.Stddef.size_t)
+     (s : System.Address;
+      c : Interfaces.C.int;
+      n : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:76
    pragma Import (C, memchr, "memchr");
 
@@ -105,76 +105,76 @@ package Libc.String is
    --   length limit.
 
    function rawmemchr
-     (uu_s : System.Address;
-      uu_c : Interfaces.C.int)
+     (s : System.Address;
+      c : Interfaces.C.int)
      return System.Address;  -- /usr/include/string.h:105
    pragma Import (C, rawmemchr, "rawmemchr");
 
    -- Search N bytes of S for the final occurrence of C.
    function memrchr
-     (uu_s : System.Address;
-      uu_c : Interfaces.C.int;
-      uu_n : Libc.Stddef.size_t)
+     (s : System.Address;
+      c : Interfaces.C.int;
+      n : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:116
    pragma Import (C, memrchr, "memrchr");
 
    -- Copy SRC to DEST.
    function strcpy
-     (uu_dest : Interfaces.C.Strings.chars_ptr;
-      uu_src : Interfaces.C.Strings.chars_ptr)
+     (dest : Interfaces.C.Strings.chars_ptr;
+      src : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:129
    pragma Import (C, strcpy, "strcpy");
 
    -- Copy no more than N characters of SRC to DEST.
    function strncpy
-     (uu_dest : Interfaces.C.Strings.chars_ptr;
-      uu_src : Interfaces.C.Strings.chars_ptr;
-      uu_n : Libc.Stddef.size_t)
+     (dest : Interfaces.C.Strings.chars_ptr;
+      src : Interfaces.C.Strings.chars_ptr;
+      n : Libc.Stddef.size_t)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:132
    pragma Import (C, strncpy, "strncpy");
 
    -- Append SRC onto DEST.
    function strcat
-     (uu_dest : Interfaces.C.Strings.chars_ptr;
-      uu_src : Interfaces.C.Strings.chars_ptr)
+     (dest : Interfaces.C.Strings.chars_ptr;
+      src : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:137
    pragma Import (C, strcat, "strcat");
 
    -- Append no more than N characters from SRC onto DEST.
    function strncat
-     (uu_dest : Interfaces.C.Strings.chars_ptr;
-      uu_src : Interfaces.C.Strings.chars_ptr;
-      uu_n : Libc.Stddef.size_t)
+     (dest : Interfaces.C.Strings.chars_ptr;
+      src : Interfaces.C.Strings.chars_ptr;
+      n : Libc.Stddef.size_t)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:140
    pragma Import (C, strncat, "strncat");
 
    -- Compare S1 and S2.
    function strcmp
-     (uu_s1 : Interfaces.C.Strings.chars_ptr;
-      uu_s2 : Interfaces.C.Strings.chars_ptr)
+     (s1 : Interfaces.C.Strings.chars_ptr;
+      s2 : Interfaces.C.Strings.chars_ptr)
      return Interfaces.C.int;  -- /usr/include/string.h:144
    pragma Import (C, strcmp, "strcmp");
 
    -- Compare N characters of S1 and S2.
    function strncmp
-     (uu_s1 : Interfaces.C.Strings.chars_ptr;
-      uu_s2 : Interfaces.C.Strings.chars_ptr;
-      uu_n : Libc.Stddef.size_t)
+     (s1 : Interfaces.C.Strings.chars_ptr;
+      s2 : Interfaces.C.Strings.chars_ptr;
+      n : Libc.Stddef.size_t)
      return Interfaces.C.int;  -- /usr/include/string.h:147
    pragma Import (C, strncmp, "strncmp");
 
    -- Compare the collated forms of S1 and S2.
    function strcoll
-     (uu_s1 : Interfaces.C.Strings.chars_ptr;
-      uu_s2 : Interfaces.C.Strings.chars_ptr)
+     (s1 : Interfaces.C.Strings.chars_ptr;
+      s2 : Interfaces.C.Strings.chars_ptr)
      return Interfaces.C.int;  -- /usr/include/string.h:151
    pragma Import (C, strcoll, "strcoll");
 
    -- Put a transformation of SRC into no more than N bytes of DEST.
    function strxfrm
-     (uu_dest : Interfaces.C.Strings.chars_ptr;
-      uu_src : Interfaces.C.Strings.chars_ptr;
-      uu_n : Libc.Stddef.size_t)
+     (dest : Interfaces.C.Strings.chars_ptr;
+      src : Interfaces.C.Strings.chars_ptr;
+      n : Libc.Stddef.size_t)
      return Libc.Stddef.size_t;  -- /usr/include/string.h:154
    pragma Import (C, strxfrm, "strxfrm");
 
@@ -184,22 +184,22 @@ package Libc.String is
 
    -- Compare the collated forms of S1 and S2 using rules from L.
    --  function strcoll_l
-   --    (uu_s1 : Interfaces.C.Strings.chars_ptr;
-   --     uu_s2 : Interfaces.C.Strings.chars_ptr;
-   --     uu_l : xlocale_h.uu_locale_t) return Interfaces.C.int;  -- /usr/include/string.h:166
+   --    (s1 : Interfaces.C.Strings.chars_ptr;
+   --     s2 : Interfaces.C.Strings.chars_ptr;
+   --     l : xlocale_h.locale_t) return Interfaces.C.int;  -- /usr/include/string.h:166
    --  pragma Import (C, strcoll_l, "strcoll_l");
 
    -- Put a transformation of SRC into no more than N bytes of DEST.
    --  function strxfrm_l
-   --    (uu_dest : Interfaces.C.Strings.chars_ptr;
-   --     uu_src : Interfaces.C.Strings.chars_ptr;
-   --     uu_n : Libc.Stddef.size_t;
-   --     uu_l : xlocale_h.uu_locale_t) return Libc.Stddef.size_t;  -- /usr/include/string.h:169
+   --    (dest : Interfaces.C.Strings.chars_ptr;
+   --     src : Interfaces.C.Strings.chars_ptr;
+   --     n : Libc.Stddef.size_t;
+   --     l : xlocale_h.locale_t) return Libc.Stddef.size_t;  -- /usr/include/string.h:169
    --  pragma Import (C, strxfrm_l, "strxfrm_l");
 
    -- Duplicate S, returning an identical malloc'd string.
    function strdup
-     (uu_s : Interfaces.C.Strings.chars_ptr)
+     (s : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:176
    pragma Import (C, strdup, "strdup");
 
@@ -208,8 +208,8 @@ package Libc.String is
    --   appears before STRING[N].
 
    function strndup
-     (uu_string : Interfaces.C.Strings.chars_ptr;
-      uu_n : Libc.Stddef.size_t)
+     (string : Interfaces.C.Strings.chars_ptr;
+      n : Libc.Stddef.size_t)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:184
    pragma Import (C, strndup, "strndup");
 
@@ -217,15 +217,15 @@ package Libc.String is
    -- Return an alloca'd copy of at most N bytes of string.
    -- Find the first occurrence of C in S.
    function strchr
-     (uu_s : Interfaces.C.Strings.chars_ptr;
-      uu_c : Interfaces.C.int)
+     (s : Interfaces.C.Strings.chars_ptr;
+      c : Interfaces.C.int)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:216
    pragma Import (C, strchr, "strchr");
 
    -- Find the last occurrence of C in S.
    function strrchr
-     (uu_s : Interfaces.C.Strings.chars_ptr;
-      uu_c : Interfaces.C.int)
+     (s : Interfaces.C.Strings.chars_ptr;
+      c : Interfaces.C.int)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:243
    pragma Import (C, strrchr, "strrchr");
 
@@ -233,8 +233,8 @@ package Libc.String is
    --   the closing NUL byte in case C is not found in S.
 
    function strchrnul
-     (uu_s : Interfaces.C.Strings.chars_ptr;
-      uu_c : Interfaces.C.int)
+     (s : Interfaces.C.Strings.chars_ptr;
+      c : Interfaces.C.int)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:272
    pragma Import (C, strchrnul, "strchrnul");
 
@@ -242,8 +242,8 @@ package Libc.String is
    --   consists entirely of characters not in REJECT.
 
    function strcspn
-     (uu_s : Interfaces.C.Strings.chars_ptr;
-      uu_reject : Interfaces.C.Strings.chars_ptr)
+     (s : Interfaces.C.Strings.chars_ptr;
+      reject : Interfaces.C.Strings.chars_ptr)
      return Libc.Stddef.size_t;  -- /usr/include/string.h:285
    pragma Import (C, strcspn, "strcspn");
 
@@ -251,29 +251,29 @@ package Libc.String is
    --   consists entirely of characters in ACCEPT.
 
    function strspn
-     (uu_s : Interfaces.C.Strings.chars_ptr;
+     (s : Interfaces.C.Strings.chars_ptr;
       uu_accept : Interfaces.C.Strings.chars_ptr)
      return Libc.Stddef.size_t;  -- /usr/include/string.h:289
    pragma Import (C, strspn, "strspn");
 
    -- Find the first occurrence in S of any character in ACCEPT.
    function strpbrk
-     (uu_s : Interfaces.C.Strings.chars_ptr;
+     (s : Interfaces.C.Strings.chars_ptr;
       uu_accept : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:295
    pragma Import (C, strpbrk, "strpbrk");
 
    -- Find the first occurrence of NEEDLE in HAYSTACK.
    function strstr
-     (uu_haystack : Interfaces.C.Strings.chars_ptr;
-      uu_needle : Interfaces.C.Strings.chars_ptr)
+     (haystack : Interfaces.C.Strings.chars_ptr;
+      needle : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:322
    pragma Import (C, strstr, "strstr");
 
    -- Divide S into tokens separated by characters in DELIM.
    function strtok
-     (uu_s : Interfaces.C.Strings.chars_ptr;
-      uu_delim : Interfaces.C.Strings.chars_ptr)
+     (s : Interfaces.C.Strings.chars_ptr;
+      delim : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:348
    pragma Import (C, strtok, "strtok");
 
@@ -283,16 +283,16 @@ package Libc.String is
    --  skipped func __strtok_r
 
    function strtok_r
-     (uu_s : Interfaces.C.Strings.chars_ptr;
-      uu_delim : Interfaces.C.Strings.chars_ptr;
-      uu_save_ptr : System.Address)
+     (s : Interfaces.C.Strings.chars_ptr;
+      delim : Interfaces.C.Strings.chars_ptr;
+      save_ptr : System.Address)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:359
    pragma Import (C, strtok_r, "strtok_r");
 
    -- Similar to `strstr' but this function ignores the case of both strings.
    function strcasestr
-     (uu_haystack : Interfaces.C.Strings.chars_ptr;
-      uu_needle : Interfaces.C.Strings.chars_ptr)
+     (haystack : Interfaces.C.Strings.chars_ptr;
+      needle : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:367
    pragma Import (C, strcasestr, "strcasestr");
 
@@ -301,10 +301,10 @@ package Libc.String is
    --   HAYSTACK is HAYSTACKLEN bytes long.
 
    function memmem
-     (uu_haystack : System.Address;
-      uu_haystacklen : Libc.Stddef.size_t;
-      uu_needle : System.Address;
-      uu_needlelen : Libc.Stddef.size_t)
+     (haystack : System.Address;
+      haystacklen : Libc.Stddef.size_t;
+      needle : System.Address;
+      needlelen : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:382
    pragma Import (C, memmem, "memmem");
 
@@ -314,15 +314,15 @@ package Libc.String is
    --  skipped func __mempcpy
 
    function mempcpy
-     (uu_dest : System.Address;
-      uu_src : System.Address;
-      uu_n : Libc.Stddef.size_t)
+     (dest : System.Address;
+      src : System.Address;
+      n : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:391
    pragma Import (C, mempcpy, "mempcpy");
 
    -- Return the length of S.
    function strlen
-     (uu_s : Interfaces.C.Strings.chars_ptr)
+     (s : Interfaces.C.Strings.chars_ptr)
      return Libc.Stddef.size_t;  -- /usr/include/string.h:399
    pragma Import (C, strlen, "strlen");
 
@@ -330,14 +330,14 @@ package Libc.String is
    --   If no '\0' terminator is found in that many characters, return MAXLEN.
 
    function strnlen
-     (uu_string : Interfaces.C.Strings.chars_ptr;
-      uu_maxlen : Libc.Stddef.size_t)
+     (string : Interfaces.C.Strings.chars_ptr;
+      maxlen : Libc.Stddef.size_t)
      return Libc.Stddef.size_t;  -- /usr/include/string.h:406
    pragma Import (C, strnlen, "strnlen");
 
    -- Return a string describing the meaning of the `errno' code in ERRNUM.
    function strerror
-     (uu_errnum : Interfaces.C.int)
+     (errnum : Interfaces.C.int)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:413
    pragma Import (C, strerror, "strerror");
 
@@ -356,13 +356,13 @@ package Libc.String is
    --   used.
 
    function strerror_r
-     (uu_errnum : Interfaces.C.int;
-      uu_buf : Interfaces.C.Strings.chars_ptr;
-      uu_buflen : Libc.Stddef.size_t) return Interfaces.C.int;
+     (errnum : Interfaces.C.int;
+      buf : Interfaces.C.Strings.chars_ptr;
+      buflen : Libc.Stddef.size_t) return Interfaces.C.int;
    pragma Import (C, strerror_r, "__xpg_strerror_r");
 
    -- Translate error number to string according to the locale L.
-   --  function strerror_l (uu_errnum : Interfaces.C.int; uu_l : xlocale_h.uu_locale_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:445
+   --  function strerror_l (errnum : Interfaces.C.int; l : xlocale_h.locale_t) return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:445
    --  pragma Import (C, strerror_l, "strerror_l");
 
    -- We define this function always since `bzero' is sometimes needed when
@@ -372,36 +372,36 @@ package Libc.String is
 
    -- Copy N bytes of SRC to DEST (like memmove, but args reversed).
    procedure bcopy
-     (uu_src : System.Address;
-      uu_dest : System.Address;
-      uu_n : Libc.Stddef.size_t);  -- /usr/include/string.h:455
+     (src : System.Address;
+      dest : System.Address;
+      n : Libc.Stddef.size_t);  -- /usr/include/string.h:455
    pragma Import (C, bcopy, "bcopy");
 
    -- Set N bytes of S to 0.
    procedure bzero
-     (uu_s : System.Address;
-      uu_n : Libc.Stddef.size_t);  -- /usr/include/string.h:459
+     (s : System.Address;
+      n : Libc.Stddef.size_t);  -- /usr/include/string.h:459
    pragma Import (C, bzero, "bzero");
 
    -- Compare N bytes of S1 and S2 (same as memcmp).
    function bcmp
-     (uu_s1 : System.Address;
-      uu_s2 : System.Address;
-      uu_n : Libc.Stddef.size_t)
+     (s1 : System.Address;
+      s2 : System.Address;
+      n : Libc.Stddef.size_t)
      return Interfaces.C.int;  -- /usr/include/string.h:462
    pragma Import (C, bcmp, "bcmp");
 
    -- Find the first occurrence of C in S (same as strchr).
    function index
-     (uu_s : Interfaces.C.Strings.chars_ptr;
-      uu_c : Interfaces.C.int)
+     (s : Interfaces.C.Strings.chars_ptr;
+      c : Interfaces.C.int)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:469
    pragma Import (C, index, "index");
 
    -- Find the last occurrence of C in S (same as strrchr).
    function rindex
-     (uu_s : Interfaces.C.Strings.chars_ptr;
-      uu_c : Interfaces.C.int)
+     (s : Interfaces.C.Strings.chars_ptr;
+      c : Interfaces.C.int)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:497
    pragma Import (C, rindex, "rindex");
 
@@ -409,7 +409,7 @@ package Libc.String is
    --   The least-significant bit is position 1, the most-significant 32.
 
    function ffs
-     (uu_i : Interfaces.C.int)
+     (i : Interfaces.C.int)
      return Interfaces.C.int;  -- /usr/include/string.h:523
    pragma Import (C, ffs, "ffs");
 
@@ -417,25 +417,25 @@ package Libc.String is
    --   platforms.
 
    function ffsl
-     (uu_l : Interfaces.C.long)
+     (l : Interfaces.C.long)
      return Interfaces.C.int;  -- /usr/include/string.h:528
    pragma Import (C, ffsl, "ffsl");
 
-   --  function ffsll (uu_ll : Long_Long_Integer) return Interfaces.C.int;  -- /usr/include/string.h:529
+   --  function ffsll (ll : Long_Long_Integer) return Interfaces.C.int;  -- /usr/include/string.h:529
    --  pragma Import (C, ffsll, "ffsll");
 
    -- Compare S1 and S2, ignoring case.
    function strcasecmp
-     (uu_s1 : Interfaces.C.Strings.chars_ptr;
-      uu_s2 : Interfaces.C.Strings.chars_ptr)
+     (s1 : Interfaces.C.Strings.chars_ptr;
+      s2 : Interfaces.C.Strings.chars_ptr)
      return Interfaces.C.int;  -- /usr/include/string.h:534
    pragma Import (C, strcasecmp, "strcasecmp");
 
    -- Compare no more than N chars of S1 and S2, ignoring case.
    function strncasecmp
-     (uu_s1 : Interfaces.C.Strings.chars_ptr;
-      uu_s2 : Interfaces.C.Strings.chars_ptr;
-      uu_n : Libc.Stddef.size_t)
+     (s1 : Interfaces.C.Strings.chars_ptr;
+      s2 : Interfaces.C.Strings.chars_ptr;
+      n : Libc.Stddef.size_t)
      return Interfaces.C.int;  -- /usr/include/string.h:538
    pragma Import (C, strncasecmp, "strncasecmp");
 
@@ -443,30 +443,30 @@ package Libc.String is
    --   of the global one.
 
    --  function strcasecmp_l
-   --    (uu_s1 : Interfaces.C.Strings.chars_ptr;
-   --     uu_s2 : Interfaces.C.Strings.chars_ptr;
-   --     uu_loc : xlocale_h.uu_locale_t) return Interfaces.C.int;  -- /usr/include/string.h:545
+   --    (s1 : Interfaces.C.Strings.chars_ptr;
+   --     s2 : Interfaces.C.Strings.chars_ptr;
+   --     loc : xlocale_h.locale_t) return Interfaces.C.int;  -- /usr/include/string.h:545
    --  pragma Import (C, strcasecmp_l, "strcasecmp_l");
 
    --  function strncasecmp_l
-   --    (uu_s1 : Interfaces.C.Strings.chars_ptr;
-   --     uu_s2 : Interfaces.C.Strings.chars_ptr;
-   --     uu_n : Libc.Stddef.size_t;
-   --     uu_loc : xlocale_h.uu_locale_t) return Interfaces.C.int;  -- /usr/include/string.h:549
+   --    (s1 : Interfaces.C.Strings.chars_ptr;
+   --     s2 : Interfaces.C.Strings.chars_ptr;
+   --     n : Libc.Stddef.size_t;
+   --     loc : xlocale_h.locale_t) return Interfaces.C.int;  -- /usr/include/string.h:549
    --  pragma Import (C, strncasecmp_l, "strncasecmp_l");
 
    -- Return the next DELIM-delimited token from *STRINGP,
    --   terminating it with a '\0', and update *STRINGP to point past it.
 
    function strsep
-     (uu_stringp : System.Address;
-      uu_delim : Interfaces.C.Strings.chars_ptr)
+     (stringp : System.Address;
+      delim : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:557
    pragma Import (C, strsep, "strsep");
 
    -- Return a string describing the meaning of the signal number in SIG.
    function strsignal
-     (uu_sig : Interfaces.C.int)
+     (sig : Interfaces.C.int)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:564
    pragma Import (C, strsignal, "strsignal");
 
@@ -474,8 +474,8 @@ package Libc.String is
    --  skipped func __stpcpy
 
    function stpcpy
-     (uu_dest : Interfaces.C.Strings.chars_ptr;
-      uu_src : Interfaces.C.Strings.chars_ptr)
+     (dest : Interfaces.C.Strings.chars_ptr;
+      src : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:569
    pragma Import (C, stpcpy, "stpcpy");
 
@@ -485,29 +485,29 @@ package Libc.String is
    --  skipped func __stpncpy
 
    function stpncpy
-     (uu_dest : Interfaces.C.Strings.chars_ptr;
-      uu_src : Interfaces.C.Strings.chars_ptr;
-      uu_n : Libc.Stddef.size_t)
+     (dest : Interfaces.C.Strings.chars_ptr;
+      src : Interfaces.C.Strings.chars_ptr;
+      n : Libc.Stddef.size_t)
      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:577
    pragma Import (C, stpncpy, "stpncpy");
 
    -- Compare S1 and S2 as strings holding name & indices/version numbers.
    function strverscmp
-     (uu_s1 : Interfaces.C.Strings.chars_ptr;
-      uu_s2 : Interfaces.C.Strings.chars_ptr)
+     (s1 : Interfaces.C.Strings.chars_ptr;
+      s2 : Interfaces.C.Strings.chars_ptr)
      return Interfaces.C.int;  -- /usr/include/string.h:584
    pragma Import (C, strverscmp, "strverscmp");
 
    -- Sautee STRING briskly.
    function strfry
-     (uu_string : Interfaces.C.Strings.chars_ptr)
+     (string : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:588
    pragma Import (C, strfry, "strfry");
 
    -- Frobnicate N bytes of S.
    function memfrob
-     (uu_s : System.Address;
-      uu_n : Libc.Stddef.size_t)
+     (s : System.Address;
+      n : Libc.Stddef.size_t)
      return System.Address;  -- /usr/include/string.h:591
    pragma Import (C, memfrob, "memfrob");
 
@@ -517,7 +517,7 @@ package Libc.String is
    --   available.
 
    function basename
-     (uu_filename : Interfaces.C.Strings.chars_ptr)
+     (filename : Interfaces.C.Strings.chars_ptr)
       return Interfaces.C.Strings.chars_ptr;  -- /usr/include/string.h:599
    pragma Import (C, basename, "basename");
 

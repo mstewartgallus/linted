@@ -76,26 +76,24 @@ package Libc.Syslog is
    pragma Import (C, closelog, "closelog");
 
    procedure openlog
-     (uu_ident : Interfaces.C.Strings.chars_ptr;
-      uu_option : int;
-      uu_facility : int);  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:181
+     (ident : Interfaces.C.Strings.chars_ptr;
+      option : int;
+      facility : int);  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:181
    pragma Import (C, openlog, "openlog");
 
    function setlogmask
-     (uu_mask : int)
+     (mask : int)
      return int;  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:184
    pragma Import (C, setlogmask, "setlogmask");
 
-   procedure syslog
-     (uu_pri : int;
-      uu_fmt : Interfaces.C.Strings.chars_ptr  -- , ...
+   procedure syslog (pri : int; fmt : Interfaces.C.Strings.chars_ptr  -- , ...
    );  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:190
    pragma Import (C, syslog, "syslog");
 
    procedure vsyslog
-     (uu_pri : int;
-      uu_fmt : Interfaces.C.Strings.chars_ptr;
-      uu_ap : access System
+     (pri : int;
+      fmt : Interfaces.C.Strings.chars_ptr;
+      ap : access System
         .Address);  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:200
    pragma Import (C, vsyslog, "vsyslog");
 

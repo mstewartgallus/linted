@@ -18,9 +18,6 @@ with Interfaces.C.Strings;
 
 with Libc.Syslog;
 
-with Linted.Errors;
-with Linted.KOs;
-
 package body Linted.Logs with
      Spark_Mode => Off is
    package C renames Interfaces.C;

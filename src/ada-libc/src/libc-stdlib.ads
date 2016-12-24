@@ -11,7 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces.C; use Interfaces.C;
+with Interfaces.C;
 with Interfaces.C.Strings;
 with System;
 with Interfaces.C.Extensions;
@@ -21,17 +21,17 @@ package Libc.Stdlib with
    pragma Preelaborate;
 
    subtype size_t is Interfaces.C.size_t;
-   subtype wchar_t is int;
+   subtype wchar_t is Interfaces.C.int;
 
    type div_t is record
-      quot : aliased int;  -- /usr/include/stdlib.h:99
-      c_rem : aliased int;  -- /usr/include/stdlib.h:100
+      quot : aliased Interfaces.C.int;  -- /usr/include/stdlib.h:99
+      c_rem : aliased Interfaces.C.int;  -- /usr/include/stdlib.h:100
    end record;
    pragma Convention (C_Pass_By_Copy, div_t);  -- /usr/include/stdlib.h:101
 
    type ldiv_t is record
-      quot : aliased long;  -- /usr/include/stdlib.h:107
-      c_rem : aliased long;  -- /usr/include/stdlib.h:108
+      quot : aliased Interfaces.C.long;  -- /usr/include/stdlib.h:107
+      c_rem : aliased Interfaces.C.long;  -- /usr/include/stdlib.h:108
    end record;
    pragma Convention (C_Pass_By_Copy, ldiv_t);  -- /usr/include/stdlib.h:109
 
@@ -48,17 +48,17 @@ package Libc.Stdlib with
 
    function atof
      (nptr : Interfaces.C.Strings.chars_ptr)
-     return double;  -- /usr/include/stdlib.h:144
+     return Interfaces.C.double;  -- /usr/include/stdlib.h:144
    pragma Import (C, atof, "atof");
 
    function atoi
      (nptr : Interfaces.C.Strings.chars_ptr)
-     return int;  -- /usr/include/stdlib.h:147
+     return Interfaces.C.int;  -- /usr/include/stdlib.h:147
    pragma Import (C, atoi, "atoi");
 
    function atol
      (nptr : Interfaces.C.Strings.chars_ptr)
-     return long;  -- /usr/include/stdlib.h:150
+     return Interfaces.C.long;  -- /usr/include/stdlib.h:150
    pragma Import (C, atol, "atol");
 
    --  function atoll (nptr : Interfaces.C.Strings.chars_ptr) return Long_Long_Integer;  -- /usr/include/stdlib.h:157
@@ -66,76 +66,86 @@ package Libc.Stdlib with
 
    function strtod
      (nptr : Interfaces.C.Strings.chars_ptr;
-      endptr : System.Address) return double;  -- /usr/include/stdlib.h:164
+      endptr : System.Address)
+     return Interfaces.C.double;  -- /usr/include/stdlib.h:164
    pragma Import (C, strtod, "strtod");
 
    function strtof
      (nptr : Interfaces.C.Strings.chars_ptr;
-      endptr : System.Address) return Float;  -- /usr/include/stdlib.h:172
+      endptr : System.Address)
+     return Interfaces.C.C_float;  -- /usr/include/stdlib.h:172
    pragma Import (C, strtof, "strtof");
 
    function strtold
      (nptr : Interfaces.C.Strings.chars_ptr;
       endptr : System.Address)
-     return long_double;  -- /usr/include/stdlib.h:175
+     return Interfaces.C.long_double;  -- /usr/include/stdlib.h:175
    pragma Import (C, strtold, "strtold");
 
    function strtol
      (nptr : Interfaces.C.Strings.chars_ptr;
       endptr : System.Address;
-      base : int) return long;  -- /usr/include/stdlib.h:183
+      base : Interfaces.C.int)
+     return Interfaces.C.long;  -- /usr/include/stdlib.h:183
    pragma Import (C, strtol, "strtol");
 
    --  function strtoll
    --    (nptr : Interfaces.C.Strings.chars_ptr;
    --     endptr : System.Address;
-   --     base : int) return Long_Long_Integer;  -- /usr/include/stdlib.h:209
+   --     base : Interfaces.C.int) return Long_Long_Integer;  -- /usr/include/stdlib.h:209
    --  pragma Import (C, strtoll, "strtoll");
 
    function strtoul
      (nptr : Interfaces.C.Strings.chars_ptr;
       endptr : System.Address;
-      base : int) return unsigned_long;  -- /usr/include/stdlib.h:187
+      base : Interfaces.C.int)
+     return Interfaces.C.unsigned_long;  -- /usr/include/stdlib.h:187
    pragma Import (C, strtoul, "strtoul");
 
    function strtoull
      (nptr : Interfaces.C.Strings.chars_ptr;
       endptr : System.Address;
-      base : int)
-     return Extensions.unsigned_long_long;  -- /usr/include/stdlib.h:214
+      base : Interfaces.C.int)
+      return Interfaces.C.Extensions
+       .unsigned_long_long;  -- /usr/include/stdlib.h:214
    pragma Import (C, strtoull, "strtoull");
 
-   function rand return int;  -- /usr/include/stdlib.h:374
+   function rand return Interfaces.C.int;  -- /usr/include/stdlib.h:374
    pragma Import (C, rand, "rand");
 
-   procedure srand (seed : unsigned);  -- /usr/include/stdlib.h:376
+   procedure srand
+     (seed : Interfaces.C.unsigned);  -- /usr/include/stdlib.h:376
    pragma Import (C, srand, "srand");
 
    function calloc
      (nmemb : size_t;
-      size : size_t) return System.Address;  -- /usr/include/stdlib.h:468
+      size : Interfaces.C.size_t)
+     return System.Address;  -- /usr/include/stdlib.h:468
    pragma Import (C, calloc, "calloc");
 
    procedure free (ptr : System.Address);  -- /usr/include/stdlib.h:483
    pragma Import (C, free, "free");
 
    function malloc
-     (size : size_t) return System.Address;  -- /usr/include/stdlib.h:466
+     (size : Interfaces.C.size_t)
+     return System.Address;  -- /usr/include/stdlib.h:466
    pragma Import (C, malloc, "malloc");
 
    function realloc
      (ptr : System.Address;
-      size : size_t) return System.Address;  -- /usr/include/stdlib.h:480
+      size : Interfaces.C.size_t)
+     return System.Address;  -- /usr/include/stdlib.h:480
    pragma Import (C, realloc, "realloc");
 
    procedure c_abort;  -- /usr/include/stdlib.h:515
    pragma Import (C, c_abort, "abort");
 
    function atexit
-     (func : access procedure) return int;  -- /usr/include/stdlib.h:519
+     (func : access procedure)
+     return Interfaces.C.int;  -- /usr/include/stdlib.h:519
    pragma Import (C, atexit, "atexit");
 
-   procedure c_exit (status : int);  -- /usr/include/stdlib.h:543
+   procedure c_exit (status : Interfaces.C.int);  -- /usr/include/stdlib.h:543
    pragma Import (C, c_exit, "exit");
 
    --  skipped func _Exit
@@ -147,12 +157,12 @@ package Libc.Stdlib with
 
    function c_system
      (command : Interfaces.C.Strings.chars_ptr)
-     return int;  -- /usr/include/stdlib.h:717
+     return Interfaces.C.int;  -- /usr/include/stdlib.h:717
    pragma Import (C, c_system, "system");
 
    type compar_fn_t is access function
      (arg1 : System.Address;
-      arg2 : System.Address) return int;
+      arg2 : System.Address) return Interfaces.C.int;
    pragma Convention (C, compar_fn_t);  -- /usr/include/stdlib.h:742
 
    function bsearch
@@ -171,23 +181,27 @@ package Libc.Stdlib with
       compar : compar_fn_t);  -- /usr/include/stdlib.h:765
    pragma Import (C, qsort, "qsort");
 
-   function c_abs (x : int) return int;  -- /usr/include/stdlib.h:775
+   function c_abs
+     (x : Interfaces.C.int)
+     return Interfaces.C.int;  -- /usr/include/stdlib.h:775
    pragma Import (C, c_abs, "abs");
 
-   function labs (x : long) return long;  -- /usr/include/stdlib.h:776
+   function labs
+     (x : Interfaces.C.long)
+     return Interfaces.C.long;  -- /usr/include/stdlib.h:776
    pragma Import (C, labs, "labs");
 
    --  function llabs (x : Long_Long_Integer) return Long_Long_Integer;  -- /usr/include/stdlib.h:780
    --  pragma Import (C, llabs, "llabs");
 
    function div
-     (numer : int;
-      denom : int) return div_t;  -- /usr/include/stdlib.h:789
+     (numer : Interfaces.C.int;
+      denom : Interfaces.C.int) return div_t;  -- /usr/include/stdlib.h:789
    pragma Import (C, div, "div");
 
    function ldiv
-     (numer : long;
-      denom : long) return ldiv_t;  -- /usr/include/stdlib.h:791
+     (numer : Interfaces.C.long;
+      denom : Interfaces.C.long) return ldiv_t;  -- /usr/include/stdlib.h:791
    pragma Import (C, ldiv, "ldiv");
 
    --  function lldiv (numer : Long_Long_Integer; denom : Long_Long_Integer) return lldiv_t;  -- /usr/include/stdlib.h:797
@@ -195,29 +209,31 @@ package Libc.Stdlib with
 
    function mblen
      (s : Interfaces.C.Strings.chars_ptr;
-      n : size_t) return int;  -- /usr/include/stdlib.h:863
+      n : Interfaces.C.size_t)
+     return Interfaces.C.int;  -- /usr/include/stdlib.h:863
    pragma Import (C, mblen, "mblen");
 
    function mbtowc
      (pwc : access wchar_t;
       s : Interfaces.C.Strings.chars_ptr;
-      n : size_t) return int;  -- /usr/include/stdlib.h:866
+      n : Interfaces.C.size_t)
+     return Interfaces.C.int;  -- /usr/include/stdlib.h:866
    pragma Import (C, mbtowc, "mbtowc");
 
    function wctomb
      (s : Interfaces.C.Strings.chars_ptr;
-      wchar : wchar_t) return int;  -- /usr/include/stdlib.h:870
+      wchar : wchar_t) return Interfaces.C.int;  -- /usr/include/stdlib.h:870
    pragma Import (C, wctomb, "wctomb");
 
    function mbstowcs
      (pwcs : access wchar_t;
       s : Interfaces.C.Strings.chars_ptr;
-      n : size_t) return size_t;  -- /usr/include/stdlib.h:874
+      n : Interfaces.C.size_t) return size_t;  -- /usr/include/stdlib.h:874
    pragma Import (C, mbstowcs, "mbstowcs");
 
    function wcstombs
      (s : Interfaces.C.Strings.chars_ptr;
       pwcs : access wchar_t;
-      n : size_t) return size_t;  -- /usr/include/stdlib.h:877
+      n : Interfaces.C.size_t) return size_t;  -- /usr/include/stdlib.h:877
    pragma Import (C, wcstombs, "wcstombs");
 end Libc.Stdlib;

@@ -11,10 +11,10 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces.C; use Interfaces.C;
+with Interfaces.C;
 
 package Libc.Errno.C11 is
    pragma Preelaborate;
 
-   subtype error_t is int;  -- /usr/include/errno.h:68
+   subtype error_t is Interfaces.C.int;  -- /usr/include/errno.h:68
 end Libc.Errno.C11;

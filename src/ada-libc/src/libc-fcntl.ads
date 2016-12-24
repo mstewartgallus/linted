@@ -11,7 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces.C; use Interfaces.C;
+with Interfaces.C;
 with Interfaces.C.Strings;
 with Libc.Sys.Types;
 
@@ -90,82 +90,94 @@ package Libc.Fcntl with
    F_TLOCK : constant := 2;
    F_TEST : constant := 3;
 
-   function fcntl (fd : int; cmd : int  -- , ...
-   ) return int;  -- /usr/include/fcntl.h:137
+   function fcntl
+     (fd : Interfaces.C.int;
+      cmd : Interfaces.C.int  -- , ...
+      ) return Interfaces.C.int;  -- /usr/include/fcntl.h:137
    pragma Import (C, fcntl, "fcntl");
 
    function open
      (file : Interfaces.C.Strings.chars_ptr;
-      oflag : int;
-      mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:146
+      oflag : Interfaces.C.int;
+      mode : Libc.Sys.Types.mode_t)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:146
    pragma Import (C, open, "open");
 
    function open64
      (file : Interfaces.C.Strings.chars_ptr;
-      oflag : int;
-      mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:156
+      oflag : Interfaces.C.int;
+      mode : Libc.Sys.Types.mode_t)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:156
    pragma Import (C, open64, "open64");
 
    function openat
-     (fd : int;
+     (fd : Interfaces.C.int;
       file : Interfaces.C.Strings.chars_ptr;
-      oflag : int  -- , ...
-      ) return int;  -- /usr/include/fcntl.h:170
+      oflag : Interfaces.C.int  -- , ...
+      ) return Interfaces.C.int;  -- /usr/include/fcntl.h:170
    pragma Import (C, openat, "openat");
 
    function openat64
-     (fd : int;
+     (fd : Interfaces.C.int;
       file : Interfaces.C.Strings.chars_ptr;
-      oflag : int  -- , ...
-      ) return int;  -- /usr/include/fcntl.h:181
+      oflag : Interfaces.C.int  -- , ...
+      ) return Interfaces.C.int;  -- /usr/include/fcntl.h:181
    pragma Import (C, openat64, "openat64");
 
    function creat
      (file : Interfaces.C.Strings.chars_ptr;
-      mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:192
+      mode : Libc.Sys.Types.mode_t)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:192
    pragma Import (C, creat, "creat");
 
    function creat64
      (file : Interfaces.C.Strings.chars_ptr;
-      mode : Libc.Sys.Types.mode_t) return int;  -- /usr/include/fcntl.h:202
+      mode : Libc.Sys.Types.mode_t)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:202
    pragma Import (C, creat64, "creat64");
 
    function lockf
-     (fd : int;
-      cmd : int;
-      len : Libc.Sys.Types.off_t) return int;  -- /usr/include/fcntl.h:221
+     (fd : Interfaces.C.int;
+      cmd : Interfaces.C.int;
+      len : Libc.Sys.Types.off_t)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:221
    pragma Import (C, lockf, "lockf");
 
    function lockf64
-     (fd : int;
-      cmd : int;
-      len : Libc.Sys.Types.off64_t) return int;  -- /usr/include/fcntl.h:230
+     (fd : Interfaces.C.int;
+      cmd : Interfaces.C.int;
+      len : Libc.Sys.Types.off64_t)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:230
    pragma Import (C, lockf64, "lockf64");
 
    function posix_fadvise
-     (fd : int;
+     (fd : Interfaces.C.int;
       offset : Libc.Sys.Types.off_t;
       len : Libc.Sys.Types.off_t;
-      advise : int) return int;  -- /usr/include/fcntl.h:238
+      advise : Interfaces.C.int)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:238
    pragma Import (C, posix_fadvise, "posix_fadvise");
 
    function posix_fadvise64
-     (fd : int;
+     (fd : Interfaces.C.int;
       offset : Libc.Sys.Types.off64_t;
       len : Libc.Sys.Types.off64_t;
-      advise : int) return int;  -- /usr/include/fcntl.h:250
+      advise : Interfaces.C.int)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:250
    pragma Import (C, posix_fadvise64, "posix_fadvise64");
 
    function posix_fallocate
-     (fd : int;
+     (fd : Interfaces.C.int;
       offset : Libc.Sys.Types.off_t;
-      len : Libc.Sys.Types.off_t) return int;  -- /usr/include/fcntl.h:260
+      len : Libc.Sys.Types.off_t)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:260
    pragma Import (C, posix_fallocate, "posix_fallocate");
 
    function posix_fallocate64
-     (fd : int;
+     (fd : Interfaces.C.int;
       offset : Libc.Sys.Types.off64_t;
-      len : Libc.Sys.Types.off64_t) return int;  -- /usr/include/fcntl.h:271
+      len : Libc.Sys.Types.off64_t)
+     return Interfaces.C.int;  -- /usr/include/fcntl.h:271
    pragma Import (C, posix_fallocate64, "posix_fallocate64");
 
 end Libc.Fcntl;
