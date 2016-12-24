@@ -21,6 +21,7 @@ with System;
 with Linted.Channels;
 with Linted.Errors;
 with Linted.Reader;
+with Linted.Logs;
 with Linted.MVars;
 
 package body Linted.Window_Notifier with
@@ -94,7 +95,9 @@ package body Linted.Window_Notifier with
          Object_Initialized : Boolean := False;
       begin
          loop
+	    Logs.Log (Logs.Info, "Suspend");
             STC.Suspend_Until_True (My_Trigger);
+	    Logs.Log (Logs.Info, "Unsuspend");
 
             declare
                New_Command : Command_MVars.Option_Element_Ts.Option;

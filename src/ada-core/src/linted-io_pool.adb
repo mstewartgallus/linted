@@ -48,7 +48,8 @@ package body Linted.IO_Pool is
 
    type Poller_Command is record
       Object : KOs.KO;
-      Events : Poller_Event_Set;
+      Events : Poller_Event_Set :=
+        (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
    end record;
 
    package Poller_Command_Channels is new Linted.Channels (Poller_Command);

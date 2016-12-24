@@ -156,6 +156,7 @@ package body Linted.Drawer with
       end if;
 
       Notifier.Start (Window_Notifier_KO);
+
       My_Poller.Poll
         (KOs.KO (XCB.xcb_get_file_descriptor (Connection)),
          (Poller.Readable => True, Poller.Writable => False));

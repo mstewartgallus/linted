@@ -25,34 +25,34 @@ abstract project Shared is
      for Default_Switches ("Ada") use (
 				       "-g",
 
-				       -- "-gnatn",
+				       "-gnatn",
 
 				       -- -- TODO: Debug optimization causes problems
-				       -- "-O0",
+				       "-O3",
 
-				       -- "-fvisibility=hidden",
-				       -- "-fdata-sections",
-				       -- "-ffunction-sections",
+				       "-fvisibility=hidden",
+				       "-fdata-sections",
+				       "-ffunction-sections",
 
-				       -- "-gno-record-gcc-switches",
+				       "-gno-record-gcc-switches",
 
-				       "-fpic", "-fPIC", "-fpie", "-fPIE"
+				       "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-				       -- "-fverbose-asm",
-				       -- -- "-save-temps=cwd",
-				       -- -- "-gnatGL",
-				       -- "-gnattt",
+				       "-fverbose-asm",
+				       -- "-save-temps=cwd",
+				       -- "-gnatGL",
+				       "-gnattt",
 
-				       -- "-gnatD",
-				       --"-gnatR3s",
-				       -- "-fstack-usage",
+				       "-gnatD",
+				       -- "-gnatR3s",
+				       "-fstack-usage",
 
-				       -- "-fstack-check",
-				       -- "-ftrapv",
+				       "-fstack-check",
+				       "-ftrapv",
 				       -- "-fsanitize=address",
 				       -- "-fsanitize=undefined",
-				       -- "-gnato",
-				       -- "-gnateA"
+				       "-gnato",
+				       "-gnateA"
   				      );
      for Default_Switches ("C") use ("-Wall", "-Wextra",
 
@@ -60,18 +60,18 @@ abstract project Shared is
 
 				     "-O3",
 
-				     -- "-fno-working-directory", "-gno-record-gcc-switches",
+				     "-fno-working-directory", "-gno-record-gcc-switches",
 
-				     "-fpic", "-fPIC", "-fpie", "-fPIE"
+				     "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-				     -- "-fdata-sections",
-				     -- "-ffunction-sections",
+				     "-fdata-sections",
+				     "-ffunction-sections",
 
 				     -- "-fverbose-asm",
 				     -- "-save-temps=cwd",
-				     -- "-fstack-usage",
+				     "-fstack-usage",
 
-				     -- "-fstack-check"
+				     "-fstack-check"
 				     -- "-fsanitize=address",
 				     --   "-fsanitize=undefined"
 				    );
@@ -94,14 +94,14 @@ abstract project Shared is
      				       "-Wl,--as-needed",
      				       "-Wl,--gc-sections",
      				       "-Wl,-z,combreloc",
-     				       "-Wl,--icf=safe"
+     				       "-Wl,--icf=safe",
 
-     				       -- "-Bsymbolic",
+     				       "-Bsymbolic",
 
      				       -- "-fsanitize=address",
      				       -- "-fsanitize=undefined",
 
-     				       -- "-fstack-usage"
+     				       "-fstack-usage"
      				      );
   end Linker;
 end Shared;

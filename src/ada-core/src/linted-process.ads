@@ -18,5 +18,6 @@ package Linted.Process is
 
    subtype Id is Interfaces.C.int;
 
-   function Current return Id;
+   function Current return Id with
+      Spark_Mode => Off;
 end Linted.Process;

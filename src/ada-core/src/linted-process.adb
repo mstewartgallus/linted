@@ -14,5 +14,6 @@
 with Libc.Unistd;
 
 package body Linted.Process is
-   function Current return Id is (Libc.Unistd.getpid);
+   function Current return Id is (Libc.Unistd.getpid) with
+      Spark_Mode => Off;
 end Linted.Process;

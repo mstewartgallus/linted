@@ -129,7 +129,7 @@ clean-%C%:
 
 .PHONY: prove
 prove: src/ada/shared.gpr
-	env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-drawer/drawer.gpr
+	env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
 
 .PHONY: indent
 indent:

@@ -20,7 +20,6 @@ with Interfaces;
 with System.Storage_Elements;
 with System;
 
-with Linted.KOs;
 with Linted.Channels;
 with Linted.Reader;
 with Linted.MVars;
@@ -50,7 +49,7 @@ package body Linted.Controls_Reader with
    package body Worker is
       task Reader_Task;
 
-      package Worker is new Linted.Reader.Worker;
+      package My_Worker is new Reader.Worker;
 
       My_Trigger : STC.Suspension_Object;
 
@@ -75,19 +74,14 @@ package body Linted.Controls_Reader with
 
       task A;
       task body A is
-         Worker_Event : Linted.Reader.Event;
+         Worker_Event : Reader.Event;
       begin
          loop
-            Worker.Wait (Worker_Event);
+            My_Worker.Wait (Worker_Event);
             Work_Event.Push (Worker_Event);
             STC.Set_True (My_Trigger);
          end loop;
       end A;
-
-      Err : Errors.Error;
-      C : Linted.Types.Controls;
-      Object : KOs.KO;
-      Object_Initialized : Boolean := False;
 
       task body Reader_Task is
          type Storage_Access is
@@ -97,6 +91,11 @@ package body Linted.Controls_Reader with
            (Storage_Access,
             System.Address);
          use type Errors.Error;
+
+	 Err : Errors.Error;
+	 C : Types.Controls;
+	 Object : KOs.KO;
+	 Object_Initialized : Boolean := False;
       begin
          loop
             STC.Suspend_Until_True (My_Trigger);
@@ -148,7 +147,7 @@ package body Linted.Controls_Reader with
             end;
 
             if Object_Initialized then
-               Worker.Read
+               My_Worker.Read
                  (Object,
                   Convert (Data_Being_Read (1)'Access),
                   Data_Being_Read'Size / Interfaces.C.char'Size);

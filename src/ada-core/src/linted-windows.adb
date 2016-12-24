@@ -23,9 +23,6 @@ with Libc.Sys.Types;
 with Libc.Unistd;
 with Libc.Errno;
 
-with Linted.Errors;
-with Linted.KOs;
-
 package body Linted.Windows with
      Spark_Mode => Off is
    package Errno renames Libc.Errno;
