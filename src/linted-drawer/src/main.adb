@@ -11,14 +11,10 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Real_Time;
-
 private with Linted.Last_Chance;
 private with Linted.Drawer;
 
 procedure Main is
 begin
-   loop
-      delay until Ada.Real_Time.Time_Last;
-   end loop;
+   null;
 end Main;

@@ -11,70 +11,22 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Unchecked_Conversion;
-
 with Interfaces;
-with Interfaces.C;
-
-with System;
-with System.Storage_Elements;
-
-with Libc.Sys.Types;
-with Libc.Unistd;
-with Libc.Errno;
 
 package body Linted.Windows with
      Spark_Mode => Off is
-   package Errno renames Libc.Errno;
-   package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
-   use type C.int;
-   use type C.size_t;
-   use type Libc.Sys.Types.ssize_t;
    use type Interfaces.Unsigned_32;
-   use type Interfaces.Unsigned_8;
-   use type Storage_Elements.Storage_Element;
    use type Storage_Elements.Storage_Offset;
 
-   type Storage_Access is not null access all Storage_Elements.Storage_Element;
-   subtype Tuple is Storage_Elements.Storage_Array (1 .. 4);
-
-   function From_Bytes (T : Tuple) return Window;
-
-   procedure Read (KO : KOs.KO; Win : out Window; Err : out Errors.Error) with
-      Spark_Mode => Off is
-      function Convert is new Ada.Unchecked_Conversion
-        (Storage_Access,
-         System.Address);
+   procedure From_Storage (S : Storage; W : out Window) is
    begin
-      declare
-         Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
-      begin
-         if Libc.Unistd.pread
-             (C.int (KO),
-              Convert (Buf (1)'Unchecked_Access),
-              4,
-              0) <
-           0
-         then
-            Win := 0;
-            Err := Errors.Error (Errno.Errno);
-            return;
-         end if;
-         Win := From_Bytes (Buf);
-      end;
-      Err := 0;
-   end Read;
-
-   function From_Bytes (T : Tuple) return Window is
-      X : Interfaces.Unsigned_32;
-   begin
-      X :=
-        Interfaces.Unsigned_32 (T (4)) or
-        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
-        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
-        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24);
-      return Window (X);
-   end From_Bytes;
+      W :=
+        Window
+          (Interfaces.Unsigned_32 (S (1)) or
+           Interfaces.Shift_Left (Interfaces.Unsigned_32 (S (2)), 8) or
+           Interfaces.Shift_Left (Interfaces.Unsigned_32 (S (3)), 16) or
+           Interfaces.Shift_Left (Interfaces.Unsigned_32 (S (4)), 24));
+   end From_Storage;
 end Linted.Windows;

@@ -11,6 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Linted.Controls;
 with Linted.Types;
 
 package Linted.Simulate with
@@ -20,7 +21,7 @@ package Linted.Simulate with
    type Object_State is array (0 .. 1) of Types.Varying_Positions;
 
    type State is record
-      Controls : Types.Controls;
+      Controls : Linted.Controls.Packet;
 
       Objects : Object_State := (0 .. 1 => (Types.X .. Types.Z => (0, 0)));
 

@@ -11,14 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Errors;
-with Linted.KOs;
+with System.Storage_Elements;
 
 package Linted.Windows is
-   pragma Preelaborate;
+   pragma Pure;
 
    type Window is mod 2**32;
 
-   procedure Read (KO : KOs.KO; Win : out Window; Err : out Errors.Error) with
-      Spark_Mode => Off;
+   Storage_Size : constant := 4;
+
+   subtype Storage is
+     System.Storage_Elements.Storage_Array (1 .. Storage_Size);
+
+   procedure From_Storage (S : Storage; W : out Window);
 end Linted.Windows;

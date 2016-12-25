@@ -35,6 +35,7 @@ with Linted.Logs;
 with Linted.Poller;
 with Linted.Update_Reader;
 with Linted.Update;
+with Linted.Windows;
 with Linted.Window_Notifier;
 
 package body Linted.Drawer with
@@ -78,7 +79,7 @@ package body Linted.Drawer with
    Window_Opts : aliased array (1 .. 2) of aliased Libc.Stdint.uint32_t :=
      (XCB.XProto.XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0);
 
-   function Read_Window (Object : KOs.KO) return GPU.X11_Window;
+   function Read_Window (Object : KOs.KO) return Windows.Window;
 
    function XCB_Conn_Error
      (Connection : XCB.xcb_connection_t_access) return Errors.Error;
@@ -86,7 +87,7 @@ package body Linted.Drawer with
      (Window_KO : KOs.KO;
       Connection : XCB.xcb_connection_t_access;
       Context : GPU.Context_Access;
-      Window : out GPU.X11_Window);
+      Window : out Windows.Window);
 
    task body Main_Task is
       Err : Errors.Error;
@@ -97,7 +98,7 @@ package body Linted.Drawer with
 
       Connection : XCB.xcb_connection_t_access;
       Context : GPU.Context_Access;
-      Window : GPU.X11_Window;
+      Window : Windows.Window;
    begin
       if Command_Line.Argument_Count < 3 then
          raise Constraint_Error with "At least three arguments";
@@ -164,7 +165,7 @@ package body Linted.Drawer with
       My_Update_Reader.Start (Updater_KO);
 
       Get_New_Window (Window_KO, Connection, Context, Window);
-      Logs.Log (Logs.Info, "Window: " & GPU.X11_Window'Image (Window));
+      Logs.Log (Logs.Info, "Window: " & Windows.Window'Image (Window));
       loop
          STC.Suspend_Until_True (Event_Trigger);
 
@@ -233,7 +234,7 @@ package body Linted.Drawer with
                Get_New_Window (Window_KO, Connection, Context, Window);
                Logs.Log
                  (Logs.Info,
-                  "Window: " & GPU.X11_Window'Image (Window));
+                  "Window: " & Windows.Window'Image (Window));
                X := XCB.xcb_flush (Connection);
             end if;
          end;
@@ -348,31 +349,35 @@ package body Linted.Drawer with
       end loop;
    end Task_C;
 
-   function Read_Window (Object : KOs.KO) return GPU.X11_Window is
+   function Read_Window (Object : KOs.KO) return Windows.Window is
       Bytes : C.size_t;
       Err : Errors.Error;
 
       type A is access all Storage_Elements.Storage_Element;
       function Convert is new Ada.Unchecked_Conversion (A, System.Address);
 
-      Data : Storage_Elements.Storage_Array (1 .. 4);
+      Data : Windows.Storage;
+
+      W : Windows.Window;
    begin
       declare
-         Buf : aliased Storage_Elements.Storage_Array (1 .. 4);
+         Buf : aliased Windows.Storage;
       begin
          Err :=
-           KOs.Pread (Object, Convert (Buf (1)'Unchecked_Access), 4, 0, Bytes);
+           KOs.Pread
+             (Object,
+              Convert (Buf (1)'Unchecked_Access),
+              Windows.Storage_Size,
+              0,
+              Bytes);
          if Err /= 0 then
             raise Program_Error with Errors.To_String (Err);
          end if;
          Data := Buf;
       end;
       pragma Assert (Bytes = 4);
-      return GPU.X11_Window
-          (Interfaces.Unsigned_32 (Data (1)) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Data (2)), 8) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Data (3)), 16) or
-           Interfaces.Shift_Left (Interfaces.Unsigned_32 (Data (4)), 24));
+      Windows.From_Storage (Data, W);
+      return W;
    end Read_Window;
 
    function XCB_Conn_Error
@@ -390,9 +395,9 @@ package body Linted.Drawer with
      (Window_KO : KOs.KO;
       Connection : XCB.xcb_connection_t_access;
       Context : GPU.Context_Access;
-      Window : out GPU.X11_Window)
+      Window : out Windows.Window)
    is
-      New_Window : GPU.X11_Window;
+      New_Window : Windows.Window;
       Geom_CK : XCB.XProto.xcb_get_geometry_cookie_t;
       Width : C.unsigned;
       Height : C.unsigned;
@@ -458,7 +463,7 @@ package body Linted.Drawer with
          raise Program_Error with Errors.To_String (Err);
       end if;
 
-      Err := GPU.Set_X11_Window (Context, New_Window);
+      Err := GPU.Set_X11_Window (Context, GPU.X11_Window (New_Window));
       if Err /= 0 then
          raise Program_Error with Errors.To_String (Err);
       end if;

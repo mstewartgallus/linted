@@ -11,22 +11,28 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Controls;
-with Linted.Errors;
-with Linted.KOs;
+with System.Storage_Elements;
 
-package Linted.Controls_Reader with
-     Spark_Mode => Off is
-   pragma Elaborate_Body;
+package Linted.Controls is
+   pragma Pure;
 
-   type Event is record
-      Data : Controls.Packet;
-      Err : Errors.Error := 0;
+   type Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
+
+   type Packet is record
+      Z_Tilt : Int := 0;
+      X_Tilt : Int := 0;
+
+      Left : Boolean := False;
+      Right : Boolean := False;
+      Forward : Boolean := False;
+      Back : Boolean := False;
+
+      Jumping : Boolean := False;
    end record;
 
-   generic
-   package Worker is
-      procedure Start (Object : KOs.KO);
-      procedure Wait (E : out Event);
-   end Worker;
-end Linted.Controls_Reader;
+   Storage_Size : constant := 2 * 4 + 1;
+   subtype Storage is
+     System.Storage_Elements.Storage_Array (1 .. Storage_Size);
+
+   procedure From_Storage (S : Storage; C : out Packet);
+end Linted.Controls;

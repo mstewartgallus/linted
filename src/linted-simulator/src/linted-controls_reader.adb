@@ -30,17 +30,13 @@ package body Linted.Controls_Reader with
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
-   use type Linted.Types.Controls_Int;
+   use type Controls.Int;
    use type C.int;
    use type C.size_t;
    use type Interfaces.Unsigned_32;
    use type Interfaces.Unsigned_8;
    use type Storage_Elements.Storage_Element;
    use type Storage_Elements.Storage_Offset;
-
-   subtype Tuple is Storage_Elements.Storage_Array (1 .. 4);
-
-   function From_Bytes (T : Tuple) return Types.Controls_Int;
 
    package Command_MVars is new Linted.MVars (KOs.KO);
    package Read_Done_Event_Channels is new Linted.Channels (Event);
@@ -53,9 +49,7 @@ package body Linted.Controls_Reader with
 
       My_Trigger : STC.Suspension_Object;
 
-      Data_Being_Read : aliased Storage_Elements
-        .Storage_Array
-      (1 .. 2 * 4 + 1);
+      Data_Being_Read : aliased Controls.Storage;
 
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
@@ -92,10 +86,10 @@ package body Linted.Controls_Reader with
             System.Address);
          use type Errors.Error;
 
-	 Err : Errors.Error;
-	 C : Types.Controls;
-	 Object : KOs.KO;
-	 Object_Initialized : Boolean := False;
+         Err : Errors.Error;
+         C : Controls.Packet;
+         Object : KOs.KO;
+         Object_Initialized : Boolean := False;
       begin
          loop
             STC.Suspend_Until_True (My_Trigger);
@@ -117,30 +111,7 @@ package body Linted.Controls_Reader with
                if not Options_Event.Empty then
                   Err := Options_Event.Data.Err;
                   if Err = Linted.Errors.Success then
-                     C.Z_Tilt := From_Bytes (Data_Being_Read (1 .. 4));
-                     C.X_Tilt := From_Bytes (Data_Being_Read (5 .. 8));
-
-                     C.Left :=
-                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
-                        Interfaces.Shift_Left (1, 8 - 1)) /=
-                       0;
-                     C.Right :=
-                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
-                        Interfaces.Shift_Left (1, 8 - 2)) /=
-                       0;
-                     C.Forward :=
-                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
-                        Interfaces.Shift_Left (1, 8 - 3)) /=
-                       0;
-                     C.Back :=
-                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
-                        Interfaces.Shift_Left (1, 8 - 4)) /=
-                       0;
-
-                     C.Jumping :=
-                       (Interfaces.Unsigned_8 (Data_Being_Read (9)) and
-                        Interfaces.Shift_Left (1, 8 - 5)) /=
-                       0;
+                     Controls.From_Storage (Data_Being_Read, C);
                   end if;
                   My_Event_Channel.Push ((C, Err));
                end if;
@@ -155,21 +126,4 @@ package body Linted.Controls_Reader with
          end loop;
       end Reader_Task;
    end Worker;
-
-   function From_Bytes (T : Tuple) return Types.Controls_Int is
-      X : Interfaces.Unsigned_32;
-      Y : Types.Controls_Int;
-   begin
-      X :=
-        Interfaces.Unsigned_32 (T (4)) or
-        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (3)), 8) or
-        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
-        Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24);
-      if X <= Interfaces.Unsigned_32 (Types.Controls_Int'Last) then
-         Y := Types.Controls_Int (X);
-      else
-         Y := -Types.Controls_Int (not X + 1);
-      end if;
-      return Y;
-   end From_Bytes;
 end Linted.Controls_Reader;
