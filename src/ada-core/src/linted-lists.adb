@@ -13,17 +13,34 @@
 -- permissions and limitations under the License.
 package body Linted.Lists with
      Spark_Mode => Off is
-   procedure Allocate (S : in out Storage; N : out Node_Access) is
-      Count : Natural;
-   begin
-      Count := S.Count;
-      if Count > 0 then
-         N := S.Contents (Count)'Unchecked_Access;
-         S.Count := Count - 1;
-      else
-         N := null;
-      end if;
-   end Allocate;
+   package body Pool with
+        Refined_State => (State => (Count, Contents)) is
+      protected type Lock is
+         procedure Allocate_Impl (N : out Node_Access);
+      end Lock;
+
+      Count : Natural := Initial_Count;
+      Contents : array (1 .. Initial_Count) of aliased Node;
+
+      protected body Lock is
+         procedure Allocate_Impl (N : out Node_Access) is
+         begin
+            if Count > 0 then
+               N := Contents (Count)'Unchecked_Access;
+               Count := Count - 1;
+            else
+               N := null;
+            end if;
+         end Allocate_Impl;
+      end Lock;
+
+      My_Lock : Lock;
+
+      procedure Allocate (N : out Node_Access) is
+      begin
+         My_Lock.Allocate_Impl (N);
+      end Allocate;
+   end Pool;
 
    function Is_Null (N : Node_Access) return Boolean is
    begin
@@ -42,9 +59,9 @@ package body Linted.Lists with
       procedure Insert (C : Element_T; N : Node_Access) is
       begin
          pragma Assert (not N.In_List);
-	 N.In_List := True;
-	 pragma Assert (N.Tail = null);
-	 N.Tail := Head;
+         N.In_List := True;
+         pragma Assert (N.Tail = null);
+         N.Tail := Atomic_Node_Access (Head);
          N.Contents := C;
          Head := N;
       end Insert;
@@ -56,10 +73,10 @@ package body Linted.Lists with
          if null = Removed then
             N := null;
          else
-	    pragma Assert (Removed.In_List);
-	    Removed.In_List := False;
-	    Removed.Tail := null;
-            Head := Removed.Tail;
+            pragma Assert (Removed.In_List);
+            Removed.In_List := False;
+            Removed.Tail := null;
+            Head := Node_Access (Removed.Tail);
             N := Removed;
             C := Removed.Contents;
          end if;

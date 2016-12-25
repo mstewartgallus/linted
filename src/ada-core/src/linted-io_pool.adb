@@ -64,7 +64,8 @@ package body Linted.IO_Pool is
         Spark_Mode => Off is
       task Writer_Task;
 
-      Node_Storage : CLists.Storage (8);
+      package Node_Pool is new CLists.Pool (16);
+
       Spare_Command_Nodes : CLists.List;
       Writer_Trigger : STC.Suspension_Object;
       Spare_Trigger : STC.Suspension_Object;
@@ -162,7 +163,7 @@ package body Linted.IO_Pool is
 	    N : CLists.Node_Access;
 	    Dummy : Write_Command;
 	 begin
-	    CLists.Allocate (Node_Storage, N);
+	    Node_Pool.Allocate (N);
 	    if CLists.Is_Null (N) then
 	       exit;
 	    end if;

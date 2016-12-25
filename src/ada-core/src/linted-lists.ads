@@ -17,21 +17,25 @@ package Linted.Lists with
    Spark_Mode => On is
    type Node is limited private;
    type Node_Access is limited private;
-   type Storage (Size : Positive) is limited private;
 
    function Is_Free (N : Node_Access) return Boolean;
    function Is_Null (N : Node_Access) return Boolean;
 
-   procedure Allocate (S : in out Storage; N : out Node_Access) with
-      Global => null,
-      Depends => (N => S, S => S),
-      Post => Is_Free (N);
+   generic
+      Initial_Count : Positive;
+   package Pool with
+      Abstract_State => (State with External) is
+      procedure Allocate (N : out Node_Access) with
+         Global => (In_Out => State),
+         Depends => (State => State, N => State),
+         Post => Is_Free (N);
+   end Pool;
 
    protected type List is
       procedure Insert (C : Element_T; N : Node_Access) with
          Global => null,
          Depends => (List => (List, C, N)),
-         Pre => Is_Free (N);
+         Pre => Is_Free (N) and not Is_Null (N);
       procedure Remove (C : out Element_T; N : out Node_Access) with
          Global => null,
          Depends => (List => List, C => List, N => List),
@@ -44,17 +48,13 @@ private
 
    type Atomic_Boolean is new Boolean with
         Atomic;
+   type Atomic_Node_Access is access all Node with
+        Atomic;
+   type Node_Access is access all Node;
+
    type Node is record
       Contents : Element_T;
-      Tail : Node_Access;
+      Tail : Atomic_Node_Access;
       In_List : Atomic_Boolean := False;
-   end record;
-   type Node_Access is access all Node with
-        Atomic;
-   type Node_Array is array (Natural range <>) of aliased Node;
-
-   type Storage (Size : Positive) is record
-      Contents : Node_Array (1 .. Size);
-      Count : Natural := Size;
    end record;
 end Linted.Lists;
