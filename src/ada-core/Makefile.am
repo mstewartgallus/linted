@@ -23,3 +23,9 @@ LINTED_CLEAN_RULES+=clean-%C%
 .PHONY: clean-%C%
 clean-%C%:
 	- env $(ADAENV) $(GPRCLEAN) $(GPRCLEANFLAGS) -P $(srcdir)/%D%/linted.gpr
+
+TESTS+=%D%/tests
+check_PROGRAMS+=%D%/tests
+.PHONY: %D%/tests$(EXEEXT)
+%D%/tests$(EXEEXT): src/ada/shared.gpr
+	$(linted_V_GPRBUILD) env $(ADAENV) $(GPRBUILD) $(AM_GPRBUILDFLAGS) $(GPRBUILDFLAGS) -o $(abs_builddir)/$@ -P $(srcdir)/%D%/tests/tests.gpr

@@ -14,11 +14,12 @@
 package body Linted.Lists with
      Spark_Mode => Off is
    package body Pool with
-        Refined_State => (State => (Count, Contents)) is
+        Refined_State => (State => (My_Lock, Count, Contents)) is
       protected type Lock is
          procedure Allocate_Impl (N : out Node_Access);
       end Lock;
 
+      My_Lock : Lock;
       Count : Natural := Initial_Count;
       Contents : array (1 .. Initial_Count) of aliased Node;
 
@@ -33,8 +34,6 @@ package body Linted.Lists with
             end if;
          end Allocate_Impl;
       end Lock;
-
-      My_Lock : Lock;
 
       procedure Allocate (N : out Node_Access) is
       begin

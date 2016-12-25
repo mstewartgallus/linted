@@ -15,8 +15,7 @@ with Interfaces.C;
 
 with Libc.Errno.POSIX_2008;
 
-package Linted.Errors with
-     Abstract_State => null is
+package Linted.Errors is
    pragma Preelaborate;
 
    subtype Valid_Error is
