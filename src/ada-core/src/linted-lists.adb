@@ -56,14 +56,17 @@ package body Linted.Lists with
    end Is_Free;
 
    protected body List is
-      procedure Insert (C : Element_T; N : Node_Access) is
+      procedure Insert (C : Element_T; N : in out Node_Access) is
+	 Input : Node_Access;
       begin
-         pragma Assert (not N.In_List);
-         N.In_List := True;
-         pragma Assert (N.Tail = null);
-         N.Tail := Atomic_Node_Access (Head);
-         N.Contents := C;
-         Head := N;
+	 Input := N;
+	 N := null;
+         pragma Assert (not Input.In_List);
+         Input.In_List := True;
+         pragma Assert (Input.Tail = null);
+         Input.Tail := Atomic_Node_Access (Head);
+         Input.Contents := C;
+         Head := Input;
       end Insert;
 
       procedure Remove (C : out Element_T; N : out Node_Access) is

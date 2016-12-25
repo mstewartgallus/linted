@@ -15,7 +15,6 @@ generic
    type Element_T is private;
 package Linted.Lists with
    Spark_Mode => On is
-   type Node is limited private;
    type Node_Access is limited private;
 
    function Is_Free (N : Node_Access) return Boolean;
@@ -32,10 +31,11 @@ package Linted.Lists with
    end Pool;
 
    protected type List is
-      procedure Insert (C : Element_T; N : Node_Access) with
+      procedure Insert (C : Element_T; N : in out Node_Access) with
          Global => null,
-         Depends => (List => (List, C, N)),
-         Pre => Is_Free (N) and not Is_Null (N);
+         Depends => (List => (List, C, N), N => null),
+         Pre => Is_Free (N) and not Is_Null (N),
+         Post => Is_Null (N);
       procedure Remove (C : out Element_T; N : out Node_Access) with
          Global => null,
          Depends => (List => List, C => List, N => List),
@@ -45,6 +45,8 @@ package Linted.Lists with
    end List;
 private
    pragma SPARK_Mode (Off);
+
+   type Node;
 
    type Atomic_Boolean is new Boolean with
         Atomic;
