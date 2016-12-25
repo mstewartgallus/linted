@@ -27,19 +27,6 @@ package body Linted.Controls is
    function To_Int (T : Tuple) return Int;
    function From_Bytes (T : Tuple) return Nat;
 
-   function To_Int (T : Tuple) return Int is
-      X : Nat;
-      Y : Int;
-   begin
-      X := From_Bytes (T);
-      if X <= Nat (Int'Last) then
-         Y := Int (X);
-      else
-         Y := -Int (not X + 1);
-      end if;
-      return Y;
-   end To_Int;
-
    function From_Bytes (T : Tuple) return Nat is
    begin
       return Nat
@@ -48,6 +35,19 @@ package body Linted.Controls is
            Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
            Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24));
    end From_Bytes;
+
+   function To_Int (T : Tuple) return Int is
+      X : Nat;
+      Y : Int;
+   begin
+      X := From_Bytes (T);
+      if X <= Nat (Int'Last) then
+         Y := Int (X);
+      else
+         Y := -Int (not X) - 1;
+      end if;
+      return Y;
+   end To_Int;
 
    procedure From_Storage (S : Storage; C : out Packet) is
    begin

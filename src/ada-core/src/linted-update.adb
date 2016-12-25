@@ -28,47 +28,19 @@ package body Linted.Update is
 
    -- Big Endian
    function To_Bytes (Number : Nat) return Tuple is
-      X : Storage_Elements.Storage_Array (1 .. 4) := (0, 0, 0, 0);
    begin
-      X (1) :=
-        Storage_Elements.Storage_Element
-          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 24) and
-           16#FF#);
-      X (2) :=
-        Storage_Elements.Storage_Element
-          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 16) and
-           16#FF#);
-      X (3) :=
-        Storage_Elements.Storage_Element
-          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 8) and
-           16#FF#);
-      X (4) := Storage_Elements.Storage_Element (Number and 16#FF#);
-      return X;
+      return
+        (Storage_Elements.Storage_Element
+           (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 24) and
+            16#FF#),
+         Storage_Elements.Storage_Element
+           (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 16) and
+            16#FF#),
+         Storage_Elements.Storage_Element
+           (Interfaces.Shift_Right (Interfaces.Unsigned_32 (Number), 8) and
+            16#FF#),
+         Storage_Elements.Storage_Element (Number and 16#FF#));
    end To_Bytes;
-
-   function To_Int (T : Tuple) return Int is
-      X : Nat;
-      Y : Int;
-   begin
-      X := From_Bytes (T);
-      if X <= Nat (Int'Last) then
-         Y := Int (X);
-      else
-         Y := -Int (not X + 1);
-      end if;
-      return Y;
-   end To_Int;
-
-   function To_Nat (Number : Int) return Nat is
-      Y : Nat;
-   begin
-      if Number < 0 then
-         Y := Nat (Number + Int'Last) - Nat (Int'Last);
-      else
-         Y := Nat (Number);
-      end if;
-      return Y;
-   end To_Nat;
 
    function From_Bytes (T : Tuple) return Nat is
    begin
@@ -78,6 +50,30 @@ package body Linted.Update is
            Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (2)), 16) or
            Interfaces.Shift_Left (Interfaces.Unsigned_32 (T (1)), 24));
    end From_Bytes;
+
+   function To_Int (T : Tuple) return Int is
+      X : Nat;
+      Y : Int;
+   begin
+      X := From_Bytes (T);
+      if X <= Nat (Int'Last) then
+         Y := Int (X);
+      else
+         Y := -Int (not X) - 1;
+      end if;
+      return Y;
+   end To_Int;
+
+   function To_Nat (Number : Int) return Nat is
+      Y : Nat;
+   begin
+      if Number < 0 then
+         Y := Nat (Number - Int'First) - (Nat (Int'Last) + 1);
+      else
+         Y := Nat (Number);
+      end if;
+      return Y;
+   end To_Nat;
 
    procedure From_Storage (S : Storage; U : out Update.Packet) is
    begin
