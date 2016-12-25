@@ -20,7 +20,7 @@ with Libc.Sys.Types;
 with Libc.Unistd;
 
 with Linted.Channels;
-with Linted.Lists;
+with Linted.Queues;
 
 package body Linted.IO_Pool is
    package STC renames Ada.Synchronous_Task_Control;
@@ -58,18 +58,17 @@ package body Linted.IO_Pool is
    package Poller_Command_Channels is new Linted.Channels (Poller_Command);
    package Poller_Event_Channels is new Linted.Channels (Poller_Event);
 
-   package CLists is new Lists (Write_Command);
+   package CQueues is new Queues (Write_Command);
 
    package body Writer_Worker with
         Spark_Mode => Off is
       task Writer_Task;
 
-      package Node_Pool is new CLists.Pool (32);
+      package Node_Pool is new CQueues.Pool (32);
 
-      Spare_Command_Nodes : CLists.List;
       Writer_Trigger : STC.Suspension_Object;
       Spare_Trigger : STC.Suspension_Object;
-      My_Command_Channel : CLists.List;
+      My_Command_Channel : CQueues.Queue;
       My_Event_Channel : Writer_Event_Channels.Channel;
 
       procedure Wait (Event : out Writer_Event) is
@@ -82,19 +81,16 @@ package body Linted.IO_Pool is
          Buf : System.Address;
          Count : C.size_t)
       is
-         N : CLists.Node_Access;
+         N : CQueues.Node_Access;
       begin
          loop
-            declare
-               Dummy : Write_Command;
-            begin
-               Spare_Command_Nodes.Remove (Dummy, N);
-            end;
-            if not CLists.Is_Null (N) then
+            Node_Pool.Allocate (N);
+            if not CQueues.Is_Null (N) then
                exit;
             end if;
             STC.Suspend_Until_True (Spare_Trigger);
          end loop;
+         pragma Assert (not CQueues.Is_Null (N));
          My_Command_Channel.Insert ((Object, Buf, Count), N);
          STC.Set_True (Writer_Trigger);
       end Write;
@@ -107,16 +103,16 @@ package body Linted.IO_Pool is
             STC.Suspend_Until_True (Writer_Trigger);
             loop
                declare
-                  N : CLists.Node_Access;
+                  N : CQueues.Node_Access;
                begin
                   My_Command_Channel.Remove (New_Write_Command, N);
-                  if CLists.Is_Null (N) then
+                  if CQueues.Is_Null (N) then
                      exit;
                   end if;
                   declare
                      Dummy : Write_Command;
                   begin
-                     Spare_Command_Nodes.Insert (Dummy, N);
+                     Node_Pool.Free (N);
                      STC.Set_True (Spare_Trigger);
                   end;
                end;
@@ -157,19 +153,6 @@ package body Linted.IO_Pool is
             end loop;
          end loop;
       end Writer_Task;
-   begin
-      loop
-	 declare
-	    N : CLists.Node_Access;
-	    Dummy : Write_Command;
-	 begin
-	    Node_Pool.Allocate (N);
-	    if CLists.Is_Null (N) then
-	       exit;
-	    end if;
-	    Spare_Command_Nodes.Insert (Dummy, N);
-	 end;
-      end loop;
    end Writer_Worker;
 
    package body Reader_Worker with

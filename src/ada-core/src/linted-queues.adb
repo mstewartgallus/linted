@@ -11,36 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package body Linted.Lists with
+package body Linted.Queues with
      Spark_Mode => Off is
-   package body Pool with
-        Refined_State => (State => (My_Lock, Count, Contents)) is
-      protected type Lock is
-         procedure Allocate_Impl (N : out Node_Access);
-      end Lock;
-
-      My_Lock : Lock;
-      Count : Natural := Initial_Count;
-      Contents : array (1 .. Initial_Count) of aliased Node;
-
-      protected body Lock is
-         procedure Allocate_Impl (N : out Node_Access) is
-         begin
-            if Count > 0 then
-               N := Contents (Count)'Unchecked_Access;
-               Count := Count - 1;
-            else
-               N := null;
-            end if;
-         end Allocate_Impl;
-      end Lock;
-
-      procedure Allocate (N : out Node_Access) is
-      begin
-         My_Lock.Allocate_Impl (N);
-      end Allocate;
-   end Pool;
-
    function Is_Null (N : Node_Access) return Boolean is
    begin
       return N = null;
@@ -51,19 +23,19 @@ package body Linted.Lists with
       if N = null then
          return True;
       end if;
-      return not Boolean (N.In_List);
+      return not Boolean (N.In_Queue);
    end Is_Free;
 
-   protected body List is
+   protected body Queue is
       procedure Insert (C : Element_T; N : in out Node_Access) is
 	 Input : Node_Access;
       begin
 	 Input := N;
 	 N := null;
-         pragma Assert (not Input.In_List);
+         pragma Assert (not Input.In_Queue);
 	 pragma Assert (Input.Tail = null);
 
-	 Input.In_List := True;
+	 Input.In_Queue := True;
 	 Input.Contents := C;
 
 	 if First = null or Last = null then
@@ -83,9 +55,9 @@ package body Linted.Lists with
 	       Removed : Node_Access;
 	    begin
 	       Removed := First;
-	       pragma Assert (Removed.In_List);
+	       pragma Assert (Removed.In_Queue);
 	       First := Node_Access (Removed.Tail);
-	       Removed.In_List := False;
+	       Removed.In_Queue := False;
 	       Removed.Tail := null;
 
 	       C := Removed.Contents;
@@ -93,5 +65,36 @@ package body Linted.Lists with
 	    end;
          end if;
       end Remove;
-   end List;
-end Linted.Lists;
+   end Queue;
+
+   package body Pool with
+        Refined_State => (State => (Spare_Nodes, Contents)) is
+
+      Contents : array (1 .. Initial_Count) of aliased Node;
+      Spare_Nodes : Queue;
+
+      procedure Allocate (N : out Node_Access) is
+	 Dummy : Element_T;
+      begin
+         Spare_Nodes.Remove (Dummy, N);
+      end Allocate;
+
+      procedure Free (N : in out Node_Access) is
+	 Dummy : Element_T;
+      begin
+         Spare_Nodes.Insert (Dummy, N);
+      end Free;
+
+   begin
+      for II in Contents'Range loop
+	 declare
+	    N : Node_Access := Contents (II)'Unchecked_Access;
+	    Dummy : Element_T;
+	 begin
+	    pragma Assert (Is_Free (N));
+	    pragma Assert (not Is_Null (N));
+	    Spare_Nodes.Insert (Dummy, N);
+	 end;
+      end loop;
+   end Pool;
+end Linted.Queues;
