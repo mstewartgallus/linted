@@ -35,29 +35,33 @@ package body Linted.Lists with
       if N = null then
          return True;
       end if;
-      return N.Tail = null;
+      return not Boolean (N.In_List);
    end Is_Free;
 
    protected body List is
       procedure Insert (C : Element_T; N : Node_Access) is
       begin
-         pragma Assert (N.Tail = null);
+         pragma Assert (not N.In_List);
+	 N.In_List := True;
+	 pragma Assert (N.Tail = null);
+	 N.Tail := Head;
          N.Contents := C;
-         N.Tail := Head;
          Head := N;
       end Insert;
 
       procedure Remove (C : out Element_T; N : out Node_Access) is
-         M : Node_Access;
+         Removed : Node_Access;
       begin
-         M := Head;
-         if null = Head then
+         Removed := Head;
+         if null = Removed then
             N := null;
          else
-            Head := M.Tail;
-            M.Tail := null;
-            N := M;
-            C := M.Contents;
+	    pragma Assert (Removed.In_List);
+	    Removed.In_List := False;
+	    Removed.Tail := null;
+            Head := Removed.Tail;
+            N := Removed;
+            C := Removed.Contents;
          end if;
       end Remove;
    end List;

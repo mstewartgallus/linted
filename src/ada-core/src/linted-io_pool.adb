@@ -38,7 +38,6 @@ package body Linted.IO_Pool is
       Count : C.size_t := 0;
    end record;
 
-   package Write_Command_Channels is new Linted.Channels (Write_Command);
    package Writer_Event_Channels is new Linted.Channels (Writer_Event);
 
    type Read_Command is record
