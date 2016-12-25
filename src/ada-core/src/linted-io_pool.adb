@@ -11,6 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Ada.Synchronous_Task_Control;
+
 with Libc.Errno;
 with Libc.Errno.POSIX_2008;
 with Libc.Sys.Poll;
@@ -18,8 +20,10 @@ with Libc.Sys.Types;
 with Libc.Unistd;
 
 with Linted.Channels;
+with Linted.Lists;
 
 package body Linted.IO_Pool is
+   package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
 
    package Errno renames Libc.Errno;
@@ -55,10 +59,16 @@ package body Linted.IO_Pool is
    package Poller_Command_Channels is new Linted.Channels (Poller_Command);
    package Poller_Event_Channels is new Linted.Channels (Poller_Event);
 
+   package CLists is new Lists (Write_Command);
+
    package body Writer_Worker with
         Spark_Mode => Off is
       task Writer_Task;
-      My_Command_Channel : Write_Command_Channels.Channel;
+
+      Spare_Command_Nodes : CLists.List (8);
+      Writer_Trigger : STC.Suspension_Object;
+      Spare_Trigger : STC.Suspension_Object;
+      My_Command_Channel : CLists.List (0);
       My_Event_Channel : Writer_Event_Channels.Channel;
 
       procedure Wait (Event : out Writer_Event) is
@@ -71,8 +81,21 @@ package body Linted.IO_Pool is
          Buf : System.Address;
          Count : C.size_t)
       is
+         N : CLists.Node_Access;
       begin
-         My_Command_Channel.Push ((Object, Buf, Count));
+         loop
+            declare
+               Dummy : Write_Command;
+            begin
+               Spare_Command_Nodes.Remove (Dummy, N);
+            end;
+            if not CLists.Is_Null (N) then
+               exit;
+            end if;
+            STC.Suspend_Until_True (Spare_Trigger);
+         end loop;
+         My_Command_Channel.Insert ((Object, Buf, Count), N);
+         STC.Set_True (Writer_Trigger);
       end Write;
 
       task body Writer_Task is
@@ -80,41 +103,57 @@ package body Linted.IO_Pool is
          Result : Libc.Sys.Types.ssize_t;
       begin
          loop
-            My_Command_Channel.Pop (New_Write_Command);
-
-            declare
-               Err : C.int;
-               Bytes_Written : C.size_t := 0;
-
-               Object : constant KOs.KO := New_Write_Command.Object;
-               Buf : constant System.Address := New_Write_Command.Buf;
-               Count : constant C.size_t := New_Write_Command.Count;
-            begin
-               loop
-                  Result :=
-                    Libc.Unistd.write
-                      (C.int (Object),
-                       Buf,
-                       Count - Bytes_Written);
-                  if Result < 0 then
-                     Err := Libc.Errno.Errno;
-                     if Err /= Libc.Errno.POSIX_2008.EINTR then
-                        exit;
-                     end if;
-                  else
-                     Err := 0;
-                     Bytes_Written := Bytes_Written + C.size_t (Result);
-                     if Bytes_Written = Count then
-                        exit;
-                     end if;
+            STC.Suspend_Until_True (Writer_Trigger);
+            loop
+               declare
+                  N : CLists.Node_Access;
+               begin
+                  My_Command_Channel.Remove (New_Write_Command, N);
+                  if CLists.Is_Null (N) then
+                     exit;
                   end if;
-               end loop;
+                  declare
+                     Dummy : Write_Command;
+                  begin
+                     Spare_Command_Nodes.Insert (Dummy, N);
+                     STC.Set_True (Spare_Trigger);
+                  end;
+               end;
 
-               My_Event_Channel.Push
-                 (Writer_Event'
-                    (Err => Errors.Error (Err),
-                     Bytes_Written => Bytes_Written));
-            end;
+               declare
+                  Err : C.int;
+                  Bytes_Written : C.size_t := 0;
+
+                  Object : constant KOs.KO := New_Write_Command.Object;
+                  Buf : constant System.Address := New_Write_Command.Buf;
+                  Count : constant C.size_t := New_Write_Command.Count;
+               begin
+                  loop
+                     Result :=
+                       Libc.Unistd.write
+                         (C.int (Object),
+                          Buf,
+                          Count - Bytes_Written);
+                     if Result < 0 then
+                        Err := Libc.Errno.Errno;
+                        if Err /= Libc.Errno.POSIX_2008.EINTR then
+                           exit;
+                        end if;
+                     else
+                        Err := 0;
+                        Bytes_Written := Bytes_Written + C.size_t (Result);
+                        if Bytes_Written = Count then
+                           exit;
+                        end if;
+                     end if;
+                  end loop;
+
+                  My_Event_Channel.Push
+                    (Writer_Event'
+                       (Err => Errors.Error (Err),
+                        Bytes_Written => Bytes_Written));
+               end;
+            end loop;
          end loop;
       end Writer_Task;
    end Writer_Worker;
