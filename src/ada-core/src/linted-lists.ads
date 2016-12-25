@@ -41,7 +41,8 @@ package Linted.Lists with
          Depends => (List => List, C => List, N => List),
          Post => Is_Free (N);
    private
-      Head : Node_Access;
+      First : Node_Access;
+      Last : Node_Access;
    end List;
 private
    pragma SPARK_Mode (Off);

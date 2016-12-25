@@ -62,26 +62,36 @@ package body Linted.Lists with
 	 Input := N;
 	 N := null;
          pragma Assert (not Input.In_List);
-         Input.In_List := True;
-         pragma Assert (Input.Tail = null);
-         Input.Tail := Atomic_Node_Access (Head);
-         Input.Contents := C;
-         Head := Input;
+	 pragma Assert (Input.Tail = null);
+
+	 Input.In_List := True;
+	 Input.Contents := C;
+
+	 if First = null or Last = null then
+	    First := Input;
+	 else
+	    Last.Tail := Atomic_Node_Access (Input);
+	 end if;
+	 Last := Input;
       end Insert;
 
       procedure Remove (C : out Element_T; N : out Node_Access) is
-         Removed : Node_Access;
       begin
-         Removed := Head;
-         if null = Removed then
+         if First = null or Last = null then
             N := null;
          else
-            pragma Assert (Removed.In_List);
-            Removed.In_List := False;
-            Removed.Tail := null;
-            Head := Node_Access (Removed.Tail);
-            N := Removed;
-            C := Removed.Contents;
+	    declare
+	       Removed : Node_Access;
+	    begin
+	       Removed := First;
+	       pragma Assert (Removed.In_List);
+	       First := Node_Access (Removed.Tail);
+	       Removed.In_List := False;
+	       Removed.Tail := null;
+
+	       C := Removed.Contents;
+	       N := Removed;
+	    end;
          end if;
       end Remove;
    end List;

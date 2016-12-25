@@ -64,7 +64,7 @@ package body Linted.IO_Pool is
         Spark_Mode => Off is
       task Writer_Task;
 
-      package Node_Pool is new CLists.Pool (16);
+      package Node_Pool is new CLists.Pool (32);
 
       Spare_Command_Nodes : CLists.List;
       Writer_Trigger : STC.Suspension_Object;
