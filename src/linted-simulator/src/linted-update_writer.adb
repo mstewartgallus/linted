@@ -31,6 +31,7 @@ package body Linted.Update_Writer is
    use type Interfaces.Unsigned_32;
    use type Storage_Elements.Storage_Offset;
    use type C.size_t;
+   use type Errors.Error;
 
    type Write_Command is record
       Object : KOs.KO;
@@ -45,19 +46,17 @@ package body Linted.Update_Writer is
    package Write_Done_Event_Channels is new Linted.Channels (Write_Done_Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Writer.Event);
 
+   type Storage_Access is not null access all Storage_Elements.Storage_Element;
+
+   function Convert is new Ada.Unchecked_Conversion
+     (Storage_Access,
+      System.Address);
+
    package body Worker with
         Spark_Mode => Off is
-      use type Errors.Error;
 
       task A;
       task Writer_Task;
-
-      type Storage_Access is
-        not null access all Storage_Elements.Storage_Element;
-
-      function Convert is new Ada.Unchecked_Conversion
-        (Storage_Access,
-         System.Address);
 
       My_Trigger : STC.Suspension_Object;
 

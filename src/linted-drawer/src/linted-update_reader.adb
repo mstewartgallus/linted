@@ -34,28 +34,25 @@ package body Linted.Update_Reader with
    use type Interfaces.Unsigned_8;
    use type Storage_Elements.Storage_Element;
    use type Storage_Elements.Storage_Offset;
+   use type Errors.Error;
 
    package Command_MVars is new MVars (KOs.KO);
    package Read_Done_Event_Channels is new Channels (Event);
    package Worker_Event_Channels is new Channels (Reader.Event);
+
+   type Storage_Access is not null access all Storage_Elements.Storage_Element;
+
+   function Convert is new Ada.Unchecked_Conversion
+     (Storage_Access,
+      System.Address);
 
    package body Worker is
       task Reader_Task;
 
       package Reader_Worker is new Reader.Worker;
 
-      type Storage_Access is
-        not null access all Storage_Elements.Storage_Element;
-
-      function Convert is new Ada.Unchecked_Conversion
-        (Storage_Access,
-         System.Address);
-      use type Errors.Error;
-
-      My_Trigger : STC.Suspension_Object;
-
       Data_Being_Read : aliased Update.Storage;
-
+      My_Trigger : STC.Suspension_Object;
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
       My_Event_Channel : Read_Done_Event_Channels.Channel;
@@ -108,7 +105,7 @@ package body Linted.Update_Reader with
                if not Options_Event.Empty then
                   Err := Options_Event.Data.Err;
                   if Err = Errors.Success then
-		     Update.From_Storage (Data_Being_Read, U);
+                     Update.From_Storage (Data_Being_Read, U);
                   end if;
                   My_Event_Channel.Push ((U, Err));
                end if;

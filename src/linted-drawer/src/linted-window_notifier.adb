@@ -14,17 +14,16 @@
 with Ada.Synchronous_Task_Control;
 with Ada.Unchecked_Conversion;
 
-with Interfaces.C;
 with Interfaces;
+with Interfaces.C;
 
-with System.Storage_Elements;
 with System;
+with System.Storage_Elements;
 
 with Linted.Channels;
 with Linted.Errors;
-with Linted.Reader;
-with Linted.Logs;
 with Linted.MVars;
+with Linted.Reader;
 
 package body Linted.Window_Notifier with
      Spark_Mode => Off is
@@ -38,6 +37,7 @@ package body Linted.Window_Notifier with
    use type Interfaces.Unsigned_8;
    use type Storage_Elements.Storage_Element;
    use type Storage_Elements.Storage_Offset;
+   use type Errors.Error;
 
    type Event is record
       Err : Errors.Error;
@@ -47,21 +47,17 @@ package body Linted.Window_Notifier with
    package Read_Done_Event_Channels is new Channels (Event);
    package Worker_Event_Channels is new Channels (Reader.Event);
 
+   type Storage_Access is not null access all Storage_Elements.Storage_Element;
+   function Convert is new Ada.Unchecked_Conversion
+     (Storage_Access,
+      System.Address);
+
    package body Worker is
-      type Storage_Access is
-        not null access all Storage_Elements.Storage_Element;
-
       package Reader_Worker is new Reader.Worker;
-      function Convert is new Ada.Unchecked_Conversion
-        (Storage_Access,
-         System.Address);
-
-      use type Errors.Error;
 
       task Reader_Task;
 
       My_Trigger : STC.Suspension_Object;
-
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
       My_Event_Channel : Read_Done_Event_Channels.Channel;
@@ -97,9 +93,7 @@ package body Linted.Window_Notifier with
          Object_Initialized : Boolean := False;
       begin
          loop
-	    Logs.Log (Logs.Info, "Suspend");
             STC.Suspend_Until_True (My_Trigger);
-	    Logs.Log (Logs.Info, "Unsuspend");
 
             declare
                New_Command : Command_MVars.Option_Element_Ts.Option;

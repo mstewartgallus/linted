@@ -42,6 +42,13 @@ package body Linted.Controls_Reader with
    package Read_Done_Event_Channels is new Linted.Channels (Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
 
+   type Storage_Access is not null access all Storage_Elements.Storage_Element;
+
+   function Convert is new Ada.Unchecked_Conversion
+     (Storage_Access,
+      System.Address);
+   use type Errors.Error;
+
    package body Worker is
       task Reader_Task;
 
@@ -78,14 +85,6 @@ package body Linted.Controls_Reader with
       end A;
 
       task body Reader_Task is
-         type Storage_Access is
-           not null access all Storage_Elements.Storage_Element;
-
-         function Convert is new Ada.Unchecked_Conversion
-           (Storage_Access,
-            System.Address);
-         use type Errors.Error;
-
          Err : Errors.Error;
          C : Controls.Packet;
          Object : KOs.KO;
