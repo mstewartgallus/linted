@@ -49,6 +49,7 @@ pragma Warnings ("ah.i.ktFK");
 -- pragma Restrictions (No_Floating_Point);
 -- pragma Restrictions (No_Exception_Handlers);
 -- pragma Restrictions (No_Multiple_Elaboration);
+-- pragma Restrictions (No_Entry_Calls_In_Elaboration_Code);
 pragma Discard_Names;
 
 pragma Restrictions (Immediate_Reclamation);
@@ -62,7 +63,6 @@ pragma Restrictions (No_Dispatch);
 pragma Restrictions (No_Dispatching_Calls);
 pragma Restrictions (No_Entry_Queue);
 pragma Restrictions (No_Enumeration_Maps);
-pragma Restrictions (No_Entry_Calls_In_Elaboration_Code);
 pragma Restrictions (No_Exception_Registration);
 pragma Restrictions (No_Fixed_Point);
 pragma Restrictions (No_Implicit_Aliasing);

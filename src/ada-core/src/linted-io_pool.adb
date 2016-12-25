@@ -65,10 +65,11 @@ package body Linted.IO_Pool is
         Spark_Mode => Off is
       task Writer_Task;
 
-      Spare_Command_Nodes : CLists.List (8);
+      Node_Storage : CLists.Storage (8);
+      Spare_Command_Nodes : CLists.List;
       Writer_Trigger : STC.Suspension_Object;
       Spare_Trigger : STC.Suspension_Object;
-      My_Command_Channel : CLists.List (0);
+      My_Command_Channel : CLists.List;
       My_Event_Channel : Writer_Event_Channels.Channel;
 
       procedure Wait (Event : out Writer_Event) is
@@ -156,6 +157,19 @@ package body Linted.IO_Pool is
             end loop;
          end loop;
       end Writer_Task;
+   begin
+      loop
+	 declare
+	    N : CLists.Node_Access;
+	    Dummy : Write_Command;
+	 begin
+	    CLists.Allocate (Node_Storage, N);
+	    if CLists.Is_Null (N) then
+	       exit;
+	    end if;
+	    Spare_Command_Nodes.Insert (Dummy, N);
+	 end;
+      end loop;
    end Writer_Worker;
 
    package body Reader_Worker with

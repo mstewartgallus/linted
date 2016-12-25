@@ -13,6 +13,18 @@
 -- permissions and limitations under the License.
 package body Linted.Lists with
      Spark_Mode => Off is
+   procedure Allocate (S : in out Storage; N : out Node_Access) is
+      Count : Natural;
+   begin
+      Count := S.Count;
+      if Count > 0 then
+         N := S.Contents (Count)'Unchecked_Access;
+         S.Count := Count - 1;
+      else
+         N := null;
+      end if;
+   end Allocate;
+
    function Is_Null (N : Node_Access) return Boolean is
    begin
       return N = null;
@@ -38,19 +50,14 @@ package body Linted.Lists with
       procedure Remove (C : out Element_T; N : out Node_Access) is
          M : Node_Access;
       begin
-         if Count > 0 then
-            N := Initial_Capacity.Contents (Count)'Unchecked_Access;
-            Count := Count - 1;
+         M := Head;
+         if null = Head then
+            N := null;
          else
-            M := Head;
-            if null = Head then
-               N := null;
-            else
-               Head := M.Tail;
-               M.Tail := null;
-               N := M;
-               C := M.Contents;
-            end if;
+            Head := M.Tail;
+            M.Tail := null;
+            N := M;
+            C := M.Contents;
          end if;
       end Remove;
    end List;

@@ -22,14 +22,15 @@ package Linted.Lists with
    function Is_Free (N : Node_Access) return Boolean;
    function Is_Null (N : Node_Access) return Boolean;
 
-   protected type List (Initial_Count : Natural) is
+   procedure Allocate (S : in out Storage; N : out Node_Access) with
+      Post => Is_Free (N);
+
+   protected type List is
       procedure Insert (C : Element_T; N : Node_Access) with
          Pre => Is_Free (N);
       procedure Remove (C : out Element_T; N : out Node_Access) with
          Post => Is_Free (N);
    private
-      Initial_Capacity : Storage (Initial_Count);
-      Count : Natural := Initial_Count;
       Head : Node_Access;
    end List;
 private
@@ -43,5 +44,6 @@ private
    type Node_Array is array (Natural range <>) of aliased Node;
    type Storage (Size : Natural) is record
       Contents : Node_Array (1 .. Size);
+      Count : Natural := Size;
    end record;
 end Linted.Lists;
