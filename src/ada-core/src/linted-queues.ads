@@ -23,16 +23,22 @@ package Linted.Queues with
    generic
       Initial_Count : Positive;
    package Pool with
-      Abstract_State => (State with External) is
-      procedure Allocate (N : out Node_Access) with
-         Global => (In_Out => State),
-         Depends => (State => State, N => State),
-         Post => Is_Free (N);
-      procedure Free (N : in out Node_Access) with
-         Global => (In_Out => State),
-         Depends => (State => (State, N), N => State),
-         Pre => Is_Free (N) and not Is_Null (N),
-         Post => Is_Null (N);
+      Abstract_State => (State with External),
+      Spark_Mode => On is
+      generic
+      package User with
+         Spark_Mode => On,
+         Abstract_State => (User_State with External) is
+         procedure Allocate (N : out Node_Access) with
+            Global => (In_Out => State),
+            Depends => (State => State, N => State),
+            Post => Is_Free (N) and not Is_Null (N);
+         procedure Free (N : in out Node_Access) with
+            Global => (In_Out => State),
+            Depends => (State => (State, N), N => State),
+            Pre => Is_Free (N) and not Is_Null (N),
+            Post => Is_Null (N);
+      end User;
    end Pool;
 
    protected type Queue is

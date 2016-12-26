@@ -34,5 +34,7 @@ package Linted.Controls is
    subtype Storage is
      System.Storage_Elements.Storage_Array (1 .. Storage_Size);
 
-   procedure From_Storage (S : Storage; C : out Packet);
+   procedure From_Storage (S : Storage; C : out Packet) with
+      Global => null,
+      Depends => (C => S);
 end Linted.Controls;

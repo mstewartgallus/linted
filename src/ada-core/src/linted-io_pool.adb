@@ -60,14 +60,15 @@ package body Linted.IO_Pool is
 
    package CQueues is new Queues (Write_Command);
 
+   package Writer_Node_Pool is new CQueues.Pool (32);
+
    package body Writer_Worker with
         Spark_Mode => Off is
       task Writer_Task;
 
-      package Node_Pool is new CQueues.Pool (32);
+      package Node_Pool is new Writer_Node_Pool.User;
 
       Writer_Trigger : STC.Suspension_Object;
-      Spare_Trigger : STC.Suspension_Object;
       My_Command_Channel : CQueues.Queue;
       My_Event_Channel : Writer_Event_Channels.Channel;
 
@@ -83,14 +84,7 @@ package body Linted.IO_Pool is
       is
          N : CQueues.Node_Access;
       begin
-         loop
-            Node_Pool.Allocate (N);
-            if not CQueues.Is_Null (N) then
-               exit;
-            end if;
-            STC.Suspend_Until_True (Spare_Trigger);
-         end loop;
-         pragma Assert (not CQueues.Is_Null (N));
+	 Node_Pool.Allocate (N);
          My_Command_Channel.Insert ((Object, Buf, Count), N);
          STC.Set_True (Writer_Trigger);
       end Write;
@@ -113,7 +107,6 @@ package body Linted.IO_Pool is
                      Dummy : Write_Command;
                   begin
                      Node_Pool.Free (N);
-                     STC.Set_True (Spare_Trigger);
                   end;
                end;
 

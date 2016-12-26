@@ -11,25 +11,28 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Lists;
+with Linted.Queues;
 with Linted.Last_Chance;
 
 package body Linted.Tests is
-   package My_Lists is new Linted.Lists (Integer);
-   package My_Pool is new My_Lists.Pool (20);
+   Len : constant := 20;
 
-   L : My_Lists.List;
+   package My_Queues is new Linted.Queues (Integer);
+   package My_Pool is new My_Queues.Pool (Len);
+   package My_User is new My_Pool.User;
+
+   L : My_Queues.Queue;
 
    procedure Run is
       X : Integer := 0;
       Previous : Integer := -1;
    begin
-      loop
+      for II in 1 .. Len loop
 	 declare
-	    N : My_Lists.Node_Access;
+	    N : My_Queues.Node_Access;
 	 begin
-	    My_Pool.Allocate (N);
-	    if My_Lists.Is_Null (N) then
+	    My_User.Allocate (N);
+	    if My_Queues.Is_Null (N) then
 	       exit;
 	    end if;
 	    L.Insert (X, N);
@@ -39,11 +42,11 @@ package body Linted.Tests is
 
       loop
 	 declare
-	    N : My_Lists.Node_Access;
+	    N : My_Queues.Node_Access;
 	    Current : Integer;
 	 begin
 	    L.Remove (Current, N);
-	    if My_Lists.Is_Null (N) then
+	    if My_Queues.Is_Null (N) then
 	       exit;
 	    end if;
 	    pragma Assert (Current = Previous + 1);
