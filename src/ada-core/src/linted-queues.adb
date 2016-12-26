@@ -87,7 +87,7 @@ package body Linted.Queues with
       Dummy : Element_T;
    begin
       Spare_Nodes.Insert (Dummy, N);
-      Wait_Lists.Broadcast (Triggers);
+      Wait_Lists.Signal (Triggers);
    end Free;
 
    procedure Allocate (N : out Node_Access) is

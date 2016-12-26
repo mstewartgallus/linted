@@ -60,6 +60,16 @@ package body Linted.Wait_Lists with
             Current_Trigger := Current_Trigger.Next_Trigger;
          end loop;
       end Broadcast;
+
+      procedure Signal is
+         Current_Trigger : STC_Node_Access;
+      begin
+         Current_Trigger := Head;
+
+	 if Current_Trigger /= null then
+            STC.Set_True (Current_Trigger.Trigger);
+         end if;
+      end Signal;
    end Wait_List;
 
    procedure Wait (W : in out Wait_List) is
@@ -74,4 +84,9 @@ package body Linted.Wait_Lists with
    begin
       W.Broadcast;
    end Broadcast;
+
+   procedure Signal (W : in out Wait_List) is
+   begin
+      W.Signal;
+   end Signal;
 end Linted.Wait_Lists;

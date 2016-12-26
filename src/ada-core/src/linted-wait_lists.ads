@@ -26,6 +26,9 @@ package Linted.Wait_Lists with
    procedure Broadcast (W : in out Wait_List) with
       Global => null,
       Depends => (W => W);
+   procedure Signal (W : in out Wait_List) with
+      Global => null,
+      Depends => (W => W);
 
 private
    pragma SPARK_Mode (Off);
@@ -43,6 +46,7 @@ private
       procedure Insert (N : STC_Node_Access);
       procedure Remove (N : STC_Node_Access);
       procedure Broadcast;
+      procedure Signal;
    private
       Head : STC_Node_Access;
    end Wait_List;

@@ -290,7 +290,7 @@ package body Linted.IO_Pool with
          CWQueues.Insert
            (My_Write_Command_Channel,
             (Object, Buf, Count, My_Event_Channel'Unchecked_Access));
-         Wait_Lists.Broadcast (Writer_Trigger);
+         Wait_Lists.Signal (Writer_Trigger);
       end Write;
    end Writer_Worker;
 
@@ -312,7 +312,7 @@ package body Linted.IO_Pool with
          CRQueues.Insert
            (My_Read_Command_Channel,
             (Object, Buf, Count, My_Event_Channel'Unchecked_Access));
-         Wait_Lists.Broadcast (Reader_Trigger);
+         Wait_Lists.Signal (Reader_Trigger);
       end Read;
    end Reader_Worker;
 
@@ -325,7 +325,7 @@ package body Linted.IO_Pool with
          CPQueues.Insert
            (My_Poller_Command_Channel,
             (Object, Events, My_Event_Channel'Unchecked_Access));
-         Wait_Lists.Broadcast (Poller_Trigger);
+         Wait_Lists.Signal (Poller_Trigger);
       end Poll;
 
       procedure Wait (Event : out Poller_Event) is
