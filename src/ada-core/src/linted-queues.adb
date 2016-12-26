@@ -35,8 +35,12 @@ package body Linted.Queues with
    Spare_Nodes : Queue;
    Triggers : STC_List;
 
-   procedure Wait (N : access STC_Node);
+   procedure Wait (N : access STC_Node) with
+      Pre => N /= null;
    procedure Broadcast;
+   procedure Free_Impl (N : in out Node_Access) with
+      Pre => Is_Free (N) and not Is_Null (N),
+      Post => Is_Null (N);
 
    function Is_Null (N : Node_Access) return Boolean is
    begin
@@ -151,10 +155,20 @@ package body Linted.Queues with
       Triggers.Broadcast;
    end Broadcast;
 
+   procedure Free_Impl (N : in out Node_Access) is
+      Dummy : Element_T;
+   begin
+      Spare_Nodes.Insert (Dummy, N);
+      Broadcast;
+   end Free_Impl;
+
    package body User with
         Spark_Mode => Off,
         Refined_State => (User_State => (Free_Objects_Trigger)) is
       Free_Objects_Trigger : aliased STC_Node;
+
+      procedure Allocate (N : out Node_Access) with
+         Post => Is_Free (N) and not Is_Null (N);
 
       procedure Allocate (N : out Node_Access) is
          Dummy : Element_T;
@@ -168,12 +182,28 @@ package body Linted.Queues with
          end loop;
       end Allocate;
 
-      procedure Free (N : in out Node_Access) is
-         Dummy : Element_T;
+      procedure Insert (Q : in out Queue; C : Element_T) is
+         N : Node_Access;
       begin
-         Spare_Nodes.Insert (Dummy, N);
-         Broadcast;
-      end Free;
+         Allocate (N);
+         Q.Insert (C, N);
+      end Insert;
+
+      procedure Remove
+        (Q : in out Queue;
+         C : out Element_T;
+         Init : out Boolean)
+      is
+         N : Node_Access;
+      begin
+         Q.Remove (C, N);
+         if N = null then
+            Init := False;
+         else
+            Free_Impl (N);
+            Init := True;
+         end if;
+      end Remove;
    end User;
 
 begin

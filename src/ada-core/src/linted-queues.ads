@@ -17,42 +17,23 @@ generic
 package Linted.Queues with
    Spark_Mode => On,
    Abstract_State => (State with External) is
-   type Node_Access is limited private;
-
-   function Is_Free (N : Node_Access) return Boolean;
-   function Is_Null (N : Node_Access) return Boolean;
+   type Queue is limited private;
 
    generic
    package User with
       Spark_Mode => On,
       Abstract_State => (User_State with External) is
-      procedure Allocate (N : out Node_Access) with
-         Global => (In_Out => State),
-         Depends => (State => State, N => State),
-         Post => Is_Free (N) and not Is_Null (N);
-      procedure Free (N : in out Node_Access) with
-         Global => (In_Out => State),
-         Depends => (State => (State, N), N => State),
-         Pre => Is_Free (N) and not Is_Null (N),
-         Post => Is_Null (N);
+      procedure Insert (Q : in out Queue; C : Element_T);
+      procedure Remove
+        (Q : in out Queue;
+         C : out Element_T;
+         Init : out Boolean);
    end User;
 
-   protected type Queue is
-      procedure Insert (C : Element_T; N : in out Node_Access) with
-         Global => null,
-         Depends => (Queue => (Queue, C, N), N => null),
-         Pre => not Is_Null (N) and Is_Free (N),
-         Post => Is_Null (N);
-      procedure Remove (C : out Element_T; N : out Node_Access) with
-         Global => null,
-         Depends => (Queue => Queue, C => Queue, N => Queue),
-         Post => Is_Free (N);
-   private
-      First : Node_Access;
-      Last : Node_Access;
-   end Queue;
 private
    pragma SPARK_Mode (Off);
+
+   type Node_Access;
 
    type Node;
 
@@ -67,4 +48,19 @@ private
       Tail : Atomic_Node_Access := null;
       In_Queue : Atomic_Boolean := False;
    end record;
+
+   function Is_Free (N : Node_Access) return Boolean;
+   function Is_Null (N : Node_Access) return Boolean;
+
+   protected type Queue is
+      procedure Insert (C : Element_T; N : in out Node_Access) with
+         Pre => not Is_Null (N) and Is_Free (N),
+         Post => Is_Null (N);
+      procedure Remove (C : out Element_T; N : out Node_Access) with
+         Post => Is_Free (N);
+   private
+      First : Node_Access;
+      Last : Node_Access;
+   end Queue;
+
 end Linted.Queues;

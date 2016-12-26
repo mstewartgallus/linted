@@ -64,7 +64,7 @@ package body Linted.IO_Pool is
         Spark_Mode => Off is
       task Writer_Task;
 
-      package Node_Pool is new CQueues.User;
+      package User is new CQueues.User;
 
       Writer_Trigger : STC.Suspension_Object;
       My_Command_Channel : CQueues.Queue;
@@ -80,33 +80,23 @@ package body Linted.IO_Pool is
          Buf : System.Address;
          Count : C.size_t)
       is
-         N : CQueues.Node_Access;
       begin
-	 Node_Pool.Allocate (N);
-         My_Command_Channel.Insert ((Object, Buf, Count), N);
+         User.Insert (My_Command_Channel, (Object, Buf, Count));
          STC.Set_True (Writer_Trigger);
       end Write;
 
       task body Writer_Task is
          New_Write_Command : Write_Command;
          Result : Libc.Sys.Types.ssize_t;
+	 Init : Boolean;
       begin
          loop
             STC.Suspend_Until_True (Writer_Trigger);
             loop
-               declare
-                  N : CQueues.Node_Access;
-               begin
-                  My_Command_Channel.Remove (New_Write_Command, N);
-                  if CQueues.Is_Null (N) then
-                     exit;
-                  end if;
-                  declare
-                     Dummy : Write_Command;
-                  begin
-                     Node_Pool.Free (N);
-                  end;
-               end;
+	       User.Remove (My_Command_Channel, New_Write_Command, Init);
+	       if not Init then
+		  exit;
+	       end if;
 
                declare
                   Err : C.int;
