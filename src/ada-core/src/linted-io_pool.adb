@@ -33,6 +33,7 @@ package body Linted.IO_Pool with
 
    type Writer_Event_Channel;
    type Read_Event_Channel;
+   type Poller_Event_Channel;
 
    type Write_Command is record
       Object : KOs.KO;
@@ -52,18 +53,20 @@ package body Linted.IO_Pool with
       Object : KOs.KO;
       Events : Poller_Event_Set :=
         (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
+      Replier : access Poller_Event_Channel;
    end record;
 
    package CWQueues is new Queues (Write_Command, 32);
-   package Writer_Event_Channels is new Linted.Channels (Writer_Event);
+   package Writer_Event_Channels is new Channels (Writer_Event);
    type Writer_Event_Channel is new Writer_Event_Channels.Channel;
 
    package CRQueues is new Queues (Read_Command, 32);
-   package Reader_Event_Channels is new Linted.Channels (Reader_Event);
+   package Reader_Event_Channels is new Channels (Reader_Event);
    type Read_Event_Channel is new Reader_Event_Channels.Channel;
 
-   package Poller_Command_Channels is new Linted.Channels (Poller_Command);
-   package Poller_Event_Channels is new Linted.Channels (Poller_Event);
+   package CPQueues is new Queues (Poller_Command, 32);
+   package Poller_Event_Channels is new Channels (Poller_Event);
+   type Poller_Event_Channel is new Poller_Event_Channels.Channel;
 
    Writer_Trigger : Wait_Lists.Wait_List;
    My_Write_Command_Channel : CWQueues.Queue;
@@ -71,11 +74,16 @@ package body Linted.IO_Pool with
    Reader_Trigger : Wait_Lists.Wait_List;
    My_Read_Command_Channel : CRQueues.Queue;
 
+   Poller_Trigger : Wait_Lists.Wait_List;
+   My_Poller_Command_Channel : CPQueues.Queue;
+
    task type Writer_Task;
    task type Reader_Task;
+   task type Poller_Task;
 
    Writer_Tasks : array (1 .. 8) of Writer_Task;
    Reader_Tasks : array (1 .. 8) of Reader_Task;
+   Poller_Tasks : array (1 .. 8) of Poller_Task;
 
    task body Writer_Task is
       New_Write_Command : Write_Command;
@@ -182,72 +190,20 @@ package body Linted.IO_Pool with
       end loop;
    end Reader_Task;
 
-   package body Writer_Worker with
-        Spark_Mode => Off is
-      My_Event_Channel : aliased Writer_Event_Channel;
-
-      procedure Wait (Event : out Writer_Event) is
-      begin
-         My_Event_Channel.Pop (Event);
-      end Wait;
-
-      procedure Write
-        (Object : KOs.KO;
-         Buf : System.Address;
-         Count : C.size_t)
-      is
-      begin
-         CWQueues.Insert
-           (My_Write_Command_Channel,
-            (Object, Buf, Count, My_Event_Channel'Unchecked_Access));
-         Wait_Lists.Broadcast (Writer_Trigger);
-      end Write;
-   end Writer_Worker;
-
-   package body Reader_Worker with
-        Spark_Mode => Off is
-      My_Event_Channel : aliased Read_Event_Channel;
-
-      procedure Wait (Event : out Reader_Event) is
-      begin
-         My_Event_Channel.Pop (Event);
-      end Wait;
-
-      procedure Read
-        (Object : KOs.KO;
-         Buf : System.Address;
-         Count : C.size_t)
-      is
-      begin
-         CRQueues.Insert
-           (My_Read_Command_Channel,
-            (Object, Buf, Count, My_Event_Channel'Unchecked_Access));
-         Wait_Lists.Broadcast (Reader_Trigger);
-      end Read;
-   end Reader_Worker;
-
-   package body Poller_Worker with
-        Spark_Mode => Off is
-      task Poller_Task;
-
-      My_Command_Channel : Poller_Command_Channels.Channel;
-      My_Event_Channel : Poller_Event_Channels.Channel;
-
-      procedure Poll (Object : KOs.KO; Events : Poller_Event_Set) is
-      begin
-         My_Command_Channel.Push ((Object, Events));
-      end Poll;
-
-      procedure Wait (Event : out Poller_Event) is
-      begin
-         My_Event_Channel.Pop (Event);
-      end Wait;
-
-      task body Poller_Task is
-         New_Poller_Command : Poller_Command;
-      begin
+   task body Poller_Task is
+      New_Poller_Command : Poller_Command;
+      Init : Boolean;
+   begin
+      loop
+         Wait_Lists.Wait (Poller_Trigger);
          loop
-            My_Command_Channel.Pop (New_Poller_Command);
+            CPQueues.Remove
+              (My_Poller_Command_Channel,
+               New_Poller_Command,
+               Init);
+            if not Init then
+               exit;
+            end if;
 
             declare
                Err : C.int;
@@ -257,6 +213,8 @@ package body Linted.IO_Pool with
                  New_Poller_Command.Events;
                Heard_Events : Poller_Event_Set :=
                  (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
+               Replier : constant access Poller_Event_Channel :=
+                 New_Poller_Command.Replier;
 
                Nfds : C.int;
             begin
@@ -307,10 +265,72 @@ package body Linted.IO_Pool with
                   end if;
                end loop;
 
-               My_Event_Channel.Push
+               Replier.Push
                  ((Err => Errors.Error (Err), Events => Heard_Events));
             end;
          end loop;
-      end Poller_Task;
+      end loop;
+   end Poller_Task;
+
+   package body Writer_Worker with
+        Spark_Mode => Off is
+      My_Event_Channel : aliased Writer_Event_Channel;
+
+      procedure Wait (Event : out Writer_Event) is
+      begin
+         My_Event_Channel.Pop (Event);
+      end Wait;
+
+      procedure Write
+        (Object : KOs.KO;
+         Buf : System.Address;
+         Count : C.size_t)
+      is
+      begin
+         CWQueues.Insert
+           (My_Write_Command_Channel,
+            (Object, Buf, Count, My_Event_Channel'Unchecked_Access));
+         Wait_Lists.Broadcast (Writer_Trigger);
+      end Write;
+   end Writer_Worker;
+
+   package body Reader_Worker with
+        Spark_Mode => Off is
+      My_Event_Channel : aliased Read_Event_Channel;
+
+      procedure Wait (Event : out Reader_Event) is
+      begin
+         My_Event_Channel.Pop (Event);
+      end Wait;
+
+      procedure Read
+        (Object : KOs.KO;
+         Buf : System.Address;
+         Count : C.size_t)
+      is
+      begin
+         CRQueues.Insert
+           (My_Read_Command_Channel,
+            (Object, Buf, Count, My_Event_Channel'Unchecked_Access));
+         Wait_Lists.Broadcast (Reader_Trigger);
+      end Read;
+   end Reader_Worker;
+
+   package body Poller_Worker with
+        Spark_Mode => Off is
+      My_Event_Channel : aliased Poller_Event_Channel;
+
+      procedure Poll (Object : KOs.KO; Events : Poller_Event_Set) is
+      begin
+         CPQueues.Insert
+           (My_Poller_Command_Channel,
+            (Object, Events, My_Event_Channel'Unchecked_Access));
+         Wait_Lists.Broadcast (Poller_Trigger);
+      end Poll;
+
+      procedure Wait (Event : out Poller_Event) is
+      begin
+         My_Event_Channel.Pop (Event);
+      end Wait;
    end Poller_Worker;
 end Linted.IO_Pool;
