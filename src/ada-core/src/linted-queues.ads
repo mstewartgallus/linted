@@ -47,6 +47,7 @@ private
    type Atomic_Node_Access is access all Node with
         Atomic;
    type Node_Access is access all Node;
+   type Node_Not_Null_Access is not null access all Node;
 
    type Node is record
       Contents : Element_T;
@@ -54,15 +55,14 @@ private
       In_Queue : Atomic_Boolean := False;
    end record;
 
-   function Is_Free (N : Node_Access) return Boolean;
-   function Is_Null (N : Node_Access) return Boolean;
+   function Is_Free (N : Node_Not_Null_Access) return Boolean;
 
    protected type Queue is
-      procedure Insert (C : Element_T; N : in out Node_Access) with
-         Pre => not Is_Null (N) and Is_Free (N),
-         Post => Is_Null (N);
-      procedure Remove (C : out Element_T; N : out Node_Access) with
-         Post => Is_Free (N);
+      procedure Insert (N : Node_Not_Null_Access) with
+         Pre => Is_Free (N);
+      procedure Remove (N : out Node_Access) with
+         Post =>
+         (if N /= null then Is_Free (Node_Not_Null_Access (N)) else True);
    private
       First : Node_Access;
       Last : Node_Access;

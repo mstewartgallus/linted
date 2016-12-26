@@ -23,46 +23,33 @@ package body Linted.Queues with
    Spare_Nodes : Queue;
    Triggers : Wait_Lists.Wait_List;
 
-   procedure Allocate (N : out Node_Access) with
-      Post => Is_Free (N) and not Is_Null (N);
-   procedure Free (N : in out Node_Access) with
-      Pre => Is_Free (N) and not Is_Null (N),
-      Post => Is_Null (N);
+   procedure Allocate (N : out Node_Not_Null_Access) with
+      Post => Is_Free (N);
+   procedure Free (N : Node_Not_Null_Access) with
+      Pre => Is_Free (N);
 
-   function Is_Null (N : Node_Access) return Boolean is
+   function Is_Free (N : Node_Not_Null_Access) return Boolean is
    begin
-      return N = null;
-   end Is_Null;
-
-   function Is_Free (N : Node_Access) return Boolean is
-   begin
-      if N = null then
-         return True;
-      end if;
       return not Boolean (N.In_Queue);
    end Is_Free;
 
    protected body Queue is
-      procedure Insert (C : Element_T; N : in out Node_Access) is
-         Input : Node_Access;
+      procedure Insert (N : Node_Not_Null_Access) is
       begin
-         Input := N;
-         N := null;
-         pragma Assert (not Input.In_Queue);
-         pragma Assert (Input.Tail = null);
+         pragma Assert (not N.In_Queue);
+         pragma Assert (N.Tail = null);
 
-         Input.In_Queue := True;
-         Input.Contents := C;
+         N.In_Queue := True;
 
          if First = null or Last = null then
-            First := Input;
+            First := Node_Access (N);
          else
-            Last.Tail := Atomic_Node_Access (Input);
+            Last.Tail := Atomic_Node_Access (N);
          end if;
-         Last := Input;
+         Last := Node_Access (N);
       end Insert;
 
-      procedure Remove (C : out Element_T; N : out Node_Access) is
+      procedure Remove (N : out Node_Access) is
       begin
          if First = null or Last = null then
             N := null;
@@ -76,37 +63,42 @@ package body Linted.Queues with
                Removed.In_Queue := False;
                Removed.Tail := null;
 
-               C := Removed.Contents;
                N := Removed;
             end;
          end if;
       end Remove;
    end Queue;
 
-   procedure Free (N : in out Node_Access) is
+   procedure Free (N : Node_Not_Null_Access) is
       Dummy : Element_T;
    begin
-      Spare_Nodes.Insert (Dummy, N);
+      N.Contents := Dummy;
+      Spare_Nodes.Insert (N);
       Wait_Lists.Signal (Triggers);
    end Free;
 
-   procedure Allocate (N : out Node_Access) is
+   procedure Allocate (N : out Node_Not_Null_Access) is
       Dummy : Element_T;
+      Removed : Node_Access;
    begin
       loop
-         Spare_Nodes.Remove (Dummy, N);
-         if N /= null then
+         Spare_Nodes.Remove (Removed);
+         if Removed /= null then
             exit;
          end if;
 	 Wait_Lists.Wait (Triggers);
       end loop;
+      N := Node_Not_Null_Access (Removed);
+      N.Contents := Dummy;
    end Allocate;
 
    procedure Insert (Q : in out Queue; C : Element_T) is
-      N : Node_Access;
+      Dummy : aliased Node;
+      N : Node_Not_Null_Access := Dummy'Unchecked_Access;
    begin
       Allocate (N);
-      Q.Insert (C, N);
+      N.Contents := C;
+      Q.Insert (N);
    end Insert;
 
    procedure Remove
@@ -114,12 +106,16 @@ package body Linted.Queues with
       C : out Element_T;
       Init : out Boolean)
    is
-      N : Node_Access;
+      Removed : Node_Access;
+      Dummy : aliased Node;
+      N : Node_Not_Null_Access := Dummy'Unchecked_Access;
    begin
-      Q.Remove (C, N);
-      if N = null then
+      Q.Remove (Removed);
+      if Removed = null then
          Init := False;
       else
+	 N := Node_Not_Null_Access (Removed);
+	 C := N.Contents;
          Free (N);
          Init := True;
       end if;
@@ -128,10 +124,9 @@ package body Linted.Queues with
 begin
    for II in Contents'Range loop
       declare
-         N : Node_Access := Contents (II)'Unchecked_Access;
-         Dummy : Element_T;
+         N : Node_Not_Null_Access := Contents (II)'Unchecked_Access;
       begin
-         Spare_Nodes.Insert (Dummy, N);
+         Spare_Nodes.Insert (N);
       end;
    end loop;
 end Linted.Queues;

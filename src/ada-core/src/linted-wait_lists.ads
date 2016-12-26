@@ -35,6 +35,7 @@ private
 
    type STC_Node;
 
+   type STC_Node_Nonnull_Access is not null access all STC_Node;
    type STC_Node_Access is access all STC_Node;
 
    type STC_Node is record
@@ -43,8 +44,8 @@ private
    end record;
 
    protected type Wait_List is
-      procedure Insert (N : STC_Node_Access);
-      procedure Remove (N : STC_Node_Access);
+      procedure Insert (N : STC_Node_Nonnull_Access);
+      procedure Remove (N : STC_Node_Nonnull_Access);
       procedure Broadcast;
       procedure Signal;
    private

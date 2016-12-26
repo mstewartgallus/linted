@@ -16,34 +16,31 @@ package body Linted.Wait_Lists with
    package STC renames Ada.Synchronous_Task_Control;
 
    protected body Wait_List is
-      procedure Insert (N : STC_Node_Access) is
+      procedure Insert (N : STC_Node_Nonnull_Access) is
       begin
          N.Next_Trigger := Head;
-         Head := N;
+         Head := STC_Node_Access (N);
       end Insert;
 
-      procedure Remove (N : STC_Node_Access) is
-         Last : STC_Node_Access;
-         Current_Trigger : STC_Node_Access;
+      procedure Remove (N : STC_Node_Nonnull_Access) is
+         Current_Trigger : STC_Node_Nonnull_Access :=
+           STC_Node_Nonnull_Access (Head);
       begin
-         Last := null;
-         Current_Trigger := Head;
-
-         pragma Assert (Current_Trigger /= null);
-
          if Current_Trigger = N then
             Head := Current_Trigger.Next_Trigger;
          else
             loop
-               Last := Current_Trigger;
-               Current_Trigger := Current_Trigger.Next_Trigger;
+               declare
+                  Last : STC_Node_Nonnull_Access := Current_Trigger;
+               begin
+                  Current_Trigger :=
+                    STC_Node_Nonnull_Access (Current_Trigger.Next_Trigger);
 
-               pragma Assert (Current_Trigger /= null);
-
-               if Current_Trigger = N then
-                  Last.Next_Trigger := Current_Trigger.Next_Trigger;
-                  exit;
-               end if;
+                  if Current_Trigger = N then
+                     Last.Next_Trigger := Current_Trigger.Next_Trigger;
+                     exit;
+                  end if;
+               end;
             end loop;
          end if;
       end Remove;
@@ -66,7 +63,7 @@ package body Linted.Wait_Lists with
       begin
          Current_Trigger := Head;
 
-	 if Current_Trigger /= null then
+         if Current_Trigger /= null then
             STC.Set_True (Current_Trigger.Trigger);
          end if;
       end Signal;
