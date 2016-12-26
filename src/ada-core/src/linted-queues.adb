@@ -107,17 +107,18 @@ package body Linted.Queues with
       Init : out Boolean)
    is
       Removed : Node_Access;
-      Dummy : aliased Node;
-      N : Node_Not_Null_Access := Dummy'Unchecked_Access;
    begin
       Q.Remove (Removed);
       if Removed = null then
          Init := False;
       else
-	 N := Node_Not_Null_Access (Removed);
-	 C := N.Contents;
-         Free (N);
-         Init := True;
+	 declare
+	    N : Node_Not_Null_Access := Node_Not_Null_Access (Removed);
+	 begin
+	    C := N.Contents;
+	    Free (N);
+	    Init := True;
+	 end;
       end if;
    end Remove;
 

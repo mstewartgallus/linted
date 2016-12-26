@@ -35,25 +35,31 @@ package body Linted.IO_Pool with
    type Read_Event_Channel;
    type Poller_Event_Channel;
 
+   type Writer_Event_Channel_Access is
+     not null access all Writer_Event_Channel;
+   type Read_Event_Channel_Access is not null access all Read_Event_Channel;
+   type Poller_Event_Channel_Access is
+     not null access all Poller_Event_Channel;
+
    type Write_Command is record
       Object : KOs.KO;
       Buf : System.Address := System.Null_Address;
       Count : C.size_t := 0;
-      Replier : access Writer_Event_Channel;
+      Replier : Writer_Event_Channel_Access;
    end record;
 
    type Read_Command is record
       Object : KOs.KO;
       Buf : System.Address := System.Null_Address;
       Count : C.size_t := 0;
-      Replier : access Read_Event_Channel;
+      Replier : Read_Event_Channel_Access;
    end record;
 
    type Poller_Command is record
       Object : KOs.KO;
       Events : Poller_Event_Set :=
         (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
-      Replier : access Poller_Event_Channel;
+      Replier : Poller_Event_Channel_Access;
    end record;
 
    type Command_Type is (Invalid_Type, Write_Type, Read_Type, Poll_Type);
@@ -89,6 +95,10 @@ package body Linted.IO_Pool with
 
    Worker_Tasks : array (1 .. 16) of Worker_Task;
 
+   procedure Do_Write (W : Write_Command);
+   procedure Do_Read (R : Read_Command);
+   procedure Do_Poll (P : Poller_Command);
+
    task body Worker_Task is
       New_Command : Command;
       Init : Boolean;
@@ -106,164 +116,141 @@ package body Linted.IO_Pool with
                   raise Program_Error;
 
                when Write_Type =>
-                  declare
-                     New_Write_Command : Write_Command :=
-                       New_Command.Write_Object;
+                  Do_Write (New_Command.Write_Object);
 
-                     Err : C.int;
-                     Bytes_Written : C.size_t := 0;
-
-                     Object : constant KOs.KO := New_Write_Command.Object;
-                     Buf : constant System.Address := New_Write_Command.Buf;
-                     Count : constant C.size_t := New_Write_Command.Count;
-                     Replier : constant access Writer_Event_Channel :=
-                       New_Write_Command.Replier;
-                     Result : Libc.Sys.Types.ssize_t;
-                  begin
-                     loop
-                        Result :=
-                          Libc.Unistd.write
-                            (C.int (Object),
-                             Buf,
-                             Count - Bytes_Written);
-                        if Result < 0 then
-                           Err := Libc.Errno.Errno;
-                           if Err /= Libc.Errno.POSIX_2008.EINTR then
-                              exit;
-                           end if;
-                        else
-                           Err := 0;
-                           Bytes_Written := Bytes_Written + C.size_t (Result);
-                           if Bytes_Written = Count then
-                              exit;
-                           end if;
-                        end if;
-                     end loop;
-
-                     Replier.Push
-                       (Writer_Event'
-                          (Err => Errors.Error (Err),
-                           Bytes_Written => Bytes_Written));
-                  end;
                when Read_Type =>
-                  declare
-                     New_Read_Command : Read_Command :=
-                       New_Command.Read_Object;
-
-                     Err : C.int;
-                     Bytes_Read : C.size_t := 0;
-
-                     Object : constant KOs.KO := New_Read_Command.Object;
-                     Buf : constant System.Address := New_Read_Command.Buf;
-                     Count : constant C.size_t := New_Read_Command.Count;
-                     Replier : constant access Read_Event_Channel :=
-                       New_Read_Command.Replier;
-
-                     Result : Libc.Sys.Types.ssize_t;
-                  begin
-                     loop
-                        Result :=
-                          Libc.Unistd.read
-                            (C.int (Object),
-                             Buf,
-                             Count - Bytes_Read);
-                        if Result < 0 then
-                           Err := Errno.Errno;
-                           if Err /= Libc.Errno.POSIX_2008.EINTR then
-                              exit;
-                           end if;
-                        elsif 0 = Result then
-                           Err := 0;
-                           exit;
-                        else
-                           Err := 0;
-                           Bytes_Read := Bytes_Read + C.size_t (Result);
-                           if Bytes_Read = Count then
-                              exit;
-                           end if;
-                        end if;
-                     end loop;
-
-                     Replier.Push
-                       ((Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
-                  end;
-
+                  Do_Read (New_Command.Read_Object);
                when Poll_Type =>
-
-                  declare
-                     New_Poller_Command : Poller_Command :=
-                       New_Command.Poll_Object;
-
-                     Err : C.int;
-
-                     Object : constant KOs.KO := New_Poller_Command.Object;
-                     Listen_Events : constant Poller_Event_Set :=
-                       New_Poller_Command.Events;
-                     Heard_Events : Poller_Event_Set :=
-                       (Poller_Event_Type'First .. Poller_Event_Type'Last =>
-                          False);
-                     Replier : constant access Poller_Event_Channel :=
-                       New_Poller_Command.Replier;
-
-                     Nfds : C.int;
-                  begin
-                     loop
-                        declare
-                           Pollfd : aliased Libc.Sys.Poll.pollfd :=
-                             (Interfaces.C.int (Object), 0, 0);
-                        begin
-                           if Listen_Events (Readable) then
-                              Pollfd.events :=
-                                Interfaces.C.short
-                                  (Interfaces.C.unsigned (Pollfd.events) or
-                                   Libc.Sys.Poll.POLLIN);
-                           end if;
-                           if Listen_Events (Writable) then
-                              Pollfd.events :=
-                                Interfaces.C.short
-                                  (Interfaces.C.unsigned (Pollfd.events) or
-                                   Libc.Sys.Poll.POLLOUT);
-                           end if;
-
-                           Nfds :=
-                             Libc.Sys.Poll.poll
-                               (Pollfd'Unchecked_Access,
-                                1,
-                                -1);
-
-                           if
-                             (Interfaces.C.unsigned (Pollfd.events) and
-                              Libc.Sys.Poll.POLLIN) >
-                             0
-                           then
-                              Heard_Events (Readable) := True;
-                           end if;
-                           if
-                             (Interfaces.C.unsigned (Pollfd.events) and
-                              Libc.Sys.Poll.POLLOUT) >
-                             0
-                           then
-                              Heard_Events (Writable) := True;
-                           end if;
-                        end;
-                        if Nfds < 0 then
-                           Err := Errno.Errno;
-                           if Err /= Libc.Errno.POSIX_2008.EINTR then
-                              exit;
-                           end if;
-                        else
-                           Err := 0;
-                           exit;
-                        end if;
-                     end loop;
-
-                     Replier.Push
-                       ((Err => Errors.Error (Err), Events => Heard_Events));
-                  end;
+                  Do_Poll (New_Command.Poll_Object);
             end case;
          end loop;
       end loop;
    end Worker_Task;
+
+   procedure Do_Write (W : Write_Command) is
+      Err : C.int;
+      Bytes_Written : C.size_t := 0;
+
+      Object : constant KOs.KO := W.Object;
+      Buf : constant System.Address := W.Buf;
+      Count : constant C.size_t := W.Count;
+      Replier : constant Writer_Event_Channel_Access := W.Replier;
+      Result : Libc.Sys.Types.ssize_t;
+   begin
+      loop
+         Result :=
+           Libc.Unistd.write (C.int (Object), Buf, Count - Bytes_Written);
+         if Result < 0 then
+            Err := Libc.Errno.Errno;
+            if Err /= Libc.Errno.POSIX_2008.EINTR then
+               exit;
+            end if;
+         else
+            Err := 0;
+            Bytes_Written := Bytes_Written + C.size_t (Result);
+            if Bytes_Written = Count then
+               exit;
+            end if;
+         end if;
+      end loop;
+
+      Replier.Push
+        (Writer_Event'
+           (Err => Errors.Error (Err), Bytes_Written => Bytes_Written));
+   end Do_Write;
+
+   procedure Do_Read (R : Read_Command) is
+      Err : C.int;
+      Bytes_Read : C.size_t := 0;
+
+      Object : constant KOs.KO := R.Object;
+      Buf : constant System.Address := R.Buf;
+      Count : constant C.size_t := R.Count;
+      Replier : constant Read_Event_Channel_Access := R.Replier;
+
+      Result : Libc.Sys.Types.ssize_t;
+   begin
+      loop
+         Result := Libc.Unistd.read (C.int (Object), Buf, Count - Bytes_Read);
+         if Result < 0 then
+            Err := Errno.Errno;
+            if Err /= Libc.Errno.POSIX_2008.EINTR then
+               exit;
+            end if;
+         elsif 0 = Result then
+            Err := 0;
+            exit;
+         else
+            Err := 0;
+            Bytes_Read := Bytes_Read + C.size_t (Result);
+            if Bytes_Read = Count then
+               exit;
+            end if;
+         end if;
+      end loop;
+
+      Replier.Push ((Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
+   end Do_Read;
+
+   procedure Do_Poll (P : Poller_Command) is
+      Err : C.int;
+
+      Object : constant KOs.KO := P.Object;
+      Listen_Events : constant Poller_Event_Set := P.Events;
+      Heard_Events : Poller_Event_Set :=
+        (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
+      Replier : constant Poller_Event_Channel_Access := P.Replier;
+
+      Nfds : C.int;
+   begin
+      loop
+         declare
+            Pollfd : aliased Libc.Sys.Poll.pollfd :=
+              (Interfaces.C.int (Object), 0, 0);
+         begin
+            if Listen_Events (Readable) then
+               Pollfd.events :=
+                 Interfaces.C.short
+                   (Interfaces.C.unsigned (Pollfd.events) or
+                    Libc.Sys.Poll.POLLIN);
+            end if;
+            if Listen_Events (Writable) then
+               Pollfd.events :=
+                 Interfaces.C.short
+                   (Interfaces.C.unsigned (Pollfd.events) or
+                    Libc.Sys.Poll.POLLOUT);
+            end if;
+
+            Nfds := Libc.Sys.Poll.poll (Pollfd'Unchecked_Access, 1, -1);
+
+            if
+              (Interfaces.C.unsigned (Pollfd.events) and
+               Libc.Sys.Poll.POLLIN) >
+              0
+            then
+               Heard_Events (Readable) := True;
+            end if;
+            if
+              (Interfaces.C.unsigned (Pollfd.events) and
+               Libc.Sys.Poll.POLLOUT) >
+              0
+            then
+               Heard_Events (Writable) := True;
+            end if;
+         end;
+         if Nfds < 0 then
+            Err := Errno.Errno;
+            if Err /= Libc.Errno.POSIX_2008.EINTR then
+               exit;
+            end if;
+         else
+            Err := 0;
+            exit;
+         end if;
+      end loop;
+
+      Replier.Push ((Err => Errors.Error (Err), Events => Heard_Events));
+   end Do_Poll;
 
    package body Writer_Worker with
         Spark_Mode => Off is
