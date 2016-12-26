@@ -27,25 +27,17 @@ package body Linted.Tests is
       Previous : Integer := -1;
    begin
       for II in 1 .. Len loop
-	 declare
-	    N : My_Queues.Node_Access;
-	 begin
-	    My_User.Allocate (N);
-	    if My_Queues.Is_Null (N) then
-	       exit;
-	    end if;
-	    L.Insert (X, N);
-	    X := X + 1;
-	 end;
+	 My_User.Insert (L, X);
+	 X := X + 1;
       end loop;
 
       loop
 	 declare
-	    N : My_Queues.Node_Access;
 	    Current : Integer;
+	    Init : Boolean;
 	 begin
-	    L.Remove (Current, N);
-	    if My_Queues.Is_Null (N) then
+	    My_User.Remove (L, Current, Init);
+	    if not Init then
 	       exit;
 	    end if;
 	    pragma Assert (Current = Previous + 1);
