@@ -22,11 +22,18 @@ package Linted.Queues with
    type Queue is limited private;
 
    procedure Insert (Q : in out Queue; C : Element_T) with
-     Global => (In_Out => State),
-     Depends => (State => (Q, C), Q => (State, Q, C));
-   procedure Remove (Q : in out Queue; C : out Element_T; Init : out Boolean) with
-     Global => (In_Out => State),
-     Depends => (State => Q, Q => (State, Q), C => (State, Q), Init => (State, Q));
+      Global => (In_Out => State),
+      Depends => (State => (Q, C), Q => (State, Q, C));
+   procedure Remove
+     (Q : in out Queue;
+      C : out Element_T;
+      Init : out Boolean) with
+      Global => (In_Out => State),
+      Depends =>
+      (State => Q,
+       Q => (State, Q),
+       C => (State, Q),
+       Init => (State, Q));
 
 private
    pragma SPARK_Mode (Off);
