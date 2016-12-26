@@ -14,8 +14,29 @@
 with Ada.Synchronous_Task_Control;
 
 package body Linted.Queues with
-     Spark_Mode => Off is
+     Spark_Mode => Off,
+     Refined_State => (State => (Contents, Spare_Nodes, Triggers)) is
    package STC renames Ada.Synchronous_Task_Control;
+
+   type STC_Node is record
+      Trigger : STC.Suspension_Object;
+      Next_Trigger : access STC_Node;
+   end record;
+
+   protected type STC_List is
+      procedure Insert (N : access STC_Node);
+      procedure Remove (N : access STC_Node);
+      procedure Broadcast;
+   private
+      Head : access STC_Node;
+   end STC_List;
+
+   Contents : array (1 .. Max_Nodes_In_Flight) of aliased Node;
+   Spare_Nodes : Queue;
+   Triggers : STC_List;
+
+   procedure Wait (N : access STC_Node);
+   procedure Broadcast;
 
    function Is_Null (N : Node_Access) return Boolean is
    begin
@@ -71,56 +92,43 @@ package body Linted.Queues with
       end Remove;
    end Queue;
 
-   type STC_Node is record
-      Trigger : STC.Suspension_Object;
-      Next_Trigger : access STC_Node;
-   end record;
-
-   protected type STC_List is
-      procedure Insert (N : access STC_Node);
-      procedure Remove (N : access STC_Node);
-      procedure Broadcast;
-   private
-      Head : access STC_Node;
-   end STC_List;
-
    protected body STC_List is
       procedure Insert (N : access STC_Node) is
       begin
-	 N.Next_Trigger := Head;
+         N.Next_Trigger := Head;
          Head := N;
       end Insert;
 
       procedure Remove (N : access STC_Node) is
-	 Last : access STC_Node;
+         Last : access STC_Node;
          Current_Trigger : access STC_Node;
       begin
-	 Last := null;
-	 Current_Trigger := Head;
+         Last := null;
+         Current_Trigger := Head;
 
-	 pragma Assert (Current_Trigger /= null);
+         pragma Assert (Current_Trigger /= null);
 
-	 if Current_Trigger = N then
-	    Head := Current_Trigger.Next_Trigger;
-	 else
-	    loop
-	       Last := Current_Trigger;
-	       Current_Trigger := Current_Trigger.Next_Trigger;
+         if Current_Trigger = N then
+            Head := Current_Trigger.Next_Trigger;
+         else
+            loop
+               Last := Current_Trigger;
+               Current_Trigger := Current_Trigger.Next_Trigger;
 
-	       pragma Assert (Current_Trigger /= null);
+               pragma Assert (Current_Trigger /= null);
 
-	       if Current_Trigger = N then
-		  Last.Next_Trigger := Current_Trigger.Next_Trigger;
-		  exit;
-	       end if;
-	    end loop;
-	 end if;
+               if Current_Trigger = N then
+                  Last.Next_Trigger := Current_Trigger.Next_Trigger;
+                  exit;
+               end if;
+            end loop;
+         end if;
       end Remove;
 
       procedure Broadcast is
          Current_Trigger : access STC_Node;
       begin
-	 Current_Trigger := Head;
+         Current_Trigger := Head;
          loop
             if null = Current_Trigger then
                exit;
@@ -131,61 +139,50 @@ package body Linted.Queues with
       end Broadcast;
    end STC_List;
 
-   package body Pool with
-        Refined_State => (State => (Triggers, Spare_Nodes, Contents)),
-        Spark_Mode => Off is
-
-      Contents : array (1 .. Initial_Count) of aliased Node;
-      Spare_Nodes : Queue;
-      Triggers : STC_List;
-
-      procedure Wait (N : access STC_Node);
-      procedure Broadcast;
-
-      procedure Wait (N : access STC_Node) is
-      begin
-	 Triggers.Insert (N);
-	 STC.Suspend_Until_True (N.Trigger);
-	 Triggers.Remove (N);
-      end Wait;
-
-      procedure Broadcast is
-      begin
-	 Triggers.Broadcast;
-      end Broadcast;
-
-      package body User with
-           Spark_Mode => Off,
-           Refined_State => (User_State => (Free_Objects_Trigger)) is
-         Free_Objects_Trigger : aliased STC_Node;
-
-         procedure Allocate (N : out Node_Access) is
-            Dummy : Element_T;
-         begin
-            loop
-               Spare_Nodes.Remove (Dummy, N);
-               if N /= null then
-                  exit;
-               end if;
-               Wait (Free_Objects_Trigger'Unchecked_Access);
-            end loop;
-         end Allocate;
-
-         procedure Free (N : in out Node_Access) is
-            Dummy : Element_T;
-         begin
-            Spare_Nodes.Insert (Dummy, N);
-            Broadcast;
-         end Free;
-      end User;
+   procedure Wait (N : access STC_Node) is
    begin
-      for II in Contents'Range loop
-         declare
-            N : Node_Access := Contents (II)'Unchecked_Access;
-            Dummy : Element_T;
-         begin
-            Spare_Nodes.Insert (Dummy, N);
-         end;
-      end loop;
-   end Pool;
+      Triggers.Insert (N);
+      STC.Suspend_Until_True (N.Trigger);
+      Triggers.Remove (N);
+   end Wait;
+
+   procedure Broadcast is
+   begin
+      Triggers.Broadcast;
+   end Broadcast;
+
+   package body User with
+        Spark_Mode => Off,
+        Refined_State => (User_State => (Free_Objects_Trigger)) is
+      Free_Objects_Trigger : aliased STC_Node;
+
+      procedure Allocate (N : out Node_Access) is
+         Dummy : Element_T;
+      begin
+         loop
+            Spare_Nodes.Remove (Dummy, N);
+            if N /= null then
+               exit;
+            end if;
+            Wait (Free_Objects_Trigger'Unchecked_Access);
+         end loop;
+      end Allocate;
+
+      procedure Free (N : in out Node_Access) is
+         Dummy : Element_T;
+      begin
+         Spare_Nodes.Insert (Dummy, N);
+         Broadcast;
+      end Free;
+   end User;
+
+begin
+   for II in Contents'Range loop
+      declare
+         N : Node_Access := Contents (II)'Unchecked_Access;
+         Dummy : Element_T;
+      begin
+         Spare_Nodes.Insert (Dummy, N);
+      end;
+   end loop;
 end Linted.Queues;

@@ -17,9 +17,8 @@ with Linted.Last_Chance;
 package body Linted.Tests is
    Len : constant := 20;
 
-   package My_Queues is new Linted.Queues (Integer);
-   package My_Pool is new My_Queues.Pool (Len);
-   package My_User is new My_Pool.User;
+   package My_Queues is new Linted.Queues (Integer, Len);
+   package My_User is new My_Queues.User;
 
    L : My_Queues.Queue;
 

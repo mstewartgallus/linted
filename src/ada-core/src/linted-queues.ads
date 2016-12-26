@@ -13,33 +13,29 @@
 -- permissions and limitations under the License.
 generic
    type Element_T is private;
+   Max_Nodes_In_Flight : Positive;
 package Linted.Queues with
-   Spark_Mode => On is
+   Spark_Mode => On,
+   Abstract_State => (State with External) is
    type Node_Access is limited private;
 
    function Is_Free (N : Node_Access) return Boolean;
    function Is_Null (N : Node_Access) return Boolean;
 
    generic
-      Initial_Count : Positive;
-   package Pool with
-      Abstract_State => (State with External),
-      Spark_Mode => On is
-      generic
-      package User with
-         Spark_Mode => On,
-         Abstract_State => (User_State with External) is
-         procedure Allocate (N : out Node_Access) with
-            Global => (In_Out => State),
-            Depends => (State => State, N => State),
-            Post => Is_Free (N) and not Is_Null (N);
-         procedure Free (N : in out Node_Access) with
-            Global => (In_Out => State),
-            Depends => (State => (State, N), N => State),
-            Pre => Is_Free (N) and not Is_Null (N),
-            Post => Is_Null (N);
-      end User;
-   end Pool;
+   package User with
+      Spark_Mode => On,
+      Abstract_State => (User_State with External) is
+      procedure Allocate (N : out Node_Access) with
+         Global => (In_Out => State),
+         Depends => (State => State, N => State),
+         Post => Is_Free (N) and not Is_Null (N);
+      procedure Free (N : in out Node_Access) with
+         Global => (In_Out => State),
+         Depends => (State => (State, N), N => State),
+         Pre => Is_Free (N) and not Is_Null (N),
+         Post => Is_Null (N);
+   end User;
 
    protected type Queue is
       procedure Insert (C : Element_T; N : in out Node_Access) with

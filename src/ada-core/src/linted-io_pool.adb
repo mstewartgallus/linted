@@ -58,15 +58,13 @@ package body Linted.IO_Pool is
    package Poller_Command_Channels is new Linted.Channels (Poller_Command);
    package Poller_Event_Channels is new Linted.Channels (Poller_Event);
 
-   package CQueues is new Queues (Write_Command);
-
-   package Writer_Node_Pool is new CQueues.Pool (32);
+   package CQueues is new Queues (Write_Command, 32);
 
    package body Writer_Worker with
         Spark_Mode => Off is
       task Writer_Task;
 
-      package Node_Pool is new Writer_Node_Pool.User;
+      package Node_Pool is new CQueues.User;
 
       Writer_Trigger : STC.Suspension_Object;
       My_Command_Channel : CQueues.Queue;
