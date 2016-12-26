@@ -16,28 +16,39 @@ package body Linted.Wait_Lists with
    package STC renames Ada.Synchronous_Task_Control;
 
    protected body Wait_List is
-      procedure Insert (N : STC_Node_Nonnull_Access) is
+      procedure Insert (N : Node_Nonnull_Access) is
       begin
-         N.Next_Trigger := Head;
-         Head := STC_Node_Access (N);
+         if First = null or Last = null then
+            First := Node_Access (N);
+         else
+            Last.Next_Trigger := Node_Access (N);
+         end if;
+         Last := Node_Access (N);
       end Insert;
 
-      procedure Remove (N : STC_Node_Nonnull_Access) is
-         Current_Trigger : STC_Node_Nonnull_Access :=
-           STC_Node_Nonnull_Access (Head);
+      procedure Remove (N : Node_Nonnull_Access) is
+         Current_Trigger : Node_Nonnull_Access := Node_Nonnull_Access (First);
       begin
          if Current_Trigger = N then
-            Head := Current_Trigger.Next_Trigger;
+            First := Current_Trigger.Next_Trigger;
+            if Node_Nonnull_Access (Last) = N then
+               pragma Assert (Last.Next_Trigger = null);
+               Last := null;
+            end if;
          else
             loop
                declare
-                  Last : STC_Node_Nonnull_Access := Current_Trigger;
+                  Before : Node_Nonnull_Access := Current_Trigger;
                begin
                   Current_Trigger :=
-                    STC_Node_Nonnull_Access (Current_Trigger.Next_Trigger);
+                    Node_Nonnull_Access (Current_Trigger.Next_Trigger);
 
                   if Current_Trigger = N then
-                     Last.Next_Trigger := Current_Trigger.Next_Trigger;
+                     Before.Next_Trigger := Current_Trigger.Next_Trigger;
+                     if Node_Nonnull_Access (Last) = N then
+                        pragma Assert (Last.Next_Trigger = null);
+                        Last := Node_Access (Before);
+                     end if;
                      exit;
                   end if;
                end;
@@ -46,9 +57,9 @@ package body Linted.Wait_Lists with
       end Remove;
 
       procedure Broadcast is
-         Current_Trigger : STC_Node_Access;
+         Current_Trigger : Node_Access;
       begin
-         Current_Trigger := Head;
+         Current_Trigger := First;
          loop
             if null = Current_Trigger then
                exit;
@@ -59,9 +70,9 @@ package body Linted.Wait_Lists with
       end Broadcast;
 
       procedure Signal is
-         Current_Trigger : STC_Node_Access;
+         Current_Trigger : Node_Access;
       begin
-         Current_Trigger := Head;
+         Current_Trigger := First;
 
          if Current_Trigger /= null then
             STC.Set_True (Current_Trigger.Trigger);
@@ -70,7 +81,7 @@ package body Linted.Wait_Lists with
    end Wait_List;
 
    procedure Wait (W : in out Wait_List) is
-      N : aliased STC_Node;
+      N : aliased Node;
    begin
       W.Insert (N'Unchecked_Access);
       STC.Suspend_Until_True (N.Trigger);

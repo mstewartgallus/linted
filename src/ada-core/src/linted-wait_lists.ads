@@ -33,22 +33,23 @@ package Linted.Wait_Lists with
 private
    pragma SPARK_Mode (Off);
 
-   type STC_Node;
+   type Node;
 
-   type STC_Node_Nonnull_Access is not null access all STC_Node;
-   type STC_Node_Access is access all STC_Node;
+   type Node_Nonnull_Access is not null access all Node;
+   type Node_Access is access all Node;
 
-   type STC_Node is record
+   type Node is record
       Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
-      Next_Trigger : STC_Node_Access;
+      Next_Trigger : Node_Access;
    end record;
 
    protected type Wait_List is
-      procedure Insert (N : STC_Node_Nonnull_Access);
-      procedure Remove (N : STC_Node_Nonnull_Access);
+      procedure Insert (N : Node_Nonnull_Access);
+      procedure Remove (N : Node_Nonnull_Access);
       procedure Broadcast;
       procedure Signal;
    private
-      Head : STC_Node_Access;
+      First : Node_Access;
+      Last : Node_Access;
    end Wait_List;
 end Linted.Wait_Lists;
