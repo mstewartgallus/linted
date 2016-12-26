@@ -11,8 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Synchronous_Task_Control;
-
 with Libc.Errno;
 with Libc.Errno.POSIX_2008;
 with Libc.Sys.Poll;
@@ -21,9 +19,10 @@ with Libc.Unistd;
 
 with Linted.Channels;
 with Linted.Queues;
+with Linted.Wait_Lists;
 
-package body Linted.IO_Pool is
-   package STC renames Ada.Synchronous_Task_Control;
+package body Linted.IO_Pool with
+     Spark_Mode => Off is
    package C renames Interfaces.C;
 
    package Errno renames Libc.Errno;
@@ -32,22 +31,22 @@ package body Linted.IO_Pool is
    use type C.size_t;
    use type Interfaces.C.unsigned;
 
+   type Writer_Event_Channel;
+   type Read_Event_Channel;
+
    type Write_Command is record
       Object : KOs.KO;
       Buf : System.Address := System.Null_Address;
       Count : C.size_t := 0;
+      Replier : access Writer_Event_Channel;
    end record;
-
-   package Writer_Event_Channels is new Linted.Channels (Writer_Event);
 
    type Read_Command is record
       Object : KOs.KO;
       Buf : System.Address := System.Null_Address;
       Count : C.size_t := 0;
+      Replier : access Read_Event_Channel;
    end record;
-
-   package Read_Command_Channels is new Linted.Channels (Read_Command);
-   package Reader_Event_Channels is new Linted.Channels (Reader_Event);
 
    type Poller_Command is record
       Object : KOs.KO;
@@ -55,112 +54,96 @@ package body Linted.IO_Pool is
         (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
    end record;
 
+   package CWQueues is new Queues (Write_Command, 32);
+   package Writer_Event_Channels is new Linted.Channels (Writer_Event);
+   type Writer_Event_Channel is new Writer_Event_Channels.Channel;
+
+   package CRQueues is new Queues (Read_Command, 32);
+   package Reader_Event_Channels is new Linted.Channels (Reader_Event);
+   type Read_Event_Channel is new Reader_Event_Channels.Channel;
+
    package Poller_Command_Channels is new Linted.Channels (Poller_Command);
    package Poller_Event_Channels is new Linted.Channels (Poller_Event);
 
-   package CQueues is new Queues (Write_Command, 32);
+   Writer_Trigger : Wait_Lists.Wait_List;
+   My_Write_Command_Channel : CWQueues.Queue;
 
-   package body Writer_Worker with
-        Spark_Mode => Off is
-      task Writer_Task;
+   Reader_Trigger : Wait_Lists.Wait_List;
+   My_Read_Command_Channel : CRQueues.Queue;
 
-      Writer_Trigger : STC.Suspension_Object;
-      My_Command_Channel : CQueues.Queue;
-      My_Event_Channel : Writer_Event_Channels.Channel;
+   task type Writer_Task;
+   task type Reader_Task;
 
-      procedure Wait (Event : out Writer_Event) is
-      begin
-         My_Event_Channel.Pop (Event);
-      end Wait;
+   Writer_Tasks : array (1 .. 8) of Writer_Task;
+   Reader_Tasks : array (1 .. 8) of Reader_Task;
 
-      procedure Write
-        (Object : KOs.KO;
-         Buf : System.Address;
-         Count : C.size_t)
-      is
-      begin
-         CQueues.Insert (My_Command_Channel, (Object, Buf, Count));
-         STC.Set_True (Writer_Trigger);
-      end Write;
-
-      task body Writer_Task is
-         New_Write_Command : Write_Command;
-         Result : Libc.Sys.Types.ssize_t;
-	 Init : Boolean;
-      begin
+   task body Writer_Task is
+      New_Write_Command : Write_Command;
+      Result : Libc.Sys.Types.ssize_t;
+      Init : Boolean;
+   begin
+      loop
+         Wait_Lists.Wait (Writer_Trigger);
          loop
-            STC.Suspend_Until_True (Writer_Trigger);
-            loop
-	       CQueues.Remove (My_Command_Channel, New_Write_Command, Init);
-	       if not Init then
-		  exit;
-	       end if;
+            CWQueues.Remove
+              (My_Write_Command_Channel,
+               New_Write_Command,
+               Init);
+            if not Init then
+               exit;
+            end if;
 
-               declare
-                  Err : C.int;
-                  Bytes_Written : C.size_t := 0;
+            declare
+               Err : C.int;
+               Bytes_Written : C.size_t := 0;
 
-                  Object : constant KOs.KO := New_Write_Command.Object;
-                  Buf : constant System.Address := New_Write_Command.Buf;
-                  Count : constant C.size_t := New_Write_Command.Count;
-               begin
-                  loop
-                     Result :=
-                       Libc.Unistd.write
-                         (C.int (Object),
-                          Buf,
-                          Count - Bytes_Written);
-                     if Result < 0 then
-                        Err := Libc.Errno.Errno;
-                        if Err /= Libc.Errno.POSIX_2008.EINTR then
-                           exit;
-                        end if;
-                     else
-                        Err := 0;
-                        Bytes_Written := Bytes_Written + C.size_t (Result);
-                        if Bytes_Written = Count then
-                           exit;
-                        end if;
+               Object : constant KOs.KO := New_Write_Command.Object;
+               Buf : constant System.Address := New_Write_Command.Buf;
+               Count : constant C.size_t := New_Write_Command.Count;
+               Replier : constant access Writer_Event_Channel :=
+                 New_Write_Command.Replier;
+            begin
+               loop
+                  Result :=
+                    Libc.Unistd.write
+                      (C.int (Object),
+                       Buf,
+                       Count - Bytes_Written);
+                  if Result < 0 then
+                     Err := Libc.Errno.Errno;
+                     if Err /= Libc.Errno.POSIX_2008.EINTR then
+                        exit;
                      end if;
-                  end loop;
+                  else
+                     Err := 0;
+                     Bytes_Written := Bytes_Written + C.size_t (Result);
+                     if Bytes_Written = Count then
+                        exit;
+                     end if;
+                  end if;
+               end loop;
 
-                  My_Event_Channel.Push
-                    (Writer_Event'
-                       (Err => Errors.Error (Err),
-                        Bytes_Written => Bytes_Written));
-               end;
-            end loop;
+               Replier.Push
+                 (Writer_Event'
+                    (Err => Errors.Error (Err),
+                     Bytes_Written => Bytes_Written));
+            end;
          end loop;
-      end Writer_Task;
-   end Writer_Worker;
+      end loop;
+   end Writer_Task;
 
-   package body Reader_Worker with
-        Spark_Mode => Off is
-      task Reader_Task;
-
-      My_Command_Channel : Read_Command_Channels.Channel;
-      My_Event_Channel : Reader_Event_Channels.Channel;
-
-      procedure Wait (Event : out Reader_Event) is
-      begin
-         My_Event_Channel.Pop (Event);
-      end Wait;
-
-      procedure Read
-        (Object : KOs.KO;
-         Buf : System.Address;
-         Count : C.size_t)
-      is
-      begin
-         My_Command_Channel.Push ((Object, Buf, Count));
-      end Read;
-
-      task body Reader_Task is
-         New_Read_Command : Read_Command;
-         Result : Libc.Sys.Types.ssize_t;
-      begin
+   task body Reader_Task is
+      New_Read_Command : Read_Command;
+      Result : Libc.Sys.Types.ssize_t;
+      Init : Boolean;
+   begin
+      loop
+         Wait_Lists.Wait (Reader_Trigger);
          loop
-            My_Command_Channel.Pop (New_Read_Command);
+            CRQueues.Remove (My_Read_Command_Channel, New_Read_Command, Init);
+            if not Init then
+               exit;
+            end if;
 
             declare
                Err : C.int;
@@ -169,6 +152,8 @@ package body Linted.IO_Pool is
                Object : constant KOs.KO := New_Read_Command.Object;
                Buf : constant System.Address := New_Read_Command.Buf;
                Count : constant C.size_t := New_Read_Command.Count;
+               Replier : constant access Read_Event_Channel :=
+                 New_Read_Command.Replier;
             begin
                loop
                   Result :=
@@ -190,11 +175,55 @@ package body Linted.IO_Pool is
                   end if;
                end loop;
 
-               My_Event_Channel.Push
+               Replier.Push
                  ((Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
             end;
          end loop;
-      end Reader_Task;
+      end loop;
+   end Reader_Task;
+
+   package body Writer_Worker with
+        Spark_Mode => Off is
+      My_Event_Channel : aliased Writer_Event_Channel;
+
+      procedure Wait (Event : out Writer_Event) is
+      begin
+         My_Event_Channel.Pop (Event);
+      end Wait;
+
+      procedure Write
+        (Object : KOs.KO;
+         Buf : System.Address;
+         Count : C.size_t)
+      is
+      begin
+         CWQueues.Insert
+           (My_Write_Command_Channel,
+            (Object, Buf, Count, My_Event_Channel'Unchecked_Access));
+         Wait_Lists.Broadcast (Writer_Trigger);
+      end Write;
+   end Writer_Worker;
+
+   package body Reader_Worker with
+        Spark_Mode => Off is
+      My_Event_Channel : aliased Read_Event_Channel;
+
+      procedure Wait (Event : out Reader_Event) is
+      begin
+         My_Event_Channel.Pop (Event);
+      end Wait;
+
+      procedure Read
+        (Object : KOs.KO;
+         Buf : System.Address;
+         Count : C.size_t)
+      is
+      begin
+         CRQueues.Insert
+           (My_Read_Command_Channel,
+            (Object, Buf, Count, My_Event_Channel'Unchecked_Access));
+         Wait_Lists.Broadcast (Reader_Trigger);
+      end Read;
    end Reader_Worker;
 
    package body Poller_Worker with

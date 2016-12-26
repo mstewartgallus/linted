@@ -15,7 +15,7 @@ generic
    type Element_T is private;
    Max_Nodes_In_Flight : Positive;
 package Linted.Queues with
-   Spark_Mode => On,
+   Spark_Mode,
    Abstract_State => (State with External) is
    pragma Elaborate_Body;
 
@@ -23,14 +23,14 @@ package Linted.Queues with
 
    procedure Insert (Q : in out Queue; C : Element_T) with
       Global => (In_Out => State),
-      Depends => (State => (Q, C), Q => (State, Q, C));
+      Depends => (State => (State, Q, C), Q => (State, Q, C));
    procedure Remove
      (Q : in out Queue;
       C : out Element_T;
       Init : out Boolean) with
       Global => (In_Out => State),
       Depends =>
-      (State => Q,
+      (State => (State, Q),
        Q => (State, Q),
        C => (State, Q),
        Init => (State, Q));

@@ -14,8 +14,11 @@
 private with Ada.Synchronous_Task_Control;
 
 package Linted.Wait_Lists with
-     Spark_Mode => On is
+     Spark_Mode is
+   pragma Preelaborate;
+
    type Wait_List is limited private;
+   pragma Preelaborable_Initialization (Wait_List);
 
    procedure Wait (W : in out Wait_List) with
       Global => null,

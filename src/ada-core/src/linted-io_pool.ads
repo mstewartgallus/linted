@@ -17,7 +17,8 @@ with System;
 with Linted.Errors;
 with Linted.KOs;
 
-package Linted.IO_Pool is
+package Linted.IO_Pool with
+     Spark_Mode is
    pragma Elaborate_Body;
    use type Interfaces.C.int;
 
@@ -42,7 +43,7 @@ package Linted.IO_Pool is
 
    generic
    package Writer_Worker with
-      Spark_Mode => Off is
+      Spark_Mode is
       procedure Write
         (Object : KOs.KO;
          Buf : System.Address;
@@ -52,7 +53,7 @@ package Linted.IO_Pool is
 
    generic
    package Reader_Worker with
-      Spark_Mode => Off is
+      Spark_Mode is
       procedure Read
         (Object : KOs.KO;
          Buf : System.Address;
@@ -62,7 +63,7 @@ package Linted.IO_Pool is
 
    generic
    package Poller_Worker with
-      Spark_Mode => Off is
+      Spark_Mode is
       procedure Poll (Object : KOs.KO; Events : Poller_Event_Set);
       procedure Wait (Event : out Poller_Event);
    end Poller_Worker;
