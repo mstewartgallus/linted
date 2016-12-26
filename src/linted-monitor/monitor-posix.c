@@ -1289,6 +1289,7 @@ on_add_unit(struct monitor *monitor,
 	bool clone_newuts = request->clone_newuts;
 
 	bool no_new_privs = request->no_new_privs;
+	bool seccomp = request->seccomp;
 
 	char *name;
 	{
@@ -1396,6 +1397,8 @@ on_add_unit(struct monitor *monitor,
 	unit_service->clone_newuts = clone_newuts;
 
 	unit_service->no_new_privs = no_new_privs;
+
+	unit_service->seccomp = seccomp;
 
 	err = service_activate(monitor, unit, false);
 
@@ -1680,6 +1683,8 @@ spawn_service:;
 	bool clone_newns = unit_service->clone_newns;
 	bool clone_newuts = unit_service->clone_newuts;
 
+	bool seccomp = unit_service->seccomp;
+
 	int_least64_t *timer_slack_nsec = 0;
 	if (has_timer_slack_nsec)
 		timer_slack_nsec = &unit_service->timer_slack_nsec;
@@ -1829,8 +1834,7 @@ spawn_service:;
 		    {"--timer-slack", timer_slack_str,
 		     has_timer_slack_nsec},
 		    {"--priority", prio_str, has_priority},
-		    {"--seccomp-filter", allowed_syscalls,
-		     no_new_privs},
+		    {"--seccomp-filter", allowed_syscalls, seccomp},
 		    {"--seccomp-arch-native", 0, true},
 		    {"--clone-newuser", 0, clone_newuser},
 		    {"--clone-newcgroup", 0, clone_newcgroup},

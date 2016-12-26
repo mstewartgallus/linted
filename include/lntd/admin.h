@@ -74,7 +74,8 @@ struct lntd_admin_request_add_unit {
 	lntd_admin_bool clone_newns;
 	lntd_admin_bool clone_newuts;
 
-	lntd_admin_bool no_new_privs : 1U;
+	lntd_admin_bool no_new_privs;
+	lntd_admin_bool seccomp;
 };
 
 struct lntd_admin_request_add_socket {

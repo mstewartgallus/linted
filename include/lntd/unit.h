@@ -101,6 +101,7 @@ struct lntd_unit_service {
 	_Bool clone_newuts : 1U;
 
 	_Bool no_new_privs : 1U;
+	_Bool seccomp : 1U;
 };
 
 struct lntd_unit {

@@ -16,6 +16,8 @@ Description=Linted-Drawer Game Renderer
 Documentation='man:linted-drawer(6)'
 
 [Service]
+#ExecStart="${LINTED_DRAWER}" "window" "window-notifier-drawer" "updater"
+
 ExecStart="${LINTED_DRAWER}" "/run/window" "/run/window-notifier-drawer" "/run/updater"
 
 LimitNOFILE=

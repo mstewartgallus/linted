@@ -46,6 +46,7 @@ struct lntd_admin_proto_request_add_unit {
 	bool clone_newuts;
 
 	bool no_new_privs;
+	bool seccomp;
 };
 struct lntd_admin_proto_request_add_socket {
 	lntd_admin_proto_string name;

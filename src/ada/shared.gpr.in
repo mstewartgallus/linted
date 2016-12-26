@@ -21,60 +21,39 @@ abstract project Shared is
   end Builder;
 
   package Compiler is
-     -- for Default_Switches ("Ada") use ();
-     for Default_Switches ("Ada") use (
-				       "-g",
+     C_Switches := ("-Wall", "-Wextra",
+		    "-g",
 
-				       "-gnatn",
+		    -- -- TODO: Debug optimization causes problems
+		    "-O3",
 
-				       -- -- TODO: Debug optimization causes problems
-				       "-O3",
+		    "-fvisibility=hidden",
+		    "-fdata-sections",
+		    "-ffunction-sections",
 
-				       "-fvisibility=hidden",
-				       "-fdata-sections",
-				       "-ffunction-sections",
+		    "-gno-record-gcc-switches",
 
-				       "-gno-record-gcc-switches",
+		    "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-				       "-fpic", "-fPIC", "-fpie", "-fPIE",
+		    "-fverbose-asm",
+		    -- "-save-temps=cwd",
+		    -- "-gnatGL",
 
-				       "-fverbose-asm",
-				       -- "-save-temps=cwd",
-				       -- "-gnatGL",
-				       "-gnattt",
+		    -- "-gnatD",
+		    -- "-gnatR3s",
+		    "-fstack-usage",
 
-				       -- "-gnatD",
-				       -- "-gnatR3s",
-				       "-fstack-usage",
-
-				       "-fstack-check",
-				       "-ftrapv",
-				       -- "-fsanitize=address",
-				       -- "-fsanitize=undefined",
-				       "-gnato",
-				       "-gnateA"
-  				      );
-     for Default_Switches ("C") use ("-Wall", "-Wextra",
-
-				     "-g",
-
-				     "-O3",
-
-				     "-fno-working-directory", "-gno-record-gcc-switches",
-
-				     "-fpic", "-fPIC", "-fpie", "-fPIE",
-
-				     "-fdata-sections",
-				     "-ffunction-sections",
-
-				     -- "-fverbose-asm",
-				     -- "-save-temps=cwd",
-				     "-fstack-usage",
-
-				     "-fstack-check"
-				     -- "-fsanitize=address",
-				     --   "-fsanitize=undefined"
-				    );
+		    "-fstack-check",
+		    "-ftrapv"
+		    -- "-fsanitize=address",
+		    -- "-fsanitize=undefined"
+		   );
+     for Default_Switches ("Ada") use C_Switches & (
+						    "-gnatn",
+						    "-gnattt",
+						    "-gnato",
+						    "-gnateA");
+     for Default_Switches ("C") use C_Switches;
   end Compiler;
 
   package Binder is
@@ -101,7 +80,15 @@ abstract project Shared is
      				       -- "-fsanitize=address",
      				       -- "-fsanitize=undefined",
 
+				       "-static-libasan",
+				       "-static-libubsan",
+				       "-static-libtsan",
+				       "-static-liblsan",
+
      				       "-fstack-usage"
      				      );
+     for Default_Switches ("C") use Linker'Default_Switches ("Ada");
+     for Switches ("C") use Linker'Default_Switches ("C");
+     for Switches ("Ada") use Linker'Default_Switches ("Ada");
   end Linker;
 end Shared;

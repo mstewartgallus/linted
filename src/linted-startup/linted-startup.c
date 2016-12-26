@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2014, 2015 Steven Stewart-Gallus
+ * Copyright 2013, 2014, 2015, 2016 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,11 @@ conf_system_default_limit_msgqueue(struct conf *conf,
 static lntd_error
 conf_system_default_limit_nofile(struct conf *conf,
                                  int_least64_t *limitp);
+static lntd_error
+conf_system_default_no_new_privileges(struct conf *conf,
+                                      bool *no_new_privs);
+static lntd_error conf_system_default_seccomp(struct conf *conf,
+                                              bool *boolp);
 
 static lntd_error conf_socket_listen_directory(struct conf *conf,
                                                char const **strp);
@@ -88,6 +93,7 @@ static lntd_error conf_service_type(struct conf *conf,
                                     char const **strp);
 static lntd_error conf_service_no_new_privileges(struct conf *conf,
                                                  bool *boolp);
+static lntd_error conf_service_seccomp(struct conf *conf, bool *boolp);
 static lntd_error conf_service_x_lntd_fstab(struct conf *conf,
                                             char const **strp);
 static lntd_error conf_service_working_directory(struct conf *conf,
@@ -145,6 +151,8 @@ struct system_conf {
 	int_least64_t *limit_msgqueue;
 	int_least64_t *limit_no_file;
 	int_least64_t *limit_memlock;
+	bool *no_new_privs;
+	bool *seccomp;
 };
 
 static lntd_error startup_init(struct startup *startup,
@@ -395,6 +403,8 @@ static lntd_error startup_start(struct startup *startup)
 	int_least64_t limit_memlock;
 	int_least64_t limit_msgqueue;
 	int_least64_t limit_no_file;
+	bool no_new_privs;
+	bool seccomp;
 
 	err =
 	    conf_system_default_limit_locks(system_conf, &limit_locks);
@@ -424,6 +434,23 @@ static lntd_error startup_start(struct startup *startup)
 	                                       &limit_no_file);
 	if (0 == err) {
 		system_conf_struct.limit_no_file = &limit_no_file;
+	} else if (ENOENT == err) {
+	} else {
+		goto destroy_conf_db;
+	}
+
+	err = conf_system_default_no_new_privileges(system_conf,
+	                                            &no_new_privs);
+	if (0 == err) {
+		system_conf_struct.no_new_privs = &no_new_privs;
+	} else if (ENOENT == err) {
+	} else {
+		goto destroy_conf_db;
+	}
+
+	err = conf_system_default_seccomp(system_conf, &seccomp);
+	if (0 == err) {
+		system_conf_struct.seccomp = &seccomp;
 	} else if (ENOENT == err) {
 	} else {
 		goto destroy_conf_db;
@@ -772,6 +799,30 @@ add_unit_dir_to_db(struct conf_db *db,
 				if (err != 0)
 					goto close_unit_file;
 			}
+
+			if (system_conf->no_new_privs != 0) {
+				char const *const expr[] = {
+				    *system_conf->no_new_privs
+				        ? "true"
+				        : "false",
+				    0};
+				err = conf_add_setting(
+				    conf, service, "NoNewPrivileges",
+				    expr);
+				if (err != 0)
+					goto close_unit_file;
+			}
+
+			if (system_conf->seccomp != 0) {
+				char const *const expr[] = {
+				    *system_conf->seccomp ? "true"
+				                          : "false",
+				    0};
+				err = conf_add_setting(conf, service,
+				                       "Seccomp", expr);
+				if (err != 0)
+					goto close_unit_file;
+			}
 			break;
 		}
 		}
@@ -967,6 +1018,15 @@ service_activate(struct system_conf const *system_conf,
 		if (err != 0 && err != ENOENT)
 			goto free_unit_name;
 		no_new_privs = xx;
+	}
+
+	bool seccomp;
+	{
+		bool xx = false;
+		err = conf_service_seccomp(conf, &xx);
+		if (err != 0 && err != ENOENT)
+			goto free_unit_name;
+		seccomp = xx;
 	}
 
 	char const *fstab;
@@ -1242,6 +1302,7 @@ service_activate(struct system_conf const *system_conf,
 		xx->clone_newuts = clone_newuts;
 
 		xx->no_new_privs = no_new_privs;
+		xx->seccomp = seccomp;
 
 		xx->name = (char *)unit_name;
 		xx->fstab = (char *)fstab;
@@ -1564,6 +1625,18 @@ conf_system_default_limit_nofile(struct conf *conf,
 	return conf_find_int(conf, "Manager", "DefaultLimitNOFILE",
 	                     limitp);
 }
+static lntd_error
+conf_system_default_no_new_privileges(struct conf *conf,
+                                      bool *no_new_privs)
+{
+	return conf_find_bool(conf, "Manager", "NoNewPrivileges",
+	                      no_new_privs);
+}
+static lntd_error conf_system_default_seccomp(struct conf *conf,
+                                              bool *seccomp)
+{
+	return conf_find_bool(conf, "Manager", "Seccomp", seccomp);
+}
 
 static lntd_error conf_socket_listen_directory(struct conf *conf,
                                                char const **strp)
@@ -1649,6 +1722,10 @@ static lntd_error conf_service_no_new_privileges(struct conf *conf,
 {
 	return conf_find_bool(conf, "Service", "NoNewPrivileges",
 	                      boolp);
+}
+static lntd_error conf_service_seccomp(struct conf *conf, bool *boolp)
+{
+	return conf_find_bool(conf, "Service", "Seccomp", boolp);
 }
 static lntd_error conf_service_x_lntd_fstab(struct conf *conf,
                                             char const **strp)

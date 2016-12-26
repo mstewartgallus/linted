@@ -106,9 +106,10 @@ AM_GPRBUILDFLAGS=-q\
   --autoconf=$(builddir)/auto.cgpr\
   --single-compile-per-obj-dir\
   --no-indirect-imports
+
 AM_GNATPPFLAGS=-q -A0 -rnb
 GPRCLEANFLAGS=-q --config=$(builddir)/auto.cgpr
-GPRPROVEFLAGS=-j3 --level=0 --pedantic
+GPRPROVEFLAGS=-j3 --level=4 --pedantic
 
 LINTED_CLEAN_RULES=
 
