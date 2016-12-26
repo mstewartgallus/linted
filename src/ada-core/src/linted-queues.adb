@@ -18,27 +18,34 @@ package body Linted.Queues with
      Refined_State => (State => (Contents, Spare_Nodes, Triggers)) is
    package STC renames Ada.Synchronous_Task_Control;
 
+   type STC_Node;
+   type STC_Node_Access is access all STC_Node;
+
    type STC_Node is record
       Trigger : STC.Suspension_Object;
-      Next_Trigger : access STC_Node;
+      Next_Trigger : STC_Node_Access;
    end record;
 
    protected type STC_List is
-      procedure Insert (N : access STC_Node);
-      procedure Remove (N : access STC_Node);
+      procedure Insert (N : STC_Node_Access);
+      procedure Remove (N : STC_Node_Access);
       procedure Broadcast;
    private
-      Head : access STC_Node;
+      Head : STC_Node_Access;
    end STC_List;
 
-   Contents : array (1 .. Max_Nodes_In_Flight) of aliased Node;
+   type Node_Array is array (Positive range <>) of aliased Node;
+
+   Contents : Node_Array (1 .. Max_Nodes_In_Flight);
    Spare_Nodes : Queue;
    Triggers : STC_List;
 
-   procedure Wait (N : access STC_Node) with
-      Pre => N /= null;
+   procedure Wait;
    procedure Broadcast;
-   procedure Free_Impl (N : in out Node_Access) with
+
+   procedure Allocate (N : out Node_Access) with
+      Post => Is_Free (N) and not Is_Null (N);
+   procedure Free (N : in out Node_Access) with
       Pre => Is_Free (N) and not Is_Null (N),
       Post => Is_Null (N);
 
@@ -97,15 +104,15 @@ package body Linted.Queues with
    end Queue;
 
    protected body STC_List is
-      procedure Insert (N : access STC_Node) is
+      procedure Insert (N : STC_Node_Access) is
       begin
          N.Next_Trigger := Head;
          Head := N;
       end Insert;
 
-      procedure Remove (N : access STC_Node) is
-         Last : access STC_Node;
-         Current_Trigger : access STC_Node;
+      procedure Remove (N : STC_Node_Access) is
+         Last : STC_Node_Access;
+         Current_Trigger : STC_Node_Access;
       begin
          Last := null;
          Current_Trigger := Head;
@@ -130,7 +137,7 @@ package body Linted.Queues with
       end Remove;
 
       procedure Broadcast is
-         Current_Trigger : access STC_Node;
+         Current_Trigger : STC_Node_Access;
       begin
          Current_Trigger := Head;
          loop
@@ -143,11 +150,12 @@ package body Linted.Queues with
       end Broadcast;
    end STC_List;
 
-   procedure Wait (N : access STC_Node) is
+   procedure Wait is
+      N : aliased STC_Node;
    begin
-      Triggers.Insert (N);
+      Triggers.Insert (N'Unchecked_Access);
       STC.Suspend_Until_True (N.Trigger);
-      Triggers.Remove (N);
+      Triggers.Remove (N'Unchecked_Access);
    end Wait;
 
    procedure Broadcast is
@@ -155,56 +163,47 @@ package body Linted.Queues with
       Triggers.Broadcast;
    end Broadcast;
 
-   procedure Free_Impl (N : in out Node_Access) is
+   procedure Free (N : in out Node_Access) is
       Dummy : Element_T;
    begin
       Spare_Nodes.Insert (Dummy, N);
       Broadcast;
-   end Free_Impl;
+   end Free;
 
-   package body User with
-        Spark_Mode => Off,
-        Refined_State => (User_State => (Free_Objects_Trigger)) is
-      Free_Objects_Trigger : aliased STC_Node;
-
-      procedure Allocate (N : out Node_Access) with
-         Post => Is_Free (N) and not Is_Null (N);
-
-      procedure Allocate (N : out Node_Access) is
-         Dummy : Element_T;
-      begin
-         loop
-            Spare_Nodes.Remove (Dummy, N);
-            if N /= null then
-               exit;
-            end if;
-            Wait (Free_Objects_Trigger'Unchecked_Access);
-         end loop;
-      end Allocate;
-
-      procedure Insert (Q : in out Queue; C : Element_T) is
-         N : Node_Access;
-      begin
-         Allocate (N);
-         Q.Insert (C, N);
-      end Insert;
-
-      procedure Remove
-        (Q : in out Queue;
-         C : out Element_T;
-         Init : out Boolean)
-      is
-         N : Node_Access;
-      begin
-         Q.Remove (C, N);
-         if N = null then
-            Init := False;
-         else
-            Free_Impl (N);
-            Init := True;
+   procedure Allocate (N : out Node_Access) is
+      Dummy : Element_T;
+   begin
+      loop
+         Spare_Nodes.Remove (Dummy, N);
+         if N /= null then
+            exit;
          end if;
-      end Remove;
-   end User;
+	 Wait;
+      end loop;
+   end Allocate;
+
+   procedure Insert (Q : in out Queue; C : Element_T) is
+      N : Node_Access;
+   begin
+      Allocate (N);
+      Q.Insert (C, N);
+   end Insert;
+
+   procedure Remove
+     (Q : in out Queue;
+      C : out Element_T;
+      Init : out Boolean)
+   is
+      N : Node_Access;
+   begin
+      Q.Remove (C, N);
+      if N = null then
+         Init := False;
+      else
+         Free (N);
+         Init := True;
+      end if;
+   end Remove;
 
 begin
    for II in Contents'Range loop

@@ -64,8 +64,6 @@ package body Linted.IO_Pool is
         Spark_Mode => Off is
       task Writer_Task;
 
-      package User is new CQueues.User;
-
       Writer_Trigger : STC.Suspension_Object;
       My_Command_Channel : CQueues.Queue;
       My_Event_Channel : Writer_Event_Channels.Channel;
@@ -81,7 +79,7 @@ package body Linted.IO_Pool is
          Count : C.size_t)
       is
       begin
-         User.Insert (My_Command_Channel, (Object, Buf, Count));
+         CQueues.Insert (My_Command_Channel, (Object, Buf, Count));
          STC.Set_True (Writer_Trigger);
       end Write;
 
@@ -93,7 +91,7 @@ package body Linted.IO_Pool is
          loop
             STC.Suspend_Until_True (Writer_Trigger);
             loop
-	       User.Remove (My_Command_Channel, New_Write_Command, Init);
+	       CQueues.Remove (My_Command_Channel, New_Write_Command, Init);
 	       if not Init then
 		  exit;
 	       end if;

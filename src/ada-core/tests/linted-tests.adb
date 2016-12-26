@@ -18,7 +18,6 @@ package body Linted.Tests is
    Len : constant := 20;
 
    package My_Queues is new Linted.Queues (Integer, Len);
-   package My_User is new My_Queues.User;
 
    L : My_Queues.Queue;
 
@@ -27,7 +26,7 @@ package body Linted.Tests is
       Previous : Integer := -1;
    begin
       for II in 1 .. Len loop
-	 My_User.Insert (L, X);
+	 My_Queues.Insert (L, X);
 	 X := X + 1;
       end loop;
 
@@ -36,7 +35,7 @@ package body Linted.Tests is
 	    Current : Integer;
 	    Init : Boolean;
 	 begin
-	    My_User.Remove (L, Current, Init);
+	    My_Queues.Remove (L, Current, Init);
 	    if not Init then
 	       exit;
 	    end if;

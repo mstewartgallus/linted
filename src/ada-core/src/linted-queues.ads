@@ -17,18 +17,16 @@ generic
 package Linted.Queues with
    Spark_Mode => On,
    Abstract_State => (State with External) is
+   pragma Elaborate_Body;
+
    type Queue is limited private;
 
-   generic
-   package User with
-      Spark_Mode => On,
-      Abstract_State => (User_State with External) is
-      procedure Insert (Q : in out Queue; C : Element_T);
-      procedure Remove
-        (Q : in out Queue;
-         C : out Element_T;
-         Init : out Boolean);
-   end User;
+   procedure Insert (Q : in out Queue; C : Element_T) with
+     Global => (In_Out => State),
+     Depends => (State => (Q, C), Q => (State, Q, C));
+   procedure Remove (Q : in out Queue; C : out Element_T; Init : out Boolean) with
+     Global => (In_Out => State),
+     Depends => (State => Q, Q => (State, Q), C => (State, Q), Init => (State, Q));
 
 private
    pragma SPARK_Mode (Off);
