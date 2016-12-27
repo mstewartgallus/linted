@@ -59,6 +59,8 @@ conf_system_default_no_new_privileges(struct conf *conf,
                                       bool *no_new_privs);
 static lntd_error conf_system_default_seccomp(struct conf *conf,
                                               bool *boolp);
+static char const *const *
+conf_system_default_pass_env(struct conf *conf);
 
 static lntd_error conf_socket_listen_directory(struct conf *conf,
                                                char const **strp);
@@ -153,6 +155,7 @@ struct system_conf {
 	int_least64_t *limit_memlock;
 	bool *no_new_privs;
 	bool *seccomp;
+	char const *const *pass_env;
 };
 
 static lntd_error startup_init(struct startup *startup,
@@ -165,13 +168,6 @@ static lntd_error startup_destroy(struct startup *startup);
 
 static lntd_error startup_start(struct startup *startup);
 static lntd_error startup_stop(struct startup *startup);
-
-static char const *const default_envvars[] = {
-    "MALLOC_CHECK_", "MALLOC_PERTURB_", "MANAGERPID", "USER", "LOGNAME",
-    "HOME", "SHELL", "XDG_RUNTIME_DIR"
-                     "XDG_SESSION_ID",
-    "XDG_SEAT", "TERM", "LD_WARN", "LD_VERBOSE", "LD_DEBUG",
-    "LD_DEBUG_OUTPUT", 0};
 
 static lntd_error
 populate_conf_db(struct conf_db *conf_db,
@@ -456,6 +452,9 @@ static lntd_error startup_start(struct startup *startup)
 		goto destroy_conf_db;
 	}
 
+	system_conf_struct.pass_env =
+	    conf_system_default_pass_env(system_conf);
+
 	err = populate_conf_db(conf_db, &system_conf_struct,
 	                       LNTD_KO_CWD, unit_path);
 	if (err != 0)
@@ -737,11 +736,13 @@ add_unit_dir_to_db(struct conf_db *db,
 				service = xx;
 			}
 
-			err = conf_add_setting(conf, service,
-			                       "PassEnvironment",
-			                       default_envvars);
-			if (err != 0)
-				goto close_unit_file;
+			if (system_conf->pass_env != 0) {
+				err = conf_add_setting(
+				    conf, service, "PassEnvironment",
+				    system_conf->pass_env);
+				if (err != 0)
+					goto close_unit_file;
+			}
 
 			if (system_conf->limit_no_file != 0) {
 				char
@@ -1629,13 +1630,19 @@ static lntd_error
 conf_system_default_no_new_privileges(struct conf *conf,
                                       bool *no_new_privs)
 {
-	return conf_find_bool(conf, "Manager", "NoNewPrivileges",
-	                      no_new_privs);
+	return conf_find_bool(conf, "Manager",
+	                      "X-LintedNoNewPrivileges", no_new_privs);
 }
 static lntd_error conf_system_default_seccomp(struct conf *conf,
                                               bool *seccomp)
 {
-	return conf_find_bool(conf, "Manager", "Seccomp", seccomp);
+	return conf_find_bool(conf, "Manager", "X-LintedSeccomp",
+	                      seccomp);
+}
+static char const *const *
+conf_system_default_pass_env(struct conf *conf)
+{
+	return conf_find(conf, "Manager", "X-LintedPassEnvironment");
 }
 
 static lntd_error conf_socket_listen_directory(struct conf *conf,
