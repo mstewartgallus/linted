@@ -33,6 +33,8 @@ package Linted.Types is
    type Position is (X, Y, Z);
    type Varying_Positions is array (Position) of Differentiable;
 
+   type Object_State is array (0 .. 1) of Types.Varying_Positions;
+
    function Absolute (X : Types.Int) return Types.Nat with
       Post => Absolute'Result <= Types.Nat (Types.Int'Last) + 1,
       Global => null,
@@ -58,4 +60,7 @@ package Linted.Types is
    function Sim_Isatadd (X : Types.Int; Y : Types.Int) return Types.Int;
 
    function Downscale (X : Types.Int; Y : Types.Int) return Types.Int;
+
+   function Sim_Sin is new Types.Sim_Angles.Sin (Types.Int);
+   function Sim_Cos is new Types.Sim_Angles.Cos (Types.Int);
 end Linted.Types;

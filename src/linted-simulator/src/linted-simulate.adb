@@ -11,22 +11,15 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Linted.Errors;
-
 package body Linted.Simulate with
-     Spark_Mode => Off is
-   use type Errors.Error;
+      Spark_Mode => Off is
    use type Types.Int;
    use type Types.Nat;
    use type Types.Large;
    use type Types.Position;
    use type Types.Sim_Angle;
 
-   function Sim_Sin is new Types.Sim_Angles.Sin (Types.Int);
-   function Sim_Cos is new Types.Sim_Angles.Cos (Types.Int);
-
-   procedure Tick (This : in out State) with
-      Spark_Mode => Off is
+   procedure Tick (This : in out State) is
       X_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
       Y_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
       Z_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
@@ -49,8 +42,8 @@ package body Linted.Simulate with
       Strafe :=
         Boolean'Pos (This.Controls.Left) - Boolean'Pos (This.Controls.Right);
 
-      Cos_Z := Types.Downscale (Sim_Cos (This.Z_Rotation), 32);
-      Sin_Z := Types.Downscale (Sim_Sin (This.Z_Rotation), 32);
+      Cos_Z := Types.Downscale (Types.Sim_Cos (This.Z_Rotation), 32);
+      Sin_Z := Types.Downscale (Types.Sim_Sin (This.Z_Rotation), 32);
 
       if This.Objects (0) (Types.Z).Value >= 0 then
          Y_Thrust (Types.X) := Retreat_Or_Go_Forth * Sin_Z;
