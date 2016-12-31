@@ -46,14 +46,15 @@ package body Linted.Update_Writer is
    package Write_Done_Event_Channels is new Linted.Channels (Write_Done_Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Writer.Event);
 
-   type Storage_Access is not null access all Storage_Elements.Storage_Element;
-
-   function Convert is new Ada.Unchecked_Conversion
-     (Storage_Access,
-      System.Address);
-
    package body Worker with
         Spark_Mode => Off is
+
+      type Storage_Access is
+        not null access all Storage_Elements.Storage_Element;
+
+      function Convert is new Ada.Unchecked_Conversion
+        (Storage_Access,
+         System.Address);
 
       task A;
       task Writer_Task;

@@ -11,7 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package body Linted.Channels is
+package body Linted.Channels with
+     Spark_Mode => Off is
    procedure Push (This : in out Channel; D : Element_T) is
    begin
       This.Push (D);
@@ -19,7 +20,7 @@ package body Linted.Channels is
 
    procedure Pop (This : in out Channel; D : out Element_T) is
    begin
-      This.Pop (D);
+      This.Pop_Impl (D);
    end Pop;
 
    procedure Poll
@@ -37,11 +38,11 @@ package body Linted.Channels is
          Full := True;
       end Push;
 
-      entry Pop (D : out Element_T) when Full is
+      entry Pop_Impl (D : out Element_T) when Full is
       begin
          D := Current;
          Full := False;
-      end Pop;
+      end Pop_Impl;
 
       procedure Poll (Option : out Option_Element_Ts.Option) is
       begin

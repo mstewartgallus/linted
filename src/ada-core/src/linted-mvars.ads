@@ -33,7 +33,6 @@ package Linted.MVars with
       Depends => (This => (D, This));
 
 private
-
    protected type MVar is
       procedure Poll (Option : out Option_Element_Ts.Option) with
          Global => null,

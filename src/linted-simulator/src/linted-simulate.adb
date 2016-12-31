@@ -21,97 +21,16 @@ package body Linted.Simulate is
    use type Types.Position;
    use type Types.Sim_Angle;
 
-   Rotation_Speed : constant Types.Nat := 2048;
-   Dead_Zone : constant Types.Nat := Types.Nat'Last / 8 + 1;
-   Increment : constant Types.Sim_Angle :=
-     Types.Sim_Angles.To_Angle (1, Rotation_Speed);
-
    function Downscale (X : Types.Int; Y : Types.Int) return Types.Int;
 
    function Sim_Sin is new Types.Sim_Angles.Sin (Types.Int);
    function Sim_Cos is new Types.Sim_Angles.Cos (Types.Int);
 
-   function Tilt_Rotation
-     (Rotation : Types.Sim_Angle;
-      Tilt : Types.Int) return Types.Sim_Angle with
-      Global => null,
-      Depends => (Tilt_Rotation'Result => (Rotation, Tilt));
-   function Tilt_Clamped_Rotation
-     (Rotation : Types.Sim_Angle;
-      Tilt : Types.Int) return Types.Sim_Angle with
-      Global => null,
-      Depends => (Tilt_Clamped_Rotation'Result => (Rotation, Tilt));
    function Min_Int (X : Types.Int; Y : Types.Int) return Types.Int;
    function Find_Sign (X : Types.Int) return Types.Int;
-   function Absolute (X : Types.Int) return Types.Nat with
-      Post => Absolute'Result <= Types.Nat (Types.Int'Last),
-      Global => null,
-      Depends => (Absolute'Result => X);
 
    function Sim_Isatadd (X : Types.Int; Y : Types.Int) return Types.Int;
    function Saturate (X : Types.Large) return Types.Int;
-
-   function Absolute (X : Types.Int) return Types.Nat is
-      Result : Types.Nat;
-   begin
-      -- Avoid tricky arithmetic overflow possibilities
-
-      if X < 0 then
-         Result := Types.Nat (-(X + 1)) + 1;
-      else
-         Result := Types.Nat (X);
-      end if;
-      return Result;
-   end Absolute;
-
-   function Tilt_Rotation
-     (Rotation : Types.Sim_Angle;
-      Tilt : Types.Int) return Types.Sim_Angle
-   is
-      Result : Types.Sim_Angle;
-   begin
-      if Absolute (Tilt) <= Dead_Zone or 0 = Tilt then
-         Result := Rotation;
-      elsif Tilt > 0 then
-         Result := Rotation + Increment;
-      else
-         Result := Rotation - Increment;
-      end if;
-
-      return Result;
-   end Tilt_Rotation;
-
-   function Tilt_Clamped_Rotation
-     (Rotation : Types.Sim_Angle;
-      Tilt : Types.Int) return Types.Sim_Angle
-   is
-      Minimum : constant Types.Sim_Angle := Types.Sim_Angles.To_Angle (3, 16);
-      Maximum : constant Types.Sim_Angle := Types.Sim_Angles.To_Angle (5, 16);
-
-      Ab : Types.Nat := Absolute (Tilt);
-
-      Result : Types.Sim_Angle;
-   begin
-      if 0 = Tilt or Dead_Zone >= Ab then
-         Result := Rotation;
-      elsif Tilt > 0 then
-         Result :=
-           Types.Sim_Angles.Add_Clamped
-             (Minimum,
-              Maximum,
-              Rotation,
-              Increment);
-      else
-         Result :=
-           Types.Sim_Angles.Subtract_Clamped
-             (Minimum,
-              Maximum,
-              Rotation,
-              Increment);
-      end if;
-
-      return Result;
-   end Tilt_Clamped_Rotation;
 
    function Min_Int (X : Types.Int; Y : Types.Int) return Types.Int is
       Result : Types.Int;
@@ -211,7 +130,7 @@ package body Linted.Simulate is
 
       for II in Types.Position loop
          Forces (1, II) :=
-           Gravity (II) + (Types.Int (This.Counter) mod 61) - 30;
+           Gravity (II) + ((Types.Int (This.Counter) mod 61) - 30);
       end loop;
 
       for Ix in 0 .. 1 loop
@@ -251,7 +170,7 @@ package body Linted.Simulate is
                end if;
 
                Friction :=
-                 Min_Int (Types.Int (Absolute (Guess_Velocity)), Mu) *
+                 Min_Int (Types.Int (Types.Absolute (Guess_Velocity)), Mu) *
                  (-Find_Sign (Guess_Velocity));
 
                New_Velocity := Sim_Isatadd (Guess_Velocity, Friction);
@@ -273,9 +192,11 @@ package body Linted.Simulate is
       end loop;
 
       This.Z_Rotation :=
-        Tilt_Rotation (This.Z_Rotation, Types.Int (This.Controls.Z_Tilt));
+        Types.Tilt_Rotation
+          (This.Z_Rotation,
+           Types.Int (This.Controls.Z_Tilt));
       This.X_Rotation :=
-        Tilt_Clamped_Rotation
+        Types.Tilt_Clamped_Rotation
           (This.X_Rotation,
            -Types.Int (This.Controls.X_Tilt));
 

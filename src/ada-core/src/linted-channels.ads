@@ -15,7 +15,8 @@ with Linted.Options;
 
 generic
    type Element_T is private;
-package Linted.Channels is
+package Linted.Channels with
+   Spark_Mode is
    pragma Pure;
 
    package Option_Element_Ts is new Linted.Options (Element_T);
@@ -35,12 +36,14 @@ package Linted.Channels is
       Depends => (Option => This, This => This);
 
 private
+   pragma SPARK_Mode (Off);
+
    protected type Channel is
       --  Overwrites old values
       procedure Push (D : Element_T) with
          Global => null,
          Depends => (Channel => (D, Channel));
-      entry Pop (D : out Element_T) with
+      entry Pop_Impl (D : out Element_T) with
          Global => null,
          Depends => (D => Channel, Channel => Channel);
       procedure Poll (Option : out Option_Element_Ts.Option) with

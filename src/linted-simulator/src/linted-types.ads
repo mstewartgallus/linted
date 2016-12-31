@@ -32,4 +32,20 @@ package Linted.Types is
 
    type Position is (X, Y, Z);
    type Varying_Positions is array (Position) of Differentiable;
+
+   function Absolute (X : Types.Int) return Types.Nat with
+      Post => Absolute'Result <= Types.Nat (Types.Int'Last),
+      Global => null,
+      Depends => (Absolute'Result => X);
+
+   function Tilt_Rotation
+     (Rotation : Types.Sim_Angle;
+      Tilt : Types.Int) return Types.Sim_Angle with
+      Global => null,
+      Depends => (Tilt_Rotation'Result => (Rotation, Tilt));
+   function Tilt_Clamped_Rotation
+     (Rotation : Types.Sim_Angle;
+      Tilt : Types.Int) return Types.Sim_Angle with
+      Global => null,
+      Depends => (Tilt_Clamped_Rotation'Result => (Rotation, Tilt));
 end Linted.Types;
