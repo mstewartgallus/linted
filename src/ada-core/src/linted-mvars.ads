@@ -19,7 +19,20 @@ package Linted.MVars with
    Abstract_State => null is
    pragma Pure;
 
+   type MVar is limited private;
+
    package Option_Element_Ts is new Linted.Options (Element_T);
+
+   procedure Poll
+     (This : in out MVar;
+      Option : out Option_Element_Ts.Option) with
+      Global => null,
+      Depends => (Option => This, This => This);
+   procedure Set (This : in out MVar; D : Element_T) with
+      Global => null,
+      Depends => (This => (D, This));
+
+private
 
    protected type MVar is
       procedure Poll (Option : out Option_Element_Ts.Option) with

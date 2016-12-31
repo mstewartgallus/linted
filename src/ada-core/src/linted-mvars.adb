@@ -12,6 +12,19 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.MVars is
+   procedure Poll
+     (This : in out MVar;
+      Option : out Option_Element_Ts.Option)
+   is
+   begin
+      This.Poll (Option);
+   end Poll;
+
+   procedure Set (This : in out MVar; D : Element_T) is
+   begin
+      This.Set (D);
+   end Set;
+
    protected body MVar is
       procedure Poll (Option : out Option_Element_Ts.Option) is
       begin

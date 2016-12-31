@@ -36,7 +36,7 @@ package body Linted.Timer is
 
       procedure Wait_Until (Time : Real_Time.Time) is
       begin
-         My_Command_Channel.Push ((Time => Time));
+         Command_Channels.Push (My_Command_Channel, (Time => Time));
       end Wait_Until;
 
       procedure Wait is
@@ -49,7 +49,7 @@ package body Linted.Timer is
          New_Command : Command;
       begin
          loop
-            My_Command_Channel.Pop (New_Command);
+            Command_Channels.Pop (My_Command_Channel, New_Command);
             declare
                Time : constant Real_Time.Time := New_Command.Time;
             begin

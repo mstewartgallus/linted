@@ -16,6 +16,16 @@ with Linted.Wait_Lists;
 package body Linted.Queues with
      Spark_Mode => Off,
      Refined_State => (State => (Contents, Spare_Nodes, Triggers)) is
+   type Atomic_Boolean is new Boolean with
+        Atomic;
+   type Atomic_Node_Access is access all Node with
+        Atomic;
+
+   type Node is record
+      Contents : Element_T;
+      Tail : Atomic_Node_Access := null;
+      In_Queue : Atomic_Boolean := False;
+   end record;
 
    type Node_Array is array (Positive range <>) of aliased Node;
 

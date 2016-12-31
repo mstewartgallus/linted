@@ -11,9 +11,16 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Ada.Synchronous_Task_Control;
+
 package body Linted.Wait_Lists with
      Spark_Mode => Off is
    package STC renames Ada.Synchronous_Task_Control;
+
+   type Node is record
+      Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      Next_Trigger : Node_Access;
+   end record;
 
    protected body Wait_List is
       procedure Insert (N : Node_Nonnull_Access) is

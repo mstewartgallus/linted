@@ -115,7 +115,7 @@ package body Linted.Simulator with
          declare
             Option_Event : Control_Event_Channels.Option_Element_Ts.Option;
          begin
-            Control_Event_Channel.Poll (Option_Event);
+            Control_Event_Channels.Poll (Control_Event_Channel, Option_Event);
             if not Option_Event.Empty then
                My_State.Controls := Option_Event.Data.Data;
             end if;
@@ -124,7 +124,7 @@ package body Linted.Simulator with
          declare
             Option_Event : Timer_Event_Channels.Option_Element_Ts.Option;
          begin
-            Timer_Event_Channel.Poll (Option_Event);
+            Timer_Event_Channels.Poll (Timer_Event_Channel, Option_Event);
             if not Option_Event.Empty then
                Simulate.Tick (My_State);
                My_Update_Writer.Write
@@ -165,7 +165,7 @@ package body Linted.Simulator with
             Event : Controls_Reader.Event;
          begin
             My_Controls_Reader.Wait (Event);
-            Control_Event_Channel.Push (Event);
+            Control_Event_Channels.Push (Control_Event_Channel, Event);
             STC.Set_True (Event_Trigger);
          end;
       end loop;
@@ -176,7 +176,7 @@ package body Linted.Simulator with
    begin
       loop
          My_Timer.Wait;
-         Timer_Event_Channel.Push (T);
+         Timer_Event_Channels.Push (Timer_Event_Channel, T);
          STC.Set_True (Event_Trigger);
       end loop;
    end B;

@@ -66,14 +66,14 @@ package body Linted.Window_Notifier with
 
       procedure Start (Object : KOs.KO) is
       begin
-         My_Command_MVar.Set (Object);
+         Command_MVars.Set (My_Command_MVar, Object);
          STC.Set_True (My_Trigger);
       end Start;
 
       procedure Wait is
          E : Event;
       begin
-         My_Event_Channel.Pop (E);
+         Read_Done_Event_Channels.Pop (My_Event_Channel, E);
       end Wait;
 
       task A;
@@ -82,7 +82,7 @@ package body Linted.Window_Notifier with
       begin
          loop
             Reader_Worker.Wait (Worker_Event);
-            Work_Event.Push (Worker_Event);
+            Worker_Event_Channels.Push (Work_Event, Worker_Event);
             STC.Set_True (My_Trigger);
          end loop;
       end A;
@@ -98,7 +98,7 @@ package body Linted.Window_Notifier with
             declare
                New_Command : Command_MVars.Option_Element_Ts.Option;
             begin
-               My_Command_MVar.Poll (New_Command);
+               Command_MVars.Poll (My_Command_MVar, New_Command);
                if not New_Command.Empty then
                   Object := New_Command.Data;
                   Object_Initialized := True;
@@ -108,10 +108,12 @@ package body Linted.Window_Notifier with
             declare
                Options_Event : Worker_Event_Channels.Option_Element_Ts.Option;
             begin
-               Work_Event.Poll (Options_Event);
+               Worker_Event_Channels.Poll (Work_Event, Options_Event);
                if not Options_Event.Empty then
                   Err := Options_Event.Data.Err;
-                  My_Event_Channel.Push (Event'(Err => Err));
+                  Read_Done_Event_Channels.Push
+                    (My_Event_Channel,
+                     Event'(Err => Err));
                end if;
             end;
 

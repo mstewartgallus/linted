@@ -101,7 +101,6 @@ GPRPROJECTPATH=$(builddir)/src/ada:$(srcdir)/src/ada-libc:$(srcdir)/src/ada-xcb:
 ADAENV=SPARK_LEMMAS_INSTALLED=False SPARK_LEMMAS_OBJECT_DIR=$(abs_builddir)/src/ada GPR_PROJECT_PATH=$(GPRPROJECTPATH)
 
 AM_GPRBUILDFLAGS=-q\
-  -s\
   --create-missing-dirs\
   --autoconf=$(builddir)/auto.cgpr\
   --single-compile-per-obj-dir\

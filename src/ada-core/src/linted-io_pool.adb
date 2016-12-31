@@ -80,13 +80,19 @@ package body Linted.IO_Pool with
    package CQueues is new Queues (Command, 32);
 
    package Writer_Event_Channels is new Channels (Writer_Event);
-   type Writer_Event_Channel is new Writer_Event_Channels.Channel;
+   type Writer_Event_Channel is record
+      Channel : Writer_Event_Channels.Channel;
+   end record;
 
    package Reader_Event_Channels is new Channels (Reader_Event);
-   type Read_Event_Channel is new Reader_Event_Channels.Channel;
+   type Read_Event_Channel is record
+      Channel : Reader_Event_Channels.Channel;
+   end record;
 
    package Poller_Event_Channels is new Channels (Poller_Event);
-   type Poller_Event_Channel is new Poller_Event_Channels.Channel;
+   type Poller_Event_Channel is record
+      Channel : Poller_Event_Channels.Channel;
+   end record;
 
    Command_Trigger : Wait_Lists.Wait_List;
    My_Command_Channel : CQueues.Queue;
@@ -154,9 +160,9 @@ package body Linted.IO_Pool with
          end if;
       end loop;
 
-      Replier.Push
-        (Writer_Event'
-           (Err => Errors.Error (Err), Bytes_Written => Bytes_Written));
+      Writer_Event_Channels.Push
+        (Replier.Channel,
+         (Err => Errors.Error (Err), Bytes_Written => Bytes_Written));
    end Do_Write;
 
    procedure Do_Read (R : Read_Command) is
@@ -189,7 +195,9 @@ package body Linted.IO_Pool with
          end if;
       end loop;
 
-      Replier.Push ((Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
+      Reader_Event_Channels.Push
+        (Replier.Channel,
+         (Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
    end Do_Read;
 
    procedure Do_Poll (P : Poller_Command) is
@@ -249,7 +257,9 @@ package body Linted.IO_Pool with
          end if;
       end loop;
 
-      Replier.Push ((Err => Errors.Error (Err), Events => Heard_Events));
+      Poller_Event_Channels.Push
+        (Replier.Channel,
+         (Err => Errors.Error (Err), Events => Heard_Events));
    end Do_Poll;
 
    package body Writer_Worker with
@@ -258,7 +268,7 @@ package body Linted.IO_Pool with
 
       procedure Wait (Event : out Writer_Event) is
       begin
-         My_Event_Channel.Pop (Event);
+         Writer_Event_Channels.Pop (My_Event_Channel.Channel, Event);
       end Wait;
 
       procedure Write
@@ -281,7 +291,7 @@ package body Linted.IO_Pool with
 
       procedure Wait (Event : out Reader_Event) is
       begin
-         My_Event_Channel.Pop (Event);
+         Reader_Event_Channels.Pop (My_Event_Channel.Channel, Event);
       end Wait;
 
       procedure Read
@@ -312,7 +322,7 @@ package body Linted.IO_Pool with
 
       procedure Wait (Event : out Poller_Event) is
       begin
-         My_Event_Channel.Pop (Event);
+         Poller_Event_Channels.Pop (My_Event_Channel.Channel, Event);
       end Wait;
    end Poller_Worker;
 end Linted.IO_Pool;

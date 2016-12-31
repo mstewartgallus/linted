@@ -2,7 +2,8 @@ with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings;
 with System;
 
-package Libc.Syslog is
+package Libc.Syslog with
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    LOG_EMERG : constant :=

@@ -38,22 +38,9 @@ package Linted.Queues with
 private
    pragma SPARK_Mode (Off);
 
-   type Node_Access;
-
    type Node;
-
-   type Atomic_Boolean is new Boolean with
-        Atomic;
-   type Atomic_Node_Access is access all Node with
-        Atomic;
-   type Node_Access is access all Node;
    type Node_Not_Null_Access is not null access all Node;
-
-   type Node is record
-      Contents : Element_T;
-      Tail : Atomic_Node_Access := null;
-      In_Queue : Atomic_Boolean := False;
-   end record;
+   type Node_Access is access all Node;
 
    function Is_Free (N : Node_Not_Null_Access) return Boolean;
 

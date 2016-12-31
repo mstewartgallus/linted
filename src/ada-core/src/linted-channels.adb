@@ -12,6 +12,24 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.Channels is
+   procedure Push (This : in out Channel; D : Element_T) is
+   begin
+      This.Push (D);
+   end Push;
+
+   procedure Pop (This : in out Channel; D : out Element_T) is
+   begin
+      This.Pop (D);
+   end Pop;
+
+   procedure Poll
+     (This : in out Channel;
+      Option : out Option_Element_Ts.Option)
+   is
+   begin
+      This.Poll (Option);
+   end Poll;
+
    protected body Channel is
       procedure Push (D : Element_T) is
       begin

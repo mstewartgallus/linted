@@ -73,21 +73,21 @@ package body Linted.Update_Writer is
       begin
          loop
             My_Worker.Wait (Worker_Event);
-            Work_Event.Push (Worker_Event);
+            Worker_Event_Channels.Push (Work_Event, Worker_Event);
             STC.Set_True (My_Trigger);
          end loop;
       end A;
 
       procedure Write (Object : KOs.KO; Data : Update.Packet) is
       begin
-         Write_Command_Channel.Push ((Object, Data));
+         Write_Command_Channels.Push (Write_Command_Channel, (Object, Data));
          STC.Set_True (My_Trigger);
       end Write;
 
       procedure Wait (E : out Errors.Error) is
          Event : Write_Done_Event;
       begin
-         Write_Done_Event_Channel.Pop (Event);
+         Write_Done_Event_Channels.Pop (Write_Done_Event_Channel, Event);
          E := Event.Err;
       end Wait;
 
@@ -104,14 +104,15 @@ package body Linted.Update_Writer is
             declare
                Option_Event : Worker_Event_Channels.Option_Element_Ts.Option;
             begin
-               Work_Event.Poll (Option_Event);
+               Worker_Event_Channels.Poll (Work_Event, Option_Event);
                if not Option_Event.Empty then
                   Err := Option_Event.Data.Err;
 
                   Update_In_Progress := False;
 
-                  Write_Done_Event_Channel.Push
-                    (Write_Done_Event'(Err => Err));
+                  Write_Done_Event_Channels.Push
+                    (Write_Done_Event_Channel,
+                     Write_Done_Event'(Err => Err));
                end if;
             end;
 
@@ -119,7 +120,9 @@ package body Linted.Update_Writer is
                Option_Command : Write_Command_Channels.Option_Element_Ts
                  .Option;
             begin
-               Write_Command_Channel.Poll (Option_Command);
+               Write_Command_Channels.Poll
+                 (Write_Command_Channel,
+                  Option_Command);
                if not Option_Command.Empty then
                   Object := Option_Command.Data.Object;
                   Pending_Update := Option_Command.Data.Data;

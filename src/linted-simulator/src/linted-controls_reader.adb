@@ -64,13 +64,13 @@ package body Linted.Controls_Reader with
 
       procedure Start (Object : KOs.KO) is
       begin
-         My_Command_MVar.Set (Object);
+         Command_MVars.Set (My_Command_MVar, Object);
          STC.Set_True (My_Trigger);
       end Start;
 
       procedure Wait (E : out Event) is
       begin
-         My_Event_Channel.Pop (E);
+         Read_Done_Event_Channels.Pop (My_Event_Channel, E);
       end Wait;
 
       task A;
@@ -79,7 +79,7 @@ package body Linted.Controls_Reader with
       begin
          loop
             My_Worker.Wait (Worker_Event);
-            Work_Event.Push (Worker_Event);
+            Worker_Event_Channels.Push (Work_Event, Worker_Event);
             STC.Set_True (My_Trigger);
          end loop;
       end A;
@@ -96,7 +96,7 @@ package body Linted.Controls_Reader with
             declare
                New_Command : Command_MVars.Option_Element_Ts.Option;
             begin
-               My_Command_MVar.Poll (New_Command);
+               Command_MVars.Poll (My_Command_MVar, New_Command);
                if not New_Command.Empty then
                   Object := New_Command.Data;
                   Object_Initialized := True;
@@ -106,13 +106,13 @@ package body Linted.Controls_Reader with
             declare
                Options_Event : Worker_Event_Channels.Option_Element_Ts.Option;
             begin
-               Work_Event.Poll (Options_Event);
+               Worker_Event_Channels.Poll (Work_Event, Options_Event);
                if not Options_Event.Empty then
                   Err := Options_Event.Data.Err;
                   if Err = Linted.Errors.Success then
                      Controls.From_Storage (Data_Being_Read, C);
                   end if;
-                  My_Event_Channel.Push ((C, Err));
+                  Read_Done_Event_Channels.Push (My_Event_Channel, (C, Err));
                end if;
             end;
 

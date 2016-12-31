@@ -20,6 +20,21 @@ package Linted.Channels is
 
    package Option_Element_Ts is new Linted.Options (Element_T);
 
+   type Channel is limited private;
+
+   procedure Push (This : in out Channel; D : Element_T) with
+      Global => null,
+      Depends => (This => (D, This));
+   procedure Pop (This : in out Channel; D : out Element_T) with
+      Global => null,
+      Depends => (D => This, This => This);
+   procedure Poll
+     (This : in out Channel;
+      Option : out Option_Element_Ts.Option) with
+      Global => null,
+      Depends => (Option => This, This => This);
+
+private
    protected type Channel is
       --  Overwrites old values
       procedure Push (D : Element_T) with

@@ -172,7 +172,7 @@ package body Linted.Drawer with
          declare
             Option_Event : Update_Event_Channels.Option_Element_Ts.Option;
          begin
-            Update_Event_Channel.Poll (Option_Event);
+            Update_Event_Channels.Poll (Update_Event_Channel, Option_Event);
             if not Option_Event.Empty then
                declare
                   GPU_Update : aliased GPU.Update;
@@ -215,7 +215,9 @@ package body Linted.Drawer with
             No_Opts : aliased array (1 .. 2) of aliased Libc.Stdint.uint32_t :=
               (0, 0);
          begin
-            Notifier_Event_Channel.Poll (Option_Event);
+            Notifier_Event_Channels.Poll
+              (Notifier_Event_Channel,
+               Option_Event);
             if not Option_Event.Empty then
                Ck :=
                  XCB.XProto.xcb_change_window_attributes
@@ -247,7 +249,7 @@ package body Linted.Drawer with
             procedure Free (Event : access XCB.xcb_generic_event_t);
             pragma Import (C, Free, "free");
          begin
-            Poller_Event_Channel.Poll (Option_Event);
+            Poller_Event_Channels.Poll (Poller_Event_Channel, Option_Event);
             if not Option_Event.Empty then
                loop
                   My_Event := XCB.xcb_poll_for_event (Connection);
@@ -317,7 +319,7 @@ package body Linted.Drawer with
             Event : Update_Reader.Event;
          begin
             My_Update_Reader.Wait (Event);
-            Update_Event_Channel.Push (Event);
+            Update_Event_Channels.Push (Update_Event_Channel, Event);
             STC.Set_True (Event_Trigger);
          end;
       end loop;
@@ -330,7 +332,7 @@ package body Linted.Drawer with
          declare
             Event : Notifier_Event;
          begin
-            Notifier_Event_Channel.Push (Event);
+            Notifier_Event_Channels.Push (Notifier_Event_Channel, Event);
          end;
          STC.Set_True (Event_Trigger);
       end loop;
@@ -343,7 +345,7 @@ package body Linted.Drawer with
             Event : Poller.Event;
          begin
             My_Poller.Wait (Event);
-            Poller_Event_Channel.Push (Event);
+            Poller_Event_Channels.Push (Poller_Event_Channel, Event);
          end;
          STC.Set_True (Event_Trigger);
       end loop;
