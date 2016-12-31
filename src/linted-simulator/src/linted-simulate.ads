@@ -15,7 +15,8 @@ with Linted.Controls;
 with Linted.Types;
 
 package Linted.Simulate with
-     Abstract_State => null is
+     Abstract_State => null,
+     Spark_Mode => Off is
    pragma Elaborate_Body;
 
    type Object_State is array (0 .. 1) of Types.Varying_Positions;

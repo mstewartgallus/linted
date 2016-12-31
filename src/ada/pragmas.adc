@@ -19,6 +19,7 @@ pragma License (Restricted);
 
 pragma Profile (Restricted);
 pragma Profile (Ravenscar);
+
 pragma Partition_Elaboration_Policy (Sequential);
 pragma Extensions_Allowed (Off);
 pragma Polling (On);

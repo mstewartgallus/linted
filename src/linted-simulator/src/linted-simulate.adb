@@ -13,7 +13,8 @@
 -- permissions and limitations under the License.
 private with Linted.Errors;
 
-package body Linted.Simulate is
+package body Linted.Simulate with
+     Spark_Mode => Off is
    use type Errors.Error;
    use type Types.Int;
    use type Types.Nat;
@@ -21,66 +22,11 @@ package body Linted.Simulate is
    use type Types.Position;
    use type Types.Sim_Angle;
 
-   function Downscale (X : Types.Int; Y : Types.Int) return Types.Int;
-
    function Sim_Sin is new Types.Sim_Angles.Sin (Types.Int);
    function Sim_Cos is new Types.Sim_Angles.Cos (Types.Int);
 
-   function Min_Int (X : Types.Int; Y : Types.Int) return Types.Int;
-   function Find_Sign (X : Types.Int) return Types.Int;
-
-   function Sim_Isatadd (X : Types.Int; Y : Types.Int) return Types.Int;
-   function Saturate (X : Types.Large) return Types.Int;
-
-   function Min_Int (X : Types.Int; Y : Types.Int) return Types.Int is
-      Result : Types.Int;
-   begin
-      if X < Y then
-         Result := X;
-      else
-         Result := Y;
-      end if;
-      return Result;
-   end Min_Int;
-
-   function Find_Sign (X : Types.Int) return Types.Int is
-      Result : Types.Int;
-   begin
-      if X > 0 then
-         Result := 1;
-      elsif 0 = X then
-         Result := 0;
-      else
-         Result := -1;
-      end if;
-      return Result;
-   end Find_Sign;
-
-   function Saturate (X : Types.Large) return Types.Int is
-      Result : Types.Int;
-   begin
-      if X > Types.Large (Types.Int'Last) then
-         Result := Types.Int'Last;
-      elsif X < Types.Large (Types.Int'First) then
-         Result := Types.Int'First;
-      else
-         Result := Types.Int (X);
-      end if;
-      return Result;
-   end Saturate;
-
-   function Sim_Isatadd (X : Types.Int; Y : Types.Int) return Types.Int is
-   begin
-      return Saturate (Types.Large (X) + Types.Large (Y));
-   end Sim_Isatadd;
-
-   function Downscale (X : Types.Int; Y : Types.Int) return Types.Int is
-   begin
-      return Types.Int
-          ((Types.Large (Y) * Types.Large (X)) / Types.Large (Types.Int'Last));
-   end Downscale;
-
-   procedure Tick (This : in out State) is
+   procedure Tick (This : in out State) with
+      Spark_Mode => Off is
       X_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
       Y_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
       Z_Thrust : array (Types.Position) of Types.Int := (0, 0, 0);
@@ -103,8 +49,8 @@ package body Linted.Simulate is
       Strafe :=
         Boolean'Pos (This.Controls.Left) - Boolean'Pos (This.Controls.Right);
 
-      Cos_Z := Downscale (Sim_Cos (This.Z_Rotation), 32);
-      Sin_Z := Downscale (Sim_Sin (This.Z_Rotation), 32);
+      Cos_Z := Types.Downscale (Sim_Cos (This.Z_Rotation), 32);
+      Sin_Z := Types.Downscale (Sim_Sin (This.Z_Rotation), 32);
 
       if This.Objects (0) (Types.Z).Value >= 0 then
          Y_Thrust (Types.X) := Retreat_Or_Go_Forth * Sin_Z;
@@ -114,7 +60,7 @@ package body Linted.Simulate is
          X_Thrust (Types.Y) := Strafe * (-Sin_Z);
 
          if This.Controls.Jumping then
-            Z_Thrust (Types.Z) := Downscale (-Types.Int'Last, 512);
+            Z_Thrust (Types.Z) := Types.Downscale (-Types.Int'Last, 512);
          end if;
       end if;
 
@@ -157,7 +103,7 @@ package body Linted.Simulate is
 
                Old_Velocity := Position - Old_Position;
 
-               Guess_Velocity := Sim_Isatadd (Force, Old_Velocity);
+               Guess_Velocity := Types.Sim_Isatadd (Force, Old_Velocity);
 
                if Types.X = II or Types.Y = II then
                   if This.Objects (Ix) (Types.Z).Value >= 0 then
@@ -170,10 +116,12 @@ package body Linted.Simulate is
                end if;
 
                Friction :=
-                 Min_Int (Types.Int (Types.Absolute (Guess_Velocity)), Mu) *
-                 (-Find_Sign (Guess_Velocity));
+                 Types.Min_Int
+                   (Types.Int (Types.Absolute (Guess_Velocity)),
+                    Mu) *
+                 (-Types.Find_Sign (Guess_Velocity));
 
-               New_Velocity := Sim_Isatadd (Guess_Velocity, Friction);
+               New_Velocity := Types.Sim_Isatadd (Guess_Velocity, Friction);
 
                if Types.Z = II and
                  This.Objects (Ix) (Types.Z).Value >= 0 and
@@ -182,7 +130,7 @@ package body Linted.Simulate is
                   New_Velocity := 0;
                end if;
 
-               New_Position := Sim_Isatadd (Position, New_Velocity);
+               New_Position := Types.Sim_Isatadd (Position, New_Velocity);
 
                This.Objects (Ix) (II).Value := New_Position;
                This.Objects (Ix) (II).Old := Position;

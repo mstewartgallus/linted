@@ -16,18 +16,23 @@ generic
 package Linted.Angles is
    pragma Pure;
 
-   type Angle is private;
-
-   function To_Angle (X : Element_T) return Angle with
-      Global => null,
-      Depends => (To_Angle'Result => X);
+   type Angle is record
+      Value : Element_T := 0;
+   end record;
 
    function To_Angle (X : Element_T; Y : Element_T) return Angle with
       Global => null,
-      Pre => X <= Y,
-      Depends => (To_Angle'Result => (X, Y));
+      Depends => (To_Angle'Result => (X, Y)),
+      Pre => X <= Y;
+
    function From_Angle (X : Angle) return Element_T with
-      Global => null;
+      Global => null,
+      Post => From_Angle'Result = X.Value;
+
+   function To_Angle (X : Element_T) return Angle with
+      Global => null,
+      Depends => (To_Angle'Result => X),
+      Post => X = To_Angle'Result.Value;
 
    function "+" (Theta : Angle; Phi : Angle) return Angle with
       Global => null;
@@ -40,8 +45,8 @@ package Linted.Angles is
       Theta : Angle;
       Phi : Angle) return Angle with
       Global => null,
-      Pre => From_Angle (Max) <= Element_T'Last / 2 and
-      From_Angle (Min) <= Element_T'Last / 2;
+      Pre => Max.Value <= Element_T'Last / 2 and
+      Min.Value <= Element_T'Last / 2;
 
    function Subtract_Clamped
      (Min : Angle;
@@ -49,8 +54,8 @@ package Linted.Angles is
       Theta : Angle;
       Phi : Angle) return Angle with
       Global => null,
-      Pre => From_Angle (Max) <= Element_T'Last / 2 and
-      From_Angle (Min) <= Element_T'Last / 2;
+      Pre => Max.Value <= Element_T'Last / 2 and
+      Min.Value <= Element_T'Last / 2;
 
    generic
       type Element_U is range <>;
@@ -59,9 +64,4 @@ package Linted.Angles is
    generic
       type Element_U is range <>;
    function Cos (X : Angle) return Element_U;
-private
-   type Angle is record
-      Value : Element_T := 0;
-   end record;
-
 end Linted.Angles;

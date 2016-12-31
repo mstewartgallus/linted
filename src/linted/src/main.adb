@@ -11,7 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Ada.Command_Line;
 private with Ada.Strings.Unbounded;
 private with Ada.Unchecked_Conversion;
 
@@ -33,7 +32,6 @@ private with Linted.Logs;
 private with Linted.Last_Chance;
 
 procedure Main is
-   package Command_Line renames Ada.Command_Line;
    package U renames Ada.Strings.Unbounded;
 
    use type Linted.Errors.Error;
@@ -107,43 +105,10 @@ procedure Main is
            U.To_Unbounded_String (Linted.Settings.LNTD_WINDOW_FSTAB)),
         when others => raise Constraint_Error);
 
-   Arg_Count : Integer;
-
-   Need_Help : Boolean := False;
-   Need_Version : Boolean := False;
-   Bad_Option : Boolean := False;
-
    Pid : Linted.Process.Id;
 
    Err : Linted.Errors.Error;
 begin
-   Arg_Count := Command_Line.Argument_Count;
-   for II in 1 .. Arg_Count loop
-      declare
-         Argument : String := Command_Line.Argument (1);
-      begin
-         if "--help" = Argument then
-            Need_Help := True;
-         elsif "--version" = Argument then
-            Need_Version := True;
-         else
-            Bad_Option := True;
-         end if;
-      end;
-   end loop;
-
-   if Need_Help then
-      Libc.Unistd.u_exit (1);
-   end if;
-
-   if Bad_Option then
-      Libc.Unistd.u_exit (1);
-   end if;
-
-   if Need_Version then
-      Libc.Unistd.u_exit (1);
-   end if;
-
    for II in 1 .. Envvars_Count loop
       declare
          Key : U.Unbounded_String;

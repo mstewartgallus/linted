@@ -17,6 +17,17 @@ package body Linted.Types is
    Rotation_Speed : constant Types.Nat := 2048;
    Dead_Zone : constant Types.Nat := Types.Nat'Last / 8 + 1;
 
+   function Min_Int (X : Types.Int; Y : Types.Int) return Types.Int is
+      Result : Types.Int;
+   begin
+      if X < Y then
+         Result := X;
+      else
+         Result := Y;
+      end if;
+      return Result;
+   end Min_Int;
+
    function Increment return Sim_Angle with
       Global => null,
       Depends => (Increment'Result => null);
@@ -27,14 +38,23 @@ package body Linted.Types is
    end Increment;
 
    function Absolute (X : Types.Int) return Types.Nat is
+      Inc : Types.Int;
+      N : Types.Nat;
       Result : Types.Nat;
    begin
       -- Avoid tricky arithmetic overflow possibilities
 
       if X < 0 then
-         Result := Types.Nat (-(X + 1)) + 1;
+         Inc := X + 1;
+         pragma Assert (Inc > Types.Int'First);
+         N := Types.Nat (-Inc);
+         pragma Assert (N <= Types.Nat (-(Types.Int'First + 1)));
+         Result := N + 1;
+         pragma Assert (Result <= Types.Nat (-(Types.Int'First + 1)) + 1);
+         pragma Assert (Result <= Types.Nat (Types.Int'Last) + 1);
       else
          Result := Types.Nat (X);
+         pragma Assert (Result <= Types.Nat (Types.Int'Last));
       end if;
       return Result;
    end Absolute;
@@ -87,4 +107,42 @@ package body Linted.Types is
 
       return Result;
    end Tilt_Clamped_Rotation;
+
+   function Find_Sign (X : Types.Int) return Types.Int is
+      Result : Types.Int;
+   begin
+      if X > 0 then
+         Result := 1;
+      elsif 0 = X then
+         Result := 0;
+      else
+         Result := -1;
+      end if;
+      return Result;
+   end Find_Sign;
+
+   function Saturate (X : Types.Large) return Types.Int is
+      Result : Types.Int;
+   begin
+      if X > Types.Large (Types.Int'Last) then
+         Result := Types.Int'Last;
+      elsif X < Types.Large (Types.Int'First) then
+         Result := Types.Int'First;
+      else
+         Result := Types.Int (X);
+      end if;
+      return Result;
+   end Saturate;
+
+   function Sim_Isatadd (X : Types.Int; Y : Types.Int) return Types.Int is
+   begin
+      return Saturate (Types.Large (X) + Types.Large (Y));
+   end Sim_Isatadd;
+
+   function Downscale (X : Types.Int; Y : Types.Int) return Types.Int is
+   begin
+      return Types.Int
+          ((Types.Large (Y) * Types.Large (X)) / Types.Large (Types.Int'Last));
+   end Downscale;
+
 end Linted.Types;

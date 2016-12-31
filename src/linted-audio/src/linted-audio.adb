@@ -144,14 +144,12 @@ package body Linted.Audio with
         0
       then
          raise Program_Error
-           with "Cannot connect context: " &
-           Value (pa_strerror (pa_context_errno (Context)));
+           with Value (pa_strerror (pa_context_errno (Context)));
       end if;
 
       if pa_mainloop_run (Mainloop, Retval) < 0 then
          raise Program_Error
-           with "Cannot run mainloop: " &
-           Value (pa_strerror (pa_context_errno (Context)));
+           with Value (pa_strerror (pa_context_errno (Context)));
       end if;
 
       pa_context_unref (Context);
