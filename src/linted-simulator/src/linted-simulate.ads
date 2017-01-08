@@ -15,14 +15,15 @@ with Linted.Controls;
 with Linted.Types;
 
 package Linted.Simulate with
-  Abstract_State => null,
-Spark_Mode => Off Is
+     Abstract_State => null,
+     Spark_Mode => Off is
    pragma Elaborate_Body;
 
    type State is record
       Controls : Linted.Controls.Packet;
 
-      Objects : Types.Object_State := (0 .. 1 => (Types.X .. Types.Z => (0, 0)));
+      Objects : Types.Object_State :=
+        (0 .. 1 => (Types.X .. Types.Z => (0, 0)));
 
       Z_Rotation : Types.Sim_Angle;
       X_Rotation : Types.Sim_Angle;

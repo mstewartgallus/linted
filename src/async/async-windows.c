@@ -1059,7 +1059,8 @@ static lntd_error poll_one(lntd_ko ko, short events, short *reventsp)
 	*reventsp = revents;
 	return 0;
 
-poll_failed:;
+poll_failed:
+	;
 	lntd_error err = HRESULT_FROM_WIN32(WSAGetLastError());
 	LNTD_ASSUME(err != 0);
 	return err;

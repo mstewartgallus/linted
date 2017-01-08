@@ -58,10 +58,10 @@ package Linted.Angles is
       Min.Value <= Element_T'Last / 2;
 
    generic
-      type Element_U is range <>;
+      type Element_U is delta <>;
    function Sin (X : Angle) return Element_U;
 
    generic
-      type Element_U is range <>;
+      type Element_U is delta <>;
    function Cos (X : Angle) return Element_U;
 end Linted.Angles;

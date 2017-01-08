@@ -1695,8 +1695,8 @@ static inline void matrix_multiply(struct matrix const *restrict a,
 				b_ii_3 = b_ii.x[3U];
 			}
 
-			char *b_inverted_XX_ii = &(
-			    (char *)&b_inverted)[ii * sizeof(GLfloat)];
+			char *b_inverted_XX_ii = &((
+			    char *)&b_inverted)[ii * sizeof(GLfloat)];
 
 			*(GLfloat *)(b_inverted_XX_ii +
 			             0U * sizeof(union chunk)) = b_ii_0;

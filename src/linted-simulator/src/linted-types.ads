@@ -20,6 +20,7 @@ package Linted.Types is
 
    type Nat is mod 2**32;
    type Int is range -2**(32 - 1) .. 2**(32 - 1) - 1;
+   type Fixed is delta 1.0 / 2.0**30 range -2.0**32 .. 2.0**32 + 1.0;
 
    package Sim_Angles is new Linted.Angles (Nat);
 
@@ -61,6 +62,6 @@ package Linted.Types is
 
    function Downscale (X : Types.Int; Y : Types.Int) return Types.Int;
 
-   function Sim_Sin is new Types.Sim_Angles.Sin (Types.Int);
-   function Sim_Cos is new Types.Sim_Angles.Cos (Types.Int);
+   function Sim_Sin is new Types.Sim_Angles.Sin (Fixed);
+   function Sim_Cos is new Types.Sim_Angles.Cos (Fixed);
 end Linted.Types;

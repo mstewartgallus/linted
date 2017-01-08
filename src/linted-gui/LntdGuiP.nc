@@ -305,8 +305,8 @@ implementation
 
 			switch (myevent->response_type & ~0x80) {
 			case XCB_CONFIGURE_NOTIFY: {
-				xcb_configure_notify_event_t const
-				    *configure_event = (void *)myevent;
+				xcb_configure_notify_event_t const *
+				    configure_event = (void *)myevent;
 
 				resize_width = configure_event->width;
 				resize_height = configure_event->height;
@@ -319,8 +319,8 @@ implementation
 				break;
 
 			case XCB_MOTION_NOTIFY: {
-				xcb_motion_notify_event_t const
-				    *motion_event;
+				xcb_motion_notify_event_t const *
+				    motion_event;
 
 				if (!focused)
 					break;

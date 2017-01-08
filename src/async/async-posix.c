@@ -765,7 +765,8 @@ static void *master_worker_routine(void *arg)
 			}
 			sched_yield();
 		}
-	exit_loop:;
+	exit_loop:
+		;
 	}
 
 	for (size_t ii = 0U; ii < max_tasks; ++ii) {

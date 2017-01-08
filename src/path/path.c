@@ -120,7 +120,8 @@ lntd_error lntd_path_package_data_home(char **packagep)
 
 	return err;
 
-fallback:;
+fallback:
+	;
 	char *home_path;
 	{
 		char *xx;

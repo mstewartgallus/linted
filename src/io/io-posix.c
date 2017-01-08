@@ -91,7 +91,8 @@ lntd_error lntd_io_read_all(lntd_ko ko, size_t *bytes_read_out,
 
 	lntd_error err = 0;
 
-restart_reading:;
+restart_reading:
+	;
 	ssize_t result = read(ko, buf_offset, bytes_left);
 	if (result < 0) {
 		err = errno;
@@ -121,7 +122,8 @@ finish_reading:
 		*bytes_read_out = bytes_read;
 	return err;
 
-poll_for_readability:;
+poll_for_readability:
+	;
 	short revents;
 	{
 		short xx;
@@ -191,7 +193,8 @@ lntd_error lntd_io_write_all(lntd_ko ko, size_t *bytes_wrote_out,
 
 			break;
 
-		poll_for_writeability:;
+		poll_for_writeability:
+			;
 			short revents;
 			{
 				short xx;

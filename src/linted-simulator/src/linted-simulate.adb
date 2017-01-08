@@ -12,7 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.Simulate with
-      Spark_Mode => Off is
+     Spark_Mode => Off is
    use type Types.Int;
    use type Types.Nat;
    use type Types.Large;
@@ -42,8 +42,16 @@ package body Linted.Simulate with
       Strafe :=
         Boolean'Pos (This.Controls.Left) - Boolean'Pos (This.Controls.Right);
 
-      Cos_Z := Types.Downscale (Types.Sim_Cos (This.Z_Rotation), 32);
-      Sin_Z := Types.Downscale (Types.Sim_Sin (This.Z_Rotation), 32);
+      Cos_Z :=
+        Types.Downscale
+          (Types.Int
+             (Types.Sim_Cos (This.Z_Rotation) * Types.Fixed (Types.Int'Last)),
+           32);
+      Sin_Z :=
+        Types.Downscale
+          (Types.Int
+             (Types.Sim_Sin (This.Z_Rotation) * Types.Fixed (Types.Int'Last)),
+           32);
 
       if This.Objects (0) (Types.Z).Value >= 0 then
          Y_Thrust (Types.X) := Retreat_Or_Go_Forth * Sin_Z;
