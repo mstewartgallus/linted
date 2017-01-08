@@ -1623,30 +1623,36 @@ static inline void model_view_projection(
 
 	struct matrix model_view;
 	{
-		struct matrix rotations;
-		{
-			struct matrix const x_rotation_matrix = {
-			    {{1, 0, 0, 0},
-			     {0, cos_x, -sin_x, 0},
-			     {0, sin_x, cos_x, 0},
-			     {0, 0, 0, 1}}};
-
-			struct matrix const z_rotation_matrix = {
-			    {{cos_z, sin_z, 0, 0},
-			     {-sin_z, cos_z, 0, 0},
-			     {0, 0, 1, 0},
-			     {0, 0, 0, 1}}};
-
-			matrix_multiply(&z_rotation_matrix,
-			                &x_rotation_matrix, &rotations);
-		}
-
 		struct matrix m;
-		struct matrix const model = {
-		    {{1, 0, 0, 0},
-		     {0, 1, 0, 0},
-		     {0, 0, 1, 0},
-		     {-mx_position, -my_position, -mz_position, 1}}};
+		{
+			struct matrix rotations;
+			{
+				struct matrix const x_rotation_matrix =
+				    {{{1, 0, 0, 0},
+				      {0, cos_x, -sin_x, 0},
+				      {0, sin_x, cos_x, 0},
+				      {0, 0, 0, 1}}};
+
+				struct matrix const z_rotation_matrix =
+				    {{{cos_z, sin_z, 0, 0},
+				      {-sin_z, cos_z, 0, 0},
+				      {0, 0, 1, 0},
+				      {0, 0, 0, 1}}};
+
+				matrix_multiply(&z_rotation_matrix,
+				                &x_rotation_matrix,
+				                &rotations);
+			}
+
+			struct matrix const model = {
+			    {{1, 0, 0, 0},
+			     {0, 1, 0, 0},
+			     {0, 0, 1, 0},
+			     {-mx_position, -my_position, -mz_position,
+			      1}}};
+
+			matrix_multiply(&model, &rotations, &m);
+		}
 
 		/* Translate the camera */
 		struct matrix const camera = {
@@ -1655,7 +1661,6 @@ static inline void model_view_projection(
 		     {0, 0, 1, 0},
 		     {x_position, y_position, z_position, 1}}};
 
-		matrix_multiply(&model, &rotations, &m);
 		matrix_multiply(&camera, &m, &model_view);
 	}
 

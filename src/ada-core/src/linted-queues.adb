@@ -102,8 +102,8 @@ package body Linted.Queues with
       N.Contents := Dummy;
    end Allocate;
 
+   Dummy : aliased Node;
    procedure Insert (Q : in out Queue; C : Element_T) is
-      Dummy : aliased Node;
       N : Node_Not_Null_Access := Dummy'Unchecked_Access;
    begin
       Allocate (N);

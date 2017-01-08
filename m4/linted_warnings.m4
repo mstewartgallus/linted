@@ -38,7 +38,7 @@ dnl
         [-Wall]dnl
         [-Wextra]dnl
 dnl
-        [-Wstack-usage=850]dnl
+        [-Wstack-usage=500]dnl
 dnl
         [-Wdate-time]dnl Reproducible builds are GOOD
 dnl

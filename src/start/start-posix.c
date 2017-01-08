@@ -33,7 +33,6 @@
 #include <dirent.h>
 #include <errno.h>
 #include <locale.h>
-#include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -45,17 +44,6 @@
 #if defined HAVE_SYS_AUXV_H
 #include <sys/auxv.h>
 #endif
-
-struct start_args {
-	pthread_t parent;
-	unsigned char (*start)(char const *process_name, size_t argc,
-	                       char const *const argv[]);
-	struct lntd_start_config const *config;
-	size_t argc;
-	char const *const *argv;
-};
-
-static void *start_routine(void *arg);
 
 static void do_nothing(int signo);
 

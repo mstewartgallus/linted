@@ -187,20 +187,22 @@ struct first_fork_args {
 	char const *waiter_base;
 	char const *const *command;
 	char const *binary;
-	int_least64_t *limit_no_file;
+	int_least64_t limit_no_file;
 	scmp_filter_ctx *seccomp_context;
 	lntd_ko err_writer;
 	lntd_ko logger_reader;
 	lntd_ko logger_writer;
+	bool limit_no_file_set;
 };
 
 struct second_fork_args {
 	char const *const *argv;
 	char const *binary;
-	int_least64_t *limit_no_file;
+	int_least64_t limit_no_file;
 	scmp_filter_ctx *seccomp_context;
 	lntd_ko err_writer;
 	lntd_ko logger_writer;
+	bool limit_no_file_set;
 };
 
 static int first_fork_routine(void *arg);
@@ -233,6 +235,8 @@ static int my_pivot_root(char const *new_root, char const *put_old);
 static struct lntd_start_config const lntd_start_config = {
     .canonical_process_name = PACKAGE_NAME "-sandbox",
     .dont_init_signals = true};
+
+union opt_value opt_values[NUM_OPTIONS] = {0};
 
 static unsigned char lntd_start_main(char const *const process_name,
                                      size_t argc,
@@ -278,79 +282,74 @@ static unsigned char lntd_start_main(char const *const process_name,
 	char const *waiter_str;
 	char const *seccomp_filter_str;
 
-	{
-		union opt_value opt_values[NUM_OPTIONS] = {0};
-		for (size_t ii = 1U; ii < arguments_length; ++ii) {
-			char const *argument = argv[ii];
+	for (size_t ii = 1U; ii < arguments_length; ++ii) {
+		char const *argument = argv[ii];
 
-			int arg = -1;
-			for (size_t jj = 0U;
-			     jj < LNTD_ARRAY_SIZE(argstrs); ++jj) {
-				if (0 ==
-				    strcmp(argument, argstrs[jj])) {
-					arg = jj;
-					break;
-				}
-			}
-
-			switch (arg) {
-			case -1:
-				bad_option = argument;
-				break;
-
-			case STOP_OPTIONS:
-				have_command = true;
-				command_start = ii;
-				goto exit_loop;
-
-			default:
-				switch (opt_types[arg]) {
-				case OPT_TYPE_FLAG:
-					opt_values[arg].flag = true;
-					break;
-
-				case OPT_TYPE_STRING:
-					++ii;
-					if (ii >= arguments_length)
-						goto exit_loop;
-					opt_values[arg].string =
-					    argv[ii];
-					break;
-				}
+		int arg = -1;
+		for (size_t jj = 0U; jj < LNTD_ARRAY_SIZE(argstrs);
+		     ++jj) {
+			if (0 == strcmp(argument, argstrs[jj])) {
+				arg = jj;
 				break;
 			}
 		}
-	exit_loop:
-		need_version = opt_values[VERSION_OPTION].flag;
-		need_help = opt_values[HELP].flag;
 
-		wait = opt_values[WAIT].flag;
-		traceme = opt_values[TRACEME].flag;
-		no_new_privs = opt_values[NO_NEW_PRIVS].flag;
-		drop_caps = opt_values[DROP_CAPS].flag;
+		switch (arg) {
+		case -1:
+			bad_option = argument;
+			break;
 
-		clone_newcgroup = opt_values[NEWCGROUP_ARG].flag;
-		clone_newuser = opt_values[NEWUSER_ARG].flag;
-		clone_newpid = opt_values[NEWPID_ARG].flag;
-		clone_newipc = opt_values[NEWIPC_ARG].flag;
-		clone_newnet = opt_values[NEWNET_ARG].flag;
-		clone_newns = opt_values[NEWNS_ARG].flag;
-		clone_newuts = opt_values[NEWUTS_ARG].flag;
+		case STOP_OPTIONS:
+			have_command = true;
+			command_start = ii;
+			goto exit_loop;
 
-		seccomp_native = opt_values[SECCOMP_NATIVE].flag;
+		default:
+			switch (opt_types[arg]) {
+			case OPT_TYPE_FLAG:
+				opt_values[arg].flag = true;
+				break;
 
-		limit_no_file_str = opt_values[RLIMIT_NOFILE].string;
-		limit_locks_str = opt_values[LIMIT_LOCKS].string;
-		limit_msgqueue_str = opt_values[LIMIT_MSGQUEUE].string;
-		limit_memlock_str = opt_values[LIMIT_MEMLOCK].string;
-		chdir_str = opt_values[CHDIR].string;
-		priority_str = opt_values[PRIORITY].string;
-		timer_slack_str = opt_values[TIMER_SLACK].string;
-		chrootdir_str = opt_values[CHROOTDIR].string;
-		fstab_str = opt_values[FSTAB].string;
-		waiter_str = opt_values[WAITER].string;
-		seccomp_filter_str = opt_values[SECCOMP_FILTER].string;
+			case OPT_TYPE_STRING:
+				++ii;
+				if (ii >= arguments_length)
+					goto exit_loop;
+				opt_values[arg].string = argv[ii];
+				break;
+			}
+			break;
+		}
 	}
+exit_loop:
+	need_version = opt_values[VERSION_OPTION].flag;
+	need_help = opt_values[HELP].flag;
+
+	wait = opt_values[WAIT].flag;
+	traceme = opt_values[TRACEME].flag;
+	no_new_privs = opt_values[NO_NEW_PRIVS].flag;
+	drop_caps = opt_values[DROP_CAPS].flag;
+
+	clone_newcgroup = opt_values[NEWCGROUP_ARG].flag;
+	clone_newuser = opt_values[NEWUSER_ARG].flag;
+	clone_newpid = opt_values[NEWPID_ARG].flag;
+	clone_newipc = opt_values[NEWIPC_ARG].flag;
+	clone_newnet = opt_values[NEWNET_ARG].flag;
+	clone_newns = opt_values[NEWNS_ARG].flag;
+	clone_newuts = opt_values[NEWUTS_ARG].flag;
+
+	seccomp_native = opt_values[SECCOMP_NATIVE].flag;
+
+	limit_no_file_str = opt_values[RLIMIT_NOFILE].string;
+	limit_locks_str = opt_values[LIMIT_LOCKS].string;
+	limit_msgqueue_str = opt_values[LIMIT_MSGQUEUE].string;
+	limit_memlock_str = opt_values[LIMIT_MEMLOCK].string;
+	chdir_str = opt_values[CHDIR].string;
+	priority_str = opt_values[PRIORITY].string;
+	timer_slack_str = opt_values[TIMER_SLACK].string;
+	chrootdir_str = opt_values[CHROOTDIR].string;
+	fstab_str = opt_values[FSTAB].string;
+	waiter_str = opt_values[WAITER].string;
+	seccomp_filter_str = opt_values[SECCOMP_FILTER].string;
 
 	if (need_help) {
 		do_help(LNTD_KO_STDOUT, process_name, PACKAGE_NAME,
@@ -413,12 +412,16 @@ static unsigned char lntd_start_main(char const *const process_name,
 	}
 	command_dup[command_size] = 0;
 	for (size_t ii = 0U; ii < command_size; ++ii) {
-		err = lntd_str_dup(&command_dup[ii], command[ii]);
+		char const *c = command[ii];
+
+		char *xx = 0;
+		err = lntd_str_dup(&xx, c);
 		if (err != 0) {
 			lntd_log(LNTD_LOG_ERROR, "lntd_str_dup: %s",
 			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
+		command_dup[ii] = xx;
 	}
 
 	char *waiter_base;
@@ -435,8 +438,9 @@ static unsigned char lntd_start_main(char const *const process_name,
 
 	char *command_base;
 	{
+		char const *c = command_dup[0U];
 		char *xx;
-		err = lntd_path_base(&xx, command_dup[0U]);
+		err = lntd_path_base(&xx, c);
 		if (err != 0) {
 			lntd_log(LNTD_LOG_ERROR, "lntd_path_base: %s",
 			         lntd_error_string(err));
@@ -449,10 +453,9 @@ static unsigned char lntd_start_main(char const *const process_name,
 
 	char const *binary = command[0U];
 
-	int_least64_t *prio_val = (int_least64_t[1U]){0};
-	if (0 == priority_str) {
-		prio_val = 0;
-	} else {
+	int_least64_t prio_val = 0;
+	bool prio_val_set = priority_str != 0;
+	if (prio_val_set) {
 		int xx;
 		err = parse_int(priority_str, &xx);
 		if (err != 0) {
@@ -460,13 +463,12 @@ static unsigned char lntd_start_main(char const *const process_name,
 			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
-		*prio_val = xx;
+		prio_val = xx;
 	}
 
-	int_least64_t *timer_slack_val = (int_least64_t[1U]){0};
-	if (0 == timer_slack_str) {
-		timer_slack_val = 0;
-	} else {
+	int_least64_t timer_slack_val = 0;
+	bool timer_slack_val_set = timer_slack_str != 0;
+	if (timer_slack_val_set) {
 		int xx;
 		err = parse_int(timer_slack_str, &xx);
 		if (err != 0) {
@@ -474,13 +476,12 @@ static unsigned char lntd_start_main(char const *const process_name,
 			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
-		*timer_slack_val = xx;
+		timer_slack_val = xx;
 	}
 
-	int_least64_t *limit_no_file_val = (int_least64_t[1U]){0};
-	if (0 == limit_no_file_str) {
-		limit_no_file_val = 0;
-	} else {
+	int_least64_t limit_no_file_val = 0;
+	bool limit_no_file_val_set = limit_no_file_str != 0;
+	if (limit_no_file_val_set) {
 		int xx;
 		err = parse_int(limit_no_file_str, &xx);
 		if (err != 0) {
@@ -488,13 +489,12 @@ static unsigned char lntd_start_main(char const *const process_name,
 			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
-		*limit_no_file_val = xx;
+		limit_no_file_val = xx;
 	}
 
-	int_least64_t *limit_locks_val = (int_least64_t[1U]){0};
-	if (0 == limit_locks_str) {
-		limit_locks_val = 0;
-	} else {
+	int_least64_t limit_locks_val = 0;
+	bool limit_locks_val_set = limit_locks_str != 0;
+	if (limit_locks_val_set) {
 		int xx;
 		err = parse_int(limit_locks_str, &xx);
 		if (err != 0) {
@@ -502,13 +502,12 @@ static unsigned char lntd_start_main(char const *const process_name,
 			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
-		*limit_locks_val = xx;
+		limit_locks_val = xx;
 	}
 
-	int_least64_t *limit_msgqueue_val = (int_least64_t[1U]){0};
-	if (0 == limit_msgqueue_str) {
-		limit_msgqueue_val = 0;
-	} else {
+	int_least64_t limit_msgqueue_val = 0;
+	bool limit_msgqueue_val_set = limit_msgqueue_str != 0;
+	if (limit_msgqueue_val_set) {
 		int xx;
 		err = parse_int(limit_msgqueue_str, &xx);
 		if (err != 0) {
@@ -516,13 +515,12 @@ static unsigned char lntd_start_main(char const *const process_name,
 			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
-		*limit_msgqueue_val = xx;
+		limit_msgqueue_val = xx;
 	}
 
-	int_least64_t *limit_memlock_val = (int_least64_t[1U]){0};
-	if (0 == limit_memlock_str) {
-		limit_memlock_val = 0;
-	} else {
+	int_least64_t limit_memlock_val = 0;
+	bool limit_memlock_val_set = limit_memlock_str != 0;
+	if (limit_memlock_val_set) {
 		int xx;
 		err = parse_int(limit_memlock_str, &xx);
 		if (err != 0) {
@@ -530,7 +528,7 @@ static unsigned char lntd_start_main(char const *const process_name,
 			         lntd_error_string(err));
 			return EXIT_FAILURE;
 		}
-		*limit_memlock_val = xx;
+		limit_memlock_val = xx;
 	}
 
 	size_t mount_args_size = 0U;
@@ -580,22 +578,27 @@ static unsigned char lntd_start_main(char const *const process_name,
 				buf[line_size - 1U] = '\0';
 
 			wordexp_t expr;
-			switch (wordexp(buf, &expr, WRDE_NOCMD)) {
-			case WRDE_BADCHAR:
-			case WRDE_CMDSUB:
-			case WRDE_SYNTAX:
-				err = EINVAL;
-				break;
+			{
+				wordexp_t xx;
+				switch (wordexp(buf, &xx, WRDE_NOCMD)) {
+				case WRDE_BADCHAR:
+				case WRDE_CMDSUB:
+				case WRDE_SYNTAX:
+					err = EINVAL;
+					break;
 
-			case WRDE_NOSPACE:
-				err = LNTD_ERROR_OUT_OF_MEMORY;
-				break;
-			}
-			if (err != 0) {
-				lntd_log(LNTD_LOG_ERROR,
-				         "wordexp(%s): %s", buf,
-				         lntd_error_string(err));
-				return EXIT_FAILURE;
+				case WRDE_NOSPACE:
+					err = LNTD_ERROR_OUT_OF_MEMORY;
+					break;
+				}
+				if (err != 0) {
+					lntd_log(
+					    LNTD_LOG_ERROR,
+					    "wordexp(%s): %s", buf,
+					    lntd_error_string(err));
+					return EXIT_FAILURE;
+				}
+				expr = xx;
 			}
 			char const *const *words =
 			    (char const *const *)expr.we_wordv;
@@ -752,8 +755,10 @@ static unsigned char lntd_start_main(char const *const process_name,
 			new_mount_arg->nomount_flag = nomount_flag;
 			mount_args_size = new_mount_args_size;
 
-		free_words:
-			wordfree(&expr);
+		free_words : {
+			wordexp_t xx = expr;
+			wordfree(&xx);
+		}
 		}
 
 		if (fclose(fstab_file) != 0) {
@@ -934,8 +939,8 @@ static unsigned char lntd_start_main(char const *const process_name,
 		clone_flags |= CLONE_NEWPID;
 
 	/* Only start actually dropping privileges now */
-	if (timer_slack_val != 0) {
-		err = lntd_prctl_set_timerslack(*timer_slack_val);
+	if (timer_slack_val_set) {
+		err = lntd_prctl_set_timerslack(timer_slack_val);
 		if (err != 0) {
 			lntd_log(LNTD_LOG_ERROR, "prctl: %s",
 			         lntd_error_string(err));
@@ -943,8 +948,8 @@ static unsigned char lntd_start_main(char const *const process_name,
 		}
 	}
 
-	if (prio_val != 0) {
-		if (-1 == setpriority(PRIO_PROCESS, 0, *prio_val)) {
+	if (prio_val_set) {
+		if (-1 == setpriority(PRIO_PROCESS, 0, prio_val)) {
 			lntd_log(LNTD_LOG_ERROR, "setpriority: %s",
 			         lntd_error_string(errno));
 			return EXIT_FAILURE;
@@ -993,10 +998,10 @@ static unsigned char lntd_start_main(char const *const process_name,
 		}
 	}
 
-	if (limit_locks_val != 0) {
+	if (limit_locks_val_set) {
 		struct rlimit const lim = {
-		    .rlim_cur = *limit_locks_val,
-		    .rlim_max = *limit_locks_val,
+		    .rlim_cur = limit_locks_val,
+		    .rlim_max = limit_locks_val,
 		};
 
 		if (-1 == setrlimit(RLIMIT_LOCKS, &lim)) {
@@ -1006,10 +1011,10 @@ static unsigned char lntd_start_main(char const *const process_name,
 		}
 	}
 
-	if (limit_msgqueue_val != 0) {
+	if (limit_msgqueue_val_set) {
 		struct rlimit const lim = {
-		    .rlim_cur = *limit_msgqueue_val,
-		    .rlim_max = *limit_msgqueue_val,
+		    .rlim_cur = limit_msgqueue_val,
+		    .rlim_max = limit_msgqueue_val,
 		};
 
 		if (-1 == setrlimit(RLIMIT_MSGQUEUE, &lim)) {
@@ -1019,10 +1024,10 @@ static unsigned char lntd_start_main(char const *const process_name,
 		}
 	}
 
-	if (limit_memlock_val != 0) {
+	if (limit_memlock_val_set) {
 		struct rlimit const lim = {
-		    .rlim_cur = *limit_memlock_val,
-		    .rlim_max = *limit_memlock_val,
+		    .rlim_cur = limit_memlock_val,
+		    .rlim_max = limit_memlock_val,
 		};
 
 		if (-1 == setrlimit(RLIMIT_MEMLOCK, &lim)) {
@@ -1037,6 +1042,7 @@ static unsigned char lntd_start_main(char const *const process_name,
 		struct first_fork_args args = {
 		    .err_writer = err_writer,
 		    .limit_no_file = limit_no_file_val,
+		    .limit_no_file_set = limit_no_file_val_set,
 		    .logger_reader = logger_reader,
 		    .logger_writer = logger_writer,
 		    .chdir_path = chdir_str,
@@ -1179,7 +1185,8 @@ LNTD_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 
 	struct first_fork_args const *first_fork_args = void_args;
 
-	int_least64_t *limit_no_file = first_fork_args->limit_no_file;
+	int_least64_t limit_no_file = first_fork_args->limit_no_file;
+	bool limit_no_file_set = first_fork_args->limit_no_file_set;
 	lntd_ko err_writer = first_fork_args->err_writer;
 	lntd_ko logger_reader = first_fork_args->logger_reader;
 	lntd_ko logger_writer = first_fork_args->logger_writer;
@@ -1273,13 +1280,14 @@ LNTD_NO_SANITIZE_ADDRESS static int first_fork_routine(void *void_args)
 	}
 
 	pid_t grand_child;
-	struct second_fork_args args = {.err_writer = vfork_err_writer,
-	                                .limit_no_file = limit_no_file,
-	                                .logger_writer = logger_writer,
-	                                .binary = binary,
-	                                .argv = command,
-	                                .seccomp_context =
-	                                    seccomp_context};
+	struct second_fork_args args = {
+	    .err_writer = vfork_err_writer,
+	    .limit_no_file = limit_no_file,
+	    .limit_no_file_set = limit_no_file_set,
+	    .logger_writer = logger_writer,
+	    .binary = binary,
+	    .argv = command,
+	    .seccomp_context = seccomp_context};
 	grand_child = safe_vfork(second_fork_routine, &args);
 	if (-1 == grand_child) {
 		err = errno;
@@ -1335,7 +1343,8 @@ LNTD_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 
 	struct second_fork_args const *args = arg;
 
-	int_least64_t *limit_no_file = args->limit_no_file;
+	int_least64_t limit_no_file = args->limit_no_file;
+	bool limit_no_file_set = args->limit_no_file_set;
 	lntd_ko err_writer = args->err_writer;
 	lntd_ko logger_writer = args->logger_writer;
 	char const *const *argv = args->argv;
@@ -1350,10 +1359,10 @@ LNTD_NO_SANITIZE_ADDRESS static int second_fork_routine(void *arg)
 	if (err != 0)
 		goto fail;
 
-	if (limit_no_file != 0) {
+	if (limit_no_file_set) {
 		struct rlimit const lim = {
-		    .rlim_cur = *limit_no_file,
-		    .rlim_max = *limit_no_file,
+		    .rlim_cur = limit_no_file,
+		    .rlim_max = limit_no_file,
 		};
 
 		if (-1 == setrlimit(RLIMIT_NOFILE, &lim)) {

@@ -16,96 +16,96 @@ abstract project Shared is
   for Object_Dir use "@builddir@/src/ada";
   for Library_Kind use "static-pic";
 
-  package Compiler is
-  end Compiler;
+  -- package Compiler is
+  -- end Compiler;
 
-  package Binder is
-  end Binder;
+  -- package Binder is
+  -- end Binder;
 
-  package Linker is
-  end Linker;
+  -- package Linker is
+  -- end Linker;
 
   package Builder is
      for Global_Configuration_Pragmas use "@srcdir@/src/ada/pragmas.adc";
   end Builder;
 
-  -- package Compiler is
-  --    C_Switches := ("-Wall", "-Wextra",
-  -- 		    "-g",
-  -- 		    "-fvar-tracking-assignments",
+  package Compiler is
+     C_Switches := ("-Wall", "-Wextra", "-Wstack-usage=500",
+  		    "-g",
+  		    "-fvar-tracking-assignments",
 
-  -- 		    -- -- TODO: Debug optimization causes problems
-  -- 		    "-O3",
+  		    -- -- TODO: Debug optimization causes problems
+  		    "-O3",
 
-  -- 		    "-fvisibility=hidden",
-  -- 		    "-fdata-sections",
-  -- 		    "-ffunction-sections",
+  		    "-fvisibility=hidden",
+  		    "-fdata-sections",
+  		    "-ffunction-sections",
 
-  -- 		    "-fstack-protector-all",
+  		    "-fstack-protector-all",
 
-  -- 		    "-gno-record-gcc-switches",
+  		    "-gno-record-gcc-switches",
 
-  -- 		    "-fpic", "-fPIC", "-fpie", "-fPIE",
+  		    "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-  -- 		    -- "-fverbose-asm",
-  -- 		    -- "-save-temps=cwd",
-  -- 		    -- "-gnatGL",
+  		    -- "-fverbose-asm",
+  		    -- "-save-temps=cwd",
+  		    -- "-gnatGL",
 
-  -- 		    -- "-gnatD",
-  -- 		    -- "-gnatR3s",
-  -- 		    "-fstack-usage",
+  		    -- "-gnatD",
+  		    -- "-gnatR3s",
+  		    "-fstack-usage",
 
-  -- 		    "-fstack-check",
-  -- 		    "-ftrapv",
-  -- 		    "-fsanitize=undefined"
-  -- 		    -- "-fsanitize=leak"
+  		    "-fstack-check",
+  		    "-ftrapv",
+  		    "-fsanitize=undefined"
+  		    -- "-fsanitize=leak"
 
-  -- 		   );
-  --    for Default_Switches ("Ada") use C_Switches & (
-  -- 						    "-gnatn",
-  -- 						    "-gnattt",
-  -- 						    "-gnato",
-  -- 						    "-gnateA");
-  --    for Default_Switches ("C") use C_Switches;
-  -- end Compiler;
+  		   );
+     for Default_Switches ("Ada") use C_Switches & (
+  						    "-gnatn",
+  						    "-gnattt",
+  						    "-gnato",
+  						    "-gnateA");
+     for Default_Switches ("C") use C_Switches;
+  end Compiler;
 
-  -- package Binder is
-  --    -- Needed for -fPIE
-  --    for Default_Switches ("Ada") use ("-shared");
-  --    for Default_Switches ("C") use ("-shared");
-  -- end Binder;
+  package Binder is
+     -- Needed for -fPIE
+     for Default_Switches ("Ada") use ("-shared");
+     for Default_Switches ("C") use ("-shared");
+  end Binder;
 
-  -- package Linker is
-  --    for Default_Switches ("Ada") use ("-fuse-ld=gold",
-  --    				       "-Wl,-z,relro",
-  --    				       "-Wl,-z,now",
-  --    				       "-Wl,--rosegment",
-  --    				       "-pie", "-fpic", "-fPIC", "-fpie", "-fPIE",
+  package Linker is
+     for Default_Switches ("Ada") use ("-fuse-ld=gold",
+     				       "-Wl,-z,relro",
+     				       "-Wl,-z,now",
+     				       "-Wl,--rosegment",
+     				       "-pie", "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-  --    				       "-Wl,-O1",
-  --    				       "-Wl,-X", "-Wl,--discard-locals",
-  --    				       "-Wl,--sort-common",
-  --    				       "-Wl,--hash-style=gnu",
-  --    				       "-Wl,--as-needed",
-  --    				       "-Wl,--gc-sections",
-  --    				       "-Wl,-z,combreloc",
-  --    				       "-Wl,--icf=safe",
+     				       "-Wl,-O1",
+     				       "-Wl,-X", "-Wl,--discard-locals",
+     				       "-Wl,--sort-common",
+     				       "-Wl,--hash-style=gnu",
+     				       "-Wl,--as-needed",
+     				       "-Wl,--gc-sections",
+     				       "-Wl,-z,combreloc",
+     				       "-Wl,--icf=safe",
 
-  --    				       "-Bsymbolic",
+     				       "-Bsymbolic",
 
-  --    				       "-fsanitize=undefined",
+     				       "-fsanitize=undefined",
 
-  --    				       -- "-fsanitize=leak",
+     				       -- "-fsanitize=leak",
 
-  -- 				       "-static-libasan",
-  -- 				       "-static-libubsan",
-  -- 				       "-static-libtsan",
-  -- 				       "-static-liblsan",
+  				       "-static-libasan",
+  				       "-static-libubsan",
+  				       "-static-libtsan",
+  				       "-static-liblsan",
 
-  --    				       "-fstack-usage"
-  --    				      );
-  --    for Default_Switches ("C") use Linker'Default_Switches ("Ada");
-  --    for Switches ("C") use Linker'Default_Switches ("C");
-  --    for Switches ("Ada") use Linker'Default_Switches ("Ada");
-  -- end Linker;
+     				       "-fstack-usage"
+     				      );
+     for Default_Switches ("C") use Linker'Default_Switches ("Ada");
+     for Switches ("C") use Linker'Default_Switches ("C");
+     for Switches ("Ada") use Linker'Default_Switches ("Ada");
+  end Linker;
 end Shared;

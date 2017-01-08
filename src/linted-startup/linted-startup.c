@@ -149,13 +149,19 @@ struct startup {
 };
 
 struct system_conf {
-	int_least64_t *limit_locks;
-	int_least64_t *limit_msgqueue;
-	int_least64_t *limit_no_file;
-	int_least64_t *limit_memlock;
-	bool *no_new_privs;
-	bool *seccomp;
+	int_least64_t limit_locks;
+	int_least64_t limit_msgqueue;
+	int_least64_t limit_no_file;
+	int_least64_t limit_memlock;
 	char const *const *pass_env;
+	bool has_limit_locks : 1U;
+	bool has_limit_msgqueue : 1U;
+	bool has_limit_no_file : 1U;
+	bool has_limit_memlock : 1U;
+	bool has_no_new_privs : 1U;
+	bool has_seccomp : 1U;
+	bool no_new_privs : 1U;
+	bool seccomp : 1U;
 };
 
 static lntd_error startup_init(struct startup *startup,
@@ -396,61 +402,62 @@ static lntd_error startup_start(struct startup *startup)
 
 	struct system_conf system_conf_struct = {0};
 
-	int_least64_t limit_locks;
-	int_least64_t limit_memlock;
-	int_least64_t limit_msgqueue;
-	int_least64_t limit_no_file;
-	bool no_new_privs;
-	bool seccomp;
-
-	err =
-	    conf_system_default_limit_locks(system_conf, &limit_locks);
+	err = conf_system_default_limit_locks(
+	    system_conf, &system_conf_struct.limit_locks);
 	if (0 == err) {
-		system_conf_struct.limit_locks = &limit_locks;
+		system_conf_struct.has_limit_locks = true;
 	} else if (ENOENT == err) {
 	} else {
 		goto destroy_conf_db;
 	}
-	err = conf_system_default_limit_memlock(system_conf,
-	                                        &limit_memlock);
+	err = conf_system_default_limit_memlock(
+	    system_conf, &system_conf_struct.limit_memlock);
 	if (0 == err) {
-		system_conf_struct.limit_memlock = &limit_memlock;
+		system_conf_struct.has_limit_memlock = true;
 	} else if (ENOENT == err) {
 	} else {
 		goto destroy_conf_db;
 	}
-	err = conf_system_default_limit_msgqueue(system_conf,
-	                                         &limit_msgqueue);
+	err = conf_system_default_limit_msgqueue(
+	    system_conf, &system_conf_struct.limit_msgqueue);
 	if (0 == err) {
-		system_conf_struct.limit_msgqueue = &limit_msgqueue;
+		system_conf_struct.has_limit_msgqueue = true;
 	} else if (ENOENT == err) {
 	} else {
 		goto destroy_conf_db;
 	}
-	err = conf_system_default_limit_nofile(system_conf,
-	                                       &limit_no_file);
+	err = conf_system_default_limit_nofile(
+	    system_conf, &system_conf_struct.limit_no_file);
 	if (0 == err) {
-		system_conf_struct.limit_no_file = &limit_no_file;
+		system_conf_struct.has_limit_no_file = true;
 	} else if (ENOENT == err) {
 	} else {
 		goto destroy_conf_db;
 	}
 
-	err = conf_system_default_no_new_privileges(system_conf,
-	                                            &no_new_privs);
-	if (0 == err) {
-		system_conf_struct.no_new_privs = &no_new_privs;
-	} else if (ENOENT == err) {
-	} else {
-		goto destroy_conf_db;
+	{
+		bool xx = false;
+		err = conf_system_default_no_new_privileges(system_conf,
+		                                            &xx);
+		if (0 == err) {
+			system_conf_struct.no_new_privs = xx;
+			system_conf_struct.has_no_new_privs = true;
+		} else if (ENOENT == err) {
+		} else {
+			goto destroy_conf_db;
+		}
 	}
 
-	err = conf_system_default_seccomp(system_conf, &seccomp);
-	if (0 == err) {
-		system_conf_struct.seccomp = &seccomp;
-	} else if (ENOENT == err) {
-	} else {
-		goto destroy_conf_db;
+	{
+		bool xx = false;
+		err = conf_system_default_seccomp(system_conf, &xx);
+		if (0 == err) {
+			system_conf_struct.seccomp = xx;
+			system_conf_struct.has_seccomp = true;
+		} else if (ENOENT == err) {
+		} else {
+			goto destroy_conf_db;
+		}
 	}
 
 	system_conf_struct.pass_env =
@@ -745,12 +752,12 @@ add_unit_dir_to_db(struct conf_db *db,
 					goto close_unit_file;
 			}
 
-			if (system_conf->limit_no_file != 0) {
+			if (system_conf->has_limit_no_file) {
 				char
 				    limits[LNTD_NUMBER_TYPE_STRING_SIZE(
 				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
-				        *system_conf->limit_no_file);
+				        system_conf->limit_no_file);
 				char const *const expr[] = {limits, 0};
 				err = conf_add_setting(
 				    conf, service, "LimitNOFILE", expr);
@@ -758,12 +765,12 @@ add_unit_dir_to_db(struct conf_db *db,
 					goto close_unit_file;
 			}
 
-			if (system_conf->limit_locks != 0) {
+			if (system_conf->has_limit_locks) {
 				char
 				    limits[LNTD_NUMBER_TYPE_STRING_SIZE(
 				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
-				        *system_conf->limit_locks);
+				        system_conf->limit_locks);
 
 				char const *const expr[] = {limits, 0};
 				err = conf_add_setting(
@@ -772,12 +779,12 @@ add_unit_dir_to_db(struct conf_db *db,
 					goto close_unit_file;
 			}
 
-			if (system_conf->limit_msgqueue != 0) {
+			if (system_conf->has_limit_msgqueue) {
 				char
 				    limits[LNTD_NUMBER_TYPE_STRING_SIZE(
 				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
-				        *system_conf->limit_msgqueue);
+				        system_conf->limit_msgqueue);
 
 				char const *const expr[] = {limits, 0};
 				err = conf_add_setting(conf, service,
@@ -787,12 +794,12 @@ add_unit_dir_to_db(struct conf_db *db,
 					goto close_unit_file;
 			}
 
-			if (system_conf->limit_memlock != 0) {
+			if (system_conf->has_limit_memlock) {
 				char
 				    limits[LNTD_NUMBER_TYPE_STRING_SIZE(
 				        int_least64_t)];
 				sprintf(limits, "%" PRId64,
-				        *system_conf->limit_memlock);
+				        system_conf->limit_memlock);
 
 				char const *const expr[] = {limits, 0};
 				err = conf_add_setting(conf, service,
@@ -802,11 +809,10 @@ add_unit_dir_to_db(struct conf_db *db,
 					goto close_unit_file;
 			}
 
-			if (system_conf->no_new_privs != 0) {
+			if (system_conf->has_no_new_privs) {
 				char const *const expr[] = {
-				    *system_conf->no_new_privs
-				        ? "true"
-				        : "false",
+				    system_conf->no_new_privs ? "true"
+				                              : "false",
 				    0};
 				err = conf_add_setting(
 				    conf, service, "NoNewPrivileges",
@@ -815,10 +821,10 @@ add_unit_dir_to_db(struct conf_db *db,
 					goto close_unit_file;
 			}
 
-			if (system_conf->seccomp != 0) {
+			if (system_conf->has_seccomp) {
 				char const *const expr[] = {
-				    *system_conf->seccomp ? "true"
-				                          : "false",
+				    system_conf->seccomp ? "true"
+				                         : "false",
 				    0};
 				err = conf_add_setting(conf, service,
 				                       "Seccomp", expr);
@@ -1464,14 +1470,16 @@ enum { PARSER_ERROR,
        PARSER_VALUE };
 
 struct parser {
+	wordexp_t expr;
+
 	FILE *file;
 	char *line_buffer;
 	size_t line_capacity;
-	unsigned char state;
 
 	char *section_name;
 	char *field;
-	wordexp_t expr;
+
+	unsigned char state;
 };
 
 struct parser_result_section {
@@ -1489,8 +1497,8 @@ union parser_result_union {
 };
 
 struct parser_result {
-	unsigned char state;
 	union parser_result_union result_union;
+	unsigned char state;
 };
 
 static void parser_init(struct parser *parser, FILE *file);

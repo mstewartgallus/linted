@@ -1237,9 +1237,7 @@ detach_from_process:
 
 	if (0 == unit)
 		return err;
-#if 0
-	err = service_activate(monitor, unit, false);
-#endif
+
 	return err;
 }
 
@@ -1621,10 +1619,52 @@ static lntd_error pid_is_child_of(lntd_proc parent, lntd_proc child,
 }
 
 struct my_option {
-	char const *name;
 	char const *value;
 	bool flag : 1U;
 };
+
+enum { OPT_TRACEME,
+       OPT_WAITER,
+       OPT_CHROOTDIR,
+       OPT_FSTAB,
+       OPT_NONEWPRIVS,
+       OPT_LIMIT_NO_FILE,
+       OPT_LIMIT_MSGQUEUE,
+       OPT_LIMIT_LOCKS,
+       OPT_LIMIT_MEMLOCK,
+       OPT_DROPCAPS,
+       OPT_CHDIR,
+       OPT_TIMER_SLACK,
+       OPT_PRIORITY,
+       OPT_SECCOMP_FILTER,
+       OPT_SECCOMP_ARCH_NATIVE,
+       OPT_CLONE_NEWUSER,
+       OPT_CLONE_NEWCGROUP,
+       OPT_CLONE_NEWPID,
+       OPT_CLONE_NEWIPC,
+       OPT_CLONE_NEWNET,
+       OPT_CLONE_NEWNS,
+       OPT_CLONE_NEWUTS };
+
+char const *const opt_strings[] =
+    {[OPT_TRACEME] = "--traceme", [OPT_WAITER] = "--waiter",
+     [OPT_CHROOTDIR] = "--chrootdir", [OPT_FSTAB] = "--fstab",
+     [OPT_NONEWPRIVS] = "--nonewprivs",
+     [OPT_LIMIT_NO_FILE] = "--limit-no-file",
+     [OPT_LIMIT_MSGQUEUE] = "--limit-msgqueue",
+     [OPT_LIMIT_LOCKS] = "--limit-locks",
+     [OPT_LIMIT_MEMLOCK] = "--limit-memlock",
+     [OPT_DROPCAPS] = "--dropcaps", [OPT_CHDIR] = "--chdir",
+     [OPT_TIMER_SLACK] = "--timer-slack", [OPT_PRIORITY] = "--priority",
+     [OPT_SECCOMP_FILTER] = "--seccomp-filter",
+     [OPT_SECCOMP_ARCH_NATIVE] = "--seccomp-arch-native",
+     [OPT_CLONE_NEWUSER] = "--clone-newuser",
+     [OPT_CLONE_NEWCGROUP] = "--clone-newcgroup",
+     [OPT_CLONE_NEWPID] = "--clone-newpid",
+     [OPT_CLONE_NEWIPC] = "--clone-newipc",
+     [OPT_CLONE_NEWNET] = "--clone-newnet",
+     [OPT_CLONE_NEWNS] = "--clone-newns",
+     [OPT_CLONE_NEWUTS] = "--clone-newuts"};
 
 static lntd_error service_activate(struct monitor *monitor,
                                    struct lntd_unit *unit, bool check)
@@ -1688,29 +1728,29 @@ spawn_service:
 
 	bool seccomp = unit_service->seccomp;
 
-	int_least64_t *timer_slack_nsec = 0;
+	int_least64_t timer_slack_nsec = 0;
 	if (has_timer_slack_nsec)
-		timer_slack_nsec = &unit_service->timer_slack_nsec;
+		timer_slack_nsec = unit_service->timer_slack_nsec;
 
-	lntd_sched_priority *priority = 0;
+	lntd_sched_priority priority = 0;
 	if (has_priority)
-		priority = &unit_service->priority;
+		priority = unit_service->priority;
 
-	int_least64_t *limit_no_file = 0;
+	int_least64_t limit_no_file = 0;
 	if (has_limit_no_file)
-		limit_no_file = &unit_service->limit_no_file;
+		limit_no_file = unit_service->limit_no_file;
 
-	int_least64_t *limit_msgqueue = 0;
+	int_least64_t limit_msgqueue = 0;
 	if (has_limit_msgqueue)
-		limit_msgqueue = &unit_service->limit_msgqueue;
+		limit_msgqueue = unit_service->limit_msgqueue;
 
-	int_least64_t *limit_locks = 0;
+	int_least64_t limit_locks = 0;
 	if (has_limit_locks)
-		limit_locks = &unit_service->limit_locks;
+		limit_locks = unit_service->limit_locks;
 
-	int_least64_t *limit_memlock = 0;
+	int_least64_t limit_memlock = 0;
 	if (has_limit_memlock)
-		limit_memlock = &unit_service->limit_memlock;
+		limit_memlock = unit_service->limit_memlock;
 
 	if (fstab != 0) {
 		lntd_ko name_dir;
@@ -1747,50 +1787,50 @@ spawn_service:
 	char *chrootdir = 0;
 	char *sandbox_base = 0;
 
-	if (limit_no_file != 0) {
+	if (has_limit_no_file) {
 		char *xx;
-		err = lntd_str_format(&xx, "%" PRIi64, *limit_no_file);
+		err = lntd_str_format(&xx, "%" PRIi64, limit_no_file);
 		if (err != 0)
 			return err;
 		limit_no_file_str = xx;
 	}
 
-	if (limit_msgqueue != 0) {
+	if (has_limit_msgqueue) {
 		char *xx;
-		err = lntd_str_format(&xx, "%" PRIi64, *limit_msgqueue);
+		err = lntd_str_format(&xx, "%" PRIi64, limit_msgqueue);
 		if (err != 0)
 			goto free_strs;
 		limit_msgqueue_str = xx;
 	}
 
-	if (limit_locks != 0) {
+	if (has_limit_locks) {
 		char *xx;
-		err = lntd_str_format(&xx, "%" PRIi64, *limit_locks);
+		err = lntd_str_format(&xx, "%" PRIi64, limit_locks);
 		if (err != 0)
 			goto free_strs;
 		limit_locks_str = xx;
 	}
 
-	if (limit_memlock != 0) {
+	if (has_limit_memlock) {
 		char *xx;
-		err = lntd_str_format(&xx, "%" PRIi64, *limit_memlock);
+		err = lntd_str_format(&xx, "%" PRIi64, limit_memlock);
 		if (err != 0)
 			goto free_strs;
 		limit_memlock_str = xx;
 	}
 
-	if (timer_slack_nsec != 0) {
+	if (has_timer_slack_nsec) {
 		char *xx;
 		err =
-		    lntd_str_format(&xx, "%" PRIi64, *timer_slack_nsec);
+		    lntd_str_format(&xx, "%" PRIi64, timer_slack_nsec);
 		if (err != 0)
 			goto free_strs;
 		timer_slack_str = xx;
 	}
 
-	if (priority != 0) {
+	if (has_priority) {
 		char *xx;
-		err = lntd_str_format(&xx, "%i", *priority);
+		err = lntd_str_format(&xx, "%i", priority);
 		if (err != 0)
 			goto free_strs;
 		prio_str = xx;
@@ -1819,33 +1859,34 @@ spawn_service:
 	size_t num_options;
 	size_t args_size;
 	{
-		struct my_option const options[] = {
-		    {"--traceme", 0, true},
-		    {"--waiter", waiter, waiter != 0},
-		    {"--chrootdir", chrootdir, fstab != 0},
-		    {"--fstab", fstab, fstab != 0},
-		    {"--nonewprivs", 0, no_new_privs},
-		    {"--limit-no-file", limit_no_file_str,
-		     has_limit_no_file},
-		    {"--limit-msgqueue", limit_msgqueue_str,
-		     has_limit_msgqueue},
-		    {"--limit-locks", limit_locks_str, has_limit_locks},
-		    {"--limit-memlock", limit_memlock_str,
-		     has_limit_memlock},
-		    {"--dropcaps", 0, drop_caps},
-		    {"--chdir", chdir_path, chdir_path != 0},
-		    {"--timer-slack", timer_slack_str,
-		     has_timer_slack_nsec},
-		    {"--priority", prio_str, has_priority},
-		    {"--seccomp-filter", allowed_syscalls, seccomp},
-		    {"--seccomp-arch-native", 0, true},
-		    {"--clone-newuser", 0, clone_newuser},
-		    {"--clone-newcgroup", 0, clone_newcgroup},
-		    {"--clone-newpid", 0, clone_newpid},
-		    {"--clone-newipc", 0, clone_newipc},
-		    {"--clone-newnet", 0, clone_newnet},
-		    {"--clone-newns", 0, clone_newns},
-		    {"--clone-newuts", 0, clone_newuts}};
+		struct my_option const options[] =
+		    {[OPT_TRACEME] = {0, true},
+		     [OPT_WAITER] = {waiter, waiter != 0},
+		     [OPT_CHROOTDIR] = {chrootdir, fstab != 0},
+		     [OPT_FSTAB] = {fstab, fstab != 0},
+		     [OPT_NONEWPRIVS] = {0, no_new_privs},
+		     [OPT_LIMIT_NO_FILE] = {limit_no_file_str,
+		                            has_limit_no_file},
+		     [OPT_LIMIT_MSGQUEUE] = {limit_msgqueue_str,
+		                             has_limit_msgqueue},
+		     [OPT_LIMIT_LOCKS] = {limit_locks_str,
+		                          has_limit_locks},
+		     [OPT_LIMIT_MEMLOCK] = {limit_memlock_str,
+		                            has_limit_memlock},
+		     [OPT_DROPCAPS] = {0, drop_caps},
+		     [OPT_CHDIR] = {chdir_path, chdir_path != 0},
+		     [OPT_TIMER_SLACK] = {timer_slack_str,
+		                          has_timer_slack_nsec},
+		     [OPT_PRIORITY] = {prio_str, has_priority},
+		     [OPT_SECCOMP_FILTER] = {allowed_syscalls, seccomp},
+		     [OPT_SECCOMP_ARCH_NATIVE] = {0, true},
+		     [OPT_CLONE_NEWUSER] = {0, clone_newuser},
+		     [OPT_CLONE_NEWCGROUP] = {0, clone_newcgroup},
+		     [OPT_CLONE_NEWPID] = {0, clone_newpid},
+		     [OPT_CLONE_NEWIPC] = {0, clone_newipc},
+		     [OPT_CLONE_NEWNET] = {0, clone_newnet},
+		     [OPT_CLONE_NEWNS] = {0, clone_newns},
+		     [OPT_CLONE_NEWUTS] = {0, clone_newuts}};
 
 		num_options = 0U;
 		for (size_t ii = 0U; ii < LNTD_ARRAY_SIZE(options);
@@ -1879,7 +1920,7 @@ spawn_service:
 		     ++ii) {
 			struct my_option option = options[ii];
 
-			char const *name = option.name;
+			char const *name = opt_strings[ii];
 			char const *value = option.value;
 			bool flag = option.flag;
 
