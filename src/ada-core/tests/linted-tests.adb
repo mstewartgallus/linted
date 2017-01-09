@@ -22,25 +22,18 @@ package body Linted.Tests is
    L : My_Queues.Queue;
 
    procedure Run is
-      X : Integer := 0;
-      Previous : Integer := -1;
    begin
       for II in 1 .. Len loop
-	 My_Queues.Insert (L, X);
-	 X := X + 1;
+	 My_Queues.Insert (L, II);
       end loop;
 
-      loop
+      for II in 1 .. Len loop
 	 declare
 	    Current : Integer;
 	    Init : Boolean;
 	 begin
 	    My_Queues.Remove (L, Current, Init);
-	    if not Init then
-	       exit;
-	    end if;
-	    pragma Assert (Current = Previous + 1);
-	    Previous := Current;
+	    pragma Assert(Current = II);
 	 end;
       end loop;
    end Run;

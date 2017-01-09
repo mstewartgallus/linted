@@ -18,49 +18,44 @@ package body Linted.Wait_Lists with
    package STC renames Ada.Synchronous_Task_Control;
 
    type Node is record
-      Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      Trigger : STC.Suspension_Object;
+      Prev_Trigger : Node_Access;
       Next_Trigger : Node_Access;
    end record;
 
    protected body Wait_List is
       procedure Insert (N : Node_Nonnull_Access) is
       begin
+	 pragma Assert (N.Next_Trigger = null);
+	 pragma Assert (N.Prev_Trigger = null);
+
          if First = null or Last = null then
             First := Node_Access (N);
          else
+	    N.Prev_Trigger := Last;
             Last.Next_Trigger := Node_Access (N);
          end if;
          Last := Node_Access (N);
       end Insert;
 
       procedure Remove (N : Node_Nonnull_Access) is
-         Current_Trigger : Node_Nonnull_Access := Node_Nonnull_Access (First);
+	 Prev : Node_Access;
+	 Next : Node_Access;
       begin
-         if Current_Trigger = N then
-            First := Current_Trigger.Next_Trigger;
-            if Node_Nonnull_Access (Last) = N then
-               pragma Assert (Last.Next_Trigger = null);
-               Last := null;
-            end if;
-         else
-            loop
-               declare
-                  Before : Node_Nonnull_Access := Current_Trigger;
-               begin
-                  Current_Trigger :=
-                    Node_Nonnull_Access (Current_Trigger.Next_Trigger);
+	 Prev := N.Prev_Trigger;
+	 Next := N.Next_Trigger;
 
-                  if Current_Trigger = N then
-                     Before.Next_Trigger := Current_Trigger.Next_Trigger;
-                     if Node_Nonnull_Access (Last) = N then
-                        pragma Assert (Last.Next_Trigger = null);
-                        Last := Node_Access (Before);
-                     end if;
-                     exit;
-                  end if;
-               end;
-            end loop;
-         end if;
+	 if null = Prev then
+	    First := Next;
+	 else
+	    Prev.Next_Trigger := Next;
+	 end if;
+
+	 if null = Next then
+	    Last := Prev;
+	 else
+	    Next.Prev_Trigger := Prev;
+	 end if;
       end Remove;
 
       procedure Broadcast is
