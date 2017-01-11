@@ -14,22 +14,17 @@
 with Linted.Wait_Lists;
 
 package body Linted.Queues with
-     Spark_Mode => Off,
      Refined_State => (State => (Contents, Spare_Nodes, Triggers)) is
-   type Atomic_Boolean is new Boolean with
-        Atomic;
-   type Atomic_Node_Access is access all Node with
-        Atomic;
 
    type Node is record
       Contents : Element_T;
-      Tail : Atomic_Node_Access := null;
-      In_Queue : Atomic_Boolean := False;
+      Tail : Node_Access := 0;
+      In_Queue : Boolean := False;
    end record;
 
-   type Node_Array is array (Positive range <>) of aliased Node;
+   type Node_Array is array (Node_Not_Null_Access range <>) of aliased Node;
 
-   Contents : Node_Array (1 .. Max_Nodes_In_Flight);
+   Contents : Node_Array (1 .. Node_Access (Max_Nodes_In_Flight));
    Spare_Nodes : Queue;
    Triggers : Wait_Lists.Wait_List;
 
@@ -40,38 +35,38 @@ package body Linted.Queues with
 
    function Is_Free (N : Node_Not_Null_Access) return Boolean is
    begin
-      return not Boolean (N.In_Queue);
+      return not Contents (N).In_Queue;
    end Is_Free;
 
    protected body Queue is
       procedure Insert (N : Node_Not_Null_Access) is
       begin
-         pragma Assert (not N.In_Queue);
-         pragma Assert (N.Tail = null);
+         pragma Assert (not Contents (N).In_Queue);
+         pragma Assert (Contents (N).Tail = 0);
 
-         N.In_Queue := True;
+         Contents (N).In_Queue := True;
 
-         if First = null or Last = null then
+         if First = 0 or Last = 0 then
             First := Node_Access (N);
          else
-            Last.Tail := Atomic_Node_Access (N);
+            Contents (Last).Tail := Node_Access (N);
          end if;
          Last := Node_Access (N);
       end Insert;
 
       procedure Remove (N : out Node_Access) is
       begin
-         if First = null or Last = null then
-            N := null;
+         if First = 0 or Last = 0 then
+            N := 0;
          else
             declare
                Removed : Node_Access;
             begin
                Removed := First;
-               pragma Assert (Removed.In_Queue);
-               First := Node_Access (Removed.Tail);
-               Removed.In_Queue := False;
-               Removed.Tail := null;
+               pragma Assert (Contents (Removed).In_Queue);
+               First := Contents (Removed).Tail;
+               Contents (Removed).In_Queue := False;
+               Contents (Removed).Tail := 0;
 
                N := Removed;
             end;
@@ -82,7 +77,7 @@ package body Linted.Queues with
    procedure Free (N : Node_Not_Null_Access) is
       Dummy : Element_T;
    begin
-      N.Contents := Dummy;
+      Contents (N).Contents := Dummy;
       Spare_Nodes.Insert (N);
       Wait_Lists.Signal (Triggers);
    end Free;
@@ -93,21 +88,21 @@ package body Linted.Queues with
    begin
       loop
          Spare_Nodes.Remove (Removed);
-         if Removed /= null then
+         if Removed /= 0 then
             exit;
          end if;
 	 Wait_Lists.Wait (Triggers);
       end loop;
       N := Node_Not_Null_Access (Removed);
-      N.Contents := Dummy;
+      Contents (N).Contents := Dummy;
    end Allocate;
 
    procedure Insert (Q : in out Queue; C : Element_T) is
-      Dummy : aliased Node;
-      N : Node_Not_Null_Access := Dummy'Unchecked_Access;
+      --  FAKE!
+      N : Node_Not_Null_Access := 1;
    begin
       Allocate (N);
-      N.Contents := C;
+      Contents (N).Contents := C;
       Q.Insert (N);
    end Insert;
 
@@ -119,13 +114,13 @@ package body Linted.Queues with
       Removed : Node_Access;
    begin
       Q.Remove (Removed);
-      if Removed = null then
+      if Removed = 0 then
          Init := False;
       else
 	 declare
 	    N : Node_Not_Null_Access := Node_Not_Null_Access (Removed);
 	 begin
-	    C := N.Contents;
+	    C := Contents (N).Contents;
 	    Free (N);
 	    Init := True;
 	 end;
@@ -135,7 +130,7 @@ package body Linted.Queues with
 begin
    for II in Contents'Range loop
       declare
-         N : Node_Not_Null_Access := Contents (II)'Unchecked_Access;
+         N : Node_Not_Null_Access := II;
       begin
          Spare_Nodes.Insert (N);
       end;

@@ -36,11 +36,9 @@ package Linted.Queues with
        Init => (State, Q));
 
 private
-   pragma SPARK_Mode (Off);
-
    type Node;
-   type Node_Not_Null_Access is not null access all Node;
-   type Node_Access is access all Node;
+   type Node_Access is new Natural;
+   subtype Node_Not_Null_Access is Node_Access range 1 .. Node_Access'Last;
 
    function Is_Free (N : Node_Not_Null_Access) return Boolean;
 
@@ -48,11 +46,10 @@ private
       procedure Insert (N : Node_Not_Null_Access) with
          Pre => Is_Free (N);
       procedure Remove (N : out Node_Access) with
-         Post =>
-         (if N /= null then Is_Free (Node_Not_Null_Access (N)) else True);
+         Post => (if N /= 0 then Is_Free (Node_Not_Null_Access (N)) else True);
    private
-      First : Node_Access;
-      Last : Node_Access;
+      First : Node_Access := 0;
+      Last : Node_Access := 0;
    end Queue;
 
 end Linted.Queues;
