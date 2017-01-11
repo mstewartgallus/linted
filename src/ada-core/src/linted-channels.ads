@@ -46,9 +46,7 @@ private
       entry Pop_Impl (D : out Element_T) with
          Global => null,
          Depends => (D => Channel, Channel => Channel);
-      procedure Poll (Option : out Option_Element_Ts.Option) with
-         Global => null,
-         Depends => (Option => Channel, Channel => Channel);
+      procedure Poll (D : out Element_T; Init : out Boolean);
    private
       Current : Element_T;
       Full : Boolean := False;

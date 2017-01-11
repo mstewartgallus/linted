@@ -16,8 +16,15 @@ package body Linted.MVars is
      (This : in out MVar;
       Option : out Option_Element_Ts.Option)
    is
+      D : Element_T;
+      Init : Boolean;
    begin
-      This.Poll (Option);
+      This.Poll (D, Init);
+      if Init then
+	 Option := (Empty => False, Data => D);
+      else
+	 Option := (Empty => True);
+      end if;
    end Poll;
 
    procedure Set (This : in out MVar; D : Element_T) is
@@ -26,30 +33,21 @@ package body Linted.MVars is
    end Set;
 
    protected body MVar is
-      procedure Poll (Option : out Option_Element_Ts.Option) is
+      procedure Poll (D : out Element_T; Init : out Boolean) is
       begin
-         Option := Current;
-         pragma Annotate
-           (Gnatprove,
-            False_Positive,
-            "discriminant check might fail",
-            "reviewed by Steven Stewart-Gallus");
-         Current := (Empty => True);
-         pragma Annotate
-           (Gnatprove,
-            False_Positive,
-            "discriminant check might fail",
-            "reviewed by Steven Stewart-Gallus");
+	 if Full then
+	    Full := False;
+	    D := Current;
+	    Init := True;
+	 else
+	    Init := False;
+	 end if;
       end Poll;
 
       procedure Set (D : Element_T) is
       begin
-         Current := (Empty => False, Data => D);
-         pragma Annotate
-           (Gnatprove,
-            False_Positive,
-            "discriminant check might fail",
-            "reviewed by Steven Stewart-Gallus");
+         Current := D;
+	 Full := True;
       end Set;
    end MVar;
 end Linted.MVars;

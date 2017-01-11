@@ -30,11 +30,10 @@ abstract project Shared is
   end Builder;
 
   package Compiler is
-     C_Switches := ("-Wall", "-Wextra", "-Wstack-usage=500",
+     C_Switches := ("-Wall", "-Wextra", -- "-Wstack-usage=500",
   		    "-g",
   		    "-fvar-tracking-assignments",
 
-  		    -- -- TODO: Debug optimization causes problems
   		    "-O3",
 
   		    "-fvisibility=hidden",
@@ -49,10 +48,7 @@ abstract project Shared is
 
   		    -- "-fverbose-asm",
   		    -- "-save-temps=cwd",
-  		    -- "-gnatGL",
 
-  		    -- "-gnatD",
-  		    -- "-gnatR3s",
   		    "-fstack-usage",
 
   		    "-fstack-check",
@@ -62,9 +58,12 @@ abstract project Shared is
 
   		   );
      for Default_Switches ("Ada") use C_Switches & (
+  		    -- "-gnatGL",
+
+  		    -- "-gnatD",
+  		    -- "-gnatR3s",
+
   						    "-gnatn",
-  						    "-gnattt",
-  						    "-gnato",
   						    "-gnateA");
      for Default_Switches ("C") use C_Switches;
   end Compiler;

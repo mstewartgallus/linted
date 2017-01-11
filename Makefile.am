@@ -146,18 +146,16 @@ indent:
 	- env $(ADAENV) gnatpp $(AM_GNATPPFLAGS) -P$(srcdir)/src/ada-xkb/xkb.gpr
 
 CPROGRAMS=\
-  src/linted/linted\
   src/linted-init/linted-init\
   src/linted-startup/linted-startup\
   src/linted-sandbox/linted-sandbox\
   src/linted-monitor/linted-monitor\
   src/linted-gui/linted-gui\
-  src/linted-drawer/linted-drawer\
   src/linted-window/linted-window
 
 .PHONY: list-programs
 list-programs:
-	@for II in $(CPROGRAMS) $(check_PROGRAMS); do printf -- '%s\n' "$${II}"; done
+	@for II in $(CPROGRAMS); do printf -- '%s\n' "$${II}"; done
 
 linted_CLANG_FORMATFLAGS+=-i
 

@@ -28,6 +28,7 @@
 #include "lntd/unit.h"
 #include "lntd/util.h"
 
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -1832,12 +1833,6 @@ static struct conf *conf_db_get_conf(struct conf_db *db, size_t ii)
 
 struct conf_setting;
 
-enum { SECTION_MANAGER,
-       SECTION_UNIT,
-       SECTION_SERVICE,
-       SECTION_SOCKET,
-       SECTION_COUNT };
-
 #define SETTING_BUCKETS_SIZE 1024U
 
 struct conf_setting_bucket {
@@ -1850,15 +1845,75 @@ struct conf_section {
 	struct conf_setting_bucket buckets[SETTING_BUCKETS_SIZE];
 };
 
+struct service {
+	int_least64_t limit_locks;
+	int_least64_t limit_msgqueue;
+	int_least64_t limit_no_file;
+	int_least64_t limit_memlock;
+	char const *const *pass_env;
+	bool has_limit_locks : 1U;
+	bool has_limit_msgqueue : 1U;
+	bool has_limit_no_file : 1U;
+	bool has_limit_memlock : 1U;
+	bool has_no_new_privs : 1U;
+	bool has_seccomp : 1U;
+	bool no_new_privs : 1U;
+	bool seccomp : 1U;
+};
+
+enum { SECTION_MANAGER,
+       SECTION_UNIT,
+       SECTION_SERVICE,
+       SECTION_SOCKET,
+       SECTION_COUNT };
+
+enum { CONF_TYPE_MANAGER, CONF_TYPE_SERVICE, CONF_TYPE_SOCKET };
+
 struct conf {
 	char *name;
 	unsigned long refcount;
-	struct conf_section sections[SECTION_COUNT];
+	unsigned char conf_type;
+	union {
+		struct conf_section manager;
+		struct {
+			struct conf_section unit;
+			struct conf_section service;
+		} service;
+		struct {
+			struct conf_section unit;
+			struct conf_section socket;
+		} socket;
+	} conf_u;
 };
+
+static void section_init(struct conf_section *section);
+static void section_free(struct conf_section *section);
+
+static lntd_error section_add(struct conf_section *section,
+                              char const *field,
+                              char const *const *additional_values);
+
+static char const *const *section_find(struct conf_section *section,
+                                       char const *field);
 
 static lntd_error conf_create(struct conf **confp, char *name)
 {
 	lntd_error err = 0;
+
+	char const *dot = strchr(name, '.');
+
+	char const *suffix = dot + 1U;
+
+	unsigned char conf_type;
+	if (0 == strcmp(suffix, "socket")) {
+		conf_type = CONF_TYPE_SOCKET;
+	} else if (0 == strcmp(suffix, "service")) {
+		conf_type = CONF_TYPE_SERVICE;
+	} else if (0 == strcmp(suffix, "conf")) {
+		conf_type = CONF_TYPE_MANAGER;
+	} else {
+		return LNTD_ERROR_INVALID_PARAMETER;
+	}
 
 	struct conf *conf;
 	{
@@ -1870,20 +1925,23 @@ static lntd_error conf_create(struct conf **confp, char *name)
 	}
 
 	conf->name = name;
+	conf->conf_type = conf_type;
 	conf->refcount = 1;
 
-	for (size_t ii = 0U; ii < SECTION_COUNT; ++ii) {
-		struct conf_section *section = &conf->sections[ii];
+	switch (conf_type) {
+	case CONF_TYPE_MANAGER:
+		section_init(&conf->conf_u.manager);
+		break;
 
-		section->buckets_used = 0U;
+	case CONF_TYPE_SERVICE:
+		section_init(&conf->conf_u.service.unit);
+		section_init(&conf->conf_u.service.service);
+		break;
 
-		for (size_t jj = 0U; jj < SETTING_BUCKETS_SIZE; ++jj) {
-			struct conf_setting_bucket *bucket =
-			    &section->buckets[jj];
-
-			bucket->settings_size = 0U;
-			bucket->settings = 0;
-		}
+	case CONF_TYPE_SOCKET:
+		section_init(&conf->conf_u.socket.unit);
+		section_init(&conf->conf_u.socket.socket);
+		break;
 	}
 
 	*confp = conf;
@@ -1902,23 +1960,20 @@ static void conf_put(struct conf *conf)
 	if (--conf->refcount != 0)
 		return;
 
-	for (size_t ii = 0U; ii < SECTION_COUNT; ++ii) {
-		struct conf_section *section = &conf->sections[ii];
+	switch (conf->conf_type) {
+	case CONF_TYPE_MANAGER:
+		section_free(&conf->conf_u.manager);
+		break;
 
-		struct conf_setting_bucket *buckets = section->buckets;
+	case CONF_TYPE_SERVICE:
+		section_free(&conf->conf_u.service.unit);
+		section_free(&conf->conf_u.service.service);
+		break;
 
-		for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
-			struct conf_setting_bucket const *
-			    setting_bucket = &buckets[kk];
-			size_t settings_size =
-			    setting_bucket->settings_size;
-			struct conf_setting *settings =
-			    setting_bucket->settings;
-
-			free_settings(settings, settings_size);
-
-			lntd_mem_free(settings);
-		}
+	case CONF_TYPE_SOCKET:
+		section_free(&conf->conf_u.socket.unit);
+		section_free(&conf->conf_u.socket.socket);
+		break;
 	}
 
 	lntd_mem_free(conf->name);
@@ -1960,20 +2015,6 @@ struct conf_setting {
 	char **value;
 };
 
-static void free_settings(struct conf_setting *settings,
-                          size_t settings_size)
-{
-	for (size_t ww = 0U; ww < settings_size; ++ww) {
-		struct conf_setting *setting = &settings[ww];
-		lntd_mem_free(setting->field);
-
-		for (char **value = setting->value; *value != 0;
-		     ++value)
-			lntd_mem_free(*value);
-		lntd_mem_free(setting->value);
-	}
-}
-
 static char const *const *conf_find(struct conf *conf,
                                     char const *section_name,
                                     char const *field)
@@ -1985,29 +2026,38 @@ static char const *const *conf_find(struct conf *conf,
 	if (err != 0)
 		return 0;
 
-	struct conf_section *section = &conf->sections[section_id];
+	switch (conf->conf_type) {
+	case CONF_TYPE_MANAGER:
+		assert(SECTION_MANAGER == section_id);
+		return section_find(&conf->conf_u.manager, field);
 
-	struct conf_setting_bucket *buckets = section->buckets;
-	struct conf_setting_bucket *bucket =
-	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
-
-	size_t settings_size = bucket->settings_size;
-	struct conf_setting *settings = bucket->settings;
-
-	size_t setting_index;
-	bool have_found_setting = false;
-	for (size_t ii = 0U; ii < settings_size; ++ii) {
-		if (0 == strcmp(settings[ii].field, field)) {
-			have_found_setting = true;
-			setting_index = ii;
-			break;
+	case CONF_TYPE_SERVICE:
+		switch (section_id) {
+		case SECTION_UNIT:
+			return section_find(&conf->conf_u.service.unit,
+			                    field);
+		case SECTION_SERVICE:
+			return section_find(
+			    &conf->conf_u.service.service, field);
+		default:
+			abort();
 		}
+		break;
+
+	case CONF_TYPE_SOCKET:
+		switch (section_id) {
+		case SECTION_UNIT:
+			return section_find(&conf->conf_u.socket.unit,
+			                    field);
+		case SECTION_SOCKET:
+			return section_find(&conf->conf_u.socket.socket,
+			                    field);
+		default:
+			abort();
+		}
+		break;
 	}
-
-	if (!have_found_setting)
-		return 0;
-
-	return (char const *const *)settings[setting_index].value;
+	assert(0);
 }
 
 static lntd_error conf_find_str(struct conf *conf, char const *section,
@@ -2088,179 +2138,44 @@ return_result:
 }
 
 static lntd_error conf_add_setting(struct conf *conf,
-                                   conf_section section,
+                                   conf_section section_id,
                                    char const *field,
                                    char const *const *additional_values)
 {
-	lntd_error err;
+	switch (conf->conf_type) {
+	case CONF_TYPE_MANAGER:
+		assert(SECTION_MANAGER == section_id);
+		return section_add(&conf->conf_u.manager, field,
+		                   additional_values);
 
-	struct conf_setting_bucket *buckets =
-	    conf->sections[section].buckets;
-
-	struct conf_setting_bucket *bucket =
-	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
-
-	size_t settings_size = bucket->settings_size;
-	struct conf_setting *settings = bucket->settings;
-
-	size_t additional_values_len =
-	    string_list_size(additional_values);
-
-	{
-		size_t found_field;
-		bool have_found_field = false;
-		for (size_t ii = 0U; ii < settings_size; ++ii) {
-			if (0 == strcmp(settings[ii].field, field)) {
-				found_field = ii;
-				have_found_field = true;
-				break;
-			}
+	case CONF_TYPE_SERVICE:
+		switch (section_id) {
+		case SECTION_UNIT:
+			return section_add(&conf->conf_u.service.unit,
+			                   field, additional_values);
+		case SECTION_SERVICE:
+			return section_add(
+			    &conf->conf_u.service.service, field,
+			    additional_values);
+		default:
+			abort();
 		}
+		break;
 
-		if (!have_found_field)
-			goto have_not_found_field;
-
-		struct conf_setting *setting = &settings[found_field];
-		char *setting_field = setting->field;
-		char **setting_values = setting->value;
-
-		if (0U == additional_values_len) {
-			lntd_mem_free(setting_field);
-
-			for (size_t ii = 0U; setting_values[ii] != 0;
-			     ++ii)
-				lntd_mem_free(setting_values[ii]);
-
-			lntd_mem_free(setting_values);
-
-			bucket->settings_size = settings_size - 1U;
-			memcpy(bucket->settings + found_field,
-			       buckets->settings + found_field + 1U,
-			       (settings_size - 1U - found_field) *
-			           sizeof bucket->settings[0U]);
-		} else {
-			size_t setting_values_len = string_list_size(
-			    (char const *const *)setting_values);
-
-			size_t new_value_len =
-			    setting_values_len + additional_values_len;
-
-			char **new_value;
-			{
-				void *xx;
-				err = lntd_mem_alloc_array(
-				    &xx, new_value_len + 1U,
-				    sizeof additional_values[0U]);
-				if (err != 0)
-					return err;
-				new_value = xx;
-			}
-
-			for (size_t ii = 0U; ii < setting_values_len;
-			     ++ii)
-				new_value[ii] = setting_values[ii];
-
-			for (size_t ii = 0U; ii < additional_values_len;
-			     ++ii) {
-				char *copy;
-				{
-					char *xx;
-					err = lntd_str_dup(
-					    &xx, additional_values[ii]);
-					if (err != 0) {
-						for (; ii != 0; --ii)
-							lntd_mem_free(
-							    new_value
-							        [ii -
-							         1U]);
-
-						lntd_mem_free(
-						    new_value);
-						return err;
-					}
-					copy = xx;
-				}
-				new_value[setting_values_len + ii] =
-				    copy;
-			}
-
-			new_value[new_value_len] = 0;
-
-			lntd_mem_free(setting_values);
-
-			setting->field = setting_field;
-			setting->value = new_value;
+	case CONF_TYPE_SOCKET:
+		switch (section_id) {
+		case SECTION_UNIT:
+			return section_add(&conf->conf_u.socket.unit,
+			                   field, additional_values);
+		case SECTION_SOCKET:
+			return section_add(&conf->conf_u.socket.socket,
+			                   field, additional_values);
+		default:
+			abort();
 		}
-		return 0;
+		break;
 	}
-have_not_found_field:
-	;
-	char *field_dup;
-	{
-		char *xx;
-		err = lntd_str_dup(&xx, field);
-		if (err != 0)
-			return err;
-		field_dup = xx;
-	}
-
-	char **value_copy;
-	{
-		void *xx;
-		err = lntd_mem_alloc_array(
-		    &xx, additional_values_len + 1U,
-		    sizeof additional_values[0U]);
-		if (err != 0)
-			goto free_field_dup;
-		value_copy = xx;
-	}
-	size_t values = 0U;
-	for (; values < additional_values_len; ++values) {
-		char *copy;
-		{
-			char *xx;
-			err = lntd_str_dup(&xx,
-			                   additional_values[values]);
-			if (err != 0)
-				goto free_value_copy;
-			copy = xx;
-		}
-		value_copy[values] = copy;
-	}
-	value_copy[additional_values_len] = 0;
-
-	size_t new_settings_size = settings_size + 1U;
-	struct conf_setting *new_settings;
-	{
-		void *xx;
-		err = lntd_mem_realloc_array(&xx, settings,
-		                             new_settings_size,
-		                             sizeof settings[0U]);
-		if (err != 0) {
-			for (size_t ii = 0U; value_copy[ii] != 0; ++ii)
-				lntd_mem_free(value_copy[ii]);
-			lntd_mem_free(value_copy);
-
-			return err;
-		}
-		new_settings = xx;
-	}
-	new_settings[settings_size].field = field_dup;
-	new_settings[settings_size].value = value_copy;
-
-	bucket->settings_size = new_settings_size;
-	bucket->settings = new_settings;
-
-	return 0;
-
-free_value_copy:
-	for (size_t jj = 0U; jj < values; ++jj)
-		lntd_mem_free(value_copy[jj]);
-	lntd_mem_free(value_copy);
-
-free_field_dup:
-	lntd_mem_free(field_dup);
-	return err;
+	assert(0);
 }
 
 static size_t string_list_size(char const *const *list)
@@ -2528,4 +2443,248 @@ set_values:
 	result->state = state;
 
 	return err;
+}
+
+static void section_init(struct conf_section *section)
+{
+	section->buckets_used = 0U;
+
+	for (size_t jj = 0U; jj < SETTING_BUCKETS_SIZE; ++jj) {
+		struct conf_setting_bucket *bucket =
+		    &section->buckets[jj];
+
+		bucket->settings_size = 0U;
+		bucket->settings = 0;
+	}
+}
+
+static void section_free(struct conf_section *section)
+{
+
+	struct conf_setting_bucket *buckets = section->buckets;
+
+	for (size_t kk = 0U; kk < SETTING_BUCKETS_SIZE; ++kk) {
+		struct conf_setting_bucket const *setting_bucket =
+		    &buckets[kk];
+		size_t settings_size = setting_bucket->settings_size;
+		struct conf_setting *settings =
+		    setting_bucket->settings;
+
+		free_settings(settings, settings_size);
+
+		lntd_mem_free(settings);
+	}
+}
+
+static char const *const *section_find(struct conf_section *section,
+                                       char const *field)
+{
+	struct conf_setting_bucket *buckets = section->buckets;
+	struct conf_setting_bucket *bucket =
+	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
+
+	size_t settings_size = bucket->settings_size;
+	struct conf_setting *settings = bucket->settings;
+
+	size_t setting_index;
+	bool have_found_setting = false;
+	for (size_t ii = 0U; ii < settings_size; ++ii) {
+		if (0 == strcmp(settings[ii].field, field)) {
+			have_found_setting = true;
+			setting_index = ii;
+			break;
+		}
+	}
+
+	if (!have_found_setting)
+		return 0;
+
+	return (char const *const *)settings[setting_index].value;
+}
+
+static lntd_error section_add(struct conf_section *section,
+                              char const *field,
+                              char const *const *additional_values)
+{
+	lntd_error err;
+	struct conf_setting_bucket *buckets = section->buckets;
+
+	struct conf_setting_bucket *bucket =
+	    &buckets[string_hash(field) % SETTING_BUCKETS_SIZE];
+
+	size_t settings_size = bucket->settings_size;
+	struct conf_setting *settings = bucket->settings;
+
+	size_t additional_values_len =
+	    string_list_size(additional_values);
+
+	{
+		size_t found_field;
+		bool have_found_field = false;
+		for (size_t ii = 0U; ii < settings_size; ++ii) {
+			if (0 == strcmp(settings[ii].field, field)) {
+				found_field = ii;
+				have_found_field = true;
+				break;
+			}
+		}
+
+		if (!have_found_field)
+			goto have_not_found_field;
+
+		struct conf_setting *setting = &settings[found_field];
+		char *setting_field = setting->field;
+		char **setting_values = setting->value;
+
+		if (0U == additional_values_len) {
+			lntd_mem_free(setting_field);
+
+			for (size_t ii = 0U; setting_values[ii] != 0;
+			     ++ii)
+				lntd_mem_free(setting_values[ii]);
+
+			lntd_mem_free(setting_values);
+
+			bucket->settings_size = settings_size - 1U;
+			memcpy(bucket->settings + found_field,
+			       buckets->settings + found_field + 1U,
+			       (settings_size - 1U - found_field) *
+			           sizeof bucket->settings[0U]);
+		} else {
+			size_t setting_values_len = string_list_size(
+			    (char const *const *)setting_values);
+
+			size_t new_value_len =
+			    setting_values_len + additional_values_len;
+
+			char **new_value;
+			{
+				void *xx;
+				err = lntd_mem_alloc_array(
+				    &xx, new_value_len + 1U,
+				    sizeof additional_values[0U]);
+				if (err != 0)
+					return err;
+				new_value = xx;
+			}
+
+			for (size_t ii = 0U; ii < setting_values_len;
+			     ++ii)
+				new_value[ii] = setting_values[ii];
+
+			for (size_t ii = 0U; ii < additional_values_len;
+			     ++ii) {
+				char *copy;
+				{
+					char *xx;
+					err = lntd_str_dup(
+					    &xx, additional_values[ii]);
+					if (err != 0) {
+						for (; ii != 0; --ii)
+							lntd_mem_free(
+							    new_value
+							        [ii -
+							         1U]);
+
+						lntd_mem_free(
+						    new_value);
+						return err;
+					}
+					copy = xx;
+				}
+				new_value[setting_values_len + ii] =
+				    copy;
+			}
+
+			new_value[new_value_len] = 0;
+
+			lntd_mem_free(setting_values);
+
+			setting->field = setting_field;
+			setting->value = new_value;
+		}
+		return 0;
+	}
+have_not_found_field:
+	;
+	char *field_dup;
+	{
+		char *xx;
+		err = lntd_str_dup(&xx, field);
+		if (err != 0)
+			return err;
+		field_dup = xx;
+	}
+
+	char **value_copy;
+	{
+		void *xx;
+		err = lntd_mem_alloc_array(
+		    &xx, additional_values_len + 1U,
+		    sizeof additional_values[0U]);
+		if (err != 0)
+			goto free_field_dup;
+		value_copy = xx;
+	}
+	size_t values = 0U;
+	for (; values < additional_values_len; ++values) {
+		char *copy;
+		{
+			char *xx;
+			err = lntd_str_dup(&xx,
+			                   additional_values[values]);
+			if (err != 0)
+				goto free_value_copy;
+			copy = xx;
+		}
+		value_copy[values] = copy;
+	}
+	value_copy[additional_values_len] = 0;
+
+	size_t new_settings_size = settings_size + 1U;
+	struct conf_setting *new_settings;
+	{
+		void *xx;
+		err = lntd_mem_realloc_array(&xx, settings,
+		                             new_settings_size,
+		                             sizeof settings[0U]);
+		if (err != 0) {
+			for (size_t ii = 0U; value_copy[ii] != 0; ++ii)
+				lntd_mem_free(value_copy[ii]);
+			lntd_mem_free(value_copy);
+
+			return err;
+		}
+		new_settings = xx;
+	}
+	new_settings[settings_size].field = field_dup;
+	new_settings[settings_size].value = value_copy;
+
+	bucket->settings_size = new_settings_size;
+	bucket->settings = new_settings;
+
+	return 0;
+
+free_value_copy:
+	for (size_t jj = 0U; jj < values; ++jj)
+		lntd_mem_free(value_copy[jj]);
+	lntd_mem_free(value_copy);
+
+free_field_dup:
+	lntd_mem_free(field_dup);
+	return err;
+}
+
+static void free_settings(struct conf_setting *settings,
+                          size_t settings_size)
+{
+	for (size_t ww = 0U; ww < settings_size; ++ww) {
+		struct conf_setting *setting = &settings[ww];
+		lntd_mem_free(setting->field);
+
+		for (char **value = setting->value; *value != 0;
+		     ++value)
+			lntd_mem_free(*value);
+		lntd_mem_free(setting->value);
+	}
 }

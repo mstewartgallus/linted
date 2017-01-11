@@ -34,13 +34,12 @@ package Linted.MVars with
 
 private
    protected type MVar is
-      procedure Poll (Option : out Option_Element_Ts.Option) with
-         Global => null,
-         Depends => (Option => MVar, MVar => MVar);
+      procedure Poll (D : out Element_T; Init : out Boolean);
       procedure Set (D : Element_T) with
          Global => null,
          Depends => (MVar => (D, MVar));
    private
-      Current : Option_Element_Ts.Option;
+      Current : Element_T;
+      Full : Boolean;
    end MVar;
 end Linted.MVars;

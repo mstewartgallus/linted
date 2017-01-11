@@ -27,8 +27,15 @@ package body Linted.Channels with
      (This : in out Channel;
       Option : out Option_Element_Ts.Option)
    is
+      D : Element_T;
+      Init : Boolean;
    begin
-      This.Poll (Option);
+      This.Poll (D, Init);
+      if Init then
+	 Option := (Empty => False, Data => D);
+      else
+	 Option := (Empty => True);
+      end if;
    end Poll;
 
    protected body Channel is
@@ -44,23 +51,14 @@ package body Linted.Channels with
          Full := False;
       end Pop_Impl;
 
-      procedure Poll (Option : out Option_Element_Ts.Option) is
+      procedure Poll (D : out Element_T; Init : out Boolean) is
       begin
          if Full then
-            Option := (Empty => False, Data => Current);
-            pragma Annotate
-              (Gnatprove,
-               False_Positive,
-               "discriminant check might fail",
-               "reviewed by Steven Stewart-Gallus");
             Full := False;
+	    D := Current;
+	    Init := True;
          else
-            Option := (Empty => True);
-            pragma Annotate
-              (Gnatprove,
-               False_Positive,
-               "discriminant check might fail",
-               "reviewed by Steven Stewart-Gallus");
+	    Init := False;
          end if;
       end Poll;
    end Channel;
