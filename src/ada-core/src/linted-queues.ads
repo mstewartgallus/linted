@@ -36,11 +36,11 @@ package Linted.Queues with
        Init => (State, Q));
 
 private
-   type Node;
    type Node_Access is new Natural;
    subtype Node_Not_Null_Access is Node_Access range 1 .. Node_Access'Last;
 
-   function Is_Free (N : Node_Not_Null_Access) return Boolean;
+   function Is_Free (N : Node_Not_Null_Access) return Boolean with
+      Ghost;
 
    protected type Queue is
       procedure Insert (N : Node_Not_Null_Access) with

@@ -14,17 +14,20 @@
 with Linted.Wait_Lists;
 
 package body Linted.Queues with
-     Refined_State => (State => (Contents, Spare_Nodes, Triggers)) is
+     Refined_State =>
+     (State => (Elements, Tails, In_Queues, Spare_Nodes, Triggers))
+is
 
-   type Node is record
-      Contents : Element_T;
-      Tail : Node_Access := 0;
-      In_Queue : Boolean := False;
-   end record;
+   Elements : array
+   (1 .. Node_Not_Null_Access (Max_Nodes_In_Flight)) of Element_T;
+   Tails : array
+   (1 .. Node_Not_Null_Access (Max_Nodes_In_Flight)) of Node_Access :=
+     (others => 0);
+   In_Queues : array
+   (1 .. Node_Not_Null_Access (Max_Nodes_In_Flight)) of Boolean :=
+     (others => False) with
+      Ghost;
 
-   type Node_Array is array (Node_Not_Null_Access range <>) of aliased Node;
-
-   Contents : Node_Array (1 .. Node_Access (Max_Nodes_In_Flight));
    Spare_Nodes : Queue;
    Triggers : Wait_Lists.Wait_List;
 
@@ -35,21 +38,21 @@ package body Linted.Queues with
 
    function Is_Free (N : Node_Not_Null_Access) return Boolean is
    begin
-      return not Contents (N).In_Queue;
+      return not In_Queues (N);
    end Is_Free;
 
    protected body Queue is
       procedure Insert (N : Node_Not_Null_Access) is
       begin
-         pragma Assert (not Contents (N).In_Queue);
-         pragma Assert (Contents (N).Tail = 0);
+         pragma Assert (not In_Queues (N));
+         pragma Assert (Tails (N) = 0);
 
-         Contents (N).In_Queue := True;
+         In_Queues (N) := True;
 
          if First = 0 or Last = 0 then
             First := Node_Access (N);
          else
-            Contents (Last).Tail := Node_Access (N);
+            Tails (Last) := Node_Access (N);
          end if;
          Last := Node_Access (N);
       end Insert;
@@ -63,10 +66,10 @@ package body Linted.Queues with
                Removed : Node_Access;
             begin
                Removed := First;
-               pragma Assert (Contents (Removed).In_Queue);
-               First := Contents (Removed).Tail;
-               Contents (Removed).In_Queue := False;
-               Contents (Removed).Tail := 0;
+               pragma Assert (In_Queues (Removed));
+               First := Tails (Removed);
+               In_Queues (Removed) := False;
+               Tails (Removed) := 0;
 
                N := Removed;
             end;
@@ -77,7 +80,7 @@ package body Linted.Queues with
    procedure Free (N : Node_Not_Null_Access) is
       Dummy : Element_T;
    begin
-      Contents (N).Contents := Dummy;
+      Elements (N) := Dummy;
       Spare_Nodes.Insert (N);
       Wait_Lists.Signal (Triggers);
    end Free;
@@ -91,10 +94,10 @@ package body Linted.Queues with
          if Removed /= 0 then
             exit;
          end if;
-	 Wait_Lists.Wait (Triggers);
+         Wait_Lists.Wait (Triggers);
       end loop;
       N := Node_Not_Null_Access (Removed);
-      Contents (N).Contents := Dummy;
+      Elements (N) := Dummy;
    end Allocate;
 
    procedure Insert (Q : in out Queue; C : Element_T) is
@@ -102,7 +105,7 @@ package body Linted.Queues with
       N : Node_Not_Null_Access := 1;
    begin
       Allocate (N);
-      Contents (N).Contents := C;
+      Elements (N) := C;
       Q.Insert (N);
    end Insert;
 
@@ -117,18 +120,18 @@ package body Linted.Queues with
       if Removed = 0 then
          Init := False;
       else
-	 declare
-	    N : Node_Not_Null_Access := Node_Not_Null_Access (Removed);
-	 begin
-	    C := Contents (N).Contents;
-	    Free (N);
-	    Init := True;
-	 end;
+         declare
+            N : Node_Not_Null_Access := Node_Not_Null_Access (Removed);
+         begin
+            C := Elements (N);
+            Free (N);
+            Init := True;
+         end;
       end if;
    end Remove;
 
 begin
-   for II in Contents'Range loop
+   for II in 1 .. Node_Not_Null_Access (Max_Nodes_In_Flight) loop
       declare
          N : Node_Not_Null_Access := II;
       begin
