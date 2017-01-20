@@ -49,13 +49,6 @@ package body Linted.Update_Writer is
    package body Worker with
         Spark_Mode => Off is
 
-      type Storage_Access is
-        not null access all Storage_Elements.Storage_Element;
-
-      function Convert is new Ada.Unchecked_Conversion
-        (Storage_Access,
-         System.Address);
-
       task A;
       task Writer_Task;
 
@@ -135,7 +128,7 @@ package body Linted.Update_Writer is
                Update.To_Storage (Pending_Update, Data_Being_Written);
                My_Worker.Write
                  (Object,
-                  Convert (Data_Being_Written (1)'Access),
+                  Data_Being_Written (1)'Address,
                   Data_Being_Written'Size / C.char'Size);
                Update_In_Progress := True;
                Update_Pending := False;

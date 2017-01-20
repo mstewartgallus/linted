@@ -37,17 +37,11 @@ package body Linted.Controls_Reader with
    use type Interfaces.Unsigned_8;
    use type Storage_Elements.Storage_Element;
    use type Storage_Elements.Storage_Offset;
+   use type Errors.Error;
 
    package Command_MVars is new Linted.MVars (KOs.KO);
    package Read_Done_Event_Channels is new Linted.Channels (Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
-
-   type Storage_Access is not null access all Storage_Elements.Storage_Element;
-
-   function Convert is new Ada.Unchecked_Conversion
-     (Storage_Access,
-      System.Address);
-   use type Errors.Error;
 
    package body Worker is
       task Reader_Task;
@@ -119,7 +113,7 @@ package body Linted.Controls_Reader with
             if Object_Initialized then
                My_Worker.Read
                  (Object,
-                  Convert (Data_Being_Read (1)'Access),
+                  Data_Being_Read (1)'Address,
                   Data_Being_Read'Size / Interfaces.C.char'Size);
             end if;
          end loop;

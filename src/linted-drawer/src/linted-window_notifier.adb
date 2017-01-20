@@ -12,7 +12,6 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Synchronous_Task_Control;
-with Ada.Unchecked_Conversion;
 
 with Interfaces;
 with Interfaces.C;
@@ -46,11 +45,6 @@ package body Linted.Window_Notifier with
    package Command_MVars is new MVars (KOs.KO);
    package Read_Done_Event_Channels is new Channels (Event);
    package Worker_Event_Channels is new Channels (Reader.Event);
-
-   type Storage_Access is not null access all Storage_Elements.Storage_Element;
-   function Convert is new Ada.Unchecked_Conversion
-     (Storage_Access,
-      System.Address);
 
    package body Worker is
       package Reader_Worker is new Reader.Worker;
@@ -120,7 +114,7 @@ package body Linted.Window_Notifier with
             if Object_Initialized then
                Reader_Worker.Read
                  (Object,
-                  Convert (Data_Being_Read (1)'Access),
+                  Data_Being_Read (1)'Address,
                   Data_Being_Read'Size / Interfaces.C.char'Size);
             end if;
          end loop;

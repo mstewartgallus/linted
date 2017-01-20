@@ -276,11 +276,6 @@ package body Linted.Audio with
       userdata : System.Address)
    is
       Mybytes : Libc.Stddef.size_t := nbytes;
-
-      type Short_Access is not null access all short;
-      function Convert is new Ada.Unchecked_Conversion
-        (Short_Access,
-         System.Address);
    begin
       if Sampleoffs * 2 + Mybytes >
         Libc.Stddef.size_t (GREATEST_PERIOD) * 2
@@ -294,7 +289,7 @@ package body Linted.Audio with
 
       if pa_stream_write
           (s,
-           Convert (Sampledata (Integer (Sampleoffs))'Access),
+           Sampledata (Integer (Sampleoffs))'Address,
            Mybytes,
            null,
            0,

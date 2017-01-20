@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -14,9 +14,6 @@
 with Ada.Command_Line;
 with Ada.Synchronous_Task_Control;
 with Ada.Unchecked_Conversion;
-
-with System;
-with System.Storage_Elements;
 
 with Interfaces.C;
 with Interfaces.C.Strings;
@@ -43,7 +40,6 @@ package body Linted.Drawer with
 
    package Command_Line renames Ada.Command_Line;
    package STC renames Ada.Synchronous_Task_Control;
-   package Storage_Elements renames System.Storage_Elements;
    package C renames Interfaces.C;
    package C_Strings renames Interfaces.C.Strings;
 
@@ -355,9 +351,6 @@ package body Linted.Drawer with
       Bytes : C.size_t;
       Err : Errors.Error;
 
-      type A is access all Storage_Elements.Storage_Element;
-      function Convert is new Ada.Unchecked_Conversion (A, System.Address);
-
       Data : Windows.Storage;
 
       W : Windows.Window;
@@ -368,7 +361,7 @@ package body Linted.Drawer with
          Err :=
            KOs.Pread
              (Object,
-              Convert (Buf (1)'Unchecked_Access),
+              Buf (1)'Address,
               Windows.Storage_Size,
               0,
               Bytes);

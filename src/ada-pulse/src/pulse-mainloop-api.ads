@@ -13,8 +13,6 @@
 -- permissions and limitations under the License.
 with System;
 
-with Interfaces.C; use Interfaces.C;
-
 limited with Libc.Time.GNU;
 
 package Pulse.Mainloop.API with

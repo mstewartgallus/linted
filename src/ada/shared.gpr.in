@@ -57,7 +57,7 @@ abstract project Shared is
   		    -- "-fsanitize=leak"
 
   		   );
-     for Default_Switches ("Ada") use C_Switches & (
+     for Default_Switches ("Ada") use C_Switches & ("-F",
   		    -- "-gnatGL",
 
   		    -- "-gnatD",

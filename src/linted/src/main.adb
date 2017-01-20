@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@ private with Ada.Unchecked_Conversion;
 
 private with Interfaces.C;
 private with Interfaces.C.Strings;
-
-with System;
 
 private with Libc.Unistd;
 
@@ -153,14 +151,10 @@ begin
       Argv : aliased array
       (1 .. 2) of aliased Interfaces.C.Strings.chars_ptr :=
         (P, Interfaces.C.Strings.Null_Ptr);
-      type Ptr_Access is access all Interfaces.C.Strings.chars_ptr;
-      function Convert is new Ada.Unchecked_Conversion
-        (Ptr_Access,
-         System.Address);
    begin
       Err :=
         Linted.Errors.Error
-          (Libc.Unistd.execv (P, Convert (Argv (1)'Unchecked_Access)));
+          (Libc.Unistd.execv (P, Argv (1)'Address));
    end;
 
    <<On_Err>>
