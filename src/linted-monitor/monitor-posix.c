@@ -2030,10 +2030,13 @@ static lntd_error dup_array(char const *const *strs, size_t strs_size,
 {
 	lntd_error err = 0;
 
+	size_t new_size = strs_size + 1U;
+	LNTD_ASSERT(new_size > 0U);
+
 	char **new_strs;
 	{
 		void *xx;
-		err = lntd_mem_alloc_array(&xx, strs_size + 1U,
+		err = lntd_mem_alloc_array(&xx, new_size,
 		                           sizeof new_strs[0U]);
 		if (err != 0)
 			return err;

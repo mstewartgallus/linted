@@ -64,12 +64,16 @@ lntd_error lntd_unit_db_add_unit(struct lntd_unit_db *units,
 {
 	lntd_error err = 0;
 
+	LNTD_ASSERT(units != 0);
+	LNTD_ASSERT(unitp != 0);
+
 	struct lntd_unit *list = units->list;
 	size_t old_size = units->size;
 
 	size_t new_size = old_size + 1U;
+	LNTD_ASSERT(new_size > 0U);
 	{
-		void *xx;
+		void *xx = 0;
 		err = lntd_mem_realloc_array(&xx, list, new_size,
 		                             sizeof list[0U]);
 		if (err != 0)
