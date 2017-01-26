@@ -13,12 +13,11 @@
 -- permissions and limitations under the License.
 package body Linted.Poller is
    package body Worker is
-      package IO_Worker is new IO_Pool.Poller_Worker;
+      package IO_Worker is new IO_Pool.Poller_Worker (On_Event);
 
       procedure Poll
         (Object : Linted.KOs.KO;
          Events : Event_Set) renames
         IO_Worker.Poll;
-      procedure Wait (E : out IO_Pool.Poller_Event) renames IO_Worker.Wait;
    end Worker;
 end Linted.Poller;

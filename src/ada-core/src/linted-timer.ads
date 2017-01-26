@@ -17,13 +17,11 @@ package Linted.Timer is
    pragma Elaborate_Body;
 
    generic
+      with procedure On_Tick;
    package Worker with
       Abstract_State => ((Reader with External), (Writer with External)) is
       procedure Wait_Until (Time : Ada.Real_Time.Time) with
          Global => (In_Out => Writer),
          Depends => (Writer => (Writer, Time));
-      procedure Wait with
-         Global => (In_Out => Reader),
-         Depends => (Reader => Reader);
    end Worker;
 end Linted.Timer;

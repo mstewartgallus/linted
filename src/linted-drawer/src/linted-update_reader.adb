@@ -36,19 +36,19 @@ package body Linted.Update_Reader with
    use type Errors.Error;
 
    package Command_MVars is new MVars (KOs.KO);
-   package Read_Done_Event_Channels is new Channels (Event);
    package Worker_Event_Channels is new Channels (Reader.Event);
 
    package body Worker is
       task Reader_Task;
 
-      package Reader_Worker is new Reader.Worker;
+      procedure On_Read_Event (Worker_Event : Reader.Event);
+
+      package Reader_Worker is new Reader.Worker (On_Read_Event);
 
       Data_Being_Read : aliased Update.Storage;
       My_Trigger : STC.Suspension_Object;
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
-      My_Event_Channel : Read_Done_Event_Channels.Channel;
 
       procedure Start (Object : KOs.KO) is
       begin
@@ -56,21 +56,11 @@ package body Linted.Update_Reader with
          STC.Set_True (My_Trigger);
       end Start;
 
-      procedure Wait (E : out Event) is
+      procedure On_Read_Event (Worker_Event : Reader.Event) is
       begin
-         Read_Done_Event_Channels.Pop (My_Event_Channel, E);
-      end Wait;
-
-      task A;
-      task body A is
-         Worker_Event : Reader.Event;
-      begin
-         loop
-            Reader_Worker.Wait (Worker_Event);
-            Worker_Event_Channels.Push (Work_Event, Worker_Event);
-            STC.Set_True (My_Trigger);
-         end loop;
-      end A;
+	 Worker_Event_Channels.Push (Work_Event, Worker_Event);
+	 STC.Set_True (My_Trigger);
+      end On_Read_Event;
 
       task body Reader_Task is
          Err : Errors.Error;
@@ -100,7 +90,8 @@ package body Linted.Update_Reader with
                   if Err = Errors.Success then
                      Update.From_Storage (Data_Being_Read, U);
                   end if;
-                  Read_Done_Event_Channels.Push (My_Event_Channel, (U, Err));
+
+		  On_Event ((U, Err));
                end if;
             end;
 

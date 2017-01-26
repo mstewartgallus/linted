@@ -152,9 +152,7 @@ begin
       (1 .. 2) of aliased Interfaces.C.Strings.chars_ptr :=
         (P, Interfaces.C.Strings.Null_Ptr);
    begin
-      Err :=
-        Linted.Errors.Error
-          (Libc.Unistd.execv (P, Argv (1)'Address));
+      Err := Linted.Errors.Error (Libc.Unistd.execv (P, Argv (1)'Address));
    end;
 
    <<On_Err>>

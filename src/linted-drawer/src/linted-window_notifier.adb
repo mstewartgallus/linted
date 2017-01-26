@@ -38,23 +38,19 @@ package body Linted.Window_Notifier with
    use type Storage_Elements.Storage_Offset;
    use type Errors.Error;
 
-   type Event is record
-      Err : Errors.Error;
-   end record;
-
    package Command_MVars is new MVars (KOs.KO);
-   package Read_Done_Event_Channels is new Channels (Event);
    package Worker_Event_Channels is new Channels (Reader.Event);
 
    package body Worker is
-      package Reader_Worker is new Reader.Worker;
+      procedure On_Read_Event (Worker_Event : Reader.Event);
+
+      package Reader_Worker is new Reader.Worker (On_Read_Event);
 
       task Reader_Task;
 
       My_Trigger : STC.Suspension_Object;
       My_Command_MVar : Command_MVars.MVar;
       Work_Event : Worker_Event_Channels.Channel;
-      My_Event_Channel : Read_Done_Event_Channels.Channel;
 
       Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 1);
 
@@ -64,22 +60,11 @@ package body Linted.Window_Notifier with
          STC.Set_True (My_Trigger);
       end Start;
 
-      procedure Wait is
-         E : Event;
+      procedure On_Read_Event (Worker_Event : Reader.Event) is
       begin
-         Read_Done_Event_Channels.Pop (My_Event_Channel, E);
-      end Wait;
-
-      task A;
-      task body A is
-         Worker_Event : Reader.Event;
-      begin
-         loop
-            Reader_Worker.Wait (Worker_Event);
-            Worker_Event_Channels.Push (Work_Event, Worker_Event);
-            STC.Set_True (My_Trigger);
-         end loop;
-      end A;
+	 Worker_Event_Channels.Push (Work_Event, Worker_Event);
+	 STC.Set_True (My_Trigger);
+      end On_Read_Event;
 
       task body Reader_Task is
          Err : Errors.Error;
@@ -105,9 +90,7 @@ package body Linted.Window_Notifier with
                Worker_Event_Channels.Poll (Work_Event, Options_Event);
                if not Options_Event.Empty then
                   Err := Options_Event.Data.Err;
-                  Read_Done_Event_Channels.Push
-                    (My_Event_Channel,
-                     Event'(Err => Err));
+		  On_New_Window;
                end if;
             end;
 

@@ -25,8 +25,8 @@ package Linted.Controls_Reader with
    end record;
 
    generic
+      with procedure On_Event (E : Event);
    package Worker is
       procedure Start (Object : KOs.KO);
-      procedure Wait (E : out Event);
    end Worker;
 end Linted.Controls_Reader;

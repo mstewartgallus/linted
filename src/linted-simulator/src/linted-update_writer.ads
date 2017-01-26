@@ -19,9 +19,9 @@ package Linted.Update_Writer is
    pragma Elaborate_Body;
 
    generic
+      with procedure On_Event (E : Errors.Error);
    package Worker with
       Spark_Mode => Off is
-      procedure Write (Object : Linted.KOs.KO; Data : Update.Packet);
-      procedure Wait (E : out Linted.Errors.Error);
+      procedure Write (Object : KOs.KO; Data : Update.Packet);
    end Worker;
 end Linted.Update_Writer;

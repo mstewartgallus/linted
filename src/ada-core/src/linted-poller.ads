@@ -25,8 +25,8 @@ package Linted.Poller is
    Writable : Event_Type renames Linted.IO_Pool.Writable;
 
    generic
+      with procedure On_Event (E : Event);
    package Worker is
       procedure Poll (Object : Linted.KOs.KO; Events : Event_Set);
-      procedure Wait (E : out Event);
    end Worker;
 end Linted.Poller;

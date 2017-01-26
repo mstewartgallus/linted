@@ -18,8 +18,8 @@ package Linted.Window_Notifier with
    pragma Elaborate_Body;
 
    generic
+      with procedure On_New_Window;
    package Worker is
       procedure Start (Object : KOs.KO);
-      procedure Wait;
    end Worker;
 end Linted.Window_Notifier;

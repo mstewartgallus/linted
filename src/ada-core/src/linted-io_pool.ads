@@ -42,29 +42,29 @@ package Linted.IO_Pool with
    end record;
 
    generic
+      with procedure Notify (Event : Writer_Event);
    package Writer_Worker with
       Spark_Mode is
       procedure Write
         (Object : KOs.KO;
          Buf : System.Address;
          Count : Interfaces.C.size_t);
-      procedure Wait (Event : out Writer_Event);
    end Writer_Worker;
 
    generic
+      with procedure On_Event (Event : Reader_Event);
    package Reader_Worker with
       Spark_Mode is
       procedure Read
         (Object : KOs.KO;
          Buf : System.Address;
          Count : Interfaces.C.size_t);
-      procedure Wait (Event : out Reader_Event);
    end Reader_Worker;
 
    generic
+      with procedure On_Event (Event : Poller_Event);
    package Poller_Worker with
       Spark_Mode is
       procedure Poll (Object : KOs.KO; Events : Poller_Event_Set);
-      procedure Wait (Event : out Poller_Event);
    end Poller_Worker;
 end Linted.IO_Pool;

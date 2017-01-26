@@ -38,52 +38,35 @@ package body Linted.Update_Writer is
       Data : Update.Packet;
    end record;
 
-   type Write_Done_Event is record
-      Err : Errors.Error;
-   end record;
-
    package Write_Command_Channels is new Linted.Channels (Write_Command);
-   package Write_Done_Event_Channels is new Linted.Channels (Write_Done_Event);
    package Worker_Event_Channels is new Linted.Channels (Linted.Writer.Event);
 
    package body Worker with
         Spark_Mode => Off is
 
-      task A;
       task Writer_Task;
 
       My_Trigger : STC.Suspension_Object;
 
-      package My_Worker is new Writer.Worker;
+      procedure On_Notify (Worker_Event : Writer.Event);
+      package My_Worker is new Writer.Worker (On_Notify);
 
       Write_Command_Channel : Write_Command_Channels.Channel;
       Work_Event : Worker_Event_Channels.Channel;
-      Write_Done_Event_Channel : Write_Done_Event_Channels.Channel;
 
       Data_Being_Written : aliased Update.Storage;
 
-      task body A is
-         Worker_Event : Linted.Writer.Event;
+      procedure On_Notify (Worker_Event : Writer.Event) is
       begin
-         loop
-            My_Worker.Wait (Worker_Event);
-            Worker_Event_Channels.Push (Work_Event, Worker_Event);
-            STC.Set_True (My_Trigger);
-         end loop;
-      end A;
+	 Worker_Event_Channels.Push (Work_Event, Worker_Event);
+	 STC.Set_True (My_Trigger);
+      end On_Notify;
 
       procedure Write (Object : KOs.KO; Data : Update.Packet) is
       begin
          Write_Command_Channels.Push (Write_Command_Channel, (Object, Data));
          STC.Set_True (My_Trigger);
       end Write;
-
-      procedure Wait (E : out Errors.Error) is
-         Event : Write_Done_Event;
-      begin
-         Write_Done_Event_Channels.Pop (Write_Done_Event_Channel, Event);
-         E := Event.Err;
-      end Wait;
 
       task body Writer_Task is
          Err : Errors.Error;
@@ -104,9 +87,7 @@ package body Linted.Update_Writer is
 
                   Update_In_Progress := False;
 
-                  Write_Done_Event_Channels.Push
-                    (Write_Done_Event_Channel,
-                     Write_Done_Event'(Err => Err));
+		  On_Event (Err);
                end if;
             end;
 

@@ -23,11 +23,11 @@ package Linted.Reader is
    subtype Event is Linted.IO_Pool.Reader_Event;
 
    generic
+      with procedure On_Event (E : Event);
    package Worker is
       procedure Read
         (Object : Linted.KOs.KO;
          Buf : System.Address;
          Count : Interfaces.C.size_t);
-      procedure Wait (E : out Event);
    end Worker;
 end Linted.Reader;

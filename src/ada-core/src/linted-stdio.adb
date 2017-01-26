@@ -26,7 +26,14 @@ package body Linted.Stdio with
    use Linted.Errors;
    use Linted.KOs;
 
-   package My_Writer is new Linted.Writer.Worker;
+   procedure Notify (E : Writer.Event);
+
+   procedure Notify (E : Writer.Event) is
+   begin
+      null;
+   end Notify;
+
+   package My_Writer is new Linted.Writer.Worker (Notify);
 
    procedure Write_Line (Object : KO; Str : String) is
       Dummy : Error;
@@ -56,12 +63,12 @@ package body Linted.Stdio with
    begin
       My_Writer.Write (Object, Buf, Count);
 
-      declare
-         Event : Linted.Writer.Event;
-      begin
-         My_Writer.Wait (Event);
-         Bytes_Written := Event.Bytes_Written;
-         Err := Event.Err;
-      end;
+      --  declare
+      --     Event : Linted.Writer.Event;
+      --  begin
+      --     My_Writer.Wait (Event);
+      --     Bytes_Written := Event.Bytes_Written;
+      --     Err := Event.Err;
+      --  end;
    end Write;
 end Linted.Stdio;

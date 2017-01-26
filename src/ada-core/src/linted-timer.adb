@@ -11,12 +11,9 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Synchronous_Task_Control;
-
 with Linted.Channels;
 
 package body Linted.Timer is
-   package STC renames Ada.Synchronous_Task_Control;
    package Real_Time renames Ada.Real_Time;
 
    type Command is record
@@ -28,21 +25,15 @@ package body Linted.Timer is
    package body Worker with
         Refined_State =>
         (Reader => (My_Command_Channel),
-         Writer => (Timer_Task, My_Event_Trigger))
+         Writer => (Timer_Task))
    is
       task Timer_Task;
       My_Command_Channel : Command_Channels.Channel;
-      My_Event_Trigger : STC.Suspension_Object;
 
       procedure Wait_Until (Time : Real_Time.Time) is
       begin
          Command_Channels.Push (My_Command_Channel, (Time => Time));
       end Wait_Until;
-
-      procedure Wait is
-      begin
-         STC.Suspend_Until_True (My_Event_Trigger);
-      end Wait;
 
       task body Timer_Task is
          use type Real_Time.Time;
@@ -54,7 +45,7 @@ package body Linted.Timer is
                Time : constant Real_Time.Time := New_Command.Time;
             begin
                delay until Time;
-               STC.Set_True (My_Event_Trigger);
+	       On_Tick;
             end;
          end loop;
       end Timer_Task;

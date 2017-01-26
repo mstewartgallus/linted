@@ -23,12 +23,11 @@ package Linted.Writer is
    subtype Event is Linted.IO_Pool.Writer_Event;
 
    generic
+      with procedure Notify (E : Event);
    package Worker is
       procedure Write
         (Object : Linted.KOs.KO;
          Buf : System.Address;
          Count : Interfaces.C.size_t);
-
-      procedure Wait (E : out Event);
    end Worker;
 end Linted.Writer;

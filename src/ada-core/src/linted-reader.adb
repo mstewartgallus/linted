@@ -15,13 +15,12 @@ package body Linted.Reader is
    package C renames Interfaces.C;
 
    package body Worker is
-      package IO_Worker is new IO_Pool.Reader_Worker;
+      package IO_Worker is new IO_Pool.Reader_Worker (On_Event);
 
       procedure Read
         (Object : Linted.KOs.KO;
          Buf : System.Address;
          Count : C.size_t) renames
         IO_Worker.Read;
-      procedure Wait (E : out IO_Pool.Reader_Event) renames IO_Worker.Wait;
    end Worker;
 end Linted.Reader;

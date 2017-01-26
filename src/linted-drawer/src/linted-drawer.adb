@@ -54,17 +54,18 @@ package body Linted.Drawer with
       null;
    end record;
 
-   package Notifier is new Window_Notifier.Worker;
-   package My_Poller is new Poller.Worker;
-   package My_Update_Reader is new Update_Reader.Worker;
+   procedure On_New_Window;
+   procedure On_Poll_Event (E : Poller.Event);
+   procedure On_Update_Event (E : Update_Reader.Event);
+
+   package Notifier is new Window_Notifier.Worker (On_New_Window);
+   package My_Poller is new Poller.Worker (On_Poll_Event);
+   package My_Update_Reader is new Update_Reader.Worker (On_Update_Event);
 
    package Update_Event_Channels is new Channels (Update_Reader.Event);
    package Poller_Event_Channels is new Channels (Poller.Event);
    package Notifier_Event_Channels is new Channels (Notifier_Event);
 
-   task A;
-   task B;
-   task Task_C;
    task Main_Task;
 
    Event_Trigger : STC.Suspension_Object;
@@ -308,44 +309,27 @@ package body Linted.Drawer with
       end loop;
    end Main_Task;
 
-   task body A is
+   procedure On_Update_Event (E : Update_Reader.Event) is
    begin
-      loop
-         declare
-            Event : Update_Reader.Event;
-         begin
-            My_Update_Reader.Wait (Event);
-            Update_Event_Channels.Push (Update_Event_Channel, Event);
-            STC.Set_True (Event_Trigger);
-         end;
-      end loop;
-   end A;
+      Update_Event_Channels.Push (Update_Event_Channel, E);
+      STC.Set_True (Event_Trigger);
+   end On_Update_Event;
 
-   task body B is
+   procedure On_New_Window is
    begin
-      loop
-         Notifier.Wait;
-         declare
-            Event : Notifier_Event;
-         begin
-            Notifier_Event_Channels.Push (Notifier_Event_Channel, Event);
-         end;
-         STC.Set_True (Event_Trigger);
-      end loop;
-   end B;
+      declare
+         Event : Notifier_Event;
+      begin
+         Notifier_Event_Channels.Push (Notifier_Event_Channel, Event);
+      end;
+      STC.Set_True (Event_Trigger);
+   end On_New_Window;
 
-   task body Task_C is
+   procedure On_Poll_Event (E : Poller.Event) is
    begin
-      loop
-         declare
-            Event : Poller.Event;
-         begin
-            My_Poller.Wait (Event);
-            Poller_Event_Channels.Push (Poller_Event_Channel, Event);
-         end;
-         STC.Set_True (Event_Trigger);
-      end loop;
-   end Task_C;
+      Poller_Event_Channels.Push (Poller_Event_Channel, E);
+      STC.Set_True (Event_Trigger);
+   end On_Poll_Event;
 
    function Read_Window (Object : KOs.KO) return Windows.Window is
       Bytes : C.size_t;
@@ -359,12 +343,7 @@ package body Linted.Drawer with
          Buf : aliased Windows.Storage;
       begin
          Err :=
-           KOs.Pread
-             (Object,
-              Buf (1)'Address,
-              Windows.Storage_Size,
-              0,
-              Bytes);
+           KOs.Pread (Object, Buf (1)'Address, Windows.Storage_Size, 0, Bytes);
          if Err /= 0 then
             raise Program_Error with Errors.To_String (Err);
          end if;

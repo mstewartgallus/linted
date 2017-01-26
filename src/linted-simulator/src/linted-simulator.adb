@@ -44,13 +44,14 @@ package body Linted.Simulator with
      (Linted.Controls_Reader.Event);
    package Timer_Event_Channels is new Linted.Channels (Tick_Event);
 
-   task A;
-   task B;
+   procedure On_Controls_Read (E : Controls_Reader.Event);
+   procedure On_Update_Written (E : Errors.Error);
+   procedure On_Tick;
    task Main_Task;
 
-   package My_Controls_Reader is new Controls_Reader.Worker;
-   package My_Update_Writer is new Update_Writer.Worker;
-   package My_Timer is new Timer.Worker;
+   package My_Controls_Reader is new Controls_Reader.Worker (On_Controls_Read);
+   package My_Update_Writer is new Update_Writer.Worker (On_Update_Written);
+   package My_Timer is new Timer.Worker (On_Tick);
 
    Event_Trigger : STC.Suspension_Object;
    Control_Event_Channel : Control_Event_Channels.Channel;
@@ -158,26 +159,21 @@ package body Linted.Simulator with
       end loop;
    end Main_Task;
 
-   task body A is
+   procedure On_Controls_Read (E : Controls_Reader.Event) is
    begin
-      loop
-         declare
-            Event : Controls_Reader.Event;
-         begin
-            My_Controls_Reader.Wait (Event);
-            Control_Event_Channels.Push (Control_Event_Channel, Event);
-            STC.Set_True (Event_Trigger);
-         end;
-      end loop;
-   end A;
+      Control_Event_Channels.Push (Control_Event_Channel, E);
+      STC.Set_True (Event_Trigger);
+   end On_Controls_Read;
 
-   task body B is
+   procedure On_Update_Written (E : Errors.Error) is
+   begin
+      null;
+   end On_Update_Written;
+
+   procedure On_Tick is
       T : Tick_Event;
    begin
-      loop
-         My_Timer.Wait;
-         Timer_Event_Channels.Push (Timer_Event_Channel, T);
-         STC.Set_True (Event_Trigger);
-      end loop;
-   end B;
+      Timer_Event_Channels.Push (Timer_Event_Channel, T);
+      STC.Set_True (Event_Trigger);
+   end On_Tick;
 end Linted.Simulator;
