@@ -11,6 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+private with Linted.Wait_Lists;
+
 generic
    type Element_T is private;
    Max_Nodes_In_Flight : Positive;
@@ -21,10 +23,10 @@ package Linted.Queues with
 
    type Queue is limited private;
 
-   procedure Insert (Q : in out Queue; C : Element_T) with
+   procedure Enqueue (Q : in out Queue; C : Element_T) with
       Global => (In_Out => State),
       Depends => (State => (State, Q, C), Q => (State, Q, C));
-   procedure Remove
+   procedure Try_Dequeue
      (Q : in out Queue;
       C : out Element_T;
       Init : out Boolean) with
@@ -35,6 +37,8 @@ package Linted.Queues with
        C => (State, Q),
        Init => (State, Q));
 
+   procedure Dequeue (Q : in out Queue; C : out Element_T);
+
 private
    type Node_Access is new Natural;
    subtype Node_Not_Null_Access is Node_Access range 1 .. Node_Access'Last;
@@ -42,14 +46,18 @@ private
    function Is_Free (N : Node_Not_Null_Access) return Boolean with
       Ghost;
 
-   protected type Queue is
-      procedure Insert (N : Node_Not_Null_Access) with
+   protected type PQueue is
+      procedure Enqueue (N : Node_Not_Null_Access) with
          Pre => Is_Free (N);
-      procedure Remove (N : out Node_Access) with
+      procedure Try_Dequeue (N : out Node_Access) with
          Post => (if N /= 0 then Is_Free (Node_Not_Null_Access (N)) else True);
    private
       First : Node_Access := 0;
       Last : Node_Access := 0;
-   end Queue;
+   end PQueue;
 
+   type Queue is record
+      List : PQueue;
+      On_Full : Wait_Lists.Wait_List;
+   end record;
 end Linted.Queues;

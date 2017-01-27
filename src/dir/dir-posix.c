@@ -44,16 +44,16 @@ lntd_error lntd_dir_create(lntd_ko *kop, lntd_ko dirko,
 		if (flags != 0U)
 			return EINVAL;
 
-		int dirfd;
+		int mydirfd;
 		if (LNTD_KO_CWD == dirko) {
-			dirfd = AT_FDCWD;
+			mydirfd = AT_FDCWD;
 		} else if (dirko > INT_MAX) {
 			return EINVAL;
 		} else {
-			dirfd = dirko;
+			mydirfd = dirko;
 		}
 
-		if (-1 == mkdirat(dirfd, pathname, mode)) {
+		if (-1 == mkdirat(mydirfd, pathname, mode)) {
 			err = errno;
 			LNTD_ASSUME(err != 0);
 			if (EEXIST == err)

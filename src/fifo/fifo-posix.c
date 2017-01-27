@@ -70,16 +70,16 @@ lntd_error lntd_fifo_create(lntd_fifo *kop, lntd_ko dirko,
 		if (flags != 0U)
 			return EINVAL;
 
-		int dirfd;
+		int mydirfd;
 		if (LNTD_KO_CWD == dirko) {
-			dirfd = AT_FDCWD;
+			mydirfd = AT_FDCWD;
 		} else if (dirko > INT_MAX) {
 			return EINVAL;
 		} else {
-			dirfd = dirko;
+			mydirfd = dirko;
 		}
 
-		err = my_mkfifoat(dirfd, pathname, mode);
+		err = my_mkfifoat(mydirfd, pathname, mode);
 		if (err != 0) {
 			if (EEXIST == err)
 				return 0;

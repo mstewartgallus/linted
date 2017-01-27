@@ -11,8 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Wait_Lists;
-
 package body Linted.Queues with
      Refined_State =>
      (State => (Elements, Tails, In_Queues, Spare_Nodes, Triggers))
@@ -28,7 +26,7 @@ is
      (others => False) with
       Ghost;
 
-   Spare_Nodes : Queue;
+   Spare_Nodes : PQueue;
    Triggers : Wait_Lists.Wait_List;
 
    procedure Allocate (N : out Node_Not_Null_Access) with
@@ -41,8 +39,8 @@ is
       return not In_Queues (N);
    end Is_Free;
 
-   protected body Queue is
-      procedure Insert (N : Node_Not_Null_Access) is
+   protected body PQueue is
+      procedure Enqueue (N : Node_Not_Null_Access) is
       begin
          pragma Assert (not In_Queues (N));
          pragma Assert (Tails (N) = 0);
@@ -55,9 +53,9 @@ is
             Tails (Last) := Node_Access (N);
          end if;
          Last := Node_Access (N);
-      end Insert;
+      end Enqueue;
 
-      procedure Remove (N : out Node_Access) is
+      procedure Try_Dequeue (N : out Node_Access) is
       begin
          if First = 0 or Last = 0 then
             N := 0;
@@ -74,14 +72,14 @@ is
                N := Removed;
             end;
          end if;
-      end Remove;
-   end Queue;
+      end Try_Dequeue;
+   end PQueue;
 
    procedure Free (N : Node_Not_Null_Access) is
       Dummy : Element_T;
    begin
       Elements (N) := Dummy;
-      Spare_Nodes.Insert (N);
+      Spare_Nodes.Enqueue (N);
       Wait_Lists.Signal (Triggers);
    end Free;
 
@@ -90,7 +88,7 @@ is
       Removed : Node_Access;
    begin
       loop
-         Spare_Nodes.Remove (Removed);
+         Spare_Nodes.Try_Dequeue (Removed);
          if Removed /= 0 then
             exit;
          end if;
@@ -100,23 +98,24 @@ is
       Elements (N) := Dummy;
    end Allocate;
 
-   procedure Insert (Q : in out Queue; C : Element_T) is
+   procedure Enqueue (Q : in out Queue; C : Element_T) is
       --  FAKE!
       N : Node_Not_Null_Access := 1;
    begin
       Allocate (N);
       Elements (N) := C;
-      Q.Insert (N);
-   end Insert;
+      Q.List.Enqueue (N);
+      Wait_Lists.Signal (Q.On_Full);
+   end Enqueue;
 
-   procedure Remove
+   procedure Try_Dequeue
      (Q : in out Queue;
       C : out Element_T;
       Init : out Boolean)
    is
       Removed : Node_Access;
    begin
-      Q.Remove (Removed);
+      Q.List.Try_Dequeue (Removed);
       if Removed = 0 then
          Init := False;
       else
@@ -128,14 +127,26 @@ is
             Init := True;
          end;
       end if;
-   end Remove;
+   end Try_Dequeue;
+
+   procedure Dequeue (Q : in out Queue; C : out Element_T) is
+      Init : Boolean;
+   begin
+      loop
+         Try_Dequeue (Q, C, Init);
+         if Init then
+            exit;
+         end if;
+         Wait_Lists.Wait (Q.On_Full);
+      end loop;
+   end Dequeue;
 
 begin
    for II in 1 .. Node_Not_Null_Access (Max_Nodes_In_Flight) loop
       declare
          N : Node_Not_Null_Access := II;
       begin
-         Spare_Nodes.Insert (N);
+         Spare_Nodes.Enqueue (N);
       end;
    end loop;
 end Linted.Queues;

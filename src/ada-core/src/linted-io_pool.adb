@@ -19,7 +19,6 @@ with Libc.Unistd;
 
 with Linted.Channels;
 with Linted.Queues;
-with Linted.Wait_Lists;
 
 package body Linted.IO_Pool with
      Spark_Mode => Off is
@@ -94,7 +93,6 @@ package body Linted.IO_Pool with
       Channel : Poller_Event_Channels.Channel;
    end record;
 
-   Command_Trigger : Wait_Lists.Wait_List;
    My_Command_Channel : CQueues.Queue;
 
    task type Worker_Task;
@@ -107,29 +105,22 @@ package body Linted.IO_Pool with
 
    task body Worker_Task is
       New_Command : Command;
-      Init : Boolean;
    begin
       loop
-         Wait_Lists.Wait (Command_Trigger);
-         loop
-            CQueues.Remove (My_Command_Channel, New_Command, Init);
-            if not Init then
-               exit;
-            end if;
+	 CQueues.Dequeue (My_Command_Channel, New_Command);
 
-            case New_Command.T is
-               when Invalid_Type =>
-                  raise Program_Error;
+	 case New_Command.T is
+	    when Invalid_Type =>
+	       raise Program_Error;
 
-               when Write_Type =>
-                  Do_Write (New_Command.Write_Object);
+	    when Write_Type =>
+	       Do_Write (New_Command.Write_Object);
 
-               when Read_Type =>
-                  Do_Read (New_Command.Read_Object);
-               when Poll_Type =>
-                  Do_Poll (New_Command.Poll_Object);
-            end case;
-         end loop;
+	    when Read_Type =>
+	       Do_Read (New_Command.Read_Object);
+	    when Poll_Type =>
+	       Do_Poll (New_Command.Poll_Object);
+	 end case;
       end loop;
    end Worker_Task;
 
@@ -283,11 +274,10 @@ package body Linted.IO_Pool with
          Count : C.size_t)
       is
       begin
-         CQueues.Insert
+         CQueues.Enqueue
            (My_Command_Channel,
             (Write_Type,
              (Object, Buf, Count, My_Event_Channel'Unchecked_Access)));
-         Wait_Lists.Signal (Command_Trigger);
       end Write;
    end Writer_Worker;
 
@@ -312,11 +302,10 @@ package body Linted.IO_Pool with
          Count : C.size_t)
       is
       begin
-         CQueues.Insert
+         CQueues.Enqueue
            (My_Command_Channel,
             (Read_Type,
              (Object, Buf, Count, My_Event_Channel'Unchecked_Access)));
-         Wait_Lists.Signal (Command_Trigger);
       end Read;
    end Reader_Worker;
 
@@ -337,10 +326,9 @@ package body Linted.IO_Pool with
 
       procedure Poll (Object : KOs.KO; Events : Poller_Event_Set) is
       begin
-         CQueues.Insert
+         CQueues.Enqueue
            (My_Command_Channel,
             (Poll_Type, (Object, Events, My_Event_Channel'Unchecked_Access)));
-         Wait_Lists.Signal (Command_Trigger);
       end Poll;
    end Poller_Worker;
 end Linted.IO_Pool;
