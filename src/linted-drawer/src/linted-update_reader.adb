@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2015,2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,19 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Synchronous_Task_Control;
 with Interfaces.C;
 with Interfaces;
 with System.Storage_Elements;
 with System;
 
-with Linted.Channels;
 with Linted.Reader;
 with Linted.MVars;
+with Linted.Triggers;
 
 package body Linted.Update_Reader with
      Spark_Mode => Off is
-   package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -36,40 +34,31 @@ package body Linted.Update_Reader with
    use type Errors.Error;
 
    package Command_MVars is new MVars (KOs.KO);
-   package Worker_Event_Channels is new Channels (Reader.Event);
 
    package body Worker is
       task Reader_Task;
 
-      procedure On_Read_Event (Worker_Event : Reader.Event);
-
-      package Reader_Worker is new Reader.Worker (On_Read_Event);
+      package My_Trigger is new Triggers.Handle;
 
       Data_Being_Read : aliased Update.Storage;
-      My_Trigger : STC.Suspension_Object;
       My_Command_MVar : Command_MVars.MVar;
-      Work_Event : Worker_Event_Channels.Channel;
 
       procedure Start (Object : KOs.KO) is
       begin
          Command_MVars.Set (My_Command_MVar, Object);
-         STC.Set_True (My_Trigger);
+         Triggers.Signal (My_Trigger.Signal_Handle);
       end Start;
-
-      procedure On_Read_Event (Worker_Event : Reader.Event) is
-      begin
-	 Worker_Event_Channels.Push (Work_Event, Worker_Event);
-	 STC.Set_True (My_Trigger);
-      end On_Read_Event;
 
       task body Reader_Task is
          Err : Errors.Error;
          U : Update.Packet;
          Object : KOs.KO;
          Object_Initialized : Boolean := False;
+	 Read_Future_Has_Value : Boolean := False;
+	 Read_Future : Reader.Future;
       begin
          loop
-            STC.Suspend_Until_True (My_Trigger);
+	    Triggers.Wait (My_Trigger.Wait_Handle);
 
             declare
                New_Command : Command_MVars.Option_Element_Ts.Option;
@@ -81,25 +70,32 @@ package body Linted.Update_Reader with
                end if;
             end;
 
-            declare
-               Options_Event : Worker_Event_Channels.Option_Element_Ts.Option;
-            begin
-               Worker_Event_Channels.Poll (Work_Event, Options_Event);
-               if not Options_Event.Empty then
-                  Err := Options_Event.Data.Err;
-                  if Err = Errors.Success then
-                     Update.From_Storage (Data_Being_Read, U);
-                  end if;
+	    if Read_Future_Has_Value then
+	       declare
+		  Init : Boolean;
+		  Event : Reader.Event;
+	       begin
+		  Reader.Read_Poll (Read_Future, Event, Init);
+		  if Init then
+		     Read_Future_Has_Value := False;
+		     Err := Event.Err;
+		     if Err = Errors.Success then
+			Update.From_Storage (Data_Being_Read, U);
+		     end if;
 
-		  On_Event ((U, Err));
-               end if;
-            end;
+		     On_Event ((U, Err));
+		  end if;
+	       end;
+	    end if;
 
-            if Object_Initialized then
-               Reader_Worker.Read
+            if not Read_Future_Has_Value and Object_Initialized then
+               Reader.Read
                  (Object,
                   Data_Being_Read (1)'Address,
-                  Data_Being_Read'Size / Interfaces.C.char'Size);
+                  Data_Being_Read'Size / Interfaces.C.char'Size,
+		  My_Trigger.Signal_Handle,
+		  Read_Future);
+	       Read_Future_Has_Value := True;
             end if;
          end loop;
       end Reader_Task;

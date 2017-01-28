@@ -15,7 +15,7 @@ private with Linted.Wait_Lists;
 
 package Linted.Triggers with
      Spark_Mode is
-   pragma Elaborate_Body;
+   pragma Preelaborate;
 
    type Waiter is private;
    type Signaller is private;
@@ -30,9 +30,15 @@ package Linted.Triggers with
       function Signal_Handle return Signaller;
    end Handle;
 
-   procedure Wait (W : Waiter);
-   procedure Signal (S : Signaller);
-   procedure Broadcast (S : Signaller);
+   function Is_Null_Waiter (W : Waiter) return Boolean;
+   function Is_Null_Signaller (S : Signaller) return Boolean;
+
+   procedure Wait (W : Waiter) with
+      Pre => not Is_Null_Waiter (W);
+   procedure Signal (S : Signaller) with
+      Pre => not Is_Null_Signaller (S);
+   procedure Broadcast (S : Signaller) with
+      Pre => not Is_Null_Signaller (S);
 
 private
    pragma SPARK_Mode (Off);

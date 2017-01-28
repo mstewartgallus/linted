@@ -57,6 +57,7 @@ package body Linted.Window_Notifier with
          Object : KOs.KO;
          Object_Initialized : Boolean := False;
 	 Read_Future : Reader.Future;
+	 Read_Future_Live : Boolean := False;
       begin
          loop
 	    Triggers.Wait (My_Trigger.Wait_Handle);
@@ -71,24 +72,28 @@ package body Linted.Window_Notifier with
                end if;
             end;
 
-            declare
-               Event : Reader.Event;
-	       Init : Boolean;
-            begin
-               Reader.Read_Poll (Read_Future, Event, Init);
-               if Init then
-                  Err := Event.Err;
-		  On_New_Window;
-               end if;
-            end;
+	    if Read_Future_Live then
+	       declare
+		  Event : Reader.Event;
+		  Init : Boolean;
+	       begin
+		  Reader.Read_Poll (Read_Future, Event, Init);
+		  if Init then
+		     Read_Future_Live := False;
+		     Err := Event.Err;
+		     On_New_Window;
+		  end if;
+	       end;
+	    end if;
 
-            if Object_Initialized then
+            if not Read_Future_Live and Object_Initialized then
                Reader.Read
                  (Object,
                   Data_Being_Read (1)'Address,
                   Data_Being_Read'Size / Interfaces.C.char'Size,
 		  My_Trigger.Signal_Handle,
 		  Read_Future);
+	       Read_Future_Live := True;
             end if;
          end loop;
       end Reader_Task;

@@ -42,5 +42,6 @@ private
    private
       First : Node_Access;
       Last : Node_Access;
+      Pending_Signal : Boolean := False;
    end Wait_List;
 end Linted.Wait_Lists;

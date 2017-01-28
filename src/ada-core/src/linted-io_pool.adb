@@ -194,7 +194,9 @@ package body Linted.IO_Pool with
       Reader_Event_Channels.Push
         (Replier.Channel,
          (Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
-      Triggers.Signal (Signaller);
+      if not Triggers.Is_Null_Signaller (Signaller) then
+	 Triggers.Signal (Signaller);
+      end if;
    end Do_Read;
 
    procedure Do_Poll (P : Poller_Command) is
@@ -395,8 +397,8 @@ package body Linted.IO_Pool with
       if Maybe_Event.Empty then
          Init := False;
       else
-	 Event := Maybe_Event.Data;
          Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
+	 Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
       end if;

@@ -22,24 +22,21 @@ package body Linted.Triggers with
       function Signal_Handle return Signaller is (Wait_List'Access);
    end Handle;
 
+   function Is_Null_Waiter (W : Waiter) return Boolean is (W = null);
+   function Is_Null_Signaller (S : Signaller) return Boolean is (S = null);
+
    procedure Wait (W : Waiter) is
    begin
-      if W /= null then
-         Wait_Lists.Wait (W.all);
-      end if;
+      Wait_Lists.Wait (W.all);
    end Wait;
 
    procedure Signal (S : Signaller) is
    begin
-      if S /= null then
-         Wait_Lists.Signal (S.all);
-      end if;
+      Wait_Lists.Signal (S.all);
    end Signal;
 
    procedure Broadcast (S : Signaller) is
    begin
-      if S /= null then
-         Wait_Lists.Broadcast (S.all);
-      end if;
+      Wait_Lists.Broadcast (S.all);
    end Broadcast;
 end Linted.Triggers;

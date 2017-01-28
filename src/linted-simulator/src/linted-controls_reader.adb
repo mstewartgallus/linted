@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2015,2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,8 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Synchronous_Task_Control;
-with Ada.Unchecked_Conversion;
+with Ada.Text_IO;
 
 with Interfaces.C;
 with Interfaces;
@@ -20,13 +19,12 @@ with Interfaces;
 with System.Storage_Elements;
 with System;
 
-with Linted.Channels;
 with Linted.Reader;
 with Linted.MVars;
+with Linted.Triggers;
 
 package body Linted.Controls_Reader with
      Spark_Mode => Off is
-   package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -40,43 +38,35 @@ package body Linted.Controls_Reader with
    use type Errors.Error;
 
    package Command_MVars is new Linted.MVars (KOs.KO);
-   package Worker_Event_Channels is new Linted.Channels (Linted.Reader.Event);
 
    package body Worker is
       task Reader_Task;
 
-      procedure On_Reader_Event (Worker_Event : Reader.Event);
-
-      package My_Worker is new Reader.Worker (On_Reader_Event);
-
-      My_Trigger : STC.Suspension_Object;
+      package My_Trigger is new Triggers.Handle;
 
       Data_Being_Read : aliased Controls.Storage;
 
       My_Command_MVar : Command_MVars.MVar;
-      Work_Event : Worker_Event_Channels.Channel;
 
       procedure Start (Object : KOs.KO) is
       begin
          Command_MVars.Set (My_Command_MVar, Object);
-         STC.Set_True (My_Trigger);
+         Triggers.Signal (My_Trigger.Signal_Handle);
       end Start;
-
-      procedure On_Reader_Event (Worker_Event : Reader.Event) is
-      begin
-	 Worker_Event_Channels.Push (Work_Event, Worker_Event);
-	 STC.Set_True (My_Trigger);
-      end On_Reader_Event;
 
       task body Reader_Task is
          Err : Errors.Error;
          C : Controls.Packet;
          Object : KOs.KO;
          Object_Initialized : Boolean := False;
+         Read_Future : Reader.Future;
+         Read_Future_Live : Boolean := False;
       begin
          loop
-            STC.Suspend_Until_True (My_Trigger);
+            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, "Wait");
+            Triggers.Wait (My_Trigger.Wait_Handle);
 
+            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, "Poll");
             declare
                New_Command : Command_MVars.Option_Element_Ts.Option;
             begin
@@ -87,24 +77,35 @@ package body Linted.Controls_Reader with
                end if;
             end;
 
-            declare
-               Options_Event : Worker_Event_Channels.Option_Element_Ts.Option;
-            begin
-               Worker_Event_Channels.Poll (Work_Event, Options_Event);
-               if not Options_Event.Empty then
-                  Err := Options_Event.Data.Err;
-                  if Err = Linted.Errors.Success then
-                     Controls.From_Storage (Data_Being_Read, C);
+            if Read_Future_Live then
+               declare
+                  My_Event : Reader.Event;
+                  Init : Boolean;
+               begin
+                  Ada.Text_IO.Put_Line
+                    (Ada.Text_IO.Standard_Error,
+                     "Read_Poll");
+                  Reader.Read_Poll (Read_Future, My_Event, Init);
+                  if Init then
+                     Read_Future_Live := False;
+                     Err := My_Event.Err;
+                     if Err = Errors.Success then
+                        Controls.From_Storage (Data_Being_Read, C);
+                     end if;
+                     On_Event ((C, Err));
                   end if;
-		  On_Event ((C, Err));
-               end if;
-            end;
+               end;
+            end if;
 
-            if Object_Initialized then
-               My_Worker.Read
+            if not Read_Future_Live and Object_Initialized then
+               Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, "Read");
+               Reader.Read
                  (Object,
                   Data_Being_Read (1)'Address,
-                  Data_Being_Read'Size / Interfaces.C.char'Size);
+                  Data_Being_Read'Size / Interfaces.C.char'Size,
+                  My_Trigger.Signal_Handle,
+                  Read_Future);
+               Read_Future_Live := True;
             end if;
          end loop;
       end Reader_Task;

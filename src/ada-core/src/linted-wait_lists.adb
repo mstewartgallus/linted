@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -28,6 +28,11 @@ package body Linted.Wait_Lists with
       begin
 	 pragma Assert (N.Next_Trigger = null);
 	 pragma Assert (N.Prev_Trigger = null);
+
+	 if Pending_Signal then
+	    STC.Set_True (N.Trigger);
+	    Pending_Signal := False;
+	 end if;
 
          if First = null or Last = null then
             First := Node_Access (N);
@@ -62,13 +67,17 @@ package body Linted.Wait_Lists with
          Current_Trigger : Node_Access;
       begin
          Current_Trigger := First;
-         loop
-            if null = Current_Trigger then
-               exit;
-            end if;
-            STC.Set_True (Current_Trigger.Trigger);
-            Current_Trigger := Current_Trigger.Next_Trigger;
-         end loop;
+	 if null = Current_Trigger then
+	    Pending_Signal := True;
+	 else
+	    loop
+	       STC.Set_True (Current_Trigger.Trigger);
+	       Current_Trigger := Current_Trigger.Next_Trigger;
+	       if null = Current_Trigger then
+		  exit;
+	       end if;
+	    end loop;
+	 end if;
       end Broadcast;
 
       procedure Signal is
@@ -76,7 +85,9 @@ package body Linted.Wait_Lists with
       begin
          Current_Trigger := First;
 
-         if Current_Trigger /= null then
+         if null = Current_Trigger then
+	    Pending_Signal := True;
+	 else
             STC.Set_True (Current_Trigger.Trigger);
          end if;
       end Signal;
