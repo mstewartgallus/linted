@@ -19,30 +19,29 @@ with Linted.KOs;
 with Linted.Triggers;
 
 package Linted.Reader is
-   pragma Elaborate_Body;
-
    subtype Event is Linted.IO_Pool.Reader_Event;
    subtype Future is Linted.IO_Pool.Read_Future;
 
-   function Future_Is_Live (F : Future) return Boolean with
-      Ghost;
+   function Future_Is_Live
+     (F : Future) return Boolean renames
+     IO_Pool.Read_Future_Is_Live;
 
    procedure Read
      (Object : KOs.KO;
       Buf : System.Address;
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
-      F : out Future) with
-      Post => Future_Is_Live (F);
+      F : out Future) renames
+     IO_Pool.Read;
 
-   procedure Read_Wait (F : in out Future; E : out Event) with
-      Pre => Future_Is_Live (F),
-      Post => not Future_Is_Live (F);
+   procedure Read_Wait
+     (F : in out Future;
+      E : out Event) renames
+     IO_Pool.Read_Wait;
 
    procedure Read_Poll
      (F : in out Future;
       E : out Event;
-      Init : out Boolean) with
-      Pre => Future_Is_Live (F),
-      Post => (if Init then not Future_Is_Live (F) else Future_Is_Live (F));
+      Init : out Boolean) renames
+     IO_Pool.Read_Poll;
 end Linted.Reader;

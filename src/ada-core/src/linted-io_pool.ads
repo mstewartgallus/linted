@@ -18,8 +18,7 @@ with Linted.Errors;
 with Linted.KOs;
 with Linted.Triggers;
 
-package Linted.IO_Pool with
-     Spark_Mode => On is
+package Linted.IO_Pool is
    pragma Elaborate_Body;
    use type Interfaces.C.int;
 
@@ -131,4 +130,15 @@ private
         Default_Value => 0;
    type Poll_Future is new Natural with
         Default_Value => 0;
+
+   function Read_Future_Is_Live
+     (Future : Read_Future) return Boolean is
+     (Future /= 0);
+   function Write_Future_Is_Live
+     (Future : Write_Future) return Boolean is
+     (Future /= 0);
+   function Poll_Future_Is_Live
+     (Future : Poll_Future) return Boolean is
+     (Future /= 0);
+
 end Linted.IO_Pool;

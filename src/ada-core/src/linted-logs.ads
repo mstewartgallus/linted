@@ -11,11 +11,11 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package Linted.Logs with
-     Spark_Mode => Off is
+package Linted.Logs is
    pragma Preelaborate;
 
    type Priority is (Error, Warning, Info);
 
-   procedure Log (Pri : Priority; Str : String);
+   procedure Log (Pri : Priority; Str : String) with
+      Spark_Mode => Off;
 end Linted.Logs;

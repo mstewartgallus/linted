@@ -18,8 +18,7 @@ with Interfaces.C.Strings;
 
 with Libc.Syslog;
 
-package body Linted.Logs with
-     Spark_Mode => Off is
+package body Linted.Logs is
    package C renames Interfaces.C;
    package C_Strings renames Interfaces.C.Strings;
 
@@ -31,7 +30,8 @@ package body Linted.Logs with
       str : C_Strings.chars_ptr);
    pragma Import (C, syslog, "syslog");
 
-   procedure Log (Pri : Priority; Str : String) is
+   procedure Log (Pri : Priority; Str : String) with
+      Spark_Mode => Off is
       Sys_Pri : C.int;
    begin
       declare

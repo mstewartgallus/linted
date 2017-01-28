@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016, 2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -17,29 +17,22 @@ generic
    type Element_T is private;
    Max_Nodes_In_Flight : Positive;
 package Linted.Queues with
-   Spark_Mode,
-   Abstract_State => (State with External) is
+   Spark_Mode is
    pragma Elaborate_Body;
 
    type Queue is limited private;
 
-   procedure Enqueue (Q : in out Queue; C : Element_T) with
-      Global => (In_Out => State),
-      Depends => (State => (State, Q, C), Q => (State, Q, C));
+   procedure Enqueue (Q : in out Queue; C : Element_T);
    procedure Try_Dequeue
      (Q : in out Queue;
       C : out Element_T;
-      Init : out Boolean) with
-      Global => (In_Out => State),
-      Depends =>
-      (State => (State, Q),
-       Q => (State, Q),
-       C => (State, Q),
-       Init => (State, Q));
+      Init : out Boolean);
 
    procedure Dequeue (Q : in out Queue; C : out Element_T);
 
 private
+   pragma SPARK_Mode (Off);
+
    type Node_Access is new Natural;
    subtype Node_Not_Null_Access is Node_Access range 1 .. Node_Access'Last;
 

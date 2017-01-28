@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -15,8 +15,7 @@ with Linted.Options;
 
 generic
    type Element_T is private;
-package Linted.Channels with
-   Spark_Mode is
+package Linted.Channels is
    pragma Pure;
 
    package Option_Element_Ts is new Linted.Options (Element_T);
@@ -36,8 +35,6 @@ package Linted.Channels with
       Depends => (Option => This, This => This);
 
 private
-   pragma SPARK_Mode (Off);
-
    protected type Channel is
       --  Overwrites old values
       procedure Push (D : Element_T) with

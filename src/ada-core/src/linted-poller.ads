@@ -16,8 +16,6 @@ with Linted.KOs;
 with Linted.Triggers;
 
 package Linted.Poller is
-   pragma Elaborate_Body;
-
    subtype Event is Linted.IO_Pool.Poller_Event;
    subtype Event_Type is Linted.IO_Pool.Poller_Event_Type;
    subtype Event_Set is Linted.IO_Pool.Poller_Event_Set;
@@ -27,24 +25,25 @@ package Linted.Poller is
 
    subtype Future is Linted.IO_Pool.Poll_Future;
 
-   function Future_Is_Live (F : Future) return Boolean with
-      Ghost;
+   function Future_Is_Live
+     (F : Future) return Boolean renames
+     IO_Pool.Poll_Future_Is_Live;
 
    procedure Poll
      (Object : Linted.KOs.KO;
       Events : Event_Set;
       Signaller : Triggers.Signaller;
-      F : out Future) with
-      Post => Future_Is_Live (F);
+      F : out Future) renames
+     IO_Pool.Poll;
 
-   procedure Poll_Wait (F : in out Future; E : out Event) with
-      Pre => Future_Is_Live (F),
-      Post => not Future_Is_Live (F);
+   procedure Poll_Wait
+     (F : in out Future;
+      E : out Event) renames
+     IO_Pool.Poll_Wait;
 
    procedure Poll_Poll
      (F : in out Future;
       E : out Event;
-      Init : out Boolean) with
-      Pre => Future_Is_Live (F),
-      Post => (if Init then not Future_Is_Live (F) else Future_Is_Live (F));
+      Init : out Boolean) renames
+     IO_Pool.Poll_Poll;
 end Linted.Poller;

@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2015,2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -13,8 +13,7 @@
 -- permissions and limitations under the License.
 with Interfaces;
 
-package body Linted.Update with
-     Spark_Mode => Off is
+package body Linted.Update is
    package Storage_Elements renames System.Storage_Elements;
 
    use type Interfaces.Unsigned_32;
