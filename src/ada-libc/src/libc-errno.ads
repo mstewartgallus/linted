@@ -13,13 +13,21 @@
 -- permissions and limitations under the License.
 with Interfaces.C;
 
-package Libc.Errno is
+package Libc.Errno with
+     Abstract_State =>
+     (Thread_Local_Errno with
+      External => (Async_Readers, Effective_Writes))
+is
    pragma Preelaborate;
 
-   function Errno return Interfaces.C.int;
-   pragma Import (C, Errno, "linted_adarts_libc_errno");
+   procedure Errno_Get (Err : out Interfaces.C.int) with
+      Global => (Input => Thread_Local_Errno),
+      Depends => (Err => Thread_Local_Errno);
+   pragma Import (C, Errno_Get, "linted_adarts_libc_errno");
 
-   procedure Errno_Set (Err : Interfaces.C.int);
+   procedure Errno_Set (Err : Interfaces.C.int) with
+      Global => (Output => Thread_Local_Errno),
+      Depends => (Thread_Local_Errno => Err);
    pragma Import (C, Errno_Set, "linted_adarts_libc_errno_set");
 
    EDOM : constant := 33;

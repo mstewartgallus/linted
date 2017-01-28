@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Steven Stewart-Gallus
+ * Copyright 2015,2017 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 
 #include <errno.h>
 
-int linted_adarts_libc_errno(void)
+void linted_adarts_libc_errno(int *err)
 {
-	return errno;
+	*err = errno;
 }
 
 void linted_adarts_libc_errno_set(int err)

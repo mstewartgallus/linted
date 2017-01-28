@@ -75,7 +75,12 @@ package body Linted.KOs is
            C.int (C_Flags),
            0);
       if Fd < 0 then
-         Err := Errors.Error (Errno.Errno);
+         declare
+            Errno_Err : Interfaces.C.int;
+         begin
+            Errno.Errno_Get (Errno_Err);
+            Err := Errors.Error (Errno_Err);
+         end;
       else
          Err := 0;
       end if;
@@ -91,7 +96,12 @@ package body Linted.KOs is
       Spark_Mode => Off is
    begin
       if Libc.Unistd.close (C.int (Object)) < 0 then
-         return Errors.Error (Libc.Errno.Errno);
+         declare
+            Errno_Err : Interfaces.C.int;
+         begin
+            Errno.Errno_Get (Errno_Err);
+            return Errors.Error (Errno_Err);
+         end;
       else
          return 0;
       end if;
@@ -109,7 +119,12 @@ package body Linted.KOs is
       Bytes :=
         Libc.Unistd.pread (Interfaces.C.int (Object), Buf, Count, Offset);
       if Bytes < 0 then
-         return Linted.Errors.Error (Libc.Errno.Errno);
+         declare
+            Errno_Err : Interfaces.C.int;
+         begin
+            Errno.Errno_Get (Errno_Err);
+            return Linted.Errors.Error (Errno_Err);
+         end;
       end if;
       Bytes_Read := Interfaces.C.size_t (Bytes);
       return Linted.Errors.Success;

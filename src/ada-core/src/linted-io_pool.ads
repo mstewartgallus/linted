@@ -18,7 +18,8 @@ with Linted.Errors;
 with Linted.KOs;
 with Linted.Triggers;
 
-package Linted.IO_Pool is
+package Linted.IO_Pool with
+     Spark_Mode is
    pragma Elaborate_Body;
    use type Interfaces.C.int;
 
@@ -140,5 +141,4 @@ private
    function Poll_Future_Is_Live
      (Future : Poll_Future) return Boolean is
      (Future /= 0);
-
 end Linted.IO_Pool;

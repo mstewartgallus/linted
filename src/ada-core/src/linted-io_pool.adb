@@ -20,7 +20,8 @@ with Libc.Unistd;
 with Linted.Channels;
 with Linted.Queues;
 
-package body Linted.IO_Pool is
+package body Linted.IO_Pool with
+     Spark_Mode is
    Max_Read_Futures : constant := 32;
    Max_Write_Futures : constant := 32;
    Max_Poll_Futures : constant := 32;
@@ -90,21 +91,14 @@ package body Linted.IO_Pool is
 
    My_Command_Channel : Command_Queues.Queue;
 
-   package Unsafe with
-        Spark_Mode is
-   end Unsafe;
-
-   package body Unsafe with
-        Spark_Mode => Off is
-      task type Worker_Task;
-
-      Worker_Tasks : array (1 .. 16) of Worker_Task;
-
+   package Unsafe is
       -- Trust these
       procedure Do_Write (W : Write_Command);
       procedure Do_Read (R : Read_Command);
       procedure Do_Poll (P : Poller_Command);
+   end Unsafe;
 
+   package body Unsafe is
       procedure Do_Write (W : Write_Command) is
          Err : C.int;
          Bytes_Written : C.size_t := 0;
@@ -121,7 +115,7 @@ package body Linted.IO_Pool is
             Result :=
               Libc.Unistd.write (C.int (Object), Buf, Count - Bytes_Written);
             if Result < 0 then
-               Err := Libc.Errno.Errno;
+               Errno.Errno_Get (Err);
                if Err /= Libc.Errno.POSIX_2008.EINTR then
                   exit;
                end if;
@@ -159,7 +153,7 @@ package body Linted.IO_Pool is
             Result :=
               Libc.Unistd.read (C.int (Object), Buf, Count - Bytes_Read);
             if Result < 0 then
-               Err := Errno.Errno;
+               Errno.Errno_Get (Err);
                if Err /= Libc.Errno.POSIX_2008.EINTR then
                   exit;
                end if;
@@ -232,7 +226,7 @@ package body Linted.IO_Pool is
                end if;
             end;
             if Nfds < 0 then
-               Err := Errno.Errno;
+               Errno.Errno_Get (Err);
                if Err /= Libc.Errno.POSIX_2008.EINTR then
                   exit;
                end if;
@@ -249,27 +243,31 @@ package body Linted.IO_Pool is
             Triggers.Signal (Signaller);
          end if;
       end Do_Poll;
-
-      task body Worker_Task is
-         New_Command : Command;
-      begin
-         loop
-            Command_Queues.Dequeue (My_Command_Channel, New_Command);
-
-            case New_Command.T is
-               when Invalid_Type =>
-                  raise Program_Error;
-
-               when Write_Type =>
-                  Do_Write (New_Command.Write_Object);
-               when Read_Type =>
-                  Do_Read (New_Command.Read_Object);
-               when Poll_Type =>
-                  Do_Poll (New_Command.Poll_Object);
-            end case;
-         end loop;
-      end Worker_Task;
    end Unsafe;
+
+   task type Worker_Task;
+
+   Worker_Tasks : array (1 .. 16) of Worker_Task;
+
+   task body Worker_Task is
+      New_Command : Command;
+   begin
+      loop
+         Command_Queues.Dequeue (My_Command_Channel, New_Command);
+
+         case New_Command.T is
+            when Invalid_Type =>
+               raise Program_Error;
+
+            when Write_Type =>
+               Unsafe.Do_Write (New_Command.Write_Object);
+            when Read_Type =>
+               Unsafe.Do_Read (New_Command.Read_Object);
+            when Poll_Type =>
+               Unsafe.Do_Poll (New_Command.Poll_Object);
+         end case;
+      end loop;
+   end Worker_Task;
 
    package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
 

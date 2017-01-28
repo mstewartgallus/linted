@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Steven Stewart-Gallus
+ * Copyright 2015,2017 Steven Stewart-Gallus
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 #ifndef LINTED_ADARTS_LIBC_H
 #define LINTED_ADARTS_LIBC_H 1
 
-int linted_adarts_libc_errno(void);
+void linted_adarts_libc_errno(int *err);
 void linted_adarts_libc_errno_set(int err);
 
 #endif /* LINTED_ADARTS_LIBC_H */
