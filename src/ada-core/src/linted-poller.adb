@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -12,12 +12,25 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.Poller is
-   package body Worker is
-      package IO_Worker is new IO_Pool.Poller_Worker (On_Event);
+   function Future_Is_Live
+     (F : Future) return Boolean renames
+     IO_Pool.Poll_Future_Is_Live;
 
-      procedure Poll
-        (Object : Linted.KOs.KO;
-         Events : Event_Set) renames
-        IO_Worker.Poll;
-   end Worker;
+   procedure Poll
+     (Object : Linted.KOs.KO;
+      Events : Event_Set;
+      Signaller : Triggers.Signaller;
+      F : out Future) renames
+     IO_Pool.Poll;
+
+   procedure Poll_Wait
+     (F : in out Future;
+      E : out Event) renames
+     IO_Pool.Poll_Wait;
+
+   procedure Poll_Poll
+     (F : in out Future;
+      E : out Event;
+      Init : out Boolean) renames
+     IO_Pool.Poll_Poll;
 end Linted.Poller;

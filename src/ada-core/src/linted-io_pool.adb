@@ -24,6 +24,7 @@ package body Linted.IO_Pool with
      Spark_Mode => Off is
    Max_Read_Futures : constant := 32;
    Max_Write_Futures : constant := 32;
+   Max_Poll_Futures : constant := 32;
    Max_Command_Queue_Capacity : constant := 32;
 
    package C renames Interfaces.C;
@@ -65,6 +66,7 @@ package body Linted.IO_Pool with
       Events : Poller_Event_Set :=
         (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
       Replier : Poller_Event_Channel_Access;
+      Signaller : Triggers.Signaller;
    end record;
 
    type Command_Type is (Invalid_Type, Write_Type, Read_Type, Poll_Type);
@@ -121,7 +123,6 @@ package body Linted.IO_Pool with
 
             when Write_Type =>
                Do_Write (New_Command.Write_Object);
-
             when Read_Type =>
                Do_Read (New_Command.Read_Object);
             when Poll_Type =>
@@ -214,6 +215,7 @@ package body Linted.IO_Pool with
       Heard_Events : Poller_Event_Set :=
         (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
       Replier : constant Poller_Event_Channel_Access := P.Replier;
+      Signaller : constant Triggers.Signaller := P.Signaller;
 
       Nfds : C.int;
    begin
@@ -266,30 +268,10 @@ package body Linted.IO_Pool with
       Poller_Event_Channels.Push
         (Replier.Channel,
          (Err => Errors.Error (Err), Events => Heard_Events));
+      if not Triggers.Is_Null_Signaller (Signaller) then
+         Triggers.Signal (Signaller);
+      end if;
    end Do_Poll;
-
-   package body Poller_Worker with
-        Spark_Mode => Off is
-      My_Event_Channel : aliased Poller_Event_Channel;
-
-      task Waiter;
-
-      task body Waiter is
-         Event : Poller_Event;
-      begin
-         loop
-            Poller_Event_Channels.Pop (My_Event_Channel.Channel, Event);
-            On_Event (Event);
-         end loop;
-      end Waiter;
-
-      procedure Poll (Object : KOs.KO; Events : Poller_Event_Set) is
-      begin
-         Command_Queues.Enqueue
-           (My_Command_Channel,
-            (Poll_Type, (Object, Events, My_Event_Channel'Unchecked_Access)));
-      end Poll;
-   end Poller_Worker;
 
    package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
 
@@ -413,11 +395,72 @@ package body Linted.IO_Pool with
       end if;
    end Write_Poll;
 
+   package Poll_Future_Queues is new Queues (Poll_Future, Max_Poll_Futures);
+
+   Poll_Future_Channels : array
+   (Poll_Future range 1 .. Max_Poll_Futures) of aliased Poller_Event_Channel;
+   Spare_Poll_Futures : Poll_Future_Queues.Queue;
+
+   function Poll_Future_Is_Live (Future : Poll_Future) return Boolean is
+   begin
+      return Future /= 0;
+   end Poll_Future_Is_Live;
+
+   procedure Poll
+     (Object : KOs.KO;
+      Events : Poller_Event_Set;
+      Signaller : Triggers.Signaller;
+      Future : out Poll_Future)
+   is
+   begin
+      Poll_Future_Queues.Dequeue (Spare_Poll_Futures, Future);
+      Command_Queues.Enqueue
+        (My_Command_Channel,
+         (Poll_Type,
+          (Object,
+           Events,
+           Poll_Future_Channels (Future)'Unchecked_Access,
+           Signaller)));
+   end Poll;
+
+   procedure Poll_Wait
+     (Future : in out Poll_Future;
+      Event : out Poller_Event)
+   is
+   begin
+      Poller_Event_Channels.Pop (Poll_Future_Channels (Future).Channel, Event);
+      Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
+      Future := 0;
+   end Poll_Wait;
+
+   procedure Poll_Poll
+     (Future : in out Poll_Future;
+      Event : out Poller_Event;
+      Init : out Boolean)
+   is
+      Maybe_Event : Poller_Event_Channels.Option_Element_Ts.Option;
+   begin
+      Poller_Event_Channels.Poll
+        (Poll_Future_Channels (Future).Channel,
+         Maybe_Event);
+      if Maybe_Event.Empty then
+         Init := False;
+      else
+         Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
+         Event := Maybe_Event.Data;
+         Future := 0;
+         Init := True;
+      end if;
+   end Poll_Poll;
+
 begin
    for II in 1 .. Max_Read_Futures loop
       Read_Future_Queues.Enqueue (Spare_Read_Futures, Read_Future (II));
    end loop;
    for II in 1 .. Max_Write_Futures loop
       Write_Future_Queues.Enqueue (Spare_Write_Futures, Write_Future (II));
+   end loop;
+   for II in 1 .. Max_Poll_Futures loop
+      Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Poll_Future (II));
    end loop;
 end Linted.IO_Pool;

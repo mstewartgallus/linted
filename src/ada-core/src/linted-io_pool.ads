@@ -98,15 +98,37 @@ package Linted.IO_Pool with
       (if Init then not Write_Future_Is_Live (Future)
        else Write_Future_Is_Live (Future));
 
-   generic
-      with procedure On_Event (Event : Poller_Event);
-   package Poller_Worker with
-      Spark_Mode is
-      procedure Poll (Object : KOs.KO; Events : Poller_Event_Set);
-   end Poller_Worker;
+   type Poll_Future is limited private;
+
+   function Poll_Future_Is_Live (Future : Poll_Future) return Boolean with
+      Ghost;
+
+   procedure Poll
+     (Object : KOs.KO;
+      Events : Poller_Event_Set;
+      Signaller : Triggers.Signaller;
+      Future : out Poll_Future) with
+      Post => Poll_Future_Is_Live (Future);
+
+   procedure Poll_Wait
+     (Future : in out Poll_Future;
+      Event : out Poller_Event) with
+      Pre => Poll_Future_Is_Live (Future),
+      Post => not Poll_Future_Is_Live (Future);
+
+   procedure Poll_Poll
+     (Future : in out Poll_Future;
+      Event : out Poller_Event;
+      Init : out Boolean) with
+      Pre => Poll_Future_Is_Live (Future),
+      Post =>
+      (if Init then not Poll_Future_Is_Live (Future)
+       else Poll_Future_Is_Live (Future));
 private
    type Read_Future is new Natural with
         Default_Value => 0;
    type Write_Future is new Natural with
+        Default_Value => 0;
+   type Poll_Future is new Natural with
         Default_Value => 0;
 end Linted.IO_Pool;

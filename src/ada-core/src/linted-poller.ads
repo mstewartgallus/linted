@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 -- permissions and limitations under the License.
 with Linted.IO_Pool;
 with Linted.KOs;
+with Linted.Triggers;
 
 package Linted.Poller is
    pragma Elaborate_Body;
@@ -24,9 +25,26 @@ package Linted.Poller is
    Readable : Event_Type renames Linted.IO_Pool.Readable;
    Writable : Event_Type renames Linted.IO_Pool.Writable;
 
-   generic
-      with procedure On_Event (E : Event);
-   package Worker is
-      procedure Poll (Object : Linted.KOs.KO; Events : Event_Set);
-   end Worker;
+   subtype Future is Linted.IO_Pool.Poll_Future;
+
+   function Future_Is_Live (F : Future) return Boolean with
+      Ghost;
+
+   procedure Poll
+     (Object : Linted.KOs.KO;
+      Events : Event_Set;
+      Signaller : Triggers.Signaller;
+      F : out Future) with
+      Post => Future_Is_Live (F);
+
+   procedure Poll_Wait (F : in out Future; E : out Event) with
+      Pre => Future_Is_Live (F),
+      Post => not Future_Is_Live (F);
+
+   procedure Poll_Poll
+     (F : in out Future;
+      E : out Event;
+      Init : out Boolean) with
+      Pre => Future_Is_Live (F),
+      Post => (if Init then not Future_Is_Live (F) else Future_Is_Live (F));
 end Linted.Poller;

@@ -12,7 +12,6 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Command_Line;
-with Ada.Synchronous_Task_Control;
 with Ada.Unchecked_Conversion;
 
 with Interfaces.C;
@@ -30,6 +29,7 @@ with Linted.GPU;
 with Linted.KOs;
 with Linted.Logs;
 with Linted.Poller;
+with Linted.Triggers;
 with Linted.Update_Reader;
 with Linted.Update;
 with Linted.Windows;
@@ -39,7 +39,6 @@ package body Linted.Drawer with
      Spark_Mode => Off is
 
    package Command_Line renames Ada.Command_Line;
-   package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
    package C_Strings renames Interfaces.C.Strings;
 
@@ -55,22 +54,18 @@ package body Linted.Drawer with
    end record;
 
    procedure On_New_Window;
-   procedure On_Poll_Event (E : Poller.Event);
    procedure On_Update_Event (E : Update_Reader.Event);
 
    package Notifier is new Window_Notifier.Worker (On_New_Window);
-   package My_Poller is new Poller.Worker (On_Poll_Event);
    package My_Update_Reader is new Update_Reader.Worker (On_Update_Event);
 
    package Update_Event_Channels is new Channels (Update_Reader.Event);
-   package Poller_Event_Channels is new Channels (Poller.Event);
    package Notifier_Event_Channels is new Channels (Notifier_Event);
 
    task Main_Task;
 
-   Event_Trigger : STC.Suspension_Object;
+   package My_Trigger is new Triggers.Handle;
    Update_Event_Channel : Update_Event_Channels.Channel;
-   Poller_Event_Channel : Poller_Event_Channels.Channel;
    Notifier_Event_Channel : Notifier_Event_Channels.Channel;
 
    Window_Opts : aliased array (1 .. 2) of aliased Libc.Stdint.uint32_t :=
@@ -96,6 +91,9 @@ package body Linted.Drawer with
       Connection : XCB.xcb_connection_t_access;
       Context : GPU.Context_Access;
       Window : Windows.Window;
+
+      Poll_Future : Poller.Future;
+      Poll_Future_Live : Boolean := True;
    begin
       if Command_Line.Argument_Count < 3 then
          raise Constraint_Error with "At least three arguments";
@@ -156,15 +154,18 @@ package body Linted.Drawer with
 
       Notifier.Start (Window_Notifier_KO);
 
-      My_Poller.Poll
+      Poller.Poll
         (KOs.KO (XCB.xcb_get_file_descriptor (Connection)),
-         (Poller.Readable => True, Poller.Writable => False));
+         (Poller.Readable => True, Poller.Writable => False),
+         My_Trigger.Signal_Handle,
+         Poll_Future);
+      Poll_Future_Live := True;
       My_Update_Reader.Start (Updater_KO);
 
       Get_New_Window (Window_KO, Connection, Context, Window);
       Logs.Log (Logs.Info, "Window: " & Windows.Window'Image (Window));
       loop
-         STC.Suspend_Until_True (Event_Trigger);
+         Triggers.Wait (My_Trigger.Wait_Handle);
 
          declare
             Option_Event : Update_Event_Channels.Option_Element_Ts.Option;
@@ -238,81 +239,89 @@ package body Linted.Drawer with
             end if;
          end;
 
-         declare
-            Option_Event : Poller_Event_Channels.Option_Element_Ts.Option;
-            Window_Destroyed : Boolean := False;
-            My_Event : access XCB.xcb_generic_event_t;
+         if Poll_Future_Live then
+            declare
+               Poll_Event : Poller.Event;
+               Window_Destroyed : Boolean := False;
+               My_Event : access XCB.xcb_generic_event_t;
+               Init : Boolean;
 
-            procedure Free (Event : access XCB.xcb_generic_event_t);
-            pragma Import (C, Free, "free");
-         begin
-            Poller_Event_Channels.Poll (Poller_Event_Channel, Option_Event);
-            if not Option_Event.Empty then
-               loop
-                  My_Event := XCB.xcb_poll_for_event (Connection);
-                  if null = My_Event then
-                     exit;
+               procedure Free (Event : access XCB.xcb_generic_event_t);
+               pragma Import (C, Free, "free");
+            begin
+               Poller.Poll_Poll (Poll_Future, Poll_Event, Init);
+               if Init then
+                  Poll_Future_Live := False;
+
+                  loop
+                     My_Event := XCB.xcb_poll_for_event (Connection);
+                     if null = My_Event then
+                        exit;
+                     end if;
+
+                     case My_Event.response_type and not 16#80# is
+                        when XCB.XProto.XCB_CONFIGURE_NOTIFY =>
+                           declare
+                              type A is access all XCB.xcb_generic_event_t;
+                              type B is
+                                access all XCB.XProto
+                                  .xcb_configure_notify_event_t;
+                              function Convert is new Ada.Unchecked_Conversion
+                                (A,
+                                 B);
+                              Configure : B := Convert (My_Event);
+                           begin
+                              GPU.Resize
+                                (Context,
+                                 C.unsigned (Configure.width),
+                                 C.unsigned (Configure.height));
+                           end;
+
+                        when XCB.XProto.XCB_UNMAP_NOTIFY =>
+                           GPU.Hide (Context);
+
+                        when XCB.XProto.XCB_MAP_NOTIFY =>
+                           GPU.Show (Context);
+
+                        when XCB.XProto.XCB_DESTROY_NOTIFY =>
+                           Window_Destroyed := True;
+
+                        when others =>
+                           -- Unknown event type, ignore it
+                           null;
+                     end case;
+                     Free (My_Event);
+                  end loop;
+
+                  if Window_Destroyed then
+                     Err := GPU.Remove_Window (Context);
+                     if Err /= 0 then
+                        raise Program_Error with Errors.To_String (Err);
+                     end if;
                   end if;
 
-                  case My_Event.response_type and not 16#80# is
-                     when XCB.XProto.XCB_CONFIGURE_NOTIFY =>
-                        declare
-                           type A is access all XCB.xcb_generic_event_t;
-                           type B is
-                             access all XCB.XProto
-                               .xcb_configure_notify_event_t;
-                           function Convert is new Ada.Unchecked_Conversion
-                             (A,
-                              B);
-                           Configure : B := Convert (My_Event);
-                        begin
-                           GPU.Resize
-                             (Context,
-                              C.unsigned (Configure.width),
-                              C.unsigned (Configure.height));
-                        end;
+                  declare
+                     X : C.int;
+                  begin
+                     X := XCB.xcb_flush (Connection);
+                  end;
 
-                     when XCB.XProto.XCB_UNMAP_NOTIFY =>
-                        GPU.Hide (Context);
-
-                     when XCB.XProto.XCB_MAP_NOTIFY =>
-                        GPU.Show (Context);
-
-                     when XCB.XProto.XCB_DESTROY_NOTIFY =>
-                        Window_Destroyed := True;
-
-                     when others =>
-                        -- Unknown event type, ignore it
-                        null;
-                  end case;
-                  Free (My_Event);
-               end loop;
-
-               if Window_Destroyed then
-                  Err := GPU.Remove_Window (Context);
-                  if Err /= 0 then
-                     raise Program_Error with Errors.To_String (Err);
-                  end if;
+                  Poller.Poll
+                    (KOs.KO (XCB.xcb_get_file_descriptor (Connection)),
+                     (Poller.Readable => True, Poller.Writable => False),
+                     My_Trigger.Signal_Handle,
+                     Poll_Future);
+                  Poll_Future_Live := True;
                end if;
-
-               declare
-                  X : C.int;
-               begin
-                  X := XCB.xcb_flush (Connection);
-               end;
-
-               My_Poller.Poll
-                 (KOs.KO (XCB.xcb_get_file_descriptor (Connection)),
-                  (Poller.Readable => True, Poller.Writable => False));
-            end if;
-         end;
+            end;
+         end if;
       end loop;
    end Main_Task;
 
    procedure On_Update_Event (E : Update_Reader.Event) is
    begin
       Update_Event_Channels.Push (Update_Event_Channel, E);
-      STC.Set_True (Event_Trigger);
+      Triggers.Signal (My_Trigger.Signal_Handle);
    end On_Update_Event;
 
    procedure On_New_Window is
@@ -322,14 +331,8 @@ package body Linted.Drawer with
       begin
          Notifier_Event_Channels.Push (Notifier_Event_Channel, Event);
       end;
-      STC.Set_True (Event_Trigger);
+      Triggers.Signal (My_Trigger.Signal_Handle);
    end On_New_Window;
-
-   procedure On_Poll_Event (E : Poller.Event) is
-   begin
-      Poller_Event_Channels.Push (Poller_Event_Channel, E);
-      STC.Set_True (Event_Trigger);
-   end On_Poll_Event;
 
    function Read_Window (Object : KOs.KO) return Windows.Window is
       Bytes : C.size_t;
