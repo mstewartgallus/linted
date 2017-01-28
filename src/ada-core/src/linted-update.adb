@@ -13,7 +13,8 @@
 -- permissions and limitations under the License.
 with Interfaces;
 
-package body Linted.Update is
+package body Linted.Update with
+     Spark_Mode => Off is
    package Storage_Elements renames System.Storage_Elements;
 
    use type Interfaces.Unsigned_32;
