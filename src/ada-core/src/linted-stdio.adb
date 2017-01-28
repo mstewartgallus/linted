@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2015,2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ with Ada.Unchecked_Conversion;
 with Interfaces.C.Strings;
 
 with Linted.Writer;
+with Linted.Triggers;
 
 package body Linted.Stdio with
      Spark_Mode => Off is
@@ -25,15 +26,6 @@ package body Linted.Stdio with
 
    use Linted.Errors;
    use Linted.KOs;
-
-   procedure Notify (E : Writer.Event);
-
-   procedure Notify (E : Writer.Event) is
-   begin
-      null;
-   end Notify;
-
-   package My_Writer is new Linted.Writer.Worker (Notify);
 
    procedure Write_Line (Object : KO; Str : String) is
       Dummy : Error;
@@ -60,15 +52,12 @@ package body Linted.Stdio with
       Bytes_Written : out C.size_t;
       Err : out Error)
    is
+      Future : Writer.Future;
+      Event : Writer.Event;
    begin
-      My_Writer.Write (Object, Buf, Count);
-
-      --  declare
-      --     Event : Linted.Writer.Event;
-      --  begin
-      --     My_Writer.Wait (Event);
-      --     Bytes_Written := Event.Bytes_Written;
-      --     Err := Event.Err;
-      --  end;
+      Writer.Write (Object, Buf, Count, Triggers.Null_Signaller, Future);
+      Writer.Write_Wait (Future, Event);
+      Bytes_Written := Event.Bytes_Written;
+      Err := Event.Err;
    end Write;
 end Linted.Stdio;

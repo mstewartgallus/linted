@@ -45,13 +45,4 @@ package Linted.Reader is
       Init : out Boolean) with
       Pre => Future_Is_Live (F),
       Post => (if Init then not Future_Is_Live (F) else Future_Is_Live (F));
-
-   generic
-      with procedure On_Event (E : Event);
-   package Worker is
-      procedure Read
-        (Object : Linted.KOs.KO;
-         Buf : System.Address;
-         Count : Interfaces.C.size_t);
-   end Worker;
 end Linted.Reader;

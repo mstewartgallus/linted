@@ -23,6 +23,7 @@ with Linted.Queues;
 package body Linted.IO_Pool with
      Spark_Mode => Off is
    Max_Read_Futures : constant := 32;
+   Max_Write_Futures : constant := 32;
    Max_Command_Queue_Capacity : constant := 32;
 
    package C renames Interfaces.C;
@@ -48,6 +49,7 @@ package body Linted.IO_Pool with
       Buf : System.Address := System.Null_Address;
       Count : C.size_t := 0;
       Replier : Writer_Event_Channel_Access;
+      Signaller : Triggers.Signaller;
    end record;
 
    type Read_Command is record
@@ -136,6 +138,8 @@ package body Linted.IO_Pool with
       Buf : constant System.Address := W.Buf;
       Count : constant C.size_t := W.Count;
       Replier : constant Writer_Event_Channel_Access := W.Replier;
+      Signaller : constant Triggers.Signaller := W.Signaller;
+
       Result : Libc.Sys.Types.ssize_t;
    begin
       loop
@@ -158,6 +162,9 @@ package body Linted.IO_Pool with
       Writer_Event_Channels.Push
         (Replier.Channel,
          (Err => Errors.Error (Err), Bytes_Written => Bytes_Written));
+      if not Triggers.Is_Null_Signaller (Signaller) then
+         Triggers.Signal (Signaller);
+      end if;
    end Do_Write;
 
    procedure Do_Read (R : Read_Command) is
@@ -195,7 +202,7 @@ package body Linted.IO_Pool with
         (Replier.Channel,
          (Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
       if not Triggers.Is_Null_Signaller (Signaller) then
-	 Triggers.Signal (Signaller);
+         Triggers.Signal (Signaller);
       end if;
    end Do_Read;
 
@@ -260,66 +267,6 @@ package body Linted.IO_Pool with
         (Replier.Channel,
          (Err => Errors.Error (Err), Events => Heard_Events));
    end Do_Poll;
-
-   package body Writer_Worker with
-        Spark_Mode => Off is
-      My_Event_Channel : aliased Writer_Event_Channel;
-
-      task Waiter;
-
-      task body Waiter is
-         Event : Writer_Event;
-      begin
-         loop
-            Writer_Event_Channels.Pop (My_Event_Channel.Channel, Event);
-            Notify (Event);
-         end loop;
-      end Waiter;
-
-      procedure Write
-        (Object : KOs.KO;
-         Buf : System.Address;
-         Count : C.size_t)
-      is
-      begin
-         Command_Queues.Enqueue
-           (My_Command_Channel,
-            (Write_Type,
-             (Object, Buf, Count, My_Event_Channel'Unchecked_Access)));
-      end Write;
-   end Writer_Worker;
-
-   package body Reader_Worker with
-        Spark_Mode => Off is
-      My_Event_Channel : aliased Read_Event_Channel;
-
-      task Waiter;
-
-      task body Waiter is
-         Event : Reader_Event;
-      begin
-         loop
-            Reader_Event_Channels.Pop (My_Event_Channel.Channel, Event);
-            On_Event (Event);
-         end loop;
-      end Waiter;
-
-      procedure Read
-        (Object : KOs.KO;
-         Buf : System.Address;
-         Count : C.size_t)
-      is
-      begin
-         Command_Queues.Enqueue
-           (My_Command_Channel,
-            (Read_Type,
-             (Object,
-              Buf,
-              Count,
-              My_Event_Channel'Unchecked_Access,
-              Triggers.Null_Signaller)));
-      end Read;
-   end Reader_Worker;
 
    package body Poller_Worker with
         Spark_Mode => Off is
@@ -398,14 +345,79 @@ package body Linted.IO_Pool with
          Init := False;
       else
          Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
-	 Event := Maybe_Event.Data;
+         Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
       end if;
    end Read_Poll;
 
+   package Write_Future_Queues is new Queues (Write_Future, Max_Write_Futures);
+
+   Write_Future_Channels : array
+   (Write_Future range 1 .. Max_Write_Futures) of aliased Writer_Event_Channel;
+   Spare_Write_Futures : Write_Future_Queues.Queue;
+
+   function Write_Future_Is_Live (Future : Write_Future) return Boolean is
+   begin
+      return Future /= 0;
+   end Write_Future_Is_Live;
+
+   procedure Write
+     (Object : KOs.KO;
+      Buf : System.Address;
+      Count : Interfaces.C.size_t;
+      Signaller : Triggers.Signaller;
+      Future : out Write_Future)
+   is
+   begin
+      Write_Future_Queues.Dequeue (Spare_Write_Futures, Future);
+      Command_Queues.Enqueue
+        (My_Command_Channel,
+         (Write_Type,
+          (Object,
+           Buf,
+           Count,
+           Write_Future_Channels (Future)'Unchecked_Access,
+           Signaller)));
+   end Write;
+
+   procedure Write_Wait
+     (Future : in out Write_Future;
+      Event : out Writer_Event)
+   is
+   begin
+      Writer_Event_Channels.Pop
+        (Write_Future_Channels (Future).Channel,
+         Event);
+      Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
+      Future := 0;
+   end Write_Wait;
+
+   procedure Write_Poll
+     (Future : in out Write_Future;
+      Event : out Writer_Event;
+      Init : out Boolean)
+   is
+      Maybe_Event : Writer_Event_Channels.Option_Element_Ts.Option;
+   begin
+      Writer_Event_Channels.Poll
+        (Write_Future_Channels (Future).Channel,
+         Maybe_Event);
+      if Maybe_Event.Empty then
+         Init := False;
+      else
+         Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
+         Event := Maybe_Event.Data;
+         Future := 0;
+         Init := True;
+      end if;
+   end Write_Poll;
+
 begin
    for II in 1 .. Max_Read_Futures loop
       Read_Future_Queues.Enqueue (Spare_Read_Futures, Read_Future (II));
+   end loop;
+   for II in 1 .. Max_Write_Futures loop
+      Write_Future_Queues.Enqueue (Spare_Write_Futures, Write_Future (II));
    end loop;
 end Linted.IO_Pool;

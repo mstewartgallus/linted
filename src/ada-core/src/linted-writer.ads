@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2015,2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -16,18 +16,33 @@ with System;
 
 with Linted.IO_Pool;
 with Linted.KOs;
+with Linted.Triggers;
 
 package Linted.Writer is
    pragma Elaborate_Body;
 
    subtype Event is Linted.IO_Pool.Writer_Event;
+   subtype Future is Linted.IO_Pool.Write_Future;
 
-   generic
-      with procedure Notify (E : Event);
-   package Worker is
-      procedure Write
-        (Object : Linted.KOs.KO;
-         Buf : System.Address;
-         Count : Interfaces.C.size_t);
-   end Worker;
+   function Future_Is_Live (F : Future) return Boolean with
+      Ghost;
+
+   procedure Write
+     (Object : KOs.KO;
+      Buf : System.Address;
+      Count : Interfaces.C.size_t;
+      Signaller : Triggers.Signaller;
+      F : out Future) with
+      Post => Future_Is_Live (F);
+
+   procedure Write_Wait (F : in out Future; E : out Event) with
+      Pre => Future_Is_Live (F),
+      Post => not Future_Is_Live (F);
+
+   procedure Write_Poll
+     (F : in out Future;
+      E : out Event;
+      Init : out Boolean) with
+      Pre => Future_Is_Live (F),
+      Post => (if Init then not Future_Is_Live (F) else Future_Is_Live (F));
 end Linted.Writer;

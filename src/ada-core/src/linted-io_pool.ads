@@ -42,26 +42,6 @@ package Linted.IO_Pool with
       Err : Errors.Error;
    end record;
 
-   generic
-      with procedure Notify (Event : Writer_Event);
-   package Writer_Worker with
-      Spark_Mode is
-      procedure Write
-        (Object : KOs.KO;
-         Buf : System.Address;
-         Count : Interfaces.C.size_t);
-   end Writer_Worker;
-
-   generic
-      with procedure On_Event (Event : Reader_Event);
-   package Reader_Worker with
-      Spark_Mode is
-      procedure Read
-        (Object : KOs.KO;
-         Buf : System.Address;
-         Count : Interfaces.C.size_t);
-   end Reader_Worker;
-
    type Read_Future is limited private;
 
    function Read_Future_Is_Live (Future : Read_Future) return Boolean with
@@ -90,6 +70,34 @@ package Linted.IO_Pool with
       (if Init then not Read_Future_Is_Live (Future)
        else Read_Future_Is_Live (Future));
 
+   type Write_Future is limited private;
+
+   function Write_Future_Is_Live (Future : Write_Future) return Boolean with
+      Ghost;
+
+   procedure Write
+     (Object : KOs.KO;
+      Buf : System.Address;
+      Count : Interfaces.C.size_t;
+      Signaller : Triggers.Signaller;
+      Future : out Write_Future) with
+      Post => Write_Future_Is_Live (Future);
+
+   procedure Write_Wait
+     (Future : in out Write_Future;
+      Event : out Writer_Event) with
+      Pre => Write_Future_Is_Live (Future),
+      Post => not Write_Future_Is_Live (Future);
+
+   procedure Write_Poll
+     (Future : in out Write_Future;
+      Event : out Writer_Event;
+      Init : out Boolean) with
+      Pre => Write_Future_Is_Live (Future),
+      Post =>
+      (if Init then not Write_Future_Is_Live (Future)
+       else Write_Future_Is_Live (Future));
+
    generic
       with procedure On_Event (Event : Poller_Event);
    package Poller_Worker with
@@ -98,5 +106,7 @@ package Linted.IO_Pool with
    end Poller_Worker;
 private
    type Read_Future is new Natural with
+        Default_Value => 0;
+   type Write_Future is new Natural with
         Default_Value => 0;
 end Linted.IO_Pool;

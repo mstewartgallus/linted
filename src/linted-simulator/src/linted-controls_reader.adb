@@ -11,8 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Text_IO;
-
 with Interfaces.C;
 with Interfaces;
 
@@ -63,10 +61,8 @@ package body Linted.Controls_Reader with
          Read_Future_Live : Boolean := False;
       begin
          loop
-            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, "Wait");
             Triggers.Wait (My_Trigger.Wait_Handle);
 
-            Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, "Poll");
             declare
                New_Command : Command_MVars.Option_Element_Ts.Option;
             begin
@@ -82,9 +78,6 @@ package body Linted.Controls_Reader with
                   My_Event : Reader.Event;
                   Init : Boolean;
                begin
-                  Ada.Text_IO.Put_Line
-                    (Ada.Text_IO.Standard_Error,
-                     "Read_Poll");
                   Reader.Read_Poll (Read_Future, My_Event, Init);
                   if Init then
                      Read_Future_Live := False;
@@ -98,7 +91,6 @@ package body Linted.Controls_Reader with
             end if;
 
             if not Read_Future_Live and Object_Initialized then
-               Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, "Read");
                Reader.Read
                  (Object,
                   Data_Being_Read (1)'Address,

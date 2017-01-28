@@ -73,12 +73,12 @@ package body Linted.Update_Reader with
 	    if Read_Future_Has_Value then
 	       declare
 		  Init : Boolean;
-		  Event : Reader.Event;
+		  My_Event : Reader.Event;
 	       begin
-		  Reader.Read_Poll (Read_Future, Event, Init);
+		  Reader.Read_Poll (Read_Future, My_Event, Init);
 		  if Init then
 		     Read_Future_Has_Value := False;
-		     Err := Event.Err;
+		     Err := My_Event.Err;
 		     if Err = Errors.Success then
 			Update.From_Storage (Data_Being_Read, U);
 		     end if;

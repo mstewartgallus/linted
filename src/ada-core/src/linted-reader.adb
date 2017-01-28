@@ -12,8 +12,6 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.Reader is
-   package C renames Interfaces.C;
-
    function Future_Is_Live
      (F : Future) return Boolean renames
      IO_Pool.Read_Future_Is_Live;
@@ -36,14 +34,4 @@ package body Linted.Reader is
       E : out Event;
       Init : out Boolean) renames
      IO_Pool.Read_Poll;
-
-   package body Worker is
-      package IO_Worker is new IO_Pool.Reader_Worker (On_Event);
-
-      procedure Read
-        (Object : Linted.KOs.KO;
-         Buf : System.Address;
-         Count : C.size_t) renames
-        IO_Worker.Read;
-   end Worker;
 end Linted.Reader;

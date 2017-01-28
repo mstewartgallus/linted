@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2015,2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,8 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Synchronous_Task_Control;
-with Ada.Unchecked_Conversion;
+with Ada.Text_IO;
 
 with Interfaces;
 with Interfaces.C;
@@ -22,9 +21,9 @@ with System.Storage_Elements;
 
 with Linted.Channels;
 with Linted.Writer;
+with Linted.Triggers;
 
 package body Linted.Update_Writer is
-   package STC renames Ada.Synchronous_Task_Control;
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -39,33 +38,22 @@ package body Linted.Update_Writer is
    end record;
 
    package Write_Command_Channels is new Linted.Channels (Write_Command);
-   package Worker_Event_Channels is new Linted.Channels (Linted.Writer.Event);
 
    package body Worker with
         Spark_Mode => Off is
 
       task Writer_Task;
 
-      My_Trigger : STC.Suspension_Object;
-
-      procedure On_Notify (Worker_Event : Writer.Event);
-      package My_Worker is new Writer.Worker (On_Notify);
+      package My_Trigger is new Triggers.Handle;
 
       Write_Command_Channel : Write_Command_Channels.Channel;
-      Work_Event : Worker_Event_Channels.Channel;
 
       Data_Being_Written : aliased Update.Storage;
-
-      procedure On_Notify (Worker_Event : Writer.Event) is
-      begin
-	 Worker_Event_Channels.Push (Work_Event, Worker_Event);
-	 STC.Set_True (My_Trigger);
-      end On_Notify;
 
       procedure Write (Object : KOs.KO; Data : Update.Packet) is
       begin
          Write_Command_Channels.Push (Write_Command_Channel, (Object, Data));
-         STC.Set_True (My_Trigger);
+         Triggers.Signal (My_Trigger.Signal_Handle);
       end Write;
 
       task body Writer_Task is
@@ -74,22 +62,28 @@ package body Linted.Update_Writer is
          Object : KOs.KO;
          Update_Pending : Boolean := False;
          Update_In_Progress : Boolean := False;
+         Write_Future : Writer.Future;
+         Write_Future_Live : Boolean := False;
       begin
          loop
-            STC.Suspend_Until_True (My_Trigger);
+            Triggers.Wait (My_Trigger.Wait_Handle);
 
-            declare
-               Option_Event : Worker_Event_Channels.Option_Element_Ts.Option;
-            begin
-               Worker_Event_Channels.Poll (Work_Event, Option_Event);
-               if not Option_Event.Empty then
-                  Err := Option_Event.Data.Err;
+            if Write_Future_Live then
+               declare
+                  Event : Writer.Event;
+                  Init : Boolean;
+               begin
+                  Writer.Write_Poll (Write_Future, Event, Init);
+                  if Init then
+                     Write_Future_Live := False;
+                     Err := Event.Err;
 
-                  Update_In_Progress := False;
+                     Update_In_Progress := False;
 
-		  On_Event (Err);
-               end if;
-            end;
+                     On_Event (Err);
+                  end if;
+               end;
+            end if;
 
             declare
                Option_Command : Write_Command_Channels.Option_Element_Ts
@@ -105,14 +99,21 @@ package body Linted.Update_Writer is
                end if;
             end;
 
-            if Update_Pending and not Update_In_Progress then
+            if not Write_Future_Live and
+              Update_Pending and
+              not Update_In_Progress
+            then
+               Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, "Write");
                Update.To_Storage (Pending_Update, Data_Being_Written);
-               My_Worker.Write
+               Writer.Write
                  (Object,
                   Data_Being_Written (1)'Address,
-                  Data_Being_Written'Size / C.char'Size);
+                  Data_Being_Written'Size / C.char'Size,
+                  My_Trigger.Signal_Handle,
+                  Write_Future);
                Update_In_Progress := True;
                Update_Pending := False;
+               Write_Future_Live := True;
             end if;
          end loop;
       end Writer_Task;
