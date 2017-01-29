@@ -21,7 +21,20 @@ with Linted.Channels;
 with Linted.Queues;
 
 package body Linted.IO_Pool with
-     Spark_Mode is
+     Spark_Mode,
+     Refined_State =>
+     (Command_Queue => My_Command_Queue,
+      Event_Queue =>
+        (Read_Future_Channels, Write_Future_Channels, Poll_Future_Channels),
+      Various =>
+        (Worker_Tasks,
+         Command_Queues.State,
+         Read_Future_Queues.State,
+         Write_Future_Queues.State,
+         Poll_Future_Queues.State),
+      Future_Pool =>
+        (Spare_Write_Futures, Spare_Read_Futures, Spare_Poll_Futures))
+is
    Max_Read_Futures : constant := 32;
    Max_Write_Futures : constant := 32;
    Max_Poll_Futures : constant := 32;
@@ -89,7 +102,7 @@ package body Linted.IO_Pool with
    Poll_Future_Channels : array
    (Poll_Future range 1 .. Max_Poll_Futures) of Poller_Event_Channels.Channel;
 
-   My_Command_Channel : Command_Queues.Queue;
+   My_Command_Queue : Command_Queues.Queue;
 
    package Unsafe is
       -- Trust these
@@ -97,6 +110,143 @@ package body Linted.IO_Pool with
       procedure Do_Read (R : Read_Command);
       procedure Do_Poll (P : Poller_Command);
    end Unsafe;
+
+   task type Worker_Task;
+
+   Worker_Tasks : array (1 .. 16) of Worker_Task;
+
+   package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
+   package Write_Future_Queues is new Queues (Write_Future, Max_Write_Futures);
+   package Poll_Future_Queues is new Queues (Poll_Future, Max_Poll_Futures);
+
+   Spare_Read_Futures : Read_Future_Queues.Queue;
+   Spare_Write_Futures : Write_Future_Queues.Queue;
+   Spare_Poll_Futures : Poll_Future_Queues.Queue;
+
+   procedure Read
+     (Object : KOs.KO;
+      Buf : System.Address;
+      Count : Interfaces.C.size_t;
+      Signaller : Triggers.Signaller;
+      Future : out Read_Future)
+   is
+   begin
+      Read_Future_Queues.Dequeue (Spare_Read_Futures, Future);
+      Command_Queues.Enqueue
+        (My_Command_Queue,
+         (Read_Type, (Object, Buf, Count, Future, Signaller)));
+   end Read;
+
+   procedure Read_Wait
+     (Future : in out Read_Future;
+      Event : out Reader_Event)
+   is
+   begin
+      Reader_Event_Channels.Pop (Read_Future_Channels (Future), Event);
+      Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
+      Future := 0;
+   end Read_Wait;
+
+   procedure Read_Poll
+     (Future : in out Read_Future;
+      Event : out Reader_Event;
+      Init : out Boolean)
+   is
+      Maybe_Event : Reader_Event_Channels.Option_Element_Ts.Option;
+   begin
+      Reader_Event_Channels.Poll (Read_Future_Channels (Future), Maybe_Event);
+      if Maybe_Event.Empty then
+         Init := False;
+      else
+         Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
+         Event := Maybe_Event.Data;
+         Future := 0;
+         Init := True;
+      end if;
+   end Read_Poll;
+
+   procedure Write
+     (Object : KOs.KO;
+      Buf : System.Address;
+      Count : Interfaces.C.size_t;
+      Signaller : Triggers.Signaller;
+      Future : out Write_Future)
+   is
+   begin
+      Write_Future_Queues.Dequeue (Spare_Write_Futures, Future);
+      Command_Queues.Enqueue
+        (My_Command_Queue,
+         (Write_Type, (Object, Buf, Count, Future, Signaller)));
+   end Write;
+
+   procedure Write_Wait
+     (Future : in out Write_Future;
+      Event : out Writer_Event)
+   is
+   begin
+      Writer_Event_Channels.Pop (Write_Future_Channels (Future), Event);
+      Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
+      Future := 0;
+   end Write_Wait;
+
+   procedure Write_Poll
+     (Future : in out Write_Future;
+      Event : out Writer_Event;
+      Init : out Boolean)
+   is
+      Maybe_Event : Writer_Event_Channels.Option_Element_Ts.Option;
+   begin
+      Writer_Event_Channels.Poll (Write_Future_Channels (Future), Maybe_Event);
+      if Maybe_Event.Empty then
+         Init := False;
+      else
+         Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
+         Event := Maybe_Event.Data;
+         Future := 0;
+         Init := True;
+      end if;
+   end Write_Poll;
+
+   procedure Poll
+     (Object : KOs.KO;
+      Events : Poller_Event_Set;
+      Signaller : Triggers.Signaller;
+      Future : out Poll_Future)
+   is
+   begin
+      Poll_Future_Queues.Dequeue (Spare_Poll_Futures, Future);
+      Command_Queues.Enqueue
+        (My_Command_Queue,
+         (Poll_Type, (Object, Events, Future, Signaller)));
+   end Poll;
+
+   procedure Poll_Wait
+     (Future : in out Poll_Future;
+      Event : out Poller_Event)
+   is
+   begin
+      Poller_Event_Channels.Pop (Poll_Future_Channels (Future), Event);
+      Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
+      Future := 0;
+   end Poll_Wait;
+
+   procedure Poll_Poll
+     (Future : in out Poll_Future;
+      Event : out Poller_Event;
+      Init : out Boolean)
+   is
+      Maybe_Event : Poller_Event_Channels.Option_Element_Ts.Option;
+   begin
+      Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Maybe_Event);
+      if Maybe_Event.Empty then
+         Init := False;
+      else
+         Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
+         Event := Maybe_Event.Data;
+         Future := 0;
+         Init := True;
+      end if;
+   end Poll_Poll;
 
    package body Unsafe is
       procedure Do_Write (W : Write_Command) is
@@ -245,15 +395,11 @@ package body Linted.IO_Pool with
       end Do_Poll;
    end Unsafe;
 
-   task type Worker_Task;
-
-   Worker_Tasks : array (1 .. 16) of Worker_Task;
-
    task body Worker_Task is
       New_Command : Command;
    begin
       loop
-         Command_Queues.Dequeue (My_Command_Channel, New_Command);
+         Command_Queues.Dequeue (My_Command_Queue, New_Command);
 
          case New_Command.T is
             when Invalid_Type =>
@@ -268,143 +414,6 @@ package body Linted.IO_Pool with
          end case;
       end loop;
    end Worker_Task;
-
-   package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
-
-   Spare_Read_Futures : Read_Future_Queues.Queue;
-
-   procedure Read
-     (Object : KOs.KO;
-      Buf : System.Address;
-      Count : Interfaces.C.size_t;
-      Signaller : Triggers.Signaller;
-      Future : out Read_Future)
-   is
-   begin
-      Read_Future_Queues.Dequeue (Spare_Read_Futures, Future);
-      Command_Queues.Enqueue
-        (My_Command_Channel,
-         (Read_Type, (Object, Buf, Count, Future, Signaller)));
-   end Read;
-
-   procedure Read_Wait
-     (Future : in out Read_Future;
-      Event : out Reader_Event)
-   is
-   begin
-      Reader_Event_Channels.Pop (Read_Future_Channels (Future), Event);
-      Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
-      Future := 0;
-   end Read_Wait;
-
-   procedure Read_Poll
-     (Future : in out Read_Future;
-      Event : out Reader_Event;
-      Init : out Boolean)
-   is
-      Maybe_Event : Reader_Event_Channels.Option_Element_Ts.Option;
-   begin
-      Reader_Event_Channels.Poll (Read_Future_Channels (Future), Maybe_Event);
-      if Maybe_Event.Empty then
-         Init := False;
-      else
-         Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
-         Event := Maybe_Event.Data;
-         Future := 0;
-         Init := True;
-      end if;
-   end Read_Poll;
-
-   package Write_Future_Queues is new Queues (Write_Future, Max_Write_Futures);
-
-   Spare_Write_Futures : Write_Future_Queues.Queue;
-
-   procedure Write
-     (Object : KOs.KO;
-      Buf : System.Address;
-      Count : Interfaces.C.size_t;
-      Signaller : Triggers.Signaller;
-      Future : out Write_Future)
-   is
-   begin
-      Write_Future_Queues.Dequeue (Spare_Write_Futures, Future);
-      Command_Queues.Enqueue
-        (My_Command_Channel,
-         (Write_Type, (Object, Buf, Count, Future, Signaller)));
-   end Write;
-
-   procedure Write_Wait
-     (Future : in out Write_Future;
-      Event : out Writer_Event)
-   is
-   begin
-      Writer_Event_Channels.Pop (Write_Future_Channels (Future), Event);
-      Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
-      Future := 0;
-   end Write_Wait;
-
-   procedure Write_Poll
-     (Future : in out Write_Future;
-      Event : out Writer_Event;
-      Init : out Boolean)
-   is
-      Maybe_Event : Writer_Event_Channels.Option_Element_Ts.Option;
-   begin
-      Writer_Event_Channels.Poll (Write_Future_Channels (Future), Maybe_Event);
-      if Maybe_Event.Empty then
-         Init := False;
-      else
-         Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
-         Event := Maybe_Event.Data;
-         Future := 0;
-         Init := True;
-      end if;
-   end Write_Poll;
-
-   package Poll_Future_Queues is new Queues (Poll_Future, Max_Poll_Futures);
-
-   Spare_Poll_Futures : Poll_Future_Queues.Queue;
-
-   procedure Poll
-     (Object : KOs.KO;
-      Events : Poller_Event_Set;
-      Signaller : Triggers.Signaller;
-      Future : out Poll_Future)
-   is
-   begin
-      Poll_Future_Queues.Dequeue (Spare_Poll_Futures, Future);
-      Command_Queues.Enqueue
-        (My_Command_Channel,
-         (Poll_Type, (Object, Events, Future, Signaller)));
-   end Poll;
-
-   procedure Poll_Wait
-     (Future : in out Poll_Future;
-      Event : out Poller_Event)
-   is
-   begin
-      Poller_Event_Channels.Pop (Poll_Future_Channels (Future), Event);
-      Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
-      Future := 0;
-   end Poll_Wait;
-
-   procedure Poll_Poll
-     (Future : in out Poll_Future;
-      Event : out Poller_Event;
-      Init : out Boolean)
-   is
-      Maybe_Event : Poller_Event_Channels.Option_Element_Ts.Option;
-   begin
-      Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Maybe_Event);
-      if Maybe_Event.Empty then
-         Init := False;
-      else
-         Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
-         Event := Maybe_Event.Data;
-         Future := 0;
-         Init := True;
-      end if;
-   end Poll_Poll;
 
 begin
    for II in 1 .. Max_Read_Futures loop

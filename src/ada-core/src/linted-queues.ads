@@ -17,18 +17,26 @@ generic
    type Element_T is private;
    Max_Nodes_In_Flight : Positive;
 package Linted.Queues with
-   Spark_Mode is
+   Spark_Mode,
+   Abstract_State => State is
    pragma Elaborate_Body;
 
    type Queue is limited private;
 
-   procedure Enqueue (Q : in out Queue; C : Element_T);
+   procedure Enqueue (Q : in out Queue; C : Element_T) with
+      Global => (In_Out => State),
+      Depends => (Q => (State, Q, C), State => State);
+
    procedure Try_Dequeue
      (Q : in out Queue;
       C : out Element_T;
-      Init : out Boolean);
+      Init : out Boolean) with
+      Global => (In_Out => State),
+      Depends => (C => Q, Init => Q, Q => Q, State => State);
 
-   procedure Dequeue (Q : in out Queue; C : out Element_T);
+   procedure Dequeue (Q : in out Queue; C : out Element_T) with
+      Global => (In_Out => State),
+      Depends => (C => Q, Q => Q, State => State);
 
 private
    pragma SPARK_Mode (Off);

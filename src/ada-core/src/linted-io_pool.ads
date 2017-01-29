@@ -19,7 +19,8 @@ with Linted.KOs;
 with Linted.Triggers;
 
 package Linted.IO_Pool with
-     Spark_Mode is
+     Spark_Mode,
+     Abstract_State => (Command_Queue, Event_Queue, Various, Future_Pool) is
    pragma Elaborate_Body;
    use type Interfaces.C.int;
 
@@ -81,6 +82,7 @@ package Linted.IO_Pool with
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
       Future : out Write_Future) with
+      Global => (In_Out => Command_Queue),
       Post => Write_Future_Is_Live (Future);
 
    procedure Write_Wait

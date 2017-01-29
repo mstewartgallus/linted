@@ -12,7 +12,8 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.Queues with
-     Spark_Mode => Off is
+     Spark_Mode => Off,
+     Refined_State => (State => (Spare_Nodes, Triggers)) is
 
    Elements : array
    (1 .. Node_Not_Null_Access (Max_Nodes_In_Flight)) of Element_T;
