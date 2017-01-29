@@ -15,7 +15,20 @@ package Linted.Wait_Lists with
      Spark_Mode is
    pragma Preelaborate;
 
-   type Wait_List is limited private;
+   type Node_Nonnull_Access is private;
+   type Node_Access is private;
+
+   protected type Wait_List is
+   private
+      procedure Insert (N : Node_Nonnull_Access);
+      procedure Remove (N : Node_Nonnull_Access);
+      procedure Broadcast;
+      procedure Signal;
+
+      First : Node_Access;
+      Last : Node_Access;
+      Pending_Signal : Boolean := False;
+   end Wait_List;
 
    procedure Wait (W : in out Wait_List) with
       Global => null,
@@ -33,15 +46,4 @@ private
    type Node;
    type Node_Nonnull_Access is not null access all Node;
    type Node_Access is access all Node;
-
-   protected type Wait_List is
-      procedure Insert (N : Node_Nonnull_Access);
-      procedure Remove (N : Node_Nonnull_Access);
-      procedure Broadcast;
-      procedure Signal;
-   private
-      First : Node_Access;
-      Last : Node_Access;
-      Pending_Signal : Boolean := False;
-   end Wait_List;
 end Linted.Wait_Lists;

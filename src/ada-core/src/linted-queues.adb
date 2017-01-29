@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,9 +11,13 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Linted.Wait_Lists;
+
 package body Linted.Queues with
      Spark_Mode => Off,
-     Refined_State => (State => (Spare_Nodes, Triggers)) is
+     Refined_State =>
+     (State => (Spare_Nodes, Triggers, Elements, Tails, In_Queues))
+is
 
    Elements : array
    (1 .. Node_Not_Null_Access (Max_Nodes_In_Flight)) of Element_T;
@@ -25,7 +29,7 @@ package body Linted.Queues with
      (others => False) with
       Ghost;
 
-   Spare_Nodes : PQueue;
+   Spare_Nodes : Queue;
    Triggers : Wait_Lists.Wait_List;
 
    procedure Allocate (N : out Node_Not_Null_Access) with
@@ -38,7 +42,7 @@ package body Linted.Queues with
       return not In_Queues (N);
    end Is_Free;
 
-   protected body PQueue is
+   protected body Queue is
       procedure Enqueue (N : Node_Not_Null_Access) is
       begin
          pragma Assert (not In_Queues (N));
@@ -72,7 +76,7 @@ package body Linted.Queues with
             end;
          end if;
       end Try_Dequeue;
-   end PQueue;
+   end Queue;
 
    procedure Free (N : Node_Not_Null_Access) is
       Dummy : Element_T;
@@ -103,8 +107,7 @@ package body Linted.Queues with
    begin
       Allocate (N);
       Elements (N) := C;
-      Q.List.Enqueue (N);
-      Wait_Lists.Signal (Q.On_Full);
+      Q.Enqueue (N);
    end Enqueue;
 
    procedure Try_Dequeue
@@ -114,7 +117,7 @@ package body Linted.Queues with
    is
       Removed : Node_Access;
    begin
-      Q.List.Try_Dequeue (Removed);
+      Q.Try_Dequeue (Removed);
       if Removed = 0 then
          Init := False;
       else
@@ -127,18 +130,6 @@ package body Linted.Queues with
          end;
       end if;
    end Try_Dequeue;
-
-   procedure Dequeue (Q : in out Queue; C : out Element_T) is
-      Init : Boolean;
-   begin
-      loop
-         Try_Dequeue (Q, C, Init);
-         if Init then
-            exit;
-         end if;
-         Wait_Lists.Wait (Q.On_Full);
-      end loop;
-   end Dequeue;
 
 begin
    for II in 1 .. Node_Not_Null_Access (Max_Nodes_In_Flight) loop

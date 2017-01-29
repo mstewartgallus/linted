@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ package body Linted.Tests is
    procedure Run is
    begin
       for II in 1 .. Len loop
-	 My_Queues.Insert (L, II);
+	 My_Queues.Enqueue (L, II);
       end loop;
 
       for II in 1 .. Len loop
@@ -32,7 +32,7 @@ package body Linted.Tests is
 	    Current : Integer;
 	    Init : Boolean;
 	 begin
-	    My_Queues.Remove (L, Current, Init);
+	    My_Queues.Try_Dequeue (L, Current, Init);
 	    pragma Assert(Current = II);
 	 end;
       end loop;

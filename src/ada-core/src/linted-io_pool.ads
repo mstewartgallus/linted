@@ -20,7 +20,12 @@ with Linted.Triggers;
 
 package Linted.IO_Pool with
      Spark_Mode,
-     Abstract_State => (Command_Queue, Event_Queue, Various, Future_Pool) is
+     Abstract_State =>
+     ((Command_Queue with External),
+      (Event_Queue with External),
+      (Various with External),
+      (Future_Pool with External))
+is
    pragma Elaborate_Body;
    use type Interfaces.C.int;
 
@@ -54,11 +59,13 @@ package Linted.IO_Pool with
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
       Future : out Read_Future) with
+      Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Post => Read_Future_Is_Live (Future);
 
    procedure Read_Wait
      (Future : in out Read_Future;
       Event : out Reader_Event) with
+      Global => (In_Out => (Event_Queue, Various, Future_Pool)),
       Pre => Read_Future_Is_Live (Future),
       Post => not Read_Future_Is_Live (Future);
 
@@ -66,6 +73,7 @@ package Linted.IO_Pool with
      (Future : in out Read_Future;
       Event : out Reader_Event;
       Init : out Boolean) with
+      Global => (In_Out => (Event_Queue, Various, Future_Pool)),
       Pre => Read_Future_Is_Live (Future),
       Post =>
       (if Init then not Read_Future_Is_Live (Future)
@@ -82,12 +90,13 @@ package Linted.IO_Pool with
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
       Future : out Write_Future) with
-      Global => (In_Out => Command_Queue),
+      Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Post => Write_Future_Is_Live (Future);
 
    procedure Write_Wait
      (Future : in out Write_Future;
       Event : out Writer_Event) with
+      Global => (In_Out => (Event_Queue, Various, Future_Pool)),
       Pre => Write_Future_Is_Live (Future),
       Post => not Write_Future_Is_Live (Future);
 
@@ -95,6 +104,7 @@ package Linted.IO_Pool with
      (Future : in out Write_Future;
       Event : out Writer_Event;
       Init : out Boolean) with
+      Global => (In_Out => (Event_Queue, Various, Future_Pool)),
       Pre => Write_Future_Is_Live (Future),
       Post =>
       (if Init then not Write_Future_Is_Live (Future)
@@ -110,11 +120,13 @@ package Linted.IO_Pool with
       Events : Poller_Event_Set;
       Signaller : Triggers.Signaller;
       Future : out Poll_Future) with
+      Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Post => Poll_Future_Is_Live (Future);
 
    procedure Poll_Wait
      (Future : in out Poll_Future;
       Event : out Poller_Event) with
+      Global => (In_Out => (Event_Queue, Various, Future_Pool)),
       Pre => Poll_Future_Is_Live (Future),
       Post => not Poll_Future_Is_Live (Future);
 
@@ -122,6 +134,7 @@ package Linted.IO_Pool with
      (Future : in out Poll_Future;
       Event : out Poller_Event;
       Init : out Boolean) with
+      Global => (In_Out => (Event_Queue, Various, Future_Pool)),
       Pre => Poll_Future_Is_Live (Future),
       Post =>
       (if Init then not Poll_Future_Is_Live (Future)

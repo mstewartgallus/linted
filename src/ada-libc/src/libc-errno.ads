@@ -21,7 +21,8 @@ package Libc.Errno with
 is
    pragma Preelaborate;
 
-   function Errno return Interfaces.C.int;
+   function Errno return Interfaces.C.int with
+      Volatile_Function;
    pragma Import (C, Errno, "linted_adarts_libc_errno");
 
    procedure Errno_Get (Err : out Interfaces.C.int);
