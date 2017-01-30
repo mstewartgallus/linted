@@ -14,48 +14,46 @@
 with Linted.Wait_Lists;
 
 package body Linted.Queues with
-     Spark_Mode => Off,
      Refined_State =>
-     (State => (Spare_Nodes, Triggers, Elements, Tails, In_Queues))
+     (State => (Spare_Nodes, Triggers, Elements, Tails),
+      Ghost_State => In_Queues)
 is
 
-   Elements : array
-   (1 .. Node_Not_Null_Access (Max_Nodes_In_Flight)) of Element_T;
-   Tails : array
-   (1 .. Node_Not_Null_Access (Max_Nodes_In_Flight)) of Node_Access :=
+   type Elements_Array is array (Node_Access range <>) of Element_T;
+   type Tails_Array is array (Node_Access range <>) of Node_Access with
+        Atomic_Components;
+   type Booleans_Array is array (Node_Access range <>) of Boolean;
+
+   Elements : Elements_Array (1 .. Node_Access (Max_Nodes_In_Flight));
+   Tails : Tails_Array (1 .. Node_Access (Max_Nodes_In_Flight)) :=
      (others => 0);
-   In_Queues : array
-   (1 .. Node_Not_Null_Access (Max_Nodes_In_Flight)) of Boolean :=
+   In_Queues : Booleans_Array (1 .. Node_Access (Max_Nodes_In_Flight)) :=
      (others => False) with
       Ghost;
 
    Spare_Nodes : Queue;
    Triggers : Wait_Lists.Wait_List;
 
-   procedure Allocate (N : out Node_Not_Null_Access) with
-      Post => Is_Free (N);
-   procedure Free (N : Node_Not_Null_Access) with
-      Pre => Is_Free (N);
-
-   function Is_Free (N : Node_Not_Null_Access) return Boolean is
-   begin
-      return not In_Queues (N);
-   end Is_Free;
+   procedure Allocate (N : out Node_Access);
+   procedure Free (N : Node_Access);
 
    protected body Queue is
-      procedure Enqueue (N : Node_Not_Null_Access) is
+      procedure Enqueue (N : Node_Access) is
+         T : Node_Access;
       begin
+         T := Tails (N);
+         pragma Assert (T = 0);
+
          pragma Assert (not In_Queues (N));
-         pragma Assert (Tails (N) = 0);
 
          In_Queues (N) := True;
 
          if First = 0 or Last = 0 then
-            First := Node_Access (N);
+            First := N;
          else
-            Tails (Last) := Node_Access (N);
+            Tails (Last) := N;
          end if;
-         Last := Node_Access (N);
+         Last := N;
       end Enqueue;
 
       procedure Try_Dequeue (N : out Node_Access) is
@@ -67,7 +65,9 @@ is
                Removed : Node_Access;
             begin
                Removed := First;
+
                pragma Assert (In_Queues (Removed));
+
                First := Tails (Removed);
                In_Queues (Removed) := False;
                Tails (Removed) := 0;
@@ -78,15 +78,17 @@ is
       end Try_Dequeue;
    end Queue;
 
-   procedure Free (N : Node_Not_Null_Access) is
+   procedure Free (N : Node_Access) is
       Dummy : Element_T;
    begin
+      pragma Assert (not In_Queues (N));
+
       Elements (N) := Dummy;
       Spare_Nodes.Enqueue (N);
       Wait_Lists.Signal (Triggers);
    end Free;
 
-   procedure Allocate (N : out Node_Not_Null_Access) is
+   procedure Allocate (N : out Node_Access) is
       Dummy : Element_T;
       Removed : Node_Access;
    begin
@@ -97,13 +99,14 @@ is
          end if;
          Wait_Lists.Wait (Triggers);
       end loop;
-      N := Node_Not_Null_Access (Removed);
+      N := Removed;
       Elements (N) := Dummy;
+
+      pragma Assert (not In_Queues (N));
    end Allocate;
 
    procedure Enqueue (Q : in out Queue; C : Element_T) is
-      --  FAKE!
-      N : Node_Not_Null_Access := 1;
+      N : Node_Access;
    begin
       Allocate (N);
       Elements (N) := C;
@@ -119,10 +122,15 @@ is
    begin
       Q.Try_Dequeue (Removed);
       if Removed = 0 then
+         declare
+            Dummy : Element_T;
+         begin
+            C := Dummy;
+         end;
          Init := False;
       else
          declare
-            N : Node_Not_Null_Access := Node_Not_Null_Access (Removed);
+            N : Node_Access := Removed;
          begin
             C := Elements (N);
             Free (N);
@@ -132,9 +140,9 @@ is
    end Try_Dequeue;
 
 begin
-   for II in 1 .. Node_Not_Null_Access (Max_Nodes_In_Flight) loop
+   for II in 1 .. Node_Access (Max_Nodes_In_Flight) loop
       declare
-         N : Node_Not_Null_Access := II;
+         N : Node_Access := II;
       begin
          Spare_Nodes.Enqueue (N);
       end;

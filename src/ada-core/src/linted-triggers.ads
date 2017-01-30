@@ -34,10 +34,13 @@ package Linted.Triggers with
    function Is_Null_Signaller (S : Signaller) return Boolean;
 
    procedure Wait (W : Waiter) with
+      Global => null,
       Pre => not Is_Null_Waiter (W);
    procedure Signal (S : Signaller) with
+      Global => null,
       Pre => not Is_Null_Signaller (S);
    procedure Broadcast (S : Signaller) with
+      Global => null,
       Pre => not Is_Null_Signaller (S);
 
 private

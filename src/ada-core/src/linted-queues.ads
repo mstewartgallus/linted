@@ -16,33 +16,38 @@ generic
    Max_Nodes_In_Flight : Positive;
 package Linted.Queues with
    Spark_Mode,
-   Abstract_State => (State with External) is
+   Abstract_State => ((State with External), (Ghost_State)) is
    pragma Elaborate_Body;
 
-   type Node_Access is new Natural;
-   subtype Node_Not_Null_Access is Node_Access range 1 .. Node_Access'Last;
-
-   function Is_Free (N : Node_Not_Null_Access) return Boolean with
-      Ghost;
+   type Node_Access is private;
 
    protected type Queue is
    private
-      procedure Enqueue (N : Node_Not_Null_Access) with
-         Pre => Is_Free (N);
+      procedure Enqueue (N : Node_Access) with
+         Global => (In_Out => (State, Ghost_State)),
+         Depends =>
+         (Queue => (N, Queue),
+          State => (Queue, N, State),
+          Ghost_State => (N, Ghost_State));
       procedure Try_Dequeue (N : out Node_Access) with
-         Post => (if N /= 0 then Is_Free (Node_Not_Null_Access (N)) else True);
-      First : Node_Access := 0;
-      Last : Node_Access := 0;
+         Global => (In_Out => (State, Ghost_State)),
+         Depends =>
+         (Queue => (Queue, State),
+          State => (Queue, State),
+          N => Queue,
+          Ghost_State => (Queue, Ghost_State));
+      First : Node_Access;
+      Last : Node_Access;
    end Queue;
 
-   procedure Enqueue (Q : in out Queue; C : Element_T) with
-      Global => (In_Out => State),
-      Depends => (Q => (State, Q, C), State => State);
+   procedure Enqueue (Q : in out Queue; C : Element_T);
 
    procedure Try_Dequeue
      (Q : in out Queue;
       C : out Element_T;
-      Init : out Boolean) with
-      Global => (In_Out => State),
-      Depends => (C => Q, Init => Q, Q => Q, State => State);
+      Init : out Boolean);
+
+private
+   type Node_Access is new Natural with
+        Default_Value => 0;
 end Linted.Queues;

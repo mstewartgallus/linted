@@ -29,7 +29,9 @@ package Linted.Channels is
       entry Pop_Impl (D : out Element_T) with
          Global => null,
          Depends => (D => Channel, Channel => Channel);
-      procedure Poll (D : out Element_T; Init : out Boolean);
+      procedure Poll (D : out Element_T; Init : out Boolean) with
+         Global => null,
+         Depends => (D => Channel, Channel => Channel, Init => Channel);
 
       Current : Element_T;
       Full : Boolean := False;

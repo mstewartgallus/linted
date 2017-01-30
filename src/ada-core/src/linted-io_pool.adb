@@ -33,6 +33,10 @@ package body Linted.IO_Pool with
          Read_Future_Queues.State,
          Write_Future_Queues.State,
          Poll_Future_Queues.State,
+         Command_Queues.Ghost_State,
+         Read_Future_Queues.Ghost_State,
+         Write_Future_Queues.Ghost_State,
+         Poll_Future_Queues.Ghost_State,
          Read_Future_Wait_List,
          Write_Future_Wait_List,
          Poll_Future_Wait_List),
@@ -91,7 +95,10 @@ is
       end case;
    end record;
 
-   package Command_Queues is new Queues (Command, Max_Command_Queue_Capacity);
+   Command_Wait_List : Wait_Lists.Wait_List;
+   task type Worker_Task;
+
+   Worker_Tasks : array (1 .. 16) of Worker_Task;
 
    package Writer_Event_Channels is new Channels (Writer_Event);
    package Reader_Event_Channels is new Channels (Reader_Event);
@@ -109,8 +116,21 @@ is
    (1 .. Max_Write_Futures);
    Poll_Future_Channels : Poller_Future_Channels_Array (1 .. Max_Poll_Futures);
 
+   Read_Future_Wait_List : Wait_Lists.Wait_List;
+   Write_Future_Wait_List : Wait_Lists.Wait_List;
+   Poll_Future_Wait_List : Wait_Lists.Wait_List;
+
+   package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
+   package Write_Future_Queues is new Queues (Write_Future, Max_Write_Futures);
+   package Poll_Future_Queues is new Queues (Poll_Future, Max_Poll_Futures);
+
+   Spare_Read_Futures : Read_Future_Queues.Queue;
+   Spare_Write_Futures : Write_Future_Queues.Queue;
+   Spare_Poll_Futures : Poll_Future_Queues.Queue;
+
+   package Command_Queues is new Queues (Command, Max_Command_Queue_Capacity);
+
    My_Command_Queue : Command_Queues.Queue;
-   Command_Wait_List : Wait_Lists.Wait_List;
 
    procedure Do_Write (W : Write_Command) with
       Global => (In_Out => Write_Future_Channels),
@@ -121,21 +141,6 @@ is
    procedure Do_Poll (P : Poller_Command) with
       Global => (In_Out => Poll_Future_Channels),
       Depends => (Poll_Future_Channels => (P, Poll_Future_Channels));
-
-   task type Worker_Task;
-
-   Worker_Tasks : array (1 .. 16) of Worker_Task;
-
-   package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
-   package Write_Future_Queues is new Queues (Write_Future, Max_Write_Futures);
-   package Poll_Future_Queues is new Queues (Poll_Future, Max_Poll_Futures);
-
-   Read_Future_Wait_List : Wait_Lists.Wait_List;
-   Write_Future_Wait_List : Wait_Lists.Wait_List;
-   Poll_Future_Wait_List : Wait_Lists.Wait_List;
-   Spare_Read_Futures : Read_Future_Queues.Queue;
-   Spare_Write_Futures : Write_Future_Queues.Queue;
-   Spare_Poll_Futures : Poll_Future_Queues.Queue;
 
    procedure Read
      (Object : KOs.KO;
