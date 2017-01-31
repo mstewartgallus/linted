@@ -20,10 +20,18 @@ package Linted.Wait_Lists with
 
    protected type Wait_List is
    private
-      procedure Insert (N : Node_Nonnull_Access);
-      procedure Remove (N : Node_Nonnull_Access);
-      procedure Broadcast;
-      procedure Signal;
+      procedure Insert (N : Node_Nonnull_Access) with
+         Global => null,
+         Depends => (Wait_List => (N, Wait_List));
+      procedure Remove (N : Node_Nonnull_Access) with
+         Global => null,
+         Depends => (Wait_List => (N, Wait_List));
+      procedure Broadcast with
+         Global => null,
+         Depends => (Wait_List => Wait_List);
+      procedure Signal with
+         Global => null,
+         Depends => (Wait_List => Wait_List);
 
       First : Node_Access;
       Last : Node_Access;

@@ -29,14 +29,30 @@ package body Linted.IO_Pool with
         (Read_Future_Channels, Write_Future_Channels, Poll_Future_Channels),
       Various =>
         (Worker_Tasks,
-         Command_Queues.State,
-         Read_Future_Queues.State,
-         Write_Future_Queues.State,
-         Poll_Future_Queues.State,
-         Command_Queues.Ghost_State,
-         Read_Future_Queues.Ghost_State,
-         Write_Future_Queues.Ghost_State,
-         Poll_Future_Queues.Ghost_State,
+         Command_Queues.Spare_Nodes,
+	 Command_Queues.Triggers,
+	 Command_Queues.Elements,
+	 Command_Queues.Tails,
+	 Command_Queues.In_Queues,
+
+	 Read_Future_Queues.Spare_Nodes,
+	 Read_Future_Queues.Triggers,
+	 Read_Future_Queues.Elements,
+	 Read_Future_Queues.Tails,
+	 Read_Future_Queues.In_Queues,
+
+	 Write_Future_Queues.Spare_Nodes,
+	 Write_Future_Queues.Triggers,
+	 Write_Future_Queues.Elements,
+	 Write_Future_Queues.Tails,
+	 Write_Future_Queues.In_Queues,
+
+	 Poll_Future_Queues.Spare_Nodes,
+	 Poll_Future_Queues.Triggers,
+	 Poll_Future_Queues.Elements,
+	 Poll_Future_Queues.Tails,
+	 Poll_Future_Queues.In_Queues,
+
          Read_Future_Wait_List,
          Write_Future_Wait_List,
          Poll_Future_Wait_List),
@@ -96,7 +112,30 @@ is
    end record;
 
    Command_Wait_List : Wait_Lists.Wait_List;
-   task type Worker_Task;
+   task type Worker_Task with Global => (In_Out => (Command_Queues.Tails,
+						    Command_Queues.In_Queues,
+						    Command_Queues.Spare_Nodes,
+						    Command_Queues.Triggers,
+						    Command_Queues.Elements,
+						    Command_Wait_List,
+					 My_Command_Queue,
+					 Read_Future_Channels,
+					 Write_Future_Channels,
+						    Poll_Future_Channels
+						   )),
+     Depends => (Command_Wait_List => (My_Command_Queue, Command_Wait_List, Command_Queues.Tails, Command_Queues.Spare_Nodes),
+		 Command_Queues.Tails => (My_Command_Queue, Command_Queues.Tails, Command_Queues.Spare_Nodes),
+		 Command_Queues.In_Queues => (My_Command_Queue, Command_Queues.Tails, Command_Queues.In_Queues, Command_Queues.Spare_Nodes),
+		 Command_Queues.Spare_Nodes => (My_Command_Queue, Command_Queues.Spare_Nodes, Command_Queues.Tails),
+		 Command_Queues.Triggers => (My_Command_Queue, Command_Queues.Triggers, Command_Queues.Tails, Command_Queues.Spare_Nodes),
+		 Command_Queues.Elements => (My_Command_Queue, Command_Queues.Spare_Nodes, Command_Queues.Elements, Command_Queues.Tails),
+		 My_Command_Queue => (Command_Queues.Spare_Nodes, Command_Queues.Tails, My_Command_Queue),
+		 Read_Future_Channels => (Command_Queues.Spare_Nodes, Command_Queues.Elements, Read_Future_Channels, My_Command_Queue, Command_Queues.Tails),
+		 Write_Future_Channels => (Command_Queues.Spare_Nodes, Command_Queues.Elements, Write_Future_Channels, My_Command_Queue,  Command_Queues.Tails),
+		 Poll_Future_Channels => (Command_Queues.Spare_Nodes, Command_Queues.Elements, Poll_Future_Channels, My_Command_Queue, Command_Queues.Tails),
+		 Worker_Task'Result => Worker_Task,
+		 Worker_Task => null
+		);
 
    Worker_Tasks : array (1 .. 16) of Worker_Task;
 
@@ -181,10 +220,12 @@ is
       Event : out Reader_Event;
       Init : out Boolean)
    is
+      Dummy : Reader_Event;
       Maybe_Event : Reader_Event_Channels.Option_Element_Ts.Option;
    begin
       Reader_Event_Channels.Poll (Read_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
+	 Event := Dummy;
          Init := False;
       else
          Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
@@ -234,10 +275,12 @@ is
       Event : out Writer_Event;
       Init : out Boolean)
    is
+      Dummy : Writer_Event;
       Maybe_Event : Writer_Event_Channels.Option_Element_Ts.Option;
    begin
       Writer_Event_Channels.Poll (Write_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
+	 Event := Dummy;
          Init := False;
       else
          Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
@@ -286,10 +329,12 @@ is
       Event : out Poller_Event;
       Init : out Boolean)
    is
+      Dummy : Poller_Event;
       Maybe_Event : Poller_Event_Channels.Option_Element_Ts.Option;
    begin
       Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
+	 Event := Dummy;
          Init := False;
       else
          Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
@@ -470,6 +515,16 @@ is
          end case;
       end loop;
    end Worker_Task;
+
+   function Read_Future_Is_Live
+     (Future : Read_Future) return Boolean is
+     (Future /= 0);
+   function Write_Future_Is_Live
+     (Future : Write_Future) return Boolean is
+     (Future /= 0);
+   function Poll_Future_Is_Live
+     (Future : Poll_Future) return Boolean is
+     (Future /= 0);
 
 begin
    for II in 1 .. Max_Read_Futures loop

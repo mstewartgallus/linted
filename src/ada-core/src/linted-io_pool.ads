@@ -20,6 +20,7 @@ with Linted.Triggers;
 
 package Linted.IO_Pool with
      Spark_Mode,
+     Initializes => Future_Pool,
      Abstract_State =>
      ((Command_Queue with External),
       (Event_Queue with External),
@@ -51,7 +52,9 @@ is
    type Read_Future is limited private;
 
    function Read_Future_Is_Live (Future : Read_Future) return Boolean with
-      Ghost;
+      Ghost,
+      Global => null,
+      Depends => (Read_Future_Is_Live'Result => Future);
 
    procedure Read
      (Object : KOs.KO;
@@ -62,8 +65,7 @@ is
       Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Depends =>
       (Future => (Future_Pool, Various),
-       Command_Queue =>
-         (Buf, Count, Future_Pool, Various, Object, Signaller, Command_Queue),
+       Command_Queue => (Various, Command_Queue),
        Various =>
          (Buf, Count, Command_Queue, Future_Pool, Object, Signaller, Various),
        Future_Pool => (Various, Future_Pool)),
@@ -78,7 +80,7 @@ is
        Event => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Future_Pool, Various),
-       Future_Pool => (Future, Various, Future_Pool)),
+       Future_Pool => (Various, Future_Pool)),
       Pre => Read_Future_Is_Live (Future),
       Post => not Read_Future_Is_Live (Future);
 
@@ -102,7 +104,9 @@ is
    type Write_Future is limited private;
 
    function Write_Future_Is_Live (Future : Write_Future) return Boolean with
-      Ghost;
+      Ghost,
+      Global => null,
+      Depends => (Write_Future_Is_Live'Result => Future);
 
    procedure Write
      (Object : KOs.KO;
@@ -113,8 +117,7 @@ is
       Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Depends =>
       (Future => (Future_Pool, Various),
-       Command_Queue =>
-         (Buf, Count, Future_Pool, Various, Object, Signaller, Command_Queue),
+       Command_Queue => (Various, Command_Queue),
        Various =>
          (Buf, Count, Command_Queue, Future_Pool, Object, Signaller, Various),
        Future_Pool => (Various, Future_Pool)),
@@ -129,7 +132,7 @@ is
        Event => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Future_Pool, Various),
-       Future_Pool => (Future, Various, Future_Pool)),
+       Future_Pool => (Various, Future_Pool)),
       Pre => Write_Future_Is_Live (Future),
       Post => not Write_Future_Is_Live (Future);
 
@@ -153,7 +156,9 @@ is
    type Poll_Future is limited private;
 
    function Poll_Future_Is_Live (Future : Poll_Future) return Boolean with
-      Ghost;
+      Ghost,
+      Global => null,
+      Depends => (Poll_Future_Is_Live'Result => Future);
 
    procedure Poll
      (Object : KOs.KO;
@@ -163,8 +168,7 @@ is
       Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Depends =>
       (Future => (Future_Pool, Various),
-       Command_Queue =>
-         (Events, Future_Pool, Various, Object, Signaller, Command_Queue),
+       Command_Queue => (Various, Command_Queue),
        Various =>
          (Events, Command_Queue, Future_Pool, Object, Signaller, Various),
        Future_Pool => (Various, Future_Pool)),
@@ -179,7 +183,7 @@ is
        Event => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Future_Pool, Various),
-       Future_Pool => (Future, Various, Future_Pool)),
+       Future_Pool => (Various, Future_Pool)),
       Pre => Poll_Future_Is_Live (Future),
       Post => not Poll_Future_Is_Live (Future);
 
@@ -206,14 +210,4 @@ private
         Default_Value => 0;
    type Poll_Future is new Natural with
         Default_Value => 0;
-
-   function Read_Future_Is_Live
-     (Future : Read_Future) return Boolean is
-     (Future /= 0);
-   function Write_Future_Is_Live
-     (Future : Write_Future) return Boolean is
-     (Future /= 0);
-   function Poll_Future_Is_Live
-     (Future : Poll_Future) return Boolean is
-     (Future /= 0);
 end Linted.IO_Pool;

@@ -16,7 +16,13 @@ generic
    Max_Nodes_In_Flight : Positive;
 package Linted.Queues with
    Spark_Mode,
-   Abstract_State => ((State with External), (Ghost_State)) is
+   Initializes => Spare_Nodes,
+   Abstract_State =>
+   ((Spare_Nodes with External),
+    (Triggers with External),
+    (Elements with External),
+    (Tails with External),
+    (In_Queues with External)) is
    pragma Elaborate_Body;
 
    type Node_Access is private;
@@ -24,28 +30,48 @@ package Linted.Queues with
    protected type Queue is
    private
       procedure Enqueue (N : Node_Access) with
-         Global => (In_Out => (State, Ghost_State)),
+         Global => (In_Out => (Tails, In_Queues)),
          Depends =>
          (Queue => (N, Queue),
-          State => (Queue, N, State),
-          Ghost_State => (N, Ghost_State));
+          Tails => (Queue, N, Tails),
+          In_Queues => (N, In_Queues));
       procedure Try_Dequeue (N : out Node_Access) with
-         Global => (In_Out => (State, Ghost_State)),
+         Global => (In_Out => (Tails, In_Queues)),
          Depends =>
-         (Queue => (Queue, State),
-          State => (Queue, State),
+         (Queue => (Queue, Tails),
+          Tails => (Queue, Tails),
           N => Queue,
-          Ghost_State => (Queue, Ghost_State));
+          In_Queues => (Queue, In_Queues));
       First : Node_Access;
       Last : Node_Access;
    end Queue;
 
-   procedure Enqueue (Q : in out Queue; C : Element_T);
+   procedure Enqueue (Q : in out Queue; C : Element_T) with
+      Global =>
+      (In_Out => (Spare_Nodes, Triggers, Elements, Tails, In_Queues)),
+      Depends =>
+      (Q => (Spare_Nodes, Tails, Q),
+       Elements => (Spare_Nodes, Tails, C, Elements),
+       Triggers => (Triggers, Tails, Spare_Nodes),
+       Spare_Nodes => (Tails, Spare_Nodes),
+       Tails => (Spare_Nodes, Q, Tails),
+       In_Queues => (Spare_Nodes, Tails, In_Queues));
 
    procedure Try_Dequeue
      (Q : in out Queue;
       C : out Element_T;
-      Init : out Boolean);
+      Init : out Boolean) with
+      Global =>
+      (In_Out => (Spare_Nodes, Elements, Triggers, Tails, In_Queues)),
+      Depends =>
+      (Q => (Q, Tails),
+       Tails => (Spare_Nodes, Q, Tails),
+       Spare_Nodes => (Q, Spare_Nodes),
+       Elements => (Q, Elements),
+       Triggers => (Q, Triggers),
+       C => (Elements, Q),
+       Init => Q,
+       In_Queues => (Q, In_Queues));
 
 private
    type Node_Access is new Natural with

@@ -15,43 +15,63 @@ with Linted.Wait_Lists;
 
 package body Linted.Queues with
      Refined_State =>
-     (State => (Spare_Nodes, Triggers, Elements, Tails),
-      Ghost_State => In_Queues)
+     (Spare_Nodes => PSpare_Nodes,
+      Triggers => PTriggers,
+      Elements => PElements,
+      Tails => PTails,
+      In_Queues => PIn_Queues)
 is
 
-   type Elements_Array is array (Node_Access range <>) of Element_T;
-   type Tails_Array is array (Node_Access range <>) of Node_Access with
+   type PElements_Array is array (Node_Access range <>) of Element_T;
+   type PTails_Array is array (Node_Access range <>) of Node_Access with
         Atomic_Components;
    type Booleans_Array is array (Node_Access range <>) of Boolean;
 
-   Elements : Elements_Array (1 .. Node_Access (Max_Nodes_In_Flight));
-   Tails : Tails_Array (1 .. Node_Access (Max_Nodes_In_Flight)) :=
+   PElements : PElements_Array (1 .. Node_Access (Max_Nodes_In_Flight));
+   PTails : PTails_Array (1 .. Node_Access (Max_Nodes_In_Flight)) :=
      (others => 0);
-   In_Queues : Booleans_Array (1 .. Node_Access (Max_Nodes_In_Flight)) :=
+   PIn_Queues : Booleans_Array (1 .. Node_Access (Max_Nodes_In_Flight)) :=
      (others => False) with
       Ghost;
 
-   Spare_Nodes : Queue;
-   Triggers : Wait_Lists.Wait_List;
+   PSpare_Nodes : Queue;
+   PTriggers : Wait_Lists.Wait_List;
 
-   procedure Allocate (N : out Node_Access);
-   procedure Free (N : Node_Access);
+   procedure Allocate (N : out Node_Access) with
+      Global =>
+      (In_Out => (PSpare_Nodes, PTriggers, PElements, PIn_Queues, PTails)),
+      Depends =>
+      (PSpare_Nodes => (PSpare_Nodes, PTails),
+       PTriggers => (PTriggers, PSpare_Nodes, PTails),
+       PElements => (PTails, PSpare_Nodes, PElements),
+       PIn_Queues => (PSpare_Nodes, PTails, PIn_Queues),
+       N => (PTails, PSpare_Nodes),
+       PTails => (PTails, PSpare_Nodes));
+   procedure Free (N : Node_Access) with
+      Global =>
+      (In_Out => (PSpare_Nodes, PTriggers, PElements, PIn_Queues, PTails)),
+      Depends =>
+      (PSpare_Nodes => (N, PSpare_Nodes),
+       PTriggers => PTriggers,
+       PElements => (N, PElements),
+       PIn_Queues => (N, PIn_Queues),
+       PTails => (PTails, N, PSpare_Nodes));
 
    protected body Queue is
       procedure Enqueue (N : Node_Access) is
          T : Node_Access;
       begin
-         T := Tails (N);
+         T := PTails (N);
          pragma Assert (T = 0);
 
-         pragma Assert (not In_Queues (N));
+         pragma Assert (not PIn_Queues (N));
 
-         In_Queues (N) := True;
+         PIn_Queues (N) := True;
 
          if First = 0 or Last = 0 then
             First := N;
          else
-            Tails (Last) := N;
+            PTails (Last) := N;
          end if;
          Last := N;
       end Enqueue;
@@ -66,11 +86,11 @@ is
             begin
                Removed := First;
 
-               pragma Assert (In_Queues (Removed));
+               pragma Assert (PIn_Queues (Removed));
 
-               First := Tails (Removed);
-               In_Queues (Removed) := False;
-               Tails (Removed) := 0;
+               First := PTails (Removed);
+               PIn_Queues (Removed) := False;
+               PTails (Removed) := 0;
 
                N := Removed;
             end;
@@ -81,11 +101,11 @@ is
    procedure Free (N : Node_Access) is
       Dummy : Element_T;
    begin
-      pragma Assert (not In_Queues (N));
+      pragma Assert (not PIn_Queues (N));
 
-      Elements (N) := Dummy;
-      Spare_Nodes.Enqueue (N);
-      Wait_Lists.Signal (Triggers);
+      PElements (N) := Dummy;
+      PSpare_Nodes.Enqueue (N);
+      Wait_Lists.Signal (PTriggers);
    end Free;
 
    procedure Allocate (N : out Node_Access) is
@@ -93,23 +113,23 @@ is
       Removed : Node_Access;
    begin
       loop
-         Spare_Nodes.Try_Dequeue (Removed);
+         PSpare_Nodes.Try_Dequeue (Removed);
          if Removed /= 0 then
             exit;
          end if;
-         Wait_Lists.Wait (Triggers);
+         Wait_Lists.Wait (PTriggers);
       end loop;
       N := Removed;
-      Elements (N) := Dummy;
+      PElements (N) := Dummy;
 
-      pragma Assert (not In_Queues (N));
+      pragma Assert (not PIn_Queues (N));
    end Allocate;
 
    procedure Enqueue (Q : in out Queue; C : Element_T) is
       N : Node_Access;
    begin
       Allocate (N);
-      Elements (N) := C;
+      PElements (N) := C;
       Q.Enqueue (N);
    end Enqueue;
 
@@ -132,7 +152,7 @@ is
          declare
             N : Node_Access := Removed;
          begin
-            C := Elements (N);
+            C := PElements (N);
             Free (N);
             Init := True;
          end;
@@ -144,7 +164,7 @@ begin
       declare
          N : Node_Access := II;
       begin
-         Spare_Nodes.Enqueue (N);
+         PSpare_Nodes.Enqueue (N);
       end;
    end loop;
 end Linted.Queues;

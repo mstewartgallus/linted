@@ -51,12 +51,14 @@ package body Linted.Channels is
       end Pop_Impl;
 
       procedure Poll (D : out Element_T; Init : out Boolean) is
+	 Dummy : Element_T;
       begin
          if Full then
             Full := False;
 	    D := Current;
 	    Init := True;
          else
+	    D := Dummy;
 	    Init := False;
          end if;
       end Poll;

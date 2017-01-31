@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2015,2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -19,7 +19,16 @@ package Linted.MVars with
    Abstract_State => null is
    pragma Pure;
 
-   type MVar is limited private;
+   protected type MVar is
+   private
+      procedure Poll (D : out Element_T; Init : out Boolean);
+      procedure Set (D : Element_T) with
+         Global => null,
+         Depends => (MVar => (D, MVar));
+
+      Current : Element_T;
+      Full : Boolean;
+   end MVar;
 
    package Option_Element_Ts is new Linted.Options (Element_T);
 
@@ -31,15 +40,4 @@ package Linted.MVars with
    procedure Set (This : in out MVar; D : Element_T) with
       Global => null,
       Depends => (This => (D, This));
-
-private
-   protected type MVar is
-      procedure Poll (D : out Element_T; Init : out Boolean);
-      procedure Set (D : Element_T) with
-         Global => null,
-         Depends => (MVar => (D, MVar));
-   private
-      Current : Element_T;
-      Full : Boolean;
-   end MVar;
 end Linted.MVars;
