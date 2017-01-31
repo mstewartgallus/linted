@@ -1,0 +1,308 @@
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* year in copyright message */
+#undef COPYRIGHT_YEAR
+
+/* Define to 1 if you have the <[arpa/inet.h]dnl> header file. */
+#undef HAVE_ARPA_INET_H
+
+/* Define to 1 if you have the `[clock_gettime]' function. */
+#undef HAVE_CLOCK_GETTIME
+
+/* Define to 1 if you have the declaration of `strerror_r', and to 0 if you
+   don't. */
+#undef HAVE_DECL_STRERROR_R
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
+/* Define to 1 if you have the `[dup2]dnl' function. */
+#undef HAVE_DUP2
+
+/* Define if the Emscripten API is being used. */
+#undef HAVE_EMSCRIPTEN_API
+
+/* Define to 1 if you have the `[fchdir]dnl' function. */
+#undef HAVE_FCHDIR
+
+/* Define to 1 if you have the <[fcntl.h]dnl> header file. */
+#undef HAVE_FCNTL_H
+
+/* Define to 1 if you have the `fork' function. */
+#undef HAVE_FORK
+
+/* Define to 1 if you have the `[getauxval]' function. */
+#undef HAVE_GETAUXVAL
+
+/* Define to 1 if you have the `[gethostname]dnl' function. */
+#undef HAVE_GETHOSTNAME
+
+/* Define to 1 if you have the `getmntent' function. */
+#undef HAVE_GETMNTENT
+
+/* Define to 1 if you have the `getpagesize' function. */
+#undef HAVE_GETPAGESIZE
+
+/* Define to 1 if you have the <[inttypes.h]> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <[limits.h]dnl> header file. */
+#undef HAVE_LIMITS_H
+
+/* Define to 1 if you have the <[locale.h]dnl> header file. */
+#undef HAVE_LOCALE_H
+
+/* Define to 1 if you have the `[memmove]dnl' function. */
+#undef HAVE_MEMMOVE
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the `[memset]dnl' function. */
+#undef HAVE_MEMSET
+
+/* Define to 1 if you have the `[mkdir]dnl' function. */
+#undef HAVE_MKDIR
+
+/* Define to 1 if you have the `[mkfifoat]dnl' function. */
+#undef HAVE_MKFIFOAT
+
+/* Define to 1 if you have a working `mmap' system call. */
+#undef HAVE_MMAP
+
+/* Define to 1 if you have the <[mntent.h]dnl> header file. */
+#undef HAVE_MNTENT_H
+
+/* Define to 1 if you have the `[munmap]dnl' function. */
+#undef HAVE_MUNMAP
+
+/* Define if the POSIX API is being used. */
+#undef HAVE_POSIX_API
+
+/* Define to 1 if you have the `[prctl]' function. */
+#undef HAVE_PRCTL
+
+/* Define to 1 if you have the `[pthread_setname_np]' function. */
+#undef HAVE_PTHREAD_SETNAME_NP
+
+/* Define to 1 if you have the `[realpath]dnl' function. */
+#undef HAVE_REALPATH
+
+/* Define to 1 if you have the <[rpc/rpc.h]> header file. */
+#undef HAVE_RPC_RPC_H
+
+/* Define to 1 if you have the `[setenv]dnl' function. */
+#undef HAVE_SETENV
+
+/* Define to 1 if you have the `[setlocale]dnl' function. */
+#undef HAVE_SETLOCALE
+
+/* Define to 1 if you have the <[stdatomic.h]> header file. */
+#undef HAVE_STDATOMIC_H
+
+/* Define to 1 if stdbool.h conforms to C99. */
+#undef HAVE_STDBOOL_H
+
+/* Define to 1 if you have the <[stddef.h]dnl> header file. */
+#undef HAVE_STDDEF_H
+
+/* Define to 1 if you have the <[stdint.h]dnl> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the `[strchr]dnl' function. */
+#undef HAVE_STRCHR
+
+/* Define to 1 if you have the `[strdup]dnl' function. */
+#undef HAVE_STRDUP
+
+/* Define to 1 if you have the `strerror_r' function. */
+#undef HAVE_STRERROR_R
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <[string.h]dnl> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the `[strndup]dnl' function. */
+#undef HAVE_STRNDUP
+
+/* Define to 1 if you have the `[strrchr]dnl' function. */
+#undef HAVE_STRRCHR
+
+/* Define to 1 if you have the `[strstr]dnl' function. */
+#undef HAVE_STRSTR
+
+/* Define to 1 if you have the `[strtol]dnl' function. */
+#undef HAVE_STRTOL
+
+/* Define to 1 if you have the `[syscall]dnl' function. */
+#undef HAVE_SYSCALL
+
+/* Define to 1 if you have the <[syslog.h]> header file. */
+#undef HAVE_SYSLOG_H
+
+/* Define to 1 if you have the <[sys/auxv.h]> header file. */
+#undef HAVE_SYS_AUXV_H
+
+/* Define to 1 if you have the <[sys/capability.h]> header file. */
+#undef HAVE_SYS_CAPABILITY_H
+
+/* Define to 1 if you have the <[sys/mount.h]dnl> header file. */
+#undef HAVE_SYS_MOUNT_H
+
+/* Define to 1 if you have the <sys/param.h> header file. */
+#undef HAVE_SYS_PARAM_H
+
+/* Define to 1 if you have the <[sys/prctl.h]> header file. */
+#undef HAVE_SYS_PRCTL_H
+
+/* Define to 1 if you have the <[sys/socket.h]dnl> header file. */
+#undef HAVE_SYS_SOCKET_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <[sys/time.h]dnl> header file. */
+#undef HAVE_SYS_TIME_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the `[tzset]' function. */
+#undef HAVE_TZSET
+
+/* Define to 1 if you have the <[unistd.h]> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the `vfork' function. */
+#undef HAVE_VFORK
+
+/* Define to 1 if you have the <vfork.h> header file. */
+#undef HAVE_VFORK_H
+
+/* Define if the Microsoft Windows API is being used. */
+#undef HAVE_WINDOWS_API
+
+/* Define to 1 if `fork' works. */
+#undef HAVE_WORKING_FORK
+
+/* Define to 1 if `vfork' works. */
+#undef HAVE_WORKING_VFORK
+
+/* Define if the X11 API is being used. */
+#undef HAVE_X11_API
+
+/* Define to 1 if the system has the type `_Bool'. */
+#undef HAVE__BOOL
+
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* package hierarchical name space */
+#undef PACKAGE_NAME_SPACE
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* Define to 1 if strerror_r returns char *. */
+#undef STRERROR_R_CHAR_P
+
+/* Version number of package */
+#undef VERSION
+
+/* Enable large inode numbers on Mac OS X 10.5.  */
+#ifndef _DARWIN_USE_64_BIT_INODE
+# define _DARWIN_USE_64_BIT_INODE 1
+#endif
+
+/* Number of bits in a file offset, on hosts where this is settable. */
+#undef _FILE_OFFSET_BITS
+
+/* Define for large files, on AIX-style hosts. */
+#undef _LARGE_FILES
+
+/* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
+   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
+   #define below would cause a syntax error. */
+#undef _UINT32_T
+
+/* Define for Solaris 2.5.1 so the uint64_t typedef from <sys/synch.h>,
+   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
+   #define below would cause a syntax error. */
+#undef _UINT64_T
+
+/* Define to `int' if <sys/types.h> doesn't define. */
+#undef gid_t
+
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#undef inline
+#endif
+
+/* Define to the type of a signed integer type of width exactly 32 bits if
+   such a type exists and the standard includes do not define it. */
+#undef int32_t
+
+/* Define to the type of a signed integer type of width exactly 64 bits if
+   such a type exists and the standard includes do not define it. */
+#undef int64_t
+
+/* Define to `int' if <sys/types.h> does not define. */
+#undef mode_t
+
+/* Define to `long int' if <sys/types.h> does not define. */
+#undef off_t
+
+/* Define to `int' if <sys/types.h> does not define. */
+#undef pid_t
+
+/* Define to `unsigned int' if <sys/types.h> does not define. */
+#undef size_t
+
+/* Define to `int' if <sys/types.h> does not define. */
+#undef ssize_t
+
+/* Define to `int' if <sys/types.h> doesn't define. */
+#undef uid_t
+
+/* Define to the type of an unsigned integer type of width exactly 16 bits if
+   such a type exists and the standard includes do not define it. */
+#undef uint16_t
+
+/* Define to the type of an unsigned integer type of width exactly 32 bits if
+   such a type exists and the standard includes do not define it. */
+#undef uint32_t
+
+/* Define to the type of an unsigned integer type of width exactly 64 bits if
+   such a type exists and the standard includes do not define it. */
+#undef uint64_t
+
+/* Define as `fork' if `vfork' does not work. */
+#undef vfork
