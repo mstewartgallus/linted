@@ -18,7 +18,6 @@ with System.Storage_Elements;
 with System;
 
 with Linted.Reader;
-with Linted.Triggers;
 with Linted.Queues;
 with Linted.Wait_Lists;
 

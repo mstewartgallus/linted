@@ -1,4 +1,4 @@
--- Copyright 2015,2016 Steven Stewart-Gallus
+-- Copyright 2015,2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -41,11 +41,9 @@ package body Linted.Simulator with
 
    package Timer_Event_Channels is new Linted.Channels (Tick_Event);
 
-   procedure On_Update_Written (E : Errors.Error);
    procedure On_Tick;
    task Main_Task;
 
-   package My_Update_Writer is new Update_Writer.Worker (On_Update_Written);
    package My_Timer is new Timer.Worker (On_Tick);
 
    package My_Trigger is new Triggers.Handle;
@@ -76,6 +74,11 @@ package body Linted.Simulator with
 
       Read_Future : Controls_Reader.Future;
       Read_Future_Live : Boolean := False;
+
+      Write_Future : Update_Writer.Future;
+      Write_Future_Live : Boolean := False;
+
+      Update_Pending : Boolean := False;
    begin
       if Command_Line.Argument_Count < 2 then
          raise Constraint_Error with "At least two arguments";
@@ -134,47 +137,61 @@ package body Linted.Simulator with
             end;
          end if;
 
+         if Write_Future_Live then
+            declare
+               Err : Errors.Error;
+               Init : Boolean;
+            begin
+               Update_Writer.Write_Poll (Write_Future, Err, Init);
+               if Init then
+                  Write_Future_Live := False;
+               end if;
+            end;
+         end if;
+
          declare
             Option_Event : Timer_Event_Channels.Option_Element_Ts.Option;
          begin
             Timer_Event_Channels.Poll (Timer_Event_Channel, Option_Event);
             if not Option_Event.Empty then
                Simulate.Tick (My_State);
-               My_Update_Writer.Write
-                 (Updater_KO,
-                  (X_Position =>
-                     Update.Int (My_State.Objects (0) (Types.X).Value),
-                   Y_Position =>
-                     Update.Int (My_State.Objects (0) (Types.Y).Value),
-                   Z_Position =>
-                     Update.Int (My_State.Objects (0) (Types.Z).Value),
-
-                   MX_Position =>
-                     Update.Int (My_State.Objects (1) (Types.X).Value),
-                   MY_Position =>
-                     Update.Int (My_State.Objects (1) (Types.Y).Value),
-                   MZ_Position =>
-                     Update.Int (My_State.Objects (1) (Types.Z).Value),
-
-                   Z_Rotation =>
-                     Update.Nat
-                       (Types.Sim_Angles.From_Angle (My_State.Z_Rotation)),
-                   X_Rotation =>
-                     Update.Nat
-                       (Types.Sim_Angles.From_Angle (My_State.X_Rotation))));
-
+               Update_Pending := True;
                Next_Time :=
                  Next_Time + Real_Time.Nanoseconds ((1000000000 / 60) / 2);
                My_Timer.Wait_Until (Next_Time);
             end if;
          end;
+
+         if Update_Pending and not Write_Future_Live then
+            Update_Writer.Write
+              (Updater_KO,
+               (X_Position =>
+                  Update.Int (My_State.Objects (0) (Types.X).Value),
+                Y_Position =>
+                  Update.Int (My_State.Objects (0) (Types.Y).Value),
+                Z_Position =>
+                  Update.Int (My_State.Objects (0) (Types.Z).Value),
+
+                MX_Position =>
+                  Update.Int (My_State.Objects (1) (Types.X).Value),
+                MY_Position =>
+                  Update.Int (My_State.Objects (1) (Types.Y).Value),
+                MZ_Position =>
+                  Update.Int (My_State.Objects (1) (Types.Z).Value),
+
+                Z_Rotation =>
+                  Update.Nat
+                    (Types.Sim_Angles.From_Angle (My_State.Z_Rotation)),
+                X_Rotation =>
+                  Update.Nat
+                    (Types.Sim_Angles.From_Angle (My_State.X_Rotation))),
+               My_Trigger.Signal_Handle,
+               Write_Future);
+            Write_Future_Live := True;
+            Update_Pending := False;
+         end if;
       end loop;
    end Main_Task;
-
-   procedure On_Update_Written (E : Errors.Error) is
-   begin
-      null;
-   end On_Update_Written;
 
    procedure On_Tick is
       T : Tick_Event;

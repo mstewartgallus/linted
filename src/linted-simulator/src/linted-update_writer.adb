@@ -17,11 +17,12 @@ with Interfaces.C;
 with System;
 with System.Storage_Elements;
 
-with Linted.Channels;
 with Linted.Writer;
-with Linted.Triggers;
+with Linted.Queues;
+with Linted.Wait_Lists;
 
-package body Linted.Update_Writer is
+package body Linted.Update_Writer with
+     Spark_Mode => Off is
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -30,89 +31,74 @@ package body Linted.Update_Writer is
    use type C.size_t;
    use type Errors.Error;
 
-   type Write_Command is record
-      Object : KOs.KO;
-      Data : Update.Packet;
-   end record;
+   Max_Nodes : constant := 1;
 
-   package Write_Command_Channels is new Linted.Channels (Write_Command);
+   Write_Futures : array (Future range 1 .. Max_Nodes) of Writer.Future;
+   Data_Being_Written : array
+   (Future range 1 .. Max_Nodes) of aliased Update.Storage :=
+     (others => (others => 16#7F#));
 
-   package body Worker with
-        Spark_Mode => Off is
+   package Future_Queues is new Queues (Future, Max_Nodes);
 
-      task Writer_Task;
+   Spare_Futures : Future_Queues.Queue;
+   Future_Wait_List : Wait_Lists.Wait_List;
 
-      package My_Trigger is new Triggers.Handle;
+   function Is_Live (F : Future) return Boolean is (F /= 0);
 
-      Write_Command_Channel : Write_Command_Channels.Channel;
+   procedure Write
+     (Object : KOs.KO;
+      U : Update.Packet;
+      Signaller : Triggers.Signaller;
+      F : out Future)
+   is
+      Init : Boolean;
+   begin
+      loop
+         Future_Queues.Try_Dequeue (Spare_Futures, F, Init);
+         if Init then
+            exit;
+         end if;
+         Wait_Lists.Wait (Future_Wait_List);
+      end loop;
+      Update.To_Storage (U, Data_Being_Written (F));
+      Writer.Write
+        (Object,
+         Data_Being_Written (F) (1)'Address,
+         Update.Storage_Size,
+         Signaller,
+         Write_Futures (F));
+   end Write;
 
-      Data_Being_Written : aliased Update.Storage;
+   procedure Write_Wait (F : in out Future; E : out Errors.Error) is
+      W_Event : Writer.Event;
+   begin
+      Writer.Write_Wait (Write_Futures (F), W_Event);
+      E := W_Event.Err;
+      Future_Queues.Enqueue (Spare_Futures, F);
+      Wait_Lists.Signal (Future_Wait_List);
+      F := 0;
+   end Write_Wait;
 
-      procedure Write (Object : KOs.KO; Data : Update.Packet) is
-      begin
-         Write_Command_Channels.Push (Write_Command_Channel, (Object, Data));
-         Triggers.Signal (My_Trigger.Signal_Handle);
-      end Write;
+   procedure Write_Poll
+     (F : in out Future;
+      E : out Errors.Error;
+      Init : out Boolean)
+   is
+      W_Event : Writer.Event;
+   begin
+      Writer.Write_Poll (Write_Futures (F), W_Event, Init);
+      if Init then
+         E := W_Event.Err;
+         Future_Queues.Enqueue (Spare_Futures, F);
+         Wait_Lists.Signal (Future_Wait_List);
+         F := 0;
+      else
+         E := Errors.Success;
+      end if;
+   end Write_Poll;
 
-      task body Writer_Task is
-         Err : Errors.Error;
-         Pending_Update : Update.Packet;
-         Object : KOs.KO;
-         Update_Pending : Boolean := False;
-         Update_In_Progress : Boolean := False;
-         Write_Future : Writer.Future;
-         Write_Future_Live : Boolean := False;
-      begin
-         loop
-            Triggers.Wait (My_Trigger.Wait_Handle);
-
-            if Write_Future_Live then
-               declare
-                  Event : Writer.Event;
-                  Init : Boolean;
-               begin
-                  Writer.Write_Poll (Write_Future, Event, Init);
-                  if Init then
-                     Write_Future_Live := False;
-                     Err := Event.Err;
-
-                     Update_In_Progress := False;
-
-                     On_Event (Err);
-                  end if;
-               end;
-            end if;
-
-            declare
-               Option_Command : Write_Command_Channels.Option_Element_Ts
-                 .Option;
-            begin
-               Write_Command_Channels.Poll
-                 (Write_Command_Channel,
-                  Option_Command);
-               if not Option_Command.Empty then
-                  Object := Option_Command.Data.Object;
-                  Pending_Update := Option_Command.Data.Data;
-                  Update_Pending := True;
-               end if;
-            end;
-
-            if not Write_Future_Live and
-              Update_Pending and
-              not Update_In_Progress
-            then
-               Update.To_Storage (Pending_Update, Data_Being_Written);
-               Writer.Write
-                 (Object,
-                  Data_Being_Written (1)'Address,
-                  Data_Being_Written'Size / C.char'Size,
-                  My_Trigger.Signal_Handle,
-                  Write_Future);
-               Update_In_Progress := True;
-               Update_Pending := False;
-               Write_Future_Live := True;
-            end if;
-         end loop;
-      end Writer_Task;
-   end Worker;
+begin
+   for II in 1 .. Max_Nodes loop
+      Future_Queues.Enqueue (Spare_Futures, Future (II));
+   end loop;
 end Linted.Update_Writer;
