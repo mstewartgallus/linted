@@ -11,8 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Text_IO;
-
 with Interfaces;
 with Interfaces.C;
 
@@ -103,7 +101,6 @@ package body Linted.Update_Writer is
               Update_Pending and
               not Update_In_Progress
             then
-               Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error, "Write");
                Update.To_Storage (Pending_Update, Data_Being_Written);
                Writer.Write
                  (Object,

@@ -17,8 +17,8 @@ with System.Storage_Elements;
 with System;
 
 with Linted.Reader;
-with Linted.MVars;
-with Linted.Triggers;
+with Linted.Queues;
+with Linted.Wait_Lists;
 
 package body Linted.Update_Reader with
      Spark_Mode => Off is
@@ -33,72 +33,93 @@ package body Linted.Update_Reader with
    use type Storage_Elements.Storage_Offset;
    use type Errors.Error;
 
-   package Command_MVars is new MVars (KOs.KO);
+   Max_Nodes : constant := 1;
 
-   package body Worker is
-      task Reader_Task;
+   Read_Futures : array (Future range 1 .. Max_Nodes) of Reader.Future;
+   Data_Being_Read : array
+   (Future range 1 .. Max_Nodes) of aliased Update.Storage :=
+     (others => (others => 16#7F#));
 
-      package My_Trigger is new Triggers.Handle;
+   package Future_Queues is new Queues (Future, Max_Nodes);
 
-      Data_Being_Read : aliased Update.Storage;
-      My_Command_MVar : Command_MVars.MVar;
+   Spare_Futures : Future_Queues.Queue;
+   Future_Wait_List : Wait_Lists.Wait_List;
 
-      procedure Start (Object : KOs.KO) is
+   function Is_Live (F : Future) return Boolean is (F /= 0);
+
+   procedure Read
+     (Object : KOs.KO;
+      Signaller : Triggers.Signaller;
+      F : out Future)
+   is
+      Init : Boolean;
+   begin
+      loop
+         Future_Queues.Try_Dequeue (Spare_Futures, F, Init);
+         if Init then
+            exit;
+         end if;
+         Wait_Lists.Wait (Future_Wait_List);
+      end loop;
+
+      Reader.Read
+        (Object,
+         Data_Being_Read (F) (1)'Address,
+         Update.Storage_Size,
+         Signaller,
+         Read_Futures (F));
+   end Read;
+
+   procedure Read_Wait (F : in out Future; E : out Event) is
+      R_Event : Reader.Event;
+   begin
+      Reader.Read_Wait (Read_Futures (F), R_Event);
+      declare
+         N_Event : Event;
       begin
-         Command_MVars.Set (My_Command_MVar, Object);
-         Triggers.Signal (My_Trigger.Signal_Handle);
-      end Start;
+         N_Event.Err := R_Event.Err;
+         if N_Event.Err = Errors.Success then
+            Update.From_Storage (Data_Being_Read (F), N_Event.Data);
+         end if;
+         E := N_Event;
+      end;
+      Future_Queues.Enqueue (Spare_Futures, F);
+      Wait_Lists.Signal (Future_Wait_List);
+      F := 0;
+   end Read_Wait;
 
-      task body Reader_Task is
-         Err : Errors.Error;
-         U : Update.Packet;
-         Object : KOs.KO;
-         Object_Initialized : Boolean := False;
-	 Read_Future_Has_Value : Boolean := False;
-	 Read_Future : Reader.Future;
-      begin
-         loop
-	    Triggers.Wait (My_Trigger.Wait_Handle);
+   procedure Read_Poll
+     (F : in out Future;
+      E : out Event;
+      Init : out Boolean)
+   is
+      R_Event : Reader.Event;
+   begin
+      Reader.Read_Poll (Read_Futures (F), R_Event, Init);
+      if Init then
+         declare
+            N_Event : Event;
+         begin
+            N_Event.Err := R_Event.Err;
 
-            declare
-               New_Command : Command_MVars.Option_Element_Ts.Option;
-            begin
-               Command_MVars.Poll (My_Command_MVar, New_Command);
-               if not New_Command.Empty then
-                  Object := New_Command.Data;
-                  Object_Initialized := True;
-               end if;
-            end;
-
-	    if Read_Future_Has_Value then
-	       declare
-		  Init : Boolean;
-		  My_Event : Reader.Event;
-	       begin
-		  Reader.Read_Poll (Read_Future, My_Event, Init);
-		  if Init then
-		     Read_Future_Has_Value := False;
-		     Err := My_Event.Err;
-		     if Err = Errors.Success then
-			Update.From_Storage (Data_Being_Read, U);
-		     end if;
-
-		     On_Event ((U, Err));
-		  end if;
-	       end;
-	    end if;
-
-            if not Read_Future_Has_Value and Object_Initialized then
-               Reader.Read
-                 (Object,
-                  Data_Being_Read (1)'Address,
-                  Data_Being_Read'Size / Interfaces.C.char'Size,
-		  My_Trigger.Signal_Handle,
-		  Read_Future);
-	       Read_Future_Has_Value := True;
+            if N_Event.Err = Errors.Success then
+               Update.From_Storage (Data_Being_Read (F), N_Event.Data);
             end if;
-         end loop;
-      end Reader_Task;
-   end Worker;
-
+            E := N_Event;
+         end;
+         Future_Queues.Enqueue (Spare_Futures, F);
+         Wait_Lists.Signal (Future_Wait_List);
+         F := 0;
+      else
+         declare
+            Dummy : Event;
+         begin
+            E := Dummy;
+         end;
+      end if;
+   end Read_Poll;
+begin
+   for II in 1 .. Max_Nodes loop
+      Future_Queues.Enqueue (Spare_Futures, Future (II));
+   end loop;
 end Linted.Update_Reader;

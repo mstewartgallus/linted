@@ -54,18 +54,14 @@ package body Linted.Drawer with
    end record;
 
    procedure On_New_Window;
-   procedure On_Update_Event (E : Update_Reader.Event);
 
    package Notifier is new Window_Notifier.Worker (On_New_Window);
-   package My_Update_Reader is new Update_Reader.Worker (On_Update_Event);
 
-   package Update_Event_Channels is new Channels (Update_Reader.Event);
    package Notifier_Event_Channels is new Channels (Notifier_Event);
 
    task Main_Task;
 
    package My_Trigger is new Triggers.Handle;
-   Update_Event_Channel : Update_Event_Channels.Channel;
    Notifier_Event_Channel : Notifier_Event_Channels.Channel;
 
    Window_Opts : aliased array (1 .. 2) of aliased Libc.Stdint.uint32_t :=
@@ -94,6 +90,9 @@ package body Linted.Drawer with
 
       Poll_Future : Poller.Future;
       Poll_Future_Live : Boolean := True;
+
+      Read_Future : Update_Reader.Future;
+      Read_Future_Live : Boolean := True;
    begin
       if Command_Line.Argument_Count < 3 then
          raise Constraint_Error with "At least three arguments";
@@ -160,52 +159,62 @@ package body Linted.Drawer with
          My_Trigger.Signal_Handle,
          Poll_Future);
       Poll_Future_Live := True;
-      My_Update_Reader.Start (Updater_KO);
+
+      Update_Reader.Read (Updater_KO, My_Trigger.Signal_Handle, Read_Future);
+      Read_Future_Live := True;
 
       Get_New_Window (Window_KO, Connection, Context, Window);
       Logs.Log (Logs.Info, "Window: " & Windows.Window'Image (Window));
       loop
          Triggers.Wait (My_Trigger.Wait_Handle);
 
-         declare
-            Option_Event : Update_Event_Channels.Option_Element_Ts.Option;
-         begin
-            Update_Event_Channels.Poll (Update_Event_Channel, Option_Event);
-            if not Option_Event.Empty then
-               declare
-                  GPU_Update : aliased GPU.Update;
-               begin
-                  GPU_Update.X_Position :=
-                    C.C_float (Option_Event.Data.Data.X_Position) *
-                    (1.0 / 4096.0);
-                  GPU_Update.Y_Position :=
-                    C.C_float (Option_Event.Data.Data.Y_Position) *
-                    (1.0 / 4096.0);
-                  GPU_Update.Z_Position :=
-                    C.C_float (Option_Event.Data.Data.Z_Position) *
-                    (1.0 / 4096.0);
-                  GPU_Update.MX_Position :=
-                    C.C_float (Option_Event.Data.Data.MX_Position) *
-                    (1.0 / 4096.0);
-                  GPU_Update.MY_Position :=
-                    C.C_float (Option_Event.Data.Data.MY_Position) *
-                    (1.0 / 4096.0);
-                  GPU_Update.MZ_Position :=
-                    C.C_float (Option_Event.Data.Data.MZ_Position) *
-                    (1.0 / 4096.0);
-                  GPU_Update.Z_Rotation :=
-                    C.C_float (Option_Event.Data.Data.Z_Rotation) *
-                    (6.28318530717958647692528 /
-                     (C.C_float (Update.Nat'Last) + 1.0));
-                  GPU_Update.X_Rotation :=
-                    C.C_float (Option_Event.Data.Data.X_Rotation) *
-                    (6.28318530717958647692528 /
-                     (C.C_float (Update.Nat'Last) + 1.0));
+         if Read_Future_Live then
+            declare
+               Read_Event : Update_Reader.Event;
+               Init : Boolean;
+            begin
+               Update_Reader.Read_Poll (Read_Future, Read_Event, Init);
+               if Init then
+                  Read_Future_Live := False;
+                  declare
+                     GPU_Update : aliased GPU.Update;
+                  begin
+                     GPU_Update.X_Position :=
+                       C.C_float (Read_Event.Data.X_Position) * (1.0 / 4096.0);
+                     GPU_Update.Y_Position :=
+                       C.C_float (Read_Event.Data.Y_Position) * (1.0 / 4096.0);
+                     GPU_Update.Z_Position :=
+                       C.C_float (Read_Event.Data.Z_Position) * (1.0 / 4096.0);
+                     GPU_Update.MX_Position :=
+                       C.C_float (Read_Event.Data.MX_Position) *
+                       (1.0 / 4096.0);
+                     GPU_Update.MY_Position :=
+                       C.C_float (Read_Event.Data.MY_Position) *
+                       (1.0 / 4096.0);
+                     GPU_Update.MZ_Position :=
+                       C.C_float (Read_Event.Data.MZ_Position) *
+                       (1.0 / 4096.0);
+                     GPU_Update.Z_Rotation :=
+                       C.C_float (Read_Event.Data.Z_Rotation) *
+                       (6.28318530717958647692528 /
+                        (C.C_float (Update.Nat'Last) + 1.0));
+                     GPU_Update.X_Rotation :=
+                       C.C_float (Read_Event.Data.X_Rotation) *
+                       (6.28318530717958647692528 /
+                        (C.C_float (Update.Nat'Last) + 1.0));
 
-                  GPU.Update_State (Context, GPU_Update'Unchecked_Access);
-               end;
-            end if;
-         end;
+                     GPU.Update_State (Context, GPU_Update'Unchecked_Access);
+                  end;
+
+                  Update_Reader.Read
+                    (Updater_KO,
+                     My_Trigger.Signal_Handle,
+                     Read_Future);
+                  Read_Future_Live := True;
+               end if;
+            end;
+         end if;
+
          declare
             Option_Event : Notifier_Event_Channels.Option_Element_Ts.Option;
             Ck : XCB.xcb_void_cookie_t;
@@ -317,12 +326,6 @@ package body Linted.Drawer with
          end if;
       end loop;
    end Main_Task;
-
-   procedure On_Update_Event (E : Update_Reader.Event) is
-   begin
-      Update_Event_Channels.Push (Update_Event_Channel, E);
-      Triggers.Signal (My_Trigger.Signal_Handle);
-   end On_Update_Event;
 
    procedure On_New_Window is
    begin
