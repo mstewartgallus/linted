@@ -22,7 +22,6 @@ with XCB.XProto;
 
 with Libc.Stdint;
 
-with Linted.Channels;
 with Linted.Env;
 with Linted.Errors;
 with Linted.GPU;
@@ -49,20 +48,9 @@ package body Linted.Drawer with
    use type C.unsigned_char;
    use type C.C_float;
 
-   type Notifier_Event is record
-      null;
-   end record;
-
-   procedure On_New_Window;
-
-   package Notifier is new Window_Notifier.Worker (On_New_Window);
-
-   package Notifier_Event_Channels is new Channels (Notifier_Event);
-
    task Main_Task;
 
    package My_Trigger is new Triggers.Handle;
-   Notifier_Event_Channel : Notifier_Event_Channels.Channel;
 
    Window_Opts : aliased array (1 .. 2) of aliased Libc.Stdint.uint32_t :=
      (XCB.XProto.XCB_EVENT_MASK_STRUCTURE_NOTIFY, 0);
@@ -89,10 +77,13 @@ package body Linted.Drawer with
       Window : Windows.Window;
 
       Poll_Future : Poller.Future;
-      Poll_Future_Live : Boolean := True;
+      Poll_Future_Live : Boolean := False;
 
       Read_Future : Update_Reader.Future;
-      Read_Future_Live : Boolean := True;
+      Read_Future_Live : Boolean := False;
+
+      Window_Future : Window_Notifier.Future;
+      Window_Future_Live : Boolean := False;
    begin
       if Command_Line.Argument_Count < 3 then
          raise Constraint_Error with "At least three arguments";
@@ -151,7 +142,11 @@ package body Linted.Drawer with
          raise Program_Error with Errors.To_String (Err);
       end if;
 
-      Notifier.Start (Window_Notifier_KO);
+      Window_Notifier.Read
+        (Window_Notifier_KO,
+         My_Trigger.Signal_Handle,
+         Window_Future);
+      Window_Future_Live := True;
 
       Poller.Poll
         (KOs.KO (XCB.xcb_get_file_descriptor (Connection)),
@@ -215,38 +210,46 @@ package body Linted.Drawer with
             end;
          end if;
 
-         declare
-            Option_Event : Notifier_Event_Channels.Option_Element_Ts.Option;
-            Ck : XCB.xcb_void_cookie_t;
-            X : C.int;
-            No_Opts : aliased array (1 .. 2) of aliased Libc.Stdint.uint32_t :=
-              (0, 0);
-         begin
-            Notifier_Event_Channels.Poll
-              (Notifier_Event_Channel,
-               Option_Event);
-            if not Option_Event.Empty then
-               Ck :=
-                 XCB.XProto.xcb_change_window_attributes
-                   (Connection,
-                    XCB.XProto.xcb_window_t (Window),
-                    Libc.Stdint.uint32_t (XCB.XProto.XCB_CW_EVENT_MASK),
-                    No_Opts (1)'Unchecked_Access);
+         if Window_Future_Live then
+            declare
+               Ck : XCB.xcb_void_cookie_t;
+               X : C.int;
+               No_Opts : aliased array
+               (1 .. 2) of aliased Libc.Stdint.uint32_t :=
+                 (0, 0);
+               Init : Boolean;
+            begin
+               Window_Notifier.Read_Poll (Window_Future, Init);
+               if Init then
+                  Window_Future_Live := False;
+                  Ck :=
+                    XCB.XProto.xcb_change_window_attributes
+                      (Connection,
+                       XCB.XProto.xcb_window_t (Window),
+                       Libc.Stdint.uint32_t (XCB.XProto.XCB_CW_EVENT_MASK),
+                       No_Opts (1)'Unchecked_Access);
 
-               Err := XCB_Conn_Error (Connection);
-               if Err /= 0 then
-                  raise Program_Error with Errors.To_String (Err);
+                  Err := XCB_Conn_Error (Connection);
+                  if Err /= 0 then
+                     raise Program_Error with Errors.To_String (Err);
+                  end if;
+
+                  X := XCB.xcb_flush (Connection);
+
+                  Get_New_Window (Window_KO, Connection, Context, Window);
+                  Logs.Log
+                    (Logs.Info,
+                     "Window: " & Windows.Window'Image (Window));
+                  X := XCB.xcb_flush (Connection);
+
+                  Window_Notifier.Read
+                    (Window_Notifier_KO,
+                     My_Trigger.Signal_Handle,
+                     Window_Future);
+                  Window_Future_Live := True;
                end if;
-
-               X := XCB.xcb_flush (Connection);
-
-               Get_New_Window (Window_KO, Connection, Context, Window);
-               Logs.Log
-                 (Logs.Info,
-                  "Window: " & Windows.Window'Image (Window));
-               X := XCB.xcb_flush (Connection);
-            end if;
-         end;
+            end;
+         end if;
 
          if Poll_Future_Live then
             declare
@@ -326,16 +329,6 @@ package body Linted.Drawer with
          end if;
       end loop;
    end Main_Task;
-
-   procedure On_New_Window is
-   begin
-      declare
-         Event : Notifier_Event;
-      begin
-         Notifier_Event_Channels.Push (Notifier_Event_Channel, Event);
-      end;
-      Triggers.Signal (My_Trigger.Signal_Handle);
-   end On_New_Window;
 
    function Read_Window (Object : KOs.KO) return Windows.Window is
       Bytes : C.size_t;

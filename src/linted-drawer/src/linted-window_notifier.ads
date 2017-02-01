@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -12,14 +12,31 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Linted.KOs;
+with Linted.Triggers;
 
 package Linted.Window_Notifier with
-     Spark_Mode => Off is
+     Spark_Mode is
    pragma Elaborate_Body;
 
-   generic
-      with procedure On_New_Window;
-   package Worker is
-      procedure Start (Object : KOs.KO);
-   end Worker;
+   type Future is limited private;
+
+   function Is_Live (F : Future) return Boolean;
+
+   procedure Read
+     (Object : KOs.KO;
+      Signaller : Triggers.Signaller;
+      F : out Future) with
+      Post => Is_Live (F);
+
+   procedure Read_Wait (F : in out Future) with
+      Pre => Is_Live (F),
+      Post => not Is_Live (F);
+
+   procedure Read_Poll (F : in out Future; Init : out Boolean) with
+      Pre => Is_Live (F),
+      Post => (if Init then not Is_Live (F) else Is_Live (F));
+
+private
+   type Future is new Natural with
+        Default_Value => 0;
 end Linted.Window_Notifier;

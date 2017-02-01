@@ -16,8 +16,7 @@ with Linted.KOs;
 with Linted.Update;
 with Linted.Triggers;
 
-package Linted.Update_Reader with
-     Spark_Mode => Off is
+package Linted.Update_Reader is
    pragma Elaborate_Body;
 
    type Event is record

@@ -18,9 +18,9 @@ with System;
 with System.Storage_Elements;
 
 with Linted.Errors;
-with Linted.MVars;
 with Linted.Reader;
-with Linted.Triggers;
+with Linted.Queues;
+with Linted.Wait_Lists;
 
 package body Linted.Window_Notifier with
      Spark_Mode => Off is
@@ -35,67 +35,67 @@ package body Linted.Window_Notifier with
    use type Storage_Elements.Storage_Offset;
    use type Errors.Error;
 
-   package Command_MVars is new MVars (KOs.KO);
+   Max_Nodes : constant := 1;
 
-   package body Worker is
-      task Reader_Task;
+   Read_Futures : array (Future range 1 .. Max_Nodes) of Reader.Future;
+   Data_Being_Read : array
+   (Future range
+      1 ..
+        Max_Nodes) of aliased Storage_Elements.Storage_Array (1 .. 1) :=
+     (others => (others => 16#7F#));
 
-      package My_Trigger is new Triggers.Handle;
+   package Future_Queues is new Queues (Future, Max_Nodes);
 
-      My_Command_MVar : Command_MVars.MVar;
+   Spare_Futures : Future_Queues.Queue;
+   Future_Wait_List : Wait_Lists.Wait_List;
+   function Is_Live (F : Future) return Boolean is (F /= 0);
 
-      Data_Being_Read : aliased Storage_Elements.Storage_Array (1 .. 1);
+   procedure Read
+     (Object : KOs.KO;
+      Signaller : Triggers.Signaller;
+      F : out Future)
+   is
+      Init : Boolean;
+   begin
+      loop
+         Future_Queues.Try_Dequeue (Spare_Futures, F, Init);
+         if Init then
+            exit;
+         end if;
+         Wait_Lists.Wait (Future_Wait_List);
+      end loop;
 
-      procedure Start (Object : KOs.KO) is
-      begin
-         Command_MVars.Set (My_Command_MVar, Object);
-         Triggers.Signal (My_Trigger.Signal_Handle);
-      end Start;
+      Reader.Read
+        (Object,
+         Data_Being_Read (F) (1)'Address,
+         1,
+         Signaller,
+         Read_Futures (F));
+   end Read;
 
-      task body Reader_Task is
-         Err : Errors.Error;
-         Object : KOs.KO;
-         Object_Initialized : Boolean := False;
-	 Read_Future : Reader.Future;
-	 Read_Future_Live : Boolean := False;
-      begin
-         loop
-	    Triggers.Wait (My_Trigger.Wait_Handle);
+   procedure Read_Wait (F : in out Future) is
+      R_Event : Reader.Event;
+   begin
+      Reader.Read_Wait (Read_Futures (F), R_Event);
+      pragma Assert (R_Event.Err = Errors.Success);
+      Future_Queues.Enqueue (Spare_Futures, F);
+      Wait_Lists.Signal (Future_Wait_List);
+      F := 0;
+   end Read_Wait;
 
-            declare
-               New_Command : Command_MVars.Option_Element_Ts.Option;
-            begin
-               Command_MVars.Poll (My_Command_MVar, New_Command);
-               if not New_Command.Empty then
-                  Object := New_Command.Data;
-                  Object_Initialized := True;
-               end if;
-            end;
-
-	    if Read_Future_Live then
-	       declare
-		  Event : Reader.Event;
-		  Init : Boolean;
-	       begin
-		  Reader.Read_Poll (Read_Future, Event, Init);
-		  if Init then
-		     Read_Future_Live := False;
-		     Err := Event.Err;
-		     On_New_Window;
-		  end if;
-	       end;
-	    end if;
-
-            if not Read_Future_Live and Object_Initialized then
-               Reader.Read
-                 (Object,
-                  Data_Being_Read (1)'Address,
-                  Data_Being_Read'Size / Interfaces.C.char'Size,
-		  My_Trigger.Signal_Handle,
-		  Read_Future);
-	       Read_Future_Live := True;
-            end if;
-         end loop;
-      end Reader_Task;
-   end Worker;
+   procedure Read_Poll (F : in out Future; Init : out Boolean) is
+      R_Event : Reader.Event;
+   begin
+      Reader.Read_Poll (Read_Futures (F), R_Event, Init);
+      if Init then
+         pragma Assert (R_Event.Err = Errors.Success);
+         Future_Queues.Enqueue (Spare_Futures, F);
+         Wait_Lists.Signal (Future_Wait_List);
+         F := 0;
+      end if;
+   end Read_Poll;
+begin
+   for II in 1 .. Max_Nodes loop
+      Future_Queues.Enqueue (Spare_Futures, Future (II));
+   end loop;
 end Linted.Window_Notifier;
