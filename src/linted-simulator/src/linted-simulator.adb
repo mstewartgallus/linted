@@ -13,7 +13,6 @@
 -- permissions and limitations under the License.
 private with Ada.Command_Line;
 private with Ada.Real_Time;
-private with Ada.Synchronous_Task_Control;
 
 private with Linted.Channels;
 private with Linted.Controls_Reader;
@@ -23,6 +22,7 @@ private with Linted.Timer;
 private with Linted.Update_Writer;
 private with Linted.Update;
 private with Linted.Simulate;
+private with Linted.Triggers;
 private with Linted.Types;
 
 package body Linted.Simulator with
@@ -30,7 +30,6 @@ package body Linted.Simulator with
 
    package Command_Line renames Ada.Command_Line;
    package Real_Time renames Ada.Real_Time;
-   package STC renames Ada.Synchronous_Task_Control;
 
    use type Errors.Error;
    use type Types.Int;
@@ -40,21 +39,16 @@ package body Linted.Simulator with
       null;
    end record;
 
-   package Control_Event_Channels is new Linted.Channels
-     (Linted.Controls_Reader.Event);
    package Timer_Event_Channels is new Linted.Channels (Tick_Event);
 
-   procedure On_Controls_Read (E : Controls_Reader.Event);
    procedure On_Update_Written (E : Errors.Error);
    procedure On_Tick;
    task Main_Task;
 
-   package My_Controls_Reader is new Controls_Reader.Worker (On_Controls_Read);
    package My_Update_Writer is new Update_Writer.Worker (On_Update_Written);
    package My_Timer is new Timer.Worker (On_Tick);
 
-   Event_Trigger : STC.Suspension_Object;
-   Control_Event_Channel : Control_Event_Channels.Channel;
+   package My_Trigger is new Triggers.Handle;
    Timer_Event_Channel : Timer_Event_Channels.Channel;
 
    task body Main_Task is
@@ -79,6 +73,9 @@ package body Linted.Simulator with
             Jumping => False),
          Counter => 750110405);
       Next_Time : Real_Time.Time;
+
+      Read_Future : Controls_Reader.Future;
+      Read_Future_Live : Boolean := False;
    begin
       if Command_Line.Argument_Count < 2 then
          raise Constraint_Error with "At least two arguments";
@@ -104,23 +101,38 @@ package body Linted.Simulator with
          Updater_KO := Maybe_Updater_KO.Data;
       end;
 
-      My_Controls_Reader.Start (Controller_KO);
+      Controls_Reader.Read
+        (Controller_KO,
+         My_Trigger.Signal_Handle,
+         Read_Future);
+      Read_Future_Live := True;
 
       Next_Time := Real_Time.Clock;
 
       My_Timer.Wait_Until (Next_Time);
 
       loop
-         STC.Suspend_Until_True (Event_Trigger);
+         Triggers.Wait (My_Trigger.Wait_Handle);
 
-         declare
-            Option_Event : Control_Event_Channels.Option_Element_Ts.Option;
-         begin
-            Control_Event_Channels.Poll (Control_Event_Channel, Option_Event);
-            if not Option_Event.Empty then
-               My_State.Controls := Option_Event.Data.Data;
-            end if;
-         end;
+         if Read_Future_Live then
+            declare
+               Event : Controls_Reader.Event;
+               Init : Boolean;
+            begin
+               Controls_Reader.Read_Poll (Read_Future, Event, Init);
+               if Init then
+                  Read_Future_Live := False;
+
+                  My_State.Controls := Event.Data;
+
+                  Controls_Reader.Read
+                    (Controller_KO,
+                     My_Trigger.Signal_Handle,
+                     Read_Future);
+                  Read_Future_Live := True;
+               end if;
+            end;
+         end if;
 
          declare
             Option_Event : Timer_Event_Channels.Option_Element_Ts.Option;
@@ -159,12 +171,6 @@ package body Linted.Simulator with
       end loop;
    end Main_Task;
 
-   procedure On_Controls_Read (E : Controls_Reader.Event) is
-   begin
-      Control_Event_Channels.Push (Control_Event_Channel, E);
-      STC.Set_True (Event_Trigger);
-   end On_Controls_Read;
-
    procedure On_Update_Written (E : Errors.Error) is
    begin
       null;
@@ -174,6 +180,6 @@ package body Linted.Simulator with
       T : Tick_Event;
    begin
       Timer_Event_Channels.Push (Timer_Event_Channel, T);
-      STC.Set_True (Event_Trigger);
+      Triggers.Signal (My_Trigger.Signal_Handle);
    end On_Tick;
 end Linted.Simulator;
