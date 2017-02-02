@@ -23,8 +23,7 @@ package body Linted.Queues with
 is
 
    type PElements_Array is array (Node_Access range <>) of Element_T;
-   type PTails_Array is array (Node_Access range <>) of Node_Access with
-        Atomic_Components;
+   type PTails_Array is array (Node_Access range <>) of Node_Access;
    type Booleans_Array is array (Node_Access range <>) of Boolean;
 
    PElements : PElements_Array (1 .. Node_Access (Max_Nodes_In_Flight));

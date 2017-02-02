@@ -20,9 +20,9 @@ package Linted.Queues with
    Abstract_State =>
    ((Spare_Nodes with External),
     (Triggers with External),
-    (Elements with External),
-    (Tails with External),
-    (In_Queues with External)) is
+    Elements,
+    Tails,
+    In_Queues) is
    pragma Elaborate_Body;
 
    type Node_Access is private;

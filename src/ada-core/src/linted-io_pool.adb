@@ -18,47 +18,9 @@ with Libc.Sys.Types;
 with Libc.Unistd;
 
 with Linted.Channels;
-with Linted.Queues;
-with Linted.Wait_Lists;
+with Linted.WQueues;
 
-package body Linted.IO_Pool with
-     Spark_Mode,
-     Refined_State =>
-     (Command_Queue => (My_Command_Queue, Command_Wait_List),
-      Event_Queue =>
-        (Read_Future_Channels, Write_Future_Channels, Poll_Future_Channels),
-      Various =>
-        (Worker_Tasks,
-         Command_Queues.Spare_Nodes,
-	 Command_Queues.Triggers,
-	 Command_Queues.Elements,
-	 Command_Queues.Tails,
-	 Command_Queues.In_Queues,
-
-	 Read_Future_Queues.Spare_Nodes,
-	 Read_Future_Queues.Triggers,
-	 Read_Future_Queues.Elements,
-	 Read_Future_Queues.Tails,
-	 Read_Future_Queues.In_Queues,
-
-	 Write_Future_Queues.Spare_Nodes,
-	 Write_Future_Queues.Triggers,
-	 Write_Future_Queues.Elements,
-	 Write_Future_Queues.Tails,
-	 Write_Future_Queues.In_Queues,
-
-	 Poll_Future_Queues.Spare_Nodes,
-	 Poll_Future_Queues.Triggers,
-	 Poll_Future_Queues.Elements,
-	 Poll_Future_Queues.Tails,
-	 Poll_Future_Queues.In_Queues,
-
-         Read_Future_Wait_List,
-         Write_Future_Wait_List,
-         Poll_Future_Wait_List),
-      Future_Pool =>
-        (Spare_Write_Futures, Spare_Read_Futures, Spare_Poll_Futures))
-is
+package body Linted.IO_Pool is
    Max_Read_Futures : constant := 32;
    Max_Write_Futures : constant := 32;
    Max_Poll_Futures : constant := 32;
@@ -111,34 +73,6 @@ is
       end case;
    end record;
 
-   Command_Wait_List : Wait_Lists.Wait_List;
-   task type Worker_Task with Global => (In_Out => (Command_Queues.Tails,
-						    Command_Queues.In_Queues,
-						    Command_Queues.Spare_Nodes,
-						    Command_Queues.Triggers,
-						    Command_Queues.Elements,
-						    Command_Wait_List,
-					 My_Command_Queue,
-					 Read_Future_Channels,
-					 Write_Future_Channels,
-						    Poll_Future_Channels
-						   )),
-     Depends => (Command_Wait_List => (My_Command_Queue, Command_Wait_List, Command_Queues.Tails, Command_Queues.Spare_Nodes),
-		 Command_Queues.Tails => (My_Command_Queue, Command_Queues.Tails, Command_Queues.Spare_Nodes),
-		 Command_Queues.In_Queues => (My_Command_Queue, Command_Queues.Tails, Command_Queues.In_Queues, Command_Queues.Spare_Nodes),
-		 Command_Queues.Spare_Nodes => (My_Command_Queue, Command_Queues.Spare_Nodes, Command_Queues.Tails),
-		 Command_Queues.Triggers => (My_Command_Queue, Command_Queues.Triggers, Command_Queues.Tails, Command_Queues.Spare_Nodes),
-		 Command_Queues.Elements => (My_Command_Queue, Command_Queues.Spare_Nodes, Command_Queues.Elements, Command_Queues.Tails),
-		 My_Command_Queue => (Command_Queues.Spare_Nodes, Command_Queues.Tails, My_Command_Queue),
-		 Read_Future_Channels => (Command_Queues.Spare_Nodes, Command_Queues.Elements, Read_Future_Channels, My_Command_Queue, Command_Queues.Tails),
-		 Write_Future_Channels => (Command_Queues.Spare_Nodes, Command_Queues.Elements, Write_Future_Channels, My_Command_Queue,  Command_Queues.Tails),
-		 Poll_Future_Channels => (Command_Queues.Spare_Nodes, Command_Queues.Elements, Poll_Future_Channels, My_Command_Queue, Command_Queues.Tails),
-		 Worker_Task'Result => Worker_Task,
-		 Worker_Task => null
-		);
-
-   Worker_Tasks : array (1 .. 16) of Worker_Task;
-
    package Writer_Event_Channels is new Channels (Writer_Event);
    package Reader_Event_Channels is new Channels (Reader_Event);
    package Poller_Event_Channels is new Channels (Poller_Event);
@@ -150,26 +84,13 @@ is
    type Poller_Future_Channels_Array is
      array (Poll_Future range <>) of Poller_Event_Channels.Channel;
 
-   Read_Future_Channels : Read_Future_Channels_Array (1 .. Max_Read_Futures);
-   Write_Future_Channels : Write_Future_Channels_Array
-   (1 .. Max_Write_Futures);
-   Poll_Future_Channels : Poller_Future_Channels_Array (1 .. Max_Poll_Futures);
+   package Read_Future_Queues is new WQueues (Read_Future, Max_Read_Futures);
+   package Write_Future_Queues is new WQueues
+     (Write_Future,
+      Max_Write_Futures);
+   package Poll_Future_Queues is new WQueues (Poll_Future, Max_Poll_Futures);
 
-   Read_Future_Wait_List : Wait_Lists.Wait_List;
-   Write_Future_Wait_List : Wait_Lists.Wait_List;
-   Poll_Future_Wait_List : Wait_Lists.Wait_List;
-
-   package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
-   package Write_Future_Queues is new Queues (Write_Future, Max_Write_Futures);
-   package Poll_Future_Queues is new Queues (Poll_Future, Max_Poll_Futures);
-
-   Spare_Read_Futures : Read_Future_Queues.Queue;
-   Spare_Write_Futures : Write_Future_Queues.Queue;
-   Spare_Poll_Futures : Poll_Future_Queues.Queue;
-
-   package Command_Queues is new Queues (Command, Max_Command_Queue_Capacity);
-
-   My_Command_Queue : Command_Queues.Queue;
+   package Command_Queues is new WQueues (Command, Max_Command_Queue_Capacity);
 
    procedure Do_Write (W : Write_Command) with
       Global => (In_Out => Write_Future_Channels),
@@ -181,6 +102,21 @@ is
       Global => (In_Out => Poll_Future_Channels),
       Depends => (Poll_Future_Channels => (P, Poll_Future_Channels));
 
+   task type Worker_Task;
+
+   Read_Future_Channels : Read_Future_Channels_Array (1 .. Max_Read_Futures);
+   Write_Future_Channels : Write_Future_Channels_Array
+   (1 .. Max_Write_Futures);
+   Poll_Future_Channels : Poller_Future_Channels_Array (1 .. Max_Poll_Futures);
+
+   Spare_Read_Futures : Read_Future_Queues.WQueue;
+   Spare_Write_Futures : Write_Future_Queues.WQueue;
+   Spare_Poll_Futures : Poll_Future_Queues.WQueue;
+
+   My_Command_Queue : Command_Queues.WQueue;
+
+   Worker_Tasks : array (1 .. 16) of Worker_Task;
+
    procedure Read
      (Object : KOs.KO;
       Buf : System.Address;
@@ -188,20 +124,11 @@ is
       Signaller : Triggers.Signaller;
       Future : out Read_Future)
    is
-      Init : Boolean;
    begin
-      loop
-         Read_Future_Queues.Try_Dequeue (Spare_Read_Futures, Future, Init);
-         if Init then
-            exit;
-         end if;
-         Wait_Lists.Wait (Read_Future_Wait_List);
-      end loop;
-
+      Read_Future_Queues.Dequeue (Spare_Read_Futures, Future);
       Command_Queues.Enqueue
         (My_Command_Queue,
          (Read_Type, (Object, Buf, Count, Future, Signaller)));
-      Wait_Lists.Signal (Command_Wait_List);
    end Read;
 
    procedure Read_Wait
@@ -211,7 +138,6 @@ is
    begin
       Reader_Event_Channels.Pop (Read_Future_Channels (Future), Event);
       Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
-      Wait_Lists.Signal (Read_Future_Wait_List);
       Future := 0;
    end Read_Wait;
 
@@ -225,11 +151,10 @@ is
    begin
       Reader_Event_Channels.Poll (Read_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
-	 Event := Dummy;
+         Event := Dummy;
          Init := False;
       else
          Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
-         Wait_Lists.Signal (Read_Future_Wait_List);
          Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
@@ -243,20 +168,11 @@ is
       Signaller : Triggers.Signaller;
       Future : out Write_Future)
    is
-      Init : Boolean;
    begin
-      loop
-         Write_Future_Queues.Try_Dequeue (Spare_Write_Futures, Future, Init);
-         if Init then
-            exit;
-         end if;
-         Wait_Lists.Wait (Write_Future_Wait_List);
-      end loop;
-
+      Write_Future_Queues.Dequeue (Spare_Write_Futures, Future);
       Command_Queues.Enqueue
         (My_Command_Queue,
          (Write_Type, (Object, Buf, Count, Future, Signaller)));
-      Wait_Lists.Signal (Command_Wait_List);
    end Write;
 
    procedure Write_Wait
@@ -266,7 +182,6 @@ is
    begin
       Writer_Event_Channels.Pop (Write_Future_Channels (Future), Event);
       Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
-      Wait_Lists.Signal (Write_Future_Wait_List);
       Future := 0;
    end Write_Wait;
 
@@ -280,11 +195,10 @@ is
    begin
       Writer_Event_Channels.Poll (Write_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
-	 Event := Dummy;
+         Event := Dummy;
          Init := False;
       else
          Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
-         Wait_Lists.Signal (Write_Future_Wait_List);
          Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
@@ -297,20 +211,11 @@ is
       Signaller : Triggers.Signaller;
       Future : out Poll_Future)
    is
-      Init : Boolean;
    begin
-      loop
-         Poll_Future_Queues.Try_Dequeue (Spare_Poll_Futures, Future, Init);
-         if Init then
-            exit;
-         end if;
-         Wait_Lists.Wait (Poll_Future_Wait_List);
-      end loop;
-
+      Poll_Future_Queues.Dequeue (Spare_Poll_Futures, Future);
       Command_Queues.Enqueue
         (My_Command_Queue,
          (Poll_Type, (Object, Events, Future, Signaller)));
-      Wait_Lists.Signal (Command_Wait_List);
    end Poll;
 
    procedure Poll_Wait
@@ -320,7 +225,6 @@ is
    begin
       Poller_Event_Channels.Pop (Poll_Future_Channels (Future), Event);
       Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
-      Wait_Lists.Signal (Poll_Future_Wait_List);
       Future := 0;
    end Poll_Wait;
 
@@ -334,11 +238,10 @@ is
    begin
       Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
-	 Event := Dummy;
+         Event := Dummy;
          Init := False;
       else
          Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
-         Wait_Lists.Signal (Poll_Future_Wait_List);
          Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
@@ -491,17 +394,9 @@ is
 
    task body Worker_Task is
       New_Command : Command;
-      Init : Boolean;
    begin
       loop
-         loop
-            Command_Queues.Try_Dequeue (My_Command_Queue, New_Command, Init);
-            if Init then
-               exit;
-            end if;
-            Wait_Lists.Wait (Command_Wait_List);
-         end loop;
-
+         Command_Queues.Dequeue (My_Command_Queue, New_Command);
          case New_Command.T is
             when Invalid_Type =>
                raise Program_Error;
