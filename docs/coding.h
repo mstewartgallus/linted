@@ -251,6 +251,8 @@ and hardware support.
 <li> [OWASP Secure Coding
 Principles](https://www.owasp.org/index.php/Secure_Coding_Principles)
 </li>
+<li> [NISTR 8151 Dramatically Reducing Software
+Vulnerabilities](http://nvlpubs.nist.gov/nistpubs/ir/2016/NIST.IR.8151.pdf)
 <li> [JPL Institutional Coding Standard for the C Programming
 Language](http://lars-lab.jpl.nasa.gov/JPL_Coding_Standard_C.pdf)
 </li>

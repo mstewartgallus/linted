@@ -18,31 +18,28 @@ with Libc.Sys.Types;
 with Libc.Unistd;
 
 with Linted.Channels;
-with Linted.Queues;
+with Linted.Circ_Bufs;
 with Linted.Wait_Lists;
 
 package body Linted.IO_Pool with
-     Spark_Mode => Off,
+     Spark_Mode,
      Refined_State =>
-     (Command_Queue => (My_Command_Queue, Command_Wait_List),
+  (Command_Queue => (My_Command_Queue,
+		     My_Command_Queue_Has_Free_Space,
+		     My_Command_Queue_Has_Contents),
       Event_Queue =>
         (Read_Future_Channels, Write_Future_Channels, Poll_Future_Channels),
       Various =>
         (Worker_Tasks,
-         Command_Queues.State,
-	 Command_Queues.Structure,
 
-	 Read_Future_Queues.State,
-	 Write_Future_Queues.State,
-	 Poll_Future_Queues.State,
+         Spare_Read_Futures_Has_Free_Space,
+	 Spare_Read_Futures_Has_Contents,
 
-	 Read_Future_Queues.Structure,
-	 Write_Future_Queues.Structure,
-	 Poll_Future_Queues.Structure,
+	 Spare_Write_Futures_Has_Free_Space,
+	 Spare_Write_Futures_Has_Contents,
 
-         Read_Future_Wait_List,
-         Write_Future_Wait_List,
-         Poll_Future_Wait_List),
+	 Spare_Poll_Futures_Has_Free_Space,
+	 Spare_Poll_Futures_Has_Contents),
       Future_Pool =>
         (Spare_Write_Futures, Spare_Read_Futures, Spare_Poll_Futures))
 is
@@ -98,22 +95,19 @@ is
       end case;
    end record;
 
-   Command_Wait_List : Wait_Lists.Wait_List;
-   task type Worker_Task with Global => (In_Out => (Command_Queues.State,
-						    Command_Queues.Structure,
-						    Command_Wait_List,
-					 My_Command_Queue,
+   task type Worker_Task with Global => (In_Out => (My_Command_Queue,
+						    My_Command_Queue_Has_Contents,
+						    My_Command_Queue_Has_Free_Space,
 					 Read_Future_Channels,
 					 Write_Future_Channels,
 						    Poll_Future_Channels
 						   )),
-     Depends => (Command_Wait_List => (My_Command_Queue, Command_Wait_List, Command_Queues.State, Command_Queues.Structure),
-		 Command_Queues.State => (My_Command_Queue, Command_Queues.State, Command_Queues.Structure),
-		 Command_Queues.Structure => (My_Command_Queue, Command_Queues.State, Command_Queues.Structure),
-		 My_Command_Queue => (Command_Queues.State, Command_Queues.Structure, My_Command_Queue),
-		 Read_Future_Channels => (Command_Queues.State, Command_Queues.Structure, Read_Future_Channels, My_Command_Queue),
-		 Write_Future_Channels => (Command_Queues.State, Command_Queues.Structure, Write_Future_Channels, My_Command_Queue),
-		 Poll_Future_Channels => (Command_Queues.State, Command_Queues.Structure, Poll_Future_Channels, My_Command_Queue),
+     Depends => (My_Command_Queue_Has_Contents => (My_Command_Queue, My_Command_Queue_Has_Contents),
+		 My_Command_Queue_Has_Free_Space => My_Command_Queue_Has_Free_Space,
+		 My_Command_Queue => (My_Command_Queue),
+		 Read_Future_Channels => (Read_Future_Channels, My_Command_Queue),
+		 Write_Future_Channels => (Write_Future_Channels, My_Command_Queue),
+		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue),
 		 Worker_Task'Result => Worker_Task,
 		 Worker_Task => null
 		);
@@ -132,25 +126,29 @@ is
      array (Poll_Future range <>) of Poller_Event_Channels.Channel;
 
    Read_Future_Channels : Read_Future_Channels_Array (1 .. Max_Read_Futures);
-   Write_Future_Channels : Write_Future_Channels_Array
-   (1 .. Max_Write_Futures);
+   Write_Future_Channels : Write_Future_Channels_Array (1 .. Max_Write_Futures);
    Poll_Future_Channels : Poller_Future_Channels_Array (1 .. Max_Poll_Futures);
 
-   Read_Future_Wait_List : Wait_Lists.Wait_List;
-   Write_Future_Wait_List : Wait_Lists.Wait_List;
-   Poll_Future_Wait_List : Wait_Lists.Wait_List;
+   package Read_Future_Queues is new Circ_Bufs (Read_Future, Max_Read_Futures);
+   package Write_Future_Queues is new Circ_Bufs (Write_Future, Max_Write_Futures);
+   package Poll_Future_Queues is new Circ_Bufs (Poll_Future, Max_Poll_Futures);
+   package Command_Queues is new Circ_Bufs (Command, Max_Command_Queue_Capacity);
 
-   package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
-   package Write_Future_Queues is new Queues (Write_Future, Max_Write_Futures);
-   package Poll_Future_Queues is new Queues (Poll_Future, Max_Poll_Futures);
+   Spare_Read_Futures : Read_Future_Queues.Circ_Buf;
+   Spare_Read_Futures_Has_Free_Space : Wait_Lists.Wait_List;
+   Spare_Read_Futures_Has_Contents : Wait_Lists.Wait_List;
 
-   Spare_Read_Futures : Read_Future_Queues.Queue;
-   Spare_Write_Futures : Write_Future_Queues.Queue;
-   Spare_Poll_Futures : Poll_Future_Queues.Queue;
+   Spare_Write_Futures : Write_Future_Queues.Circ_Buf;
+   Spare_Write_Futures_Has_Free_Space : Wait_Lists.Wait_List;
+   Spare_Write_Futures_Has_Contents : Wait_Lists.Wait_List;
 
-   package Command_Queues is new Queues (Command, Max_Command_Queue_Capacity);
+   Spare_Poll_Futures : Poll_Future_Queues.Circ_Buf;
+   Spare_Poll_Futures_Has_Free_Space : Wait_Lists.Wait_List;
+   Spare_Poll_Futures_Has_Contents : Wait_Lists.Wait_List;
 
-   My_Command_Queue : Command_Queues.Queue;
+   My_Command_Queue : Command_Queues.Circ_Buf;
+   My_Command_Queue_Has_Free_Space : Wait_Lists.Wait_List;
+   My_Command_Queue_Has_Contents : Wait_Lists.Wait_List;
 
    procedure Do_Write (W : Write_Command) with
       Global => (In_Out => Write_Future_Channels),
@@ -174,23 +172,40 @@ is
       loop
          Read_Future_Queues.Try_Dequeue (Spare_Read_Futures, Future, Init);
 	 exit when Init;
-         Wait_Lists.Wait (Read_Future_Wait_List);
+         Wait_Lists.Wait (Spare_Read_Futures_Has_Contents);
       end loop;
+      Wait_Lists.Signal (Spare_Read_Futures_Has_Free_Space);
 
-      Command_Queues.Enqueue
-        (My_Command_Queue,
-         (Read_Type, (Object, Buf, Count, Future, Signaller)));
-      Wait_Lists.Signal (Command_Wait_List);
+      loop
+         Command_Queues.Try_Enqueue (My_Command_Queue,
+				     (Read_Type,
+				      (Object,
+				       Buf,
+				       Count,
+				       Future,
+				       Signaller)),
+				     Init);
+	 exit when Init;
+         Wait_Lists.Wait (My_Command_Queue_Has_Free_Space);
+      end loop;
+      Wait_Lists.Signal (My_Command_Queue_Has_Contents);
    end Read;
 
    procedure Read_Wait
      (Future : in out Read_Future;
       Event : out Reader_Event)
    is
+      Init : Boolean;
    begin
       Reader_Event_Channels.Pop (Read_Future_Channels (Future), Event);
-      Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
-      Wait_Lists.Signal (Read_Future_Wait_List);
+
+      loop
+         Read_Future_Queues.Try_Enqueue (Spare_Read_Futures, Future, Init);
+	 exit when Init;
+         Wait_Lists.Wait (Spare_Read_Futures_Has_Free_Space);
+      end loop;
+      Wait_Lists.Signal (Spare_Read_Futures_Has_Contents);
+
       Future := 0;
    end Read_Wait;
 
@@ -207,9 +222,14 @@ is
 	 Event := Dummy;
          Init := False;
       else
-         Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
-         Wait_Lists.Signal (Read_Future_Wait_List);
-         Event := Maybe_Event.Data;
+	 loop
+	    Read_Future_Queues.Try_Enqueue (Spare_Read_Futures, Future, Init);
+	    exit when Init;
+	    Wait_Lists.Wait (Spare_Read_Futures_Has_Free_Space);
+	 end loop;
+	 Wait_Lists.Signal (Spare_Read_Futures_Has_Contents);
+
+	 Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
       end if;
@@ -226,24 +246,36 @@ is
    begin
       loop
          Write_Future_Queues.Try_Dequeue (Spare_Write_Futures, Future, Init);
-         exit when Init;
-         Wait_Lists.Wait (Write_Future_Wait_List);
+	 exit when Init;
+         Wait_Lists.Wait (Spare_Write_Futures_Has_Contents);
       end loop;
+      Wait_Lists.Signal (Spare_Write_Futures_Has_Free_Space);
 
-      Command_Queues.Enqueue
-        (My_Command_Queue,
-         (Write_Type, (Object, Buf, Count, Future, Signaller)));
-      Wait_Lists.Signal (Command_Wait_List);
+      loop
+	 Command_Queues.Try_Enqueue (My_Command_Queue,
+				     (Write_Type, (Object, Buf, Count, Future, Signaller)),
+				     Init);
+	 exit when Init;
+         Wait_Lists.Wait (My_Command_Queue_Has_Free_Space);
+      end loop;
+      Wait_Lists.Signal (My_Command_Queue_Has_Contents);
    end Write;
 
    procedure Write_Wait
      (Future : in out Write_Future;
       Event : out Writer_Event)
    is
+      Init : Boolean;
    begin
       Writer_Event_Channels.Pop (Write_Future_Channels (Future), Event);
-      Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
-      Wait_Lists.Signal (Write_Future_Wait_List);
+
+      loop
+	 Write_Future_Queues.Try_Enqueue (Spare_Write_Futures, Future, Init);
+	 exit when Init;
+	 Wait_Lists.Wait (Spare_Write_Futures_Has_Free_Space);
+      end loop;
+      Wait_Lists.Signal (Spare_Write_Futures_Has_Contents);
+
       Future := 0;
    end Write_Wait;
 
@@ -260,8 +292,13 @@ is
 	 Event := Dummy;
          Init := False;
       else
-         Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
-         Wait_Lists.Signal (Write_Future_Wait_List);
+	 loop
+	    Write_Future_Queues.Try_Enqueue (Spare_Write_Futures, Future, Init);
+	    exit when Init;
+	    Wait_Lists.Wait (Spare_Write_Futures_Has_Free_Space);
+	 end loop;
+	 Wait_Lists.Signal (Spare_Write_Futures_Has_Contents);
+
          Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
@@ -278,24 +315,35 @@ is
    begin
       loop
          Poll_Future_Queues.Try_Dequeue (Spare_Poll_Futures, Future, Init);
-         exit when Init;
-         Wait_Lists.Wait (Poll_Future_Wait_List);
+	 exit when Init;
+         Wait_Lists.Wait (Spare_Poll_Futures_Has_Contents);
       end loop;
+      Wait_Lists.Signal (Spare_Poll_Futures_Has_Free_Space);
 
-      Command_Queues.Enqueue
-        (My_Command_Queue,
-         (Poll_Type, (Object, Events, Future, Signaller)));
-      Wait_Lists.Signal (Command_Wait_List);
+      loop
+	 Command_Queues.Try_Enqueue (My_Command_Queue,
+				     (Poll_Type, (Object, Events, Future, Signaller)), Init);
+	 exit when Init;
+         Wait_Lists.Wait (My_Command_Queue_Has_Free_Space);
+      end loop;
+      Wait_Lists.Signal (My_Command_Queue_Has_Contents);
    end Poll;
 
    procedure Poll_Wait
      (Future : in out Poll_Future;
       Event : out Poller_Event)
    is
+      Init : Boolean;
    begin
       Poller_Event_Channels.Pop (Poll_Future_Channels (Future), Event);
-      Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
-      Wait_Lists.Signal (Poll_Future_Wait_List);
+
+      loop
+	 Poll_Future_Queues.Try_Enqueue (Spare_Poll_Futures, Future, Init);
+	 exit when Init;
+	 Wait_Lists.Wait (Spare_Poll_Futures_Has_Free_Space);
+      end loop;
+      Wait_Lists.Signal (Spare_Poll_Futures_Has_Contents);
+
       Future := 0;
    end Poll_Wait;
 
@@ -312,9 +360,14 @@ is
 	 Event := Dummy;
          Init := False;
       else
-         Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
-         Wait_Lists.Signal (Poll_Future_Wait_List);
-         Event := Maybe_Event.Data;
+	 loop
+	    Poll_Future_Queues.Try_Enqueue (Spare_Poll_Futures, Future, Init);
+	    exit when Init;
+	    Wait_Lists.Wait (Spare_Poll_Futures_Has_Free_Space);
+	 end loop;
+	 Wait_Lists.Signal (Spare_Poll_Futures_Has_Contents);
+
+	 Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
       end if;
@@ -459,11 +512,12 @@ is
       Init : Boolean;
    begin
       loop
-         loop
-            Command_Queues.Try_Dequeue (My_Command_Queue, New_Command, Init);
-            exit when Init;
-            Wait_Lists.Wait (Command_Wait_List);
-         end loop;
+	 loop
+	    Command_Queues.Try_Dequeue (My_Command_Queue, New_Command, Init);
+	    exit when Init;
+	    Wait_Lists.Wait (My_Command_Queue_Has_Contents);
+	 end loop;
+	 Wait_Lists.Signal (My_Command_Queue_Has_Free_Space);
 
          case New_Command.T is
             when Invalid_Type =>
@@ -491,12 +545,29 @@ is
 
 begin
    for II in 1 .. Max_Read_Futures loop
-      Read_Future_Queues.Enqueue (Spare_Read_Futures, Read_Future (II));
+      declare
+	 Init : Boolean;
+      begin
+	 Read_Future_Queues.Try_Enqueue (Spare_Read_Futures, Read_Future (II), Init);
+	 pragma Assert (Init);
+      end;
    end loop;
+
    for II in 1 .. Max_Write_Futures loop
-      Write_Future_Queues.Enqueue (Spare_Write_Futures, Write_Future (II));
+      declare
+	 Init : Boolean;
+      begin
+	 Write_Future_Queues.Try_Enqueue (Spare_Write_Futures, Write_Future (II), Init);
+	 pragma Assert (Init);
+      end;
    end loop;
+
    for II in 1 .. Max_Poll_Futures loop
-      Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Poll_Future (II));
+      declare
+	 Init : Boolean;
+      begin
+	 Poll_Future_Queues.Try_Enqueue (Spare_Poll_Futures, Poll_Future (II), Init);
+	 pragma Assert (Init);
+      end;
    end loop;
 end Linted.IO_Pool;

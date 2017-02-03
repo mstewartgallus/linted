@@ -64,11 +64,11 @@ is
       Future : out Read_Future) with
       Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Depends =>
-      (Future => (Future_Pool, Various),
-       Command_Queue => (Various, Command_Queue),
-       Various =>
-         (Buf, Count, Command_Queue, Future_Pool, Object, Signaller, Various),
-       Future_Pool => (Various, Future_Pool)),
+      (Future => Future_Pool,
+       Command_Queue =>
+         (Buf, Count, Object, Signaller, Future_Pool, Command_Queue),
+       Various => (Future_Pool, Various),
+       Future_Pool => Future_Pool),
       Post => Read_Future_Is_Live (Future);
 
    procedure Read_Wait
@@ -80,7 +80,7 @@ is
        Event => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Future_Pool, Various),
-       Future_Pool => (Various, Future_Pool)),
+       Future_Pool => (Future, Future_Pool)),
       Pre => Read_Future_Is_Live (Future),
       Post => not Read_Future_Is_Live (Future);
 
@@ -95,7 +95,7 @@ is
        Init => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Event_Queue, Future_Pool, Various),
-       Future_Pool => (Future, Event_Queue, Various, Future_Pool)),
+       Future_Pool => (Future, Event_Queue, Future_Pool)),
       Pre => Read_Future_Is_Live (Future),
       Post =>
       (if Init then not Read_Future_Is_Live (Future)
@@ -116,11 +116,11 @@ is
       Future : out Write_Future) with
       Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Depends =>
-      (Future => (Future_Pool, Various),
-       Command_Queue => (Various, Command_Queue),
-       Various =>
-         (Buf, Count, Command_Queue, Future_Pool, Object, Signaller, Various),
-       Future_Pool => (Various, Future_Pool)),
+      (Future => (Future_Pool),
+       Command_Queue =>
+         (Buf, Count, Future_Pool, Object, Signaller, Command_Queue),
+       Various => (Future_Pool, Various),
+       Future_Pool => Future_Pool),
       Post => Write_Future_Is_Live (Future);
 
    procedure Write_Wait
@@ -132,7 +132,7 @@ is
        Event => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Future_Pool, Various),
-       Future_Pool => (Various, Future_Pool)),
+       Future_Pool => (Future, Future_Pool)),
       Pre => Write_Future_Is_Live (Future),
       Post => not Write_Future_Is_Live (Future);
 
@@ -147,7 +147,7 @@ is
        Init => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Event_Queue, Future_Pool, Various),
-       Future_Pool => (Future, Event_Queue, Various, Future_Pool)),
+       Future_Pool => (Future, Event_Queue, Future_Pool)),
       Pre => Write_Future_Is_Live (Future),
       Post =>
       (if Init then not Write_Future_Is_Live (Future)
@@ -167,11 +167,11 @@ is
       Future : out Poll_Future) with
       Global => (In_Out => (Command_Queue, Various, Future_Pool)),
       Depends =>
-      (Future => (Future_Pool, Various),
-       Command_Queue => (Various, Command_Queue),
-       Various =>
-         (Events, Command_Queue, Future_Pool, Object, Signaller, Various),
-       Future_Pool => (Various, Future_Pool)),
+      (Future => (Future_Pool),
+       Command_Queue =>
+         (Events, Future_Pool, Object, Signaller, Command_Queue),
+       Various => (Future_Pool, Various),
+       Future_Pool => (Future_Pool)),
       Post => Poll_Future_Is_Live (Future);
 
    procedure Poll_Wait
@@ -183,7 +183,7 @@ is
        Event => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Future_Pool, Various),
-       Future_Pool => (Various, Future_Pool)),
+       Future_Pool => (Future, Future_Pool)),
       Pre => Poll_Future_Is_Live (Future),
       Post => not Poll_Future_Is_Live (Future);
 
@@ -198,7 +198,7 @@ is
        Init => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Various => (Future, Event_Queue, Future_Pool, Various),
-       Future_Pool => (Future, Event_Queue, Various, Future_Pool)),
+       Future_Pool => (Future, Event_Queue, Future_Pool)),
       Pre => Poll_Future_Is_Live (Future),
       Post =>
       (if Init then not Poll_Future_Is_Live (Future)
