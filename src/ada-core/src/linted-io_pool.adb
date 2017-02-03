@@ -18,9 +18,34 @@ with Libc.Sys.Types;
 with Libc.Unistd;
 
 with Linted.Channels;
-with Linted.WQueues;
+with Linted.Queues;
+with Linted.Wait_Lists;
 
-package body Linted.IO_Pool is
+package body Linted.IO_Pool with
+     Spark_Mode,
+     Refined_State =>
+     (Command_Queue => (My_Command_Queue, Command_Wait_List),
+      Event_Queue =>
+        (Read_Future_Channels, Write_Future_Channels, Poll_Future_Channels),
+      Various =>
+        (Worker_Tasks,
+         Command_Queues.State,
+	 Command_Queues.Structure,
+
+	 Read_Future_Queues.State,
+	 Write_Future_Queues.State,
+	 Poll_Future_Queues.State,
+
+	 Read_Future_Queues.Structure,
+	 Write_Future_Queues.Structure,
+	 Poll_Future_Queues.Structure,
+
+         Read_Future_Wait_List,
+         Write_Future_Wait_List,
+         Poll_Future_Wait_List),
+      Future_Pool =>
+        (Spare_Write_Futures, Spare_Read_Futures, Spare_Poll_Futures))
+is
    Max_Read_Futures : constant := 32;
    Max_Write_Futures : constant := 32;
    Max_Poll_Futures : constant := 32;
@@ -73,6 +98,28 @@ package body Linted.IO_Pool is
       end case;
    end record;
 
+   Command_Wait_List : Wait_Lists.Wait_List;
+   task type Worker_Task with Global => (In_Out => (Command_Queues.State,
+						    Command_Queues.Structure,
+						    Command_Wait_List,
+					 My_Command_Queue,
+					 Read_Future_Channels,
+					 Write_Future_Channels,
+						    Poll_Future_Channels
+						   )),
+     Depends => (Command_Wait_List => (My_Command_Queue, Command_Wait_List, Command_Queues.State, Command_Queues.Structure),
+		 Command_Queues.State => (My_Command_Queue, Command_Queues.State, Command_Queues.Structure),
+		 Command_Queues.Structure => (My_Command_Queue, Command_Queues.State, Command_Queues.Structure),
+		 My_Command_Queue => (Command_Queues.State, Command_Queues.Structure, My_Command_Queue),
+		 Read_Future_Channels => (Command_Queues.State, Command_Queues.Structure, Read_Future_Channels, My_Command_Queue),
+		 Write_Future_Channels => (Command_Queues.State, Command_Queues.Structure, Write_Future_Channels, My_Command_Queue),
+		 Poll_Future_Channels => (Command_Queues.State, Command_Queues.Structure, Poll_Future_Channels, My_Command_Queue),
+		 Worker_Task'Result => Worker_Task,
+		 Worker_Task => null
+		);
+
+   Worker_Tasks : array (1 .. 16) of Worker_Task;
+
    package Writer_Event_Channels is new Channels (Writer_Event);
    package Reader_Event_Channels is new Channels (Reader_Event);
    package Poller_Event_Channels is new Channels (Poller_Event);
@@ -84,13 +131,26 @@ package body Linted.IO_Pool is
    type Poller_Future_Channels_Array is
      array (Poll_Future range <>) of Poller_Event_Channels.Channel;
 
-   package Read_Future_Queues is new WQueues (Read_Future, Max_Read_Futures);
-   package Write_Future_Queues is new WQueues
-     (Write_Future,
-      Max_Write_Futures);
-   package Poll_Future_Queues is new WQueues (Poll_Future, Max_Poll_Futures);
+   Read_Future_Channels : Read_Future_Channels_Array (1 .. Max_Read_Futures);
+   Write_Future_Channels : Write_Future_Channels_Array
+   (1 .. Max_Write_Futures);
+   Poll_Future_Channels : Poller_Future_Channels_Array (1 .. Max_Poll_Futures);
 
-   package Command_Queues is new WQueues (Command, Max_Command_Queue_Capacity);
+   Read_Future_Wait_List : Wait_Lists.Wait_List;
+   Write_Future_Wait_List : Wait_Lists.Wait_List;
+   Poll_Future_Wait_List : Wait_Lists.Wait_List;
+
+   package Read_Future_Queues is new Queues (Read_Future, Max_Read_Futures);
+   package Write_Future_Queues is new Queues (Write_Future, Max_Write_Futures);
+   package Poll_Future_Queues is new Queues (Poll_Future, Max_Poll_Futures);
+
+   Spare_Read_Futures : Read_Future_Queues.Queue;
+   Spare_Write_Futures : Write_Future_Queues.Queue;
+   Spare_Poll_Futures : Poll_Future_Queues.Queue;
+
+   package Command_Queues is new Queues (Command, Max_Command_Queue_Capacity);
+
+   My_Command_Queue : Command_Queues.Queue;
 
    procedure Do_Write (W : Write_Command) with
       Global => (In_Out => Write_Future_Channels),
@@ -102,21 +162,6 @@ package body Linted.IO_Pool is
       Global => (In_Out => Poll_Future_Channels),
       Depends => (Poll_Future_Channels => (P, Poll_Future_Channels));
 
-   task type Worker_Task;
-
-   Read_Future_Channels : Read_Future_Channels_Array (1 .. Max_Read_Futures);
-   Write_Future_Channels : Write_Future_Channels_Array
-   (1 .. Max_Write_Futures);
-   Poll_Future_Channels : Poller_Future_Channels_Array (1 .. Max_Poll_Futures);
-
-   Spare_Read_Futures : Read_Future_Queues.WQueue;
-   Spare_Write_Futures : Write_Future_Queues.WQueue;
-   Spare_Poll_Futures : Poll_Future_Queues.WQueue;
-
-   My_Command_Queue : Command_Queues.WQueue;
-
-   Worker_Tasks : array (1 .. 16) of Worker_Task;
-
    procedure Read
      (Object : KOs.KO;
       Buf : System.Address;
@@ -124,11 +169,20 @@ package body Linted.IO_Pool is
       Signaller : Triggers.Signaller;
       Future : out Read_Future)
    is
+      Init : Boolean;
    begin
-      Read_Future_Queues.Dequeue (Spare_Read_Futures, Future);
+      loop
+         Read_Future_Queues.Try_Dequeue (Spare_Read_Futures, Future, Init);
+         if Init then
+            exit;
+         end if;
+         Wait_Lists.Wait (Read_Future_Wait_List);
+      end loop;
+
       Command_Queues.Enqueue
         (My_Command_Queue,
          (Read_Type, (Object, Buf, Count, Future, Signaller)));
+      Wait_Lists.Signal (Command_Wait_List);
    end Read;
 
    procedure Read_Wait
@@ -138,6 +192,7 @@ package body Linted.IO_Pool is
    begin
       Reader_Event_Channels.Pop (Read_Future_Channels (Future), Event);
       Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
+      Wait_Lists.Signal (Read_Future_Wait_List);
       Future := 0;
    end Read_Wait;
 
@@ -151,10 +206,11 @@ package body Linted.IO_Pool is
    begin
       Reader_Event_Channels.Poll (Read_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
-         Event := Dummy;
+	 Event := Dummy;
          Init := False;
       else
          Read_Future_Queues.Enqueue (Spare_Read_Futures, Future);
+         Wait_Lists.Signal (Read_Future_Wait_List);
          Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
@@ -168,11 +224,20 @@ package body Linted.IO_Pool is
       Signaller : Triggers.Signaller;
       Future : out Write_Future)
    is
+      Init : Boolean;
    begin
-      Write_Future_Queues.Dequeue (Spare_Write_Futures, Future);
+      loop
+         Write_Future_Queues.Try_Dequeue (Spare_Write_Futures, Future, Init);
+         if Init then
+            exit;
+         end if;
+         Wait_Lists.Wait (Write_Future_Wait_List);
+      end loop;
+
       Command_Queues.Enqueue
         (My_Command_Queue,
          (Write_Type, (Object, Buf, Count, Future, Signaller)));
+      Wait_Lists.Signal (Command_Wait_List);
    end Write;
 
    procedure Write_Wait
@@ -182,6 +247,7 @@ package body Linted.IO_Pool is
    begin
       Writer_Event_Channels.Pop (Write_Future_Channels (Future), Event);
       Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
+      Wait_Lists.Signal (Write_Future_Wait_List);
       Future := 0;
    end Write_Wait;
 
@@ -195,10 +261,11 @@ package body Linted.IO_Pool is
    begin
       Writer_Event_Channels.Poll (Write_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
-         Event := Dummy;
+	 Event := Dummy;
          Init := False;
       else
          Write_Future_Queues.Enqueue (Spare_Write_Futures, Future);
+         Wait_Lists.Signal (Write_Future_Wait_List);
          Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
@@ -211,11 +278,20 @@ package body Linted.IO_Pool is
       Signaller : Triggers.Signaller;
       Future : out Poll_Future)
    is
+      Init : Boolean;
    begin
-      Poll_Future_Queues.Dequeue (Spare_Poll_Futures, Future);
+      loop
+         Poll_Future_Queues.Try_Dequeue (Spare_Poll_Futures, Future, Init);
+         if Init then
+            exit;
+         end if;
+         Wait_Lists.Wait (Poll_Future_Wait_List);
+      end loop;
+
       Command_Queues.Enqueue
         (My_Command_Queue,
          (Poll_Type, (Object, Events, Future, Signaller)));
+      Wait_Lists.Signal (Command_Wait_List);
    end Poll;
 
    procedure Poll_Wait
@@ -225,6 +301,7 @@ package body Linted.IO_Pool is
    begin
       Poller_Event_Channels.Pop (Poll_Future_Channels (Future), Event);
       Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
+      Wait_Lists.Signal (Poll_Future_Wait_List);
       Future := 0;
    end Poll_Wait;
 
@@ -238,10 +315,11 @@ package body Linted.IO_Pool is
    begin
       Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Maybe_Event);
       if Maybe_Event.Empty then
-         Event := Dummy;
+	 Event := Dummy;
          Init := False;
       else
          Poll_Future_Queues.Enqueue (Spare_Poll_Futures, Future);
+         Wait_Lists.Signal (Poll_Future_Wait_List);
          Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
@@ -394,9 +472,17 @@ package body Linted.IO_Pool is
 
    task body Worker_Task is
       New_Command : Command;
+      Init : Boolean;
    begin
       loop
-         Command_Queues.Dequeue (My_Command_Queue, New_Command);
+         loop
+            Command_Queues.Try_Dequeue (My_Command_Queue, New_Command, Init);
+            if Init then
+               exit;
+            end if;
+            Wait_Lists.Wait (Command_Wait_List);
+         end loop;
+
          case New_Command.T is
             when Invalid_Type =>
                raise Program_Error;
