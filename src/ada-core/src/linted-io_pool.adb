@@ -22,7 +22,7 @@ with Linted.Queues;
 with Linted.Wait_Lists;
 
 package body Linted.IO_Pool with
-     Spark_Mode,
+     Spark_Mode => Off,
      Refined_State =>
      (Command_Queue => (My_Command_Queue, Command_Wait_List),
       Event_Queue =>
@@ -173,9 +173,7 @@ is
    begin
       loop
          Read_Future_Queues.Try_Dequeue (Spare_Read_Futures, Future, Init);
-         if Init then
-            exit;
-         end if;
+	 exit when Init;
          Wait_Lists.Wait (Read_Future_Wait_List);
       end loop;
 
@@ -228,9 +226,7 @@ is
    begin
       loop
          Write_Future_Queues.Try_Dequeue (Spare_Write_Futures, Future, Init);
-         if Init then
-            exit;
-         end if;
+         exit when Init;
          Wait_Lists.Wait (Write_Future_Wait_List);
       end loop;
 
@@ -282,9 +278,7 @@ is
    begin
       loop
          Poll_Future_Queues.Try_Dequeue (Spare_Poll_Futures, Future, Init);
-         if Init then
-            exit;
-         end if;
+         exit when Init;
          Wait_Lists.Wait (Poll_Future_Wait_List);
       end loop;
 
@@ -343,15 +337,11 @@ is
            Libc.Unistd.write (C.int (Object), Buf, Count - Bytes_Written);
          if Result < 0 then
             Errno.Errno_Get (Err);
-            if Err /= Libc.Errno.POSIX_2008.EINTR then
-               exit;
-            end if;
+            exit when Err /= Libc.Errno.POSIX_2008.EINTR;
          else
             Err := 0;
             Bytes_Written := Bytes_Written + C.size_t (Result);
-            if Bytes_Written = Count then
-               exit;
-            end if;
+            exit when Bytes_Written = Count;
          end if;
       end loop;
 
@@ -380,18 +370,14 @@ is
          Result := Libc.Unistd.read (C.int (Object), Buf, Count - Bytes_Read);
          if Result < 0 then
             Errno.Errno_Get (Err);
-            if Err /= Libc.Errno.POSIX_2008.EINTR then
-               exit;
-            end if;
+            exit when Err /= Libc.Errno.POSIX_2008.EINTR;
          elsif 0 = Result then
             Err := 0;
             exit;
          else
             Err := 0;
             Bytes_Read := Bytes_Read + C.size_t (Result);
-            if Bytes_Read = Count then
-               exit;
-            end if;
+            exit when Bytes_Read = Count;
          end if;
       end loop;
 
@@ -453,9 +439,7 @@ is
          end;
          if Nfds < 0 then
             Errno.Errno_Get (Err);
-            if Err /= Libc.Errno.POSIX_2008.EINTR then
-               exit;
-            end if;
+            exit when Err /= Libc.Errno.POSIX_2008.EINTR;
          else
             Err := 0;
             exit;
@@ -477,9 +461,7 @@ is
       loop
          loop
             Command_Queues.Try_Dequeue (My_Command_Queue, New_Command, Init);
-            if Init then
-               exit;
-            end if;
+            exit when Init;
             Wait_Lists.Wait (Command_Wait_List);
          end loop;
 

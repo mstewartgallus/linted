@@ -73,9 +73,7 @@ package body Linted.Wait_Lists with
 	    loop
 	       STC.Set_True (Current_Trigger.Trigger);
 	       Current_Trigger := Current_Trigger.Next_Trigger;
-	       if null = Current_Trigger then
-		  exit;
-	       end if;
+	       exit when null = Current_Trigger;
 	    end loop;
 	 end if;
       end Broadcast;

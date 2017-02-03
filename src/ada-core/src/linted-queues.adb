@@ -93,9 +93,7 @@ is
    begin
       loop
          Spare_Nodes.Try_Dequeue (Removed);
-         if Removed /= 0 then
-            exit;
-         end if;
+         exit when Removed /= 0;
          Wait_Lists.Wait (Triggers);
       end loop;
       N := Removed;
