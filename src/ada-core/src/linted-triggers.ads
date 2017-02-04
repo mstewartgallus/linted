@@ -25,9 +25,11 @@ package Linted.Triggers with
 
    generic
    package Handle with
-     Spark_Mode is
-      function Wait_Handle return Waiter with Pure_Function;
-      function Signal_Handle return Signaller with Pure_Function;
+      Spark_Mode is
+      function Wait_Handle return Waiter with
+         Pure_Function;
+      function Signal_Handle return Signaller with
+         Pure_Function;
    end Handle;
 
    function Is_Null_Waiter (W : Waiter) return Boolean;

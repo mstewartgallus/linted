@@ -88,17 +88,17 @@ package body Linted.Update is
    end From_Storage;
 
    procedure To_Storage (U : Update.Packet; S : out Storage) is
+      use type System.Storage_Elements.Storage_Array;
    begin
-      S (1 .. 4) := To_Bytes (To_Nat (U.X_Position));
-      S (5 .. 8) := To_Bytes (To_Nat (U.Y_Position));
-      S (9 .. 12) := To_Bytes (To_Nat (U.Z_Position));
-
-      S (13 .. 16) := To_Bytes (To_Nat (U.MX_Position));
-      S (17 .. 20) := To_Bytes (To_Nat (U.MY_Position));
-      S (21 .. 24) := To_Bytes (To_Nat (U.MZ_Position));
-
-      S (25 .. 28) := To_Bytes (U.Z_Rotation);
-      S (29 .. 32) := To_Bytes (U.X_Rotation);
+      S :=
+        To_Bytes (To_Nat (U.X_Position)) &
+        To_Bytes (To_Nat (U.Y_Position)) &
+        To_Bytes (To_Nat (U.Z_Position)) &
+        To_Bytes (To_Nat (U.MX_Position)) &
+        To_Bytes (To_Nat (U.MY_Position)) &
+        To_Bytes (To_Nat (U.MZ_Position)) &
+        To_Bytes (U.Z_Rotation) &
+        To_Bytes (U.X_Rotation);
    end To_Storage;
 
 end Linted.Update;
