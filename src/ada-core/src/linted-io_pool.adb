@@ -82,6 +82,13 @@ is
       end case;
    end record;
 
+   --  We have to wrap the type because subtyping breaks out
+   --  parameters.  Imagine writing to an out parameter of type
+   --  Command that is passed a Command (Write_Type).
+   type Any_Command is record
+      C : Command;
+   end record;
+
    type Read_Ix is mod Max_Read_Futures + 1;
    type Write_Ix is mod Max_Write_Futures + 1;
    type Poll_Ix is mod Max_Poll_Futures + 1;
@@ -90,7 +97,7 @@ is
    package Spare_Read_Futures is new Queue (Live_Read_Future, Read_Ix);
    package Spare_Write_Futures is new Queue (Live_Write_Future, Write_Ix);
    package Spare_Poll_Futures is new Queue (Live_Poll_Future, Poll_Ix);
-   package My_Command_Queue is new Queue (Command, Command_Ix);
+   package My_Command_Queue is new Queue (Any_Command, Command_Ix);
 
    task type Worker_Task with Global => (In_Out => (My_Command_Queue.State,
    						    Read_Future_Channels,
@@ -156,12 +163,12 @@ is
       Live : Live_Read_Future;
    begin
       Spare_Read_Futures.Dequeue (Live);
-      My_Command_Queue.Enqueue ((Read_Type,
+      My_Command_Queue.Enqueue (Any_Command'(C => (Read_Type,
       				 (Object,
       				  Buf,
       				  Count,
       				  Live,
-      				  Signaller)));
+      				  Signaller))));
       Future := Read_Future (Live);
    end Read;
 
@@ -200,7 +207,7 @@ is
       Live : Live_Write_Future;
    begin
       Spare_Write_Futures.Dequeue (Live);
-      My_Command_Queue.Enqueue ((Write_Type, (Object, Buf, Count, Live, Signaller)));
+      My_Command_Queue.Enqueue (Any_Command'(C => (Write_Type, (Object, Buf, Count, Live, Signaller))));
       Future := Write_Future (Live);
    end Write;
 
@@ -238,7 +245,7 @@ is
       Live : Live_Poll_Future;
    begin
       Spare_Poll_Futures.Dequeue (Live);
-      My_Command_Queue.Enqueue ((Poll_Type, (Object, Events, Live, Signaller)));
+      My_Command_Queue.Enqueue (Any_Command'(C => (Poll_Type, (Object, Events, Live, Signaller))));
       Future := Poll_Future (Live);
    end Poll;
 
@@ -402,20 +409,20 @@ is
    end Do_Poll;
 
    procedure Do_Work with Spark_Mode is
-      New_Command : Command;
+      New_Command : Any_Command;
    begin
       My_Command_Queue.Dequeue (New_Command);
 
-      case New_Command.T is
+      case New_Command.C.T is
 	 when Invalid_Type =>
 	    raise Program_Error;
 
 	 when Write_Type =>
-	    Do_Write (New_Command.Write_Object);
+	    Do_Write (New_Command.C.Write_Object);
 	 when Read_Type =>
-	    Do_Read (New_Command.Read_Object);
+	    Do_Read (New_Command.C.Read_Object);
 	 when Poll_Type =>
-	    Do_Poll (New_Command.Poll_Object);
+	    Do_Poll (New_Command.C.Poll_Object);
       end case;
    end Do_Work;
 

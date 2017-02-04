@@ -43,5 +43,4 @@ package body Linted.Queue with
       end loop;
       Wait_Lists.Signal (Buf_Has_Free_Space);
    end Dequeue;
-
 end Linted.Queue;
