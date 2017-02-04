@@ -200,7 +200,6 @@ is
       if Init then
 	 Spare_Write_Futures.Enqueue (Future);
          Future := 0;
-         Init := True;
       end if;
    end Write_Poll;
 
@@ -235,7 +234,6 @@ is
       if Init then
 	 Spare_Poll_Futures.Enqueue (Future);
          Future := 0;
-         Init := True;
       end if;
    end Poll_Poll;
 
