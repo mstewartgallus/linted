@@ -36,11 +36,18 @@ is
    use type C.size_t;
    use type Interfaces.C.unsigned;
 
+   type Live_Read_Future is new Read_Future range 1 .. Read_Future'Last with
+     Default_Value => 1;
+   type Live_Write_Future is new Write_Future range 1 .. Write_Future'Last with
+     Default_Value => 1;
+   type Live_Poll_Future is new Poll_Future range 1 .. Poll_Future'Last with
+     Default_Value => 1;
+
    type Write_Command is record
       Object : KOs.KO;
       Buf : System.Address := System.Null_Address;
       Count : C.size_t := 0;
-      Replier : Write_Future;
+      Replier : Live_Write_Future;
       Signaller : Triggers.Signaller;
    end record;
 
@@ -48,7 +55,7 @@ is
       Object : KOs.KO;
       Buf : System.Address := System.Null_Address;
       Count : C.size_t := 0;
-      Replier : Read_Future;
+      Replier : Live_Read_Future;
       Signaller : Triggers.Signaller;
    end record;
 
@@ -56,7 +63,7 @@ is
       Object : KOs.KO;
       Events : Poller_Event_Set :=
         (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
-      Replier : Poll_Future;
+      Replier : Live_Poll_Future;
       Signaller : Triggers.Signaller;
    end record;
 
@@ -79,13 +86,6 @@ is
    type Write_Ix is mod Max_Write_Futures + 1;
    type Poll_Ix is mod Max_Poll_Futures + 1;
    type Command_Ix is mod Max_Command_Queue_Capacity + 1;
-
-   type Live_Read_Future is new Read_Future range 1 .. Read_Future'Last with
-     Default_Value => 1;
-   type Live_Write_Future is new Write_Future range 1 .. Write_Future'Last with
-     Default_Value => 1;
-   type Live_Poll_Future is new Poll_Future range 1 .. Poll_Future'Last with
-     Default_Value => 1;
 
    package Spare_Read_Futures is new Queue (Live_Read_Future, Read_Ix);
    package Spare_Write_Futures is new Queue (Live_Write_Future, Write_Ix);
@@ -115,18 +115,29 @@ is
    package Poller_Event_Channels is new Channels (Poller_Event);
 
    type Read_Future_Channels_Array is
-     array (Read_Future range <>) of Reader_Event_Channels.Channel;
+     array (Live_Read_Future) of Reader_Event_Channels.Channel;
    type Write_Future_Channels_Array is
-     array (Write_Future range <>) of Writer_Event_Channels.Channel;
+     array (Live_Write_Future) of Writer_Event_Channels.Channel;
    type Poller_Future_Channels_Array is
-     array (Poll_Future range <>) of Poller_Event_Channels.Channel;
+     array (Live_Poll_Future) of Poller_Event_Channels.Channel;
 
-   Read_Future_Channels : Read_Future_Channels_Array (1 .. Max_Read_Futures);
-   Write_Future_Channels : Write_Future_Channels_Array (1 .. Max_Write_Futures);
-   Poll_Future_Channels : Poller_Future_Channels_Array (1 .. Max_Poll_Futures);
+   Read_Future_Channels : Read_Future_Channels_Array;
+   Write_Future_Channels : Write_Future_Channels_Array;
+   Poll_Future_Channels : Poller_Future_Channels_Array;
+
+   procedure Do_Work with Spark_Mode,
+     Global => (In_Out => (My_Command_Queue.State,
+			   Read_Future_Channels,
+			   Write_Future_Channels,
+			   Poll_Future_Channels
+			  )),
+     Depends => (My_Command_Queue.State => (My_Command_Queue.State),
+   		 Read_Future_Channels => (Read_Future_Channels, My_Command_Queue.State),
+   		 Write_Future_Channels => (Write_Future_Channels, My_Command_Queue.State),
+   		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue.State));
 
    procedure Do_Write (W : Write_Command) with
-      Global => (In_Out => Write_Future_Channels),
+     Global => (In_Out => Write_Future_Channels),
       Depends => (Write_Future_Channels => (W, Write_Future_Channels));
    procedure Do_Read (R : Read_Command) with
       Global => (In_Out => Read_Future_Channels),
@@ -145,22 +156,23 @@ is
       Live : Live_Read_Future;
    begin
       Spare_Read_Futures.Dequeue (Live);
-      Future := Read_Future (Live);
       My_Command_Queue.Enqueue ((Read_Type,
       				 (Object,
       				  Buf,
       				  Count,
-      				  Future,
+      				  Live,
       				  Signaller)));
+      Future := Read_Future (Live);
    end Read;
 
    procedure Read_Wait
      (Future : in out Read_Future;
       Event : out Reader_Event)
    is
+      Live : Live_Read_Future := Live_Read_Future (Future);
    begin
-      Reader_Event_Channels.Pop (Read_Future_Channels (Future), Event);
-      Spare_Read_Futures.Enqueue (Live_Read_Future (Future));
+      Reader_Event_Channels.Pop (Read_Future_Channels (Live), Event);
+      Spare_Read_Futures.Enqueue (Live);
       Future := 0;
    end Read_Wait;
 
@@ -169,10 +181,11 @@ is
       Event : out Reader_Event;
       Init : out Boolean)
    is
+      Live : Live_Read_Future := Live_Read_Future (Future);
    begin
-      Reader_Event_Channels.Poll (Read_Future_Channels (Future), Event, Init);
+      Reader_Event_Channels.Poll (Read_Future_Channels (Live), Event, Init);
       if Init then
-	 Spare_Read_Futures.Enqueue (Live_Read_Future (Future));
+	 Spare_Read_Futures.Enqueue (Live);
          Future := 0;
       end if;
    end Read_Poll;
@@ -187,17 +200,18 @@ is
       Live : Live_Write_Future;
    begin
       Spare_Write_Futures.Dequeue (Live);
+      My_Command_Queue.Enqueue ((Write_Type, (Object, Buf, Count, Live, Signaller)));
       Future := Write_Future (Live);
-      My_Command_Queue.Enqueue ((Write_Type, (Object, Buf, Count, Future, Signaller)));
    end Write;
 
    procedure Write_Wait
      (Future : in out Write_Future;
       Event : out Writer_Event)
    is
+      Live : Live_Write_Future := Live_Write_Future (Future);
    begin
-      Writer_Event_Channels.Pop (Write_Future_Channels (Future), Event);
-      Spare_Write_Futures.Enqueue (Live_Write_Future (Future));
+      Writer_Event_Channels.Pop (Write_Future_Channels (Live), Event);
+      Spare_Write_Futures.Enqueue (Live);
       Future := 0;
    end Write_Wait;
 
@@ -206,10 +220,11 @@ is
       Event : out Writer_Event;
       Init : out Boolean)
    is
+      Live : Live_Write_Future := Live_Write_Future (Future);
    begin
-      Writer_Event_Channels.Poll (Write_Future_Channels (Future), Event, Init);
+      Writer_Event_Channels.Poll (Write_Future_Channels (Live), Event, Init);
       if Init then
-	 Spare_Write_Futures.Enqueue (Live_Write_Future (Future));
+	 Spare_Write_Futures.Enqueue (Live);
          Future := 0;
       end if;
    end Write_Poll;
@@ -223,17 +238,18 @@ is
       Live : Live_Poll_Future;
    begin
       Spare_Poll_Futures.Dequeue (Live);
+      My_Command_Queue.Enqueue ((Poll_Type, (Object, Events, Live, Signaller)));
       Future := Poll_Future (Live);
-      My_Command_Queue.Enqueue ((Poll_Type, (Object, Events, Future, Signaller)));
    end Poll;
 
    procedure Poll_Wait
      (Future : in out Poll_Future;
       Event : out Poller_Event)
    is
+      Live : Live_Poll_Future := Live_Poll_Future (Future);
    begin
-      Poller_Event_Channels.Pop (Poll_Future_Channels (Future), Event);
-      Spare_Poll_Futures.Enqueue (Live_Poll_Future (Future));
+      Poller_Event_Channels.Pop (Poll_Future_Channels (Live), Event);
+      Spare_Poll_Futures.Enqueue (Live);
       Future := 0;
    end Poll_Wait;
 
@@ -242,10 +258,11 @@ is
       Event : out Poller_Event;
       Init : out Boolean)
    is
+      Live : Live_Poll_Future := Live_Poll_Future (Future);
    begin
-      Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Event, Init);
+      Poller_Event_Channels.Poll (Poll_Future_Channels (Live), Event, Init);
       if Init then
-	 Spare_Poll_Futures.Enqueue (Live_Poll_Future (Future));
+	 Spare_Poll_Futures.Enqueue (Live);
          Future := 0;
       end if;
    end Poll_Poll;
@@ -257,7 +274,7 @@ is
       Object : constant KOs.KO := W.Object;
       Buf : constant System.Address := W.Buf;
       Count : constant C.size_t := W.Count;
-      Replier : constant Write_Future := W.Replier;
+      Replier : constant Live_Write_Future := W.Replier;
       Signaller : constant Triggers.Signaller := W.Signaller;
 
       Result : Libc.Sys.Types.ssize_t;
@@ -291,7 +308,7 @@ is
       Object : constant KOs.KO := R.Object;
       Buf : constant System.Address := R.Buf;
       Count : constant C.size_t := R.Count;
-      Replier : constant Read_Future := R.Replier;
+      Replier : constant Live_Read_Future := R.Replier;
       Signaller : constant Triggers.Signaller := R.Signaller;
 
       Result : Libc.Sys.Types.ssize_t;
@@ -327,7 +344,7 @@ is
       Listen_Events : constant Poller_Event_Set := P.Events;
       Heard_Events : Poller_Event_Set :=
         (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
-      Replier : constant Poll_Future := P.Replier;
+      Replier : constant Live_Poll_Future := P.Replier;
       Signaller : constant Triggers.Signaller := P.Signaller;
 
       Nfds : C.int;
@@ -384,23 +401,28 @@ is
       end if;
    end Do_Poll;
 
-   task body Worker_Task with Spark_Mode => Off is
+   procedure Do_Work with Spark_Mode is
       New_Command : Command;
    begin
+      My_Command_Queue.Dequeue (New_Command);
+
+      case New_Command.T is
+	 when Invalid_Type =>
+	    raise Program_Error;
+
+	 when Write_Type =>
+	    Do_Write (New_Command.Write_Object);
+	 when Read_Type =>
+	    Do_Read (New_Command.Read_Object);
+	 when Poll_Type =>
+	    Do_Poll (New_Command.Poll_Object);
+      end case;
+   end Do_Work;
+
+   task body Worker_Task with Spark_Mode => Off is
+   begin
       loop
-      	 My_Command_Queue.Dequeue (New_Command);
-
-         case New_Command.T is
-            when Invalid_Type =>
-               raise Program_Error;
-
-            when Write_Type =>
-               Do_Write (New_Command.Write_Object);
-            when Read_Type =>
-               Do_Read (New_Command.Read_Object);
-            when Poll_Type =>
-               Do_Poll (New_Command.Poll_Object);
-         end case;
+	 Do_Work;
       end loop;
    end Worker_Task;
 
