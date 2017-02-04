@@ -11,29 +11,26 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Queues;
+with Linted.Queue;
 with Linted.Last_Chance;
 
 package body Linted.Tests is
    Len : constant := 20;
 
-   package My_Queues is new Linted.Queues (Integer, Len);
-
-   L : My_Queues.Queue;
+   package My_Queue is new Queue (Integer, Len);
 
    procedure Run is
    begin
       for II in 1 .. Len loop
-	 My_Queues.Enqueue (L, II);
+	 My_Queue.Enqueue (II);
       end loop;
 
       for II in 1 .. Len loop
 	 declare
 	    Current : Integer;
-	    Init : Boolean;
 	 begin
-	    My_Queues.Try_Dequeue (L, Current, Init);
-	    pragma Assert(Current = II);
+	    My_Queue.Dequeue (Current);
+	    pragma Assert (Current = II);
 	 end;
       end loop;
    end Run;

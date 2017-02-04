@@ -17,8 +17,7 @@ with System.Storage_Elements;
 with System;
 
 with Linted.Reader;
-with Linted.Queues;
-with Linted.Wait_Lists;
+with Linted.Queue;
 
 package body Linted.Update_Reader with
      Spark_Mode => Off is
@@ -40,10 +39,7 @@ package body Linted.Update_Reader with
    (Future range 1 .. Max_Nodes) of aliased Update.Storage :=
      (others => (others => 16#7F#));
 
-   package Future_Queues is new Queues (Future, Max_Nodes);
-
-   Spare_Futures : Future_Queues.Queue;
-   Future_Wait_List : Wait_Lists.Wait_List;
+   package Spare_Futures is new Queue (Future, Max_Nodes);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 
@@ -52,16 +48,8 @@ package body Linted.Update_Reader with
       Signaller : Triggers.Signaller;
       F : out Future)
    is
-      Init : Boolean;
    begin
-      loop
-         Future_Queues.Try_Dequeue (Spare_Futures, F, Init);
-         if Init then
-            exit;
-         end if;
-         Wait_Lists.Wait (Future_Wait_List);
-      end loop;
-
+      Spare_Futures.Dequeue (F);
       Reader.Read
         (Object,
          Data_Being_Read (F) (1)'Address,
@@ -83,8 +71,7 @@ package body Linted.Update_Reader with
          end if;
          E := N_Event;
       end;
-      Future_Queues.Enqueue (Spare_Futures, F);
-      Wait_Lists.Signal (Future_Wait_List);
+      Spare_Futures.Enqueue (F);
       F := 0;
    end Read_Wait;
 
@@ -107,8 +94,7 @@ package body Linted.Update_Reader with
             end if;
             E := N_Event;
          end;
-         Future_Queues.Enqueue (Spare_Futures, F);
-         Wait_Lists.Signal (Future_Wait_List);
+         Spare_Futures.Enqueue (F);
          F := 0;
       else
          declare
@@ -120,6 +106,6 @@ package body Linted.Update_Reader with
    end Read_Poll;
 begin
    for II in 1 .. Max_Nodes loop
-      Future_Queues.Enqueue (Spare_Futures, Future (II));
+      Spare_Futures.Enqueue (Future (II));
    end loop;
 end Linted.Update_Reader;

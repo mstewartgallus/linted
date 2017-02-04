@@ -19,8 +19,7 @@ with System.Storage_Elements;
 
 with Linted.Errors;
 with Linted.Reader;
-with Linted.Queues;
-with Linted.Wait_Lists;
+with Linted.Queue;
 
 package body Linted.Window_Notifier with
      Spark_Mode => Off is
@@ -44,10 +43,8 @@ package body Linted.Window_Notifier with
         Max_Nodes) of aliased Storage_Elements.Storage_Array (1 .. 1) :=
      (others => (others => 16#7F#));
 
-   package Future_Queues is new Queues (Future, Max_Nodes);
+   package Spare_Futures is new Queue (Future, Max_Nodes);
 
-   Spare_Futures : Future_Queues.Queue;
-   Future_Wait_List : Wait_Lists.Wait_List;
    function Is_Live (F : Future) return Boolean is (F /= 0);
 
    procedure Read
@@ -55,16 +52,8 @@ package body Linted.Window_Notifier with
       Signaller : Triggers.Signaller;
       F : out Future)
    is
-      Init : Boolean;
    begin
-      loop
-         Future_Queues.Try_Dequeue (Spare_Futures, F, Init);
-         if Init then
-            exit;
-         end if;
-         Wait_Lists.Wait (Future_Wait_List);
-      end loop;
-
+      Spare_Futures.Dequeue (F);
       Reader.Read
         (Object,
          Data_Being_Read (F) (1)'Address,
@@ -78,8 +67,7 @@ package body Linted.Window_Notifier with
    begin
       Reader.Read_Wait (Read_Futures (F), R_Event);
       pragma Assert (R_Event.Err = Errors.Success);
-      Future_Queues.Enqueue (Spare_Futures, F);
-      Wait_Lists.Signal (Future_Wait_List);
+      Spare_Futures.Enqueue (F);
       F := 0;
    end Read_Wait;
 
@@ -89,13 +77,12 @@ package body Linted.Window_Notifier with
       Reader.Read_Poll (Read_Futures (F), R_Event, Init);
       if Init then
          pragma Assert (R_Event.Err = Errors.Success);
-         Future_Queues.Enqueue (Spare_Futures, F);
-         Wait_Lists.Signal (Future_Wait_List);
+         Spare_Futures.Enqueue (F);
          F := 0;
       end if;
    end Read_Poll;
 begin
    for II in 1 .. Max_Nodes loop
-      Future_Queues.Enqueue (Spare_Futures, Future (II));
+      Spare_Futures.Enqueue (Future (II));
    end loop;
 end Linted.Window_Notifier;
