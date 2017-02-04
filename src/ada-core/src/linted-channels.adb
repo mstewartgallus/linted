@@ -12,54 +12,51 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.Channels is
-   procedure Push (This : in out Channel; D : Element_T) is
+   procedure Push (This : in out Channel; Element : Element_T) is
    begin
-      This.Push (D);
+      This.Push (Element);
    end Push;
 
-   procedure Pop (This : in out Channel; D : out Element_T) is
+   procedure Pop (This : in out Channel; Element : out Element_T) is
    begin
-      This.Pop_Impl (D);
+      This.Pop_Impl (Element);
    end Pop;
 
    procedure Poll
      (This : in out Channel;
-      Option : out Option_Element_Ts.Option)
+      Element : out Element_T;
+      Success : out Boolean)
    is
-      D : Element_T;
-      Init : Boolean;
    begin
-      This.Poll (D, Init);
-      if Init then
-	 Option := (Empty => False, Data => D);
-      else
-	 Option := (Empty => True);
-      end if;
+      This.Poll (Element, Success);
    end Poll;
 
    protected body Channel is
-      procedure Push (D : Element_T) is
+      procedure Push (Element : Element_T) is
       begin
-         Current := D;
+         Current := Element;
          Full := True;
       end Push;
 
-      entry Pop_Impl (D : out Element_T) when Full is
+      entry Pop_Impl (Element : out Element_T) when Full is
       begin
-         D := Current;
+         Element := Current;
          Full := False;
       end Pop_Impl;
 
-      procedure Poll (D : out Element_T; Init : out Boolean) is
-	 Dummy : Element_T;
+      procedure Poll (Element : out Element_T; Success : out Boolean) is
       begin
          if Full then
             Full := False;
-	    D := Current;
-	    Init := True;
+            Element := Current;
+            Success := True;
          else
-	    D := Dummy;
-	    Init := False;
+            declare
+               Dummy : Element_T;
+            begin
+               Element := Dummy;
+            end;
+            Success := False;
          end if;
       end Poll;
    end Channel;

@@ -150,10 +150,11 @@ package body Linted.Simulator with
          end if;
 
          declare
-            Option_Event : Timer_Event_Channels.Option_Element_Ts.Option;
+            Event : Tick_Event;
+	    Success : Boolean;
          begin
-            Timer_Event_Channels.Poll (Timer_Event_Channel, Option_Event);
-            if not Option_Event.Empty then
+            Timer_Event_Channels.Poll (Timer_Event_Channel, Event, Success);
+            if Success then
                Simulate.Tick (My_State);
                Update_Pending := True;
                Next_Time :=

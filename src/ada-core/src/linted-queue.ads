@@ -18,6 +18,10 @@ package Linted.Queue with
    Abstract_State => (State with External) is
    pragma Elaborate_Body;
 
-   procedure Enqueue (Element : Element_T);
-   procedure Dequeue (Element : out Element_T);
+   procedure Enqueue (Element : Element_T) with
+      Global => (In_Out => State),
+      Depends => (State => (Element, State));
+   procedure Dequeue (Element : out Element_T) with
+      Global => (In_Out => State),
+      Depends => (State => State, Element => State);
 end Linted.Queue;

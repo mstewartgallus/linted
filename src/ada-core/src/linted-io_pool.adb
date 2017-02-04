@@ -160,18 +160,11 @@ is
       Event : out Reader_Event;
       Init : out Boolean)
    is
-      Dummy : Reader_Event;
-      Maybe_Event : Reader_Event_Channels.Option_Element_Ts.Option;
    begin
-      Reader_Event_Channels.Poll (Read_Future_Channels (Future), Maybe_Event);
-      if Maybe_Event.Empty then
-	 Event := Dummy;
-         Init := False;
-      else
+      Reader_Event_Channels.Poll (Read_Future_Channels (Future), Event, Init);
+      if Init then
 	 Spare_Read_Futures.Enqueue (Future);
-	 Event := Maybe_Event.Data;
          Future := 0;
-         Init := True;
       end if;
    end Read_Poll;
 
@@ -202,16 +195,10 @@ is
       Event : out Writer_Event;
       Init : out Boolean)
    is
-      Dummy : Writer_Event;
-      Maybe_Event : Writer_Event_Channels.Option_Element_Ts.Option;
    begin
-      Writer_Event_Channels.Poll (Write_Future_Channels (Future), Maybe_Event);
-      if Maybe_Event.Empty then
-	 Event := Dummy;
-         Init := False;
-      else
+      Writer_Event_Channels.Poll (Write_Future_Channels (Future), Event, Init);
+      if Init then
 	 Spare_Write_Futures.Enqueue (Future);
-         Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
       end if;
@@ -243,16 +230,10 @@ is
       Event : out Poller_Event;
       Init : out Boolean)
    is
-      Dummy : Poller_Event;
-      Maybe_Event : Poller_Event_Channels.Option_Element_Ts.Option;
    begin
-      Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Maybe_Event);
-      if Maybe_Event.Empty then
-	 Event := Dummy;
-         Init := False;
-      else
+      Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Event, Init);
+      if Init then
 	 Spare_Poll_Futures.Enqueue (Future);
-	 Event := Maybe_Event.Data;
          Future := 0;
          Init := True;
       end if;
