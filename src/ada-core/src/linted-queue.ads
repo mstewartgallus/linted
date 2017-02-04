@@ -13,8 +13,9 @@
 -- permissions and limitations under the License.
 generic
    type Element_T is private;
-   Max_Nodes : Natural;
+   type Ix is mod <>;
 package Linted.Queue with
+   Spark_Mode,
    Abstract_State => (State with External) is
    pragma Elaborate_Body;
 

@@ -41,7 +41,8 @@ package body Linted.Controls_Reader with
    (Future range 1 .. Max_Nodes) of aliased Controls.Storage :=
      (others => (others => 16#7F#));
 
-   package Spare_Futures is new Queue (Future, Max_Nodes);
+   type Ix is mod Max_Nodes + 1;
+   package Spare_Futures is new Queue (Future, Ix);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 

@@ -15,8 +15,9 @@ with Linted.Circ_Bufs;
 with Linted.Wait_Lists;
 
 package body Linted.Queue with
+     Spark_Mode => Off,
      Refined_State => (State => (Buf, Buf_Has_Free_Space, Buf_Has_Contents)) is
-   package Bufs is new Circ_Bufs (Element_T, Max_Nodes);
+   package Bufs is new Circ_Bufs (Element_T, Ix);
 
    Buf : Bufs.Circ_Buf;
    Buf_Has_Free_Space : Wait_Lists.Wait_List;

@@ -13,11 +13,12 @@
 -- permissions and limitations under the License.
 generic
    type Element_T is private;
-   Max_Nodes : Natural;
-package Linted.Circ_Bufs is
+   type Ix is mod <>;
+package Linted.Circ_Bufs with
+   Spark_Mode => Off is
    pragma Pure;
 
-   type Elements_Array is array (Natural range 0 .. Max_Nodes) of Element_T;
+   type Elements_Array is array (Ix) of Element_T;
 
    protected type Circ_Buf is
    private
@@ -33,8 +34,8 @@ package Linted.Circ_Bufs is
           Element => Circ_Buf,
           Success => Circ_Buf);
 
-      First : Natural := 0;
-      Last : Natural := 0;
+      First : Ix := Ix'First;
+      Last : Ix := Ix'First;
       Full : Boolean := False;
       Elements : Elements_Array;
    end Circ_Buf;

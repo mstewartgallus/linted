@@ -21,7 +21,7 @@ with Linted.Channels;
 with Linted.Queue;
 
 package body Linted.IO_Pool with
-     Spark_Mode,
+     Spark_Mode => Off,
   Refined_State => (Command_Queue => (My_Command_Queue.State),
 		    Event_Queue => (Read_Future_Channels,
 				    Write_Future_Channels,
@@ -83,11 +83,16 @@ is
       end case;
    end record;
 
-   package Spare_Read_Futures is new Queue (Read_Future, Max_Read_Futures);
-   package Spare_Write_Futures is new Queue (Write_Future, Max_Write_Futures);
-   package Spare_Poll_Futures is new Queue (Poll_Future, Max_Poll_Futures);
-   package My_Command_Queue is new Queue (Command, Max_Command_Queue_Capacity);
+   type Read_Ix is mod Max_Read_Futures + 1;
+   type Write_Ix is mod Max_Write_Futures + 1;
+   type Poll_Ix is mod Max_Poll_Futures + 1;
+   type Command_Ix is mod Max_Command_Queue_Capacity + 1;
 
+   package Spare_Read_Futures is new Queue (Read_Future, Read_Ix);
+   package Spare_Write_Futures is new Queue (Write_Future, Write_Ix);
+   package Spare_Poll_Futures is new Queue (Poll_Future, Poll_Ix);
+   package My_Command_Queue is new Queue (Command, Command_Ix);
+   
    task type Worker_Task with Global => (In_Out => (My_Command_Queue.State,
 						    Read_Future_Channels,
 						    Write_Future_Channels,

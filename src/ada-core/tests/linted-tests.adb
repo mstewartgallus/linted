@@ -16,8 +16,8 @@ with Linted.Last_Chance;
 
 package body Linted.Tests is
    Len : constant := 20;
-
-   package My_Queue is new Queue (Integer, Len);
+   type Ix is mod Len + 1;
+   package My_Queue is new Queue (Integer, Ix);
 
    procedure Run is
    begin

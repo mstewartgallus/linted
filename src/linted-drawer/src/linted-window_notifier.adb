@@ -43,7 +43,8 @@ package body Linted.Window_Notifier with
         Max_Nodes) of aliased Storage_Elements.Storage_Array (1 .. 1) :=
      (others => (others => 16#7F#));
 
-   package Spare_Futures is new Queue (Future, Max_Nodes);
+   type Ix is mod Max_Nodes + 1;
+   package Spare_Futures is new Queue (Future, Ix);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 

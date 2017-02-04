@@ -11,7 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package body Linted.Circ_Bufs is
+package body Linted.Circ_Bufs with
+     Spark_Mode => Off is
 
    protected body Circ_Buf is
       procedure Try_Enqueue (Element : Element_T; Success : out Boolean) is
@@ -20,10 +21,10 @@ package body Linted.Circ_Bufs is
             Success := False;
          else
             Elements (Last) := Element;
-            Last := (Last + 1) mod (Max_Nodes + 1);
-	    if Last = First then
-	       Full := True;
-	    end if;
+            Last := Last + 1;
+            if Last = First then
+               Full := True;
+            end if;
             Success := True;
          end if;
       end Try_Enqueue;
@@ -39,8 +40,8 @@ package body Linted.Circ_Bufs is
             Success := False;
          else
             Element := Elements (First);
-            First := (First + 1) mod (Max_Nodes + 1);
-	    Full := False;
+            First := First + 1;
+            Full := False;
             Success := True;
          end if;
       end Try_Dequeue;
