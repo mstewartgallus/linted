@@ -25,13 +25,13 @@ pragma Extensions_Allowed (Off);
 pragma Polling (Off);
 
 -- Debug Checks
-pragma Initialize_Scalars;
-pragma Assertion_Policy (CHECK);
-pragma Debug_Policy (CHECK);
-pragma Check_Float_Overflow;
-pragma Overflow_Mode (Strict);
-pragma Unsuppress (Overflow_Check);
-pragma Validity_Checks (ALL_CHECKS);
+-- pragma Initialize_Scalars;
+-- pragma Assertion_Policy (CHECK);
+-- pragma Debug_Policy (CHECK);
+-- pragma Check_Float_Overflow;
+-- pragma Overflow_Mode (Strict);
+-- pragma Unsuppress (Overflow_Check);
+-- pragma Validity_Checks (ALL_CHECKS);
 
 pragma Prefix_Exception_Messages;
 

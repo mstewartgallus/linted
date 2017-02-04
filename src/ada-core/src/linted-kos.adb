@@ -123,6 +123,7 @@ package body Linted.KOs is
             Errno_Err : Interfaces.C.int;
          begin
             Errno.Errno_Get (Errno_Err);
+	    Bytes_Read := 0;
             return Linted.Errors.Error (Errno_Err);
          end;
       end if;

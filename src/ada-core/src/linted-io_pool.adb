@@ -21,21 +21,13 @@ with Linted.Channels;
 with Linted.Queue;
 
 package body Linted.IO_Pool with
-     Spark_Mode => Off,
   Refined_State => (Command_Queue => (My_Command_Queue.State),
 		    Event_Queue => (Read_Future_Channels,
 				    Write_Future_Channels,
 				    Poll_Future_Channels),
 		    Various => Worker_Tasks,
-		    Future_Pool => (Spare_Write_Futures.State,
-				    Spare_Read_Futures.State,
-				    Spare_Poll_Futures.State))
+		    Future_Pool => (Spare_Read_Futures.State, Spare_Write_Futures.State, Spare_Poll_Futures.State))
 is
-   Max_Read_Futures : constant := 32;
-   Max_Write_Futures : constant := 32;
-   Max_Poll_Futures : constant := 32;
-   Max_Command_Queue_Capacity : constant := 32;
-
    package C renames Interfaces.C;
 
    package Errno renames Libc.Errno;
@@ -88,25 +80,35 @@ is
    type Poll_Ix is mod Max_Poll_Futures + 1;
    type Command_Ix is mod Max_Command_Queue_Capacity + 1;
 
-   package Spare_Read_Futures is new Queue (Read_Future, Read_Ix);
-   package Spare_Write_Futures is new Queue (Write_Future, Write_Ix);
-   package Spare_Poll_Futures is new Queue (Poll_Future, Poll_Ix);
-   package My_Command_Queue is new Queue (Command, Command_Ix);
-   
-   task type Worker_Task with Global => (In_Out => (My_Command_Queue.State,
-						    Read_Future_Channels,
-						    Write_Future_Channels,
-						    Poll_Future_Channels
-						   )),
-     Depends => (My_Command_Queue.State => (My_Command_Queue.State),
-		 Read_Future_Channels => (Read_Future_Channels, My_Command_Queue.State),
-		 Write_Future_Channels => (Write_Future_Channels, My_Command_Queue.State),
-		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue.State),
-		 Worker_Task'Result => Worker_Task,
-		 Worker_Task => null
-		);
+   type Live_Read_Future is new Read_Future range 1 .. Read_Future'Last with
+     Default_Value => 1;
+   type Live_Write_Future is new Write_Future range 1 .. Write_Future'Last with
+     Default_Value => 1;
+   type Live_Poll_Future is new Poll_Future range 1 .. Poll_Future'Last with
+     Default_Value => 1;
 
-   Worker_Tasks : array (1 .. 16) of Worker_Task;
+   package Spare_Read_Futures is new Queue (Live_Read_Future, Read_Ix);
+   package Spare_Write_Futures is new Queue (Live_Write_Future, Write_Ix);
+   package Spare_Poll_Futures is new Queue (Live_Poll_Future, Poll_Ix);
+   package My_Command_Queue is new Queue (Command, Command_Ix);
+
+   task type Worker_Task with Global => (In_Out => (My_Command_Queue.State,
+   						    Read_Future_Channels,
+   						    Write_Future_Channels,
+   						    Poll_Future_Channels
+   						   )),
+     Spark_Mode,
+     Depends => (My_Command_Queue.State => (My_Command_Queue.State),
+   		 Read_Future_Channels => (Read_Future_Channels, My_Command_Queue.State),
+   		 Write_Future_Channels => (Write_Future_Channels, My_Command_Queue.State),
+   		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue.State),
+   		 Worker_Task'Result => Worker_Task,
+   		 Worker_Task => null
+   		);
+
+   type Worker_Array is array (1 .. 16) of Worker_Task;
+
+   Worker_Tasks : Worker_Array;
 
    package Writer_Event_Channels is new Channels (Writer_Event);
    package Reader_Event_Channels is new Channels (Reader_Event);
@@ -140,14 +142,16 @@ is
       Signaller : Triggers.Signaller;
       Future : out Read_Future)
    is
+      Live : Live_Read_Future;
    begin
-      Spare_Read_Futures.Dequeue (Future);
+      Spare_Read_Futures.Dequeue (Live);
+      Future := Read_Future (Live);
       My_Command_Queue.Enqueue ((Read_Type,
-				 (Object,
-				  Buf,
-				  Count,
-				  Future,
-				  Signaller)));
+      				 (Object,
+      				  Buf,
+      				  Count,
+      				  Future,
+      				  Signaller)));
    end Read;
 
    procedure Read_Wait
@@ -156,7 +160,7 @@ is
    is
    begin
       Reader_Event_Channels.Pop (Read_Future_Channels (Future), Event);
-      Spare_Read_Futures.Enqueue (Future);
+      Spare_Read_Futures.Enqueue (Live_Read_Future (Future));
       Future := 0;
    end Read_Wait;
 
@@ -168,7 +172,7 @@ is
    begin
       Reader_Event_Channels.Poll (Read_Future_Channels (Future), Event, Init);
       if Init then
-	 Spare_Read_Futures.Enqueue (Future);
+	 Spare_Read_Futures.Enqueue (Live_Read_Future (Future));
          Future := 0;
       end if;
    end Read_Poll;
@@ -180,8 +184,10 @@ is
       Signaller : Triggers.Signaller;
       Future : out Write_Future)
    is
+      Live : Live_Write_Future;
    begin
-      Spare_Write_Futures.Dequeue (Future);
+      Spare_Write_Futures.Dequeue (Live);
+      Future := Write_Future (Live);
       My_Command_Queue.Enqueue ((Write_Type, (Object, Buf, Count, Future, Signaller)));
    end Write;
 
@@ -191,7 +197,7 @@ is
    is
    begin
       Writer_Event_Channels.Pop (Write_Future_Channels (Future), Event);
-      Spare_Write_Futures.Enqueue (Future);
+      Spare_Write_Futures.Enqueue (Live_Write_Future (Future));
       Future := 0;
    end Write_Wait;
 
@@ -203,7 +209,7 @@ is
    begin
       Writer_Event_Channels.Poll (Write_Future_Channels (Future), Event, Init);
       if Init then
-	 Spare_Write_Futures.Enqueue (Future);
+	 Spare_Write_Futures.Enqueue (Live_Write_Future (Future));
          Future := 0;
       end if;
    end Write_Poll;
@@ -214,8 +220,10 @@ is
       Signaller : Triggers.Signaller;
       Future : out Poll_Future)
    is
+      Live : Live_Poll_Future;
    begin
-      Spare_Poll_Futures.Dequeue (Future);
+      Spare_Poll_Futures.Dequeue (Live);
+      Future := Poll_Future (Live);
       My_Command_Queue.Enqueue ((Poll_Type, (Object, Events, Future, Signaller)));
    end Poll;
 
@@ -225,7 +233,7 @@ is
    is
    begin
       Poller_Event_Channels.Pop (Poll_Future_Channels (Future), Event);
-      Spare_Poll_Futures.Enqueue (Future);
+      Spare_Poll_Futures.Enqueue (Live_Poll_Future (Future));
       Future := 0;
    end Poll_Wait;
 
@@ -237,12 +245,12 @@ is
    begin
       Poller_Event_Channels.Poll (Poll_Future_Channels (Future), Event, Init);
       if Init then
-	 Spare_Poll_Futures.Enqueue (Future);
+	 Spare_Poll_Futures.Enqueue (Live_Poll_Future (Future));
          Future := 0;
       end if;
    end Poll_Poll;
 
-   procedure Do_Write (W : Write_Command) is
+   procedure Do_Write (W : Write_Command) with Spark_Mode => Off is
       Err : C.int;
       Bytes_Written : C.size_t := 0;
 
@@ -376,11 +384,11 @@ is
       end if;
    end Do_Poll;
 
-   task body Worker_Task is
+   task body Worker_Task with Spark_Mode => Off is
       New_Command : Command;
    begin
       loop
-	 My_Command_Queue.Dequeue (New_Command);
+      	 My_Command_Queue.Dequeue (New_Command);
 
          case New_Command.T is
             when Invalid_Type =>
@@ -408,14 +416,14 @@ is
 
 begin
    for II in 1 .. Max_Read_Futures loop
-      Spare_Read_Futures.Enqueue (Read_Future (II));
+      Spare_Read_Futures.Enqueue (Live_Read_Future (Read_Future (II)));
    end loop;
 
    for II in 1 .. Max_Write_Futures loop
-      Spare_Write_Futures.Enqueue (Write_Future (II));
+      Spare_Write_Futures.Enqueue (Live_Write_Future (Write_Future (II)));
    end loop;
 
    for II in 1 .. Max_Poll_Futures loop
-      Spare_Poll_Futures.Enqueue (Poll_Future (II));
+      Spare_Poll_Futures.Enqueue (Live_Poll_Future (Poll_Future (II)));
    end loop;
 end Linted.IO_Pool;

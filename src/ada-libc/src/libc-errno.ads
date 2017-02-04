@@ -14,11 +14,7 @@
 with Interfaces.C;
 
 package Libc.Errno with
-     Abstract_State =>
-     (Errno with
-      External =>
-        (Async_Readers, Async_Writers, Effective_Reads, Effective_Writes))
-is
+     Spark_Mode => Off is
    pragma Preelaborate;
 
    function Errno return Interfaces.C.int with
@@ -27,9 +23,7 @@ is
 
    procedure Errno_Get (Err : out Interfaces.C.int);
 
-   procedure Errno_Set (Err : Interfaces.C.int) with
-      Global => (Output => Errno),
-      Depends => (Errno => Err);
+   procedure Errno_Set (Err : Interfaces.C.int);
    pragma Import (C, Errno_Set, "linted_adarts_libc_errno_set");
 
    EDOM : constant := 33;

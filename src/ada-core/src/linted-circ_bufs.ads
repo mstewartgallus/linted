@@ -15,7 +15,7 @@ generic
    type Element_T is private;
    type Ix is mod <>;
 package Linted.Circ_Bufs with
-   Spark_Mode => Off is
+   Spark_Mode is
    pragma Pure;
 
    type Elements_Array is array (Ix) of Element_T;
