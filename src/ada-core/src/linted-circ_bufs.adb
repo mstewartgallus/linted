@@ -11,8 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package body Linted.Circ_Bufs with
-     Spark_Mode => Off is
+package body Linted.Circ_Bufs is
 
    protected body Circ_Buf is
       procedure Try_Enqueue (Element : Element_T; Success : out Boolean) is

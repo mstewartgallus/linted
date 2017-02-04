@@ -15,7 +15,6 @@ generic
    type Element_T is private;
    type Ix is mod <>;
 package Linted.Queue with
-   Spark_Mode,
    Abstract_State => (State with External) is
    pragma Elaborate_Body;
 
