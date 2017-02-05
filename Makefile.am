@@ -129,7 +129,11 @@ clean-%C%:
 
 .PHONY: prove
 prove: src/ada/shared.gpr
-	env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
+	- env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
+	- env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
+	- env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-drawer/drawer.gpr
+	- env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
+	- env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(builddir)/src/linted/start.gpr
 
 .PHONY: indent
 indent:

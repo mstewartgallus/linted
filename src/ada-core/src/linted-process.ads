@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
 -- permissions and limitations under the License.
 with Interfaces.C;
 
-package Linted.Process is
+package Linted.Process with
+     Spark_Mode is
    pragma Preelaborate;
 
    subtype Id is Interfaces.C.int;
 
    function Current return Id with
-      Spark_Mode => Off;
+      Volatile_Function;
 end Linted.Process;

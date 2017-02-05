@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 -- permissions and limitations under the License.
 with Libc.Unistd;
 
-package body Linted.Process is
-   function Current return Id is (Libc.Unistd.getpid) with
-      Spark_Mode => Off;
+package body Linted.Process with
+     Spark_Mode => Off is
+   function Current return Id is (Libc.Unistd.getpid);
 end Linted.Process;

@@ -19,8 +19,7 @@ with Interfaces.C.Strings;
 with Linted.Writer;
 with Linted.Triggers;
 
-package body Linted.Stdio with
-     Spark_Mode => Off is
+package body Linted.Stdio is
    package C renames Interfaces.C;
    package C_Strings renames Interfaces.C.Strings;
 

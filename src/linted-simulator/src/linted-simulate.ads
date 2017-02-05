@@ -14,9 +14,7 @@
 with Linted.Controls;
 with Linted.Types;
 
-package Linted.Simulate with
-     Abstract_State => null,
-     Spark_Mode => Off is
+package Linted.Simulate is
    pragma Elaborate_Body;
 
    type State is record

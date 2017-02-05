@@ -151,7 +151,7 @@ package body Linted.Simulator with
 
          declare
             Event : Tick_Event;
-	    Success : Boolean;
+            Success : Boolean;
          begin
             Timer_Event_Channels.Poll (Timer_Event_Channel, Event, Success);
             if Success then

@@ -20,8 +20,7 @@ with System;
 with Linted.Reader;
 with Linted.Queue;
 
-package body Linted.Controls_Reader with
-     Spark_Mode => Off is
+package body Linted.Controls_Reader is
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -34,47 +33,50 @@ package body Linted.Controls_Reader with
    use type Storage_Elements.Storage_Offset;
    use type Errors.Error;
 
-   Max_Nodes : constant := 1;
+   type Live_Future is new Future range 1 .. Future'Last with
+        Default_Value => 1;
 
-   Read_Futures : array (Future range 1 .. Max_Nodes) of Reader.Future;
-   Data_Being_Read : array
-   (Future range 1 .. Max_Nodes) of aliased Controls.Storage :=
+   Read_Futures : array (Live_Future) of Reader.Future;
+   Data_Being_Read : array (Live_Future) of aliased Controls.Storage :=
      (others => (others => 16#7F#));
 
    type Ix is mod Max_Nodes + 1;
-   package Spare_Futures is new Queue (Future, Ix);
+   package Spare_Futures is new Queue (Live_Future, Ix);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 
    procedure Read
      (Object : KOs.KO;
       Signaller : Triggers.Signaller;
-      F : out Future)
-   is
+      F : out Future) with
+      Spark_Mode => Off is
+      Live : Live_Future;
    begin
-      Spare_Futures.Dequeue (F);
+      Spare_Futures.Dequeue (Live);
       Reader.Read
         (Object,
-         Data_Being_Read (F) (1)'Address,
+         Data_Being_Read (Live) (1)'Address,
          Controls.Storage_Size,
          Signaller,
-         Read_Futures (F));
+         Read_Futures (Live));
+      F := Future (Live);
    end Read;
 
    procedure Read_Wait (F : in out Future; E : out Event) is
       R_Event : Reader.Event;
+      Live : Live_Future := Live_Future (F);
    begin
-      Reader.Read_Wait (Read_Futures (F), R_Event);
+      Reader.Read_Wait (Read_Futures (Live), R_Event);
       declare
          N_Event : Event;
       begin
          N_Event.Err := R_Event.Err;
          if N_Event.Err = Errors.Success then
-            Controls.From_Storage (Data_Being_Read (F), N_Event.Data);
+            Controls.From_Storage (Data_Being_Read (Live), N_Event.Data);
          end if;
          E := N_Event;
       end;
-      Spare_Futures.Enqueue (F);
+      Spare_Futures.Enqueue (Live);
       F := 0;
    end Read_Wait;
 
@@ -84,8 +86,9 @@ package body Linted.Controls_Reader with
       Init : out Boolean)
    is
       R_Event : Reader.Event;
+      Live : Live_Future := Live_Future (F);
    begin
-      Reader.Read_Poll (Read_Futures (F), R_Event, Init);
+      Reader.Read_Poll (Read_Futures (Live), R_Event, Init);
       if Init then
          declare
             N_Event : Event;
@@ -93,11 +96,11 @@ package body Linted.Controls_Reader with
             N_Event.Err := R_Event.Err;
 
             if N_Event.Err = Errors.Success then
-               Controls.From_Storage (Data_Being_Read (F), N_Event.Data);
+               Controls.From_Storage (Data_Being_Read (Live), N_Event.Data);
             end if;
             E := N_Event;
          end;
-	 Spare_Futures.Enqueue (F);
+         Spare_Futures.Enqueue (Live);
          F := 0;
       else
          declare
@@ -109,6 +112,6 @@ package body Linted.Controls_Reader with
    end Read_Poll;
 begin
    for II in 1 .. Max_Nodes loop
-      Spare_Futures.Enqueue (Future (II));
+      Spare_Futures.Enqueue (Live_Future (Future (II)));
    end loop;
 end Linted.Controls_Reader;

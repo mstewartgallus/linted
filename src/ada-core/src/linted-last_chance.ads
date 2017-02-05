@@ -12,6 +12,6 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package Linted.Last_Chance with
-     Spark_Mode => Off is
+     Spark_Mode is
    pragma Elaborate_Body;
 end Linted.Last_Chance;

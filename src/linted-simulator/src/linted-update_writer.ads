@@ -19,7 +19,8 @@ with Linted.Triggers;
 package Linted.Update_Writer is
    pragma Elaborate_Body;
 
-   type Future is limited private;
+   type Future is limited private with
+      Preelaborable_Initialization;
 
    function Is_Live (F : Future) return Boolean;
 

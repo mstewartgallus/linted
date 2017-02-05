@@ -12,7 +12,6 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 private with Ada.Strings.Unbounded;
-private with Ada.Unchecked_Conversion;
 
 private with Interfaces.C;
 private with Interfaces.C.Strings;
@@ -29,7 +28,8 @@ private with Linted.Logs;
 
 private with Linted.Last_Chance;
 
-procedure Main is
+procedure Main with
+   Spark_Mode => Off is
    package U renames Ada.Strings.Unbounded;
 
    use type Linted.Errors.Error;

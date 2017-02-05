@@ -14,11 +14,11 @@
 with Linted.KOs;
 with Linted.Triggers;
 
-package Linted.Window_Notifier with
-     Spark_Mode is
+package Linted.Window_Notifier is
    pragma Elaborate_Body;
 
-   type Future is limited private;
+   type Future is limited private with
+      Preelaborable_Initialization;
 
    function Is_Live (F : Future) return Boolean;
 
@@ -37,6 +37,8 @@ package Linted.Window_Notifier with
       Post => (if Init then not Is_Live (F) else Is_Live (F));
 
 private
-   type Future is new Natural with
+   Max_Nodes : constant := 1;
+
+   type Future is range 0 .. Max_Nodes + 1 with
         Default_Value => 0;
 end Linted.Window_Notifier;

@@ -20,8 +20,7 @@ with System.Storage_Elements;
 with Linted.Writer;
 with Linted.Queue;
 
-package body Linted.Update_Writer with
-     Spark_Mode => Off is
+package body Linted.Update_Writer is
    package C renames Interfaces.C;
    package Storage_Elements renames System.Storage_Elements;
 
@@ -46,8 +45,8 @@ package body Linted.Update_Writer with
      (Object : KOs.KO;
       U : Update.Packet;
       Signaller : Triggers.Signaller;
-      F : out Future)
-   is
+      F : out Future) with
+      Spark_Mode => Off is
    begin
       Spare_Futures.Dequeue (F);
       Update.To_Storage (U, Data_Being_Written (F));
