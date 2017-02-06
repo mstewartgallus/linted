@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -5475,7 +5475,7 @@ package XCB.XProto with
    function xcb_get_geometry_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_geometry_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_geometry_reply_t;  -- /usr/include/xcb/xproto.h:7298
    pragma Import (C, xcb_get_geometry_reply, "xcb_get_geometry_reply");
 
@@ -5519,8 +5519,8 @@ package XCB.XProto with
    function xcb_query_tree_reply
      (c : xcb_connection_t_access;
       cookie : xcb_query_tree_cookie_t;
-      e : access xcb_generic_error_t_access)
-      return access xcb_query_tree_reply_t;  -- /usr/include/xcb/xproto.h:7426
+      e : out xcb_generic_error_t_access)
+     return access xcb_query_tree_reply_t;  -- /usr/include/xcb/xproto.h:7426
    pragma Import (C, xcb_query_tree_reply, "xcb_query_tree_reply");
 
    function xcb_intern_atom_sizeof
@@ -5546,7 +5546,7 @@ package XCB.XProto with
    function xcb_intern_atom_reply
      (c : xcb_connection_t_access;
       cookie : xcb_intern_atom_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_intern_atom_reply_t;  -- /usr/include/xcb/xproto.h:7537
    pragma Import (C, xcb_intern_atom_reply, "xcb_intern_atom_reply");
 
@@ -5590,7 +5590,7 @@ package XCB.XProto with
    function xcb_get_atom_name_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_atom_name_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_atom_name_reply_t;  -- /usr/include/xcb/xproto.h:7659
    pragma Import (C, xcb_get_atom_name_reply, "xcb_get_atom_name_reply");
 
@@ -5689,7 +5689,7 @@ package XCB.XProto with
    function xcb_get_property_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_property_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_property_reply_t;  -- /usr/include/xcb/xproto.h:7996
    pragma Import (C, xcb_get_property_reply, "xcb_get_property_reply");
 
@@ -5735,7 +5735,7 @@ package XCB.XProto with
    function xcb_list_properties_reply
      (c : xcb_connection_t_access;
       cookie : xcb_list_properties_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_list_properties_reply_t;  -- /usr/include/xcb/xproto.h:8118
    pragma Import (C, xcb_list_properties_reply, "xcb_list_properties_reply");
 
@@ -5776,7 +5776,7 @@ package XCB.XProto with
    function xcb_get_selection_owner_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_selection_owner_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_selection_owner_reply_t;  -- /usr/include/xcb/xproto.h:8295
    pragma Import
      (C,
@@ -5853,7 +5853,7 @@ package XCB.XProto with
    function xcb_grab_pointer_reply
      (c : xcb_connection_t_access;
       cookie : xcb_grab_pointer_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_grab_pointer_reply_t;  -- /usr/include/xcb/xproto.h:8637
    pragma Import (C, xcb_grab_pointer_reply, "xcb_grab_pointer_reply");
 
@@ -5961,7 +5961,7 @@ package XCB.XProto with
    function xcb_grab_keyboard_reply
      (c : xcb_connection_t_access;
       cookie : xcb_grab_keyboard_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_grab_keyboard_reply_t;  -- /usr/include/xcb/xproto.h:9151
    pragma Import (C, xcb_grab_keyboard_reply, "xcb_grab_keyboard_reply");
 
@@ -6070,7 +6070,7 @@ package XCB.XProto with
    function xcb_query_pointer_reply
      (c : xcb_connection_t_access;
       cookie : xcb_query_pointer_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_query_pointer_reply_t;  -- /usr/include/xcb/xproto.h:9685
    pragma Import (C, xcb_query_pointer_reply, "xcb_query_pointer_reply");
 
@@ -6136,7 +6136,7 @@ package XCB.XProto with
    function xcb_get_motion_events_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_motion_events_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_motion_events_reply_t;  -- /usr/include/xcb/xproto.h:9858
    pragma Import
      (C,
@@ -6167,7 +6167,7 @@ package XCB.XProto with
    function xcb_translate_coordinates_reply
      (c : xcb_connection_t_access;
       cookie : xcb_translate_coordinates_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_translate_coordinates_reply_t;  -- /usr/include/xcb/xproto.h:9950
    pragma Import
      (C,
@@ -6235,7 +6235,7 @@ package XCB.XProto with
    function xcb_get_input_focus_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_input_focus_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_input_focus_reply_t;  -- /usr/include/xcb/xproto.h:10238
    pragma Import (C, xcb_get_input_focus_reply, "xcb_get_input_focus_reply");
 
@@ -6252,7 +6252,7 @@ package XCB.XProto with
    function xcb_query_keymap_reply
      (c : xcb_connection_t_access;
       cookie : xcb_query_keymap_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_query_keymap_reply_t;  -- /usr/include/xcb/xproto.h:10314
    pragma Import (C, xcb_query_keymap_reply, "xcb_query_keymap_reply");
 
@@ -6369,8 +6369,8 @@ package XCB.XProto with
    function xcb_query_font_reply
      (c : xcb_connection_t_access;
       cookie : xcb_query_font_cookie_t;
-      e : access xcb_generic_error_t_access)
-      return access xcb_query_font_reply_t;  -- /usr/include/xcb/xproto.h:10688
+      e : out xcb_generic_error_t_access)
+     return access xcb_query_font_reply_t;  -- /usr/include/xcb/xproto.h:10688
    pragma Import (C, xcb_query_font_reply, "xcb_query_font_reply");
 
    function xcb_query_text_extents_sizeof
@@ -6404,7 +6404,7 @@ package XCB.XProto with
    function xcb_query_text_extents_reply
      (c : xcb_connection_t_access;
       cookie : xcb_query_text_extents_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_query_text_extents_reply_t;  -- /usr/include/xcb/xproto.h:10828
    pragma Import
      (C,
@@ -6479,8 +6479,8 @@ package XCB.XProto with
    function xcb_list_fonts_reply
      (c : xcb_connection_t_access;
       cookie : xcb_list_fonts_cookie_t;
-      e : access xcb_generic_error_t_access)
-      return access xcb_list_fonts_reply_t;  -- /usr/include/xcb/xproto.h:11046
+      e : out xcb_generic_error_t_access)
+     return access xcb_list_fonts_reply_t;  -- /usr/include/xcb/xproto.h:11046
    pragma Import (C, xcb_list_fonts_reply, "xcb_list_fonts_reply");
 
    function xcb_list_fonts_with_info_sizeof
@@ -6562,7 +6562,7 @@ package XCB.XProto with
    function xcb_list_fonts_with_info_reply
      (c : xcb_connection_t_access;
       cookie : xcb_list_fonts_with_info_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_list_fonts_with_info_reply_t;  -- /usr/include/xcb/xproto.h:11231
    pragma Import
      (C,
@@ -6625,7 +6625,7 @@ package XCB.XProto with
    function xcb_get_font_path_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_font_path_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_font_path_reply_t;  -- /usr/include/xcb/xproto.h:11392
    pragma Import (C, xcb_get_font_path_reply, "xcb_get_font_path_reply");
 
@@ -7169,8 +7169,8 @@ package XCB.XProto with
    function xcb_get_image_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_image_cookie_t;
-      e : access xcb_generic_error_t_access)
-      return access xcb_get_image_reply_t;  -- /usr/include/xcb/xproto.h:13082
+      e : out xcb_generic_error_t_access)
+     return access xcb_get_image_reply_t;  -- /usr/include/xcb/xproto.h:13082
    pragma Import (C, xcb_get_image_reply, "xcb_get_image_reply");
 
    function xcb_poly_text_8_sizeof
@@ -7415,7 +7415,7 @@ package XCB.XProto with
    function xcb_list_installed_colormaps_reply
      (c : xcb_connection_t_access;
       cookie : xcb_list_installed_colormaps_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_list_installed_colormaps_reply_t;  -- /usr/include/xcb/xproto.h:13833
    pragma Import
      (C,
@@ -7443,7 +7443,7 @@ package XCB.XProto with
    function xcb_alloc_color_reply
      (c : xcb_connection_t_access;
       cookie : xcb_alloc_color_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_alloc_color_reply_t;  -- /usr/include/xcb/xproto.h:13943
    pragma Import (C, xcb_alloc_color_reply, "xcb_alloc_color_reply");
 
@@ -7477,7 +7477,7 @@ package XCB.XProto with
    function xcb_alloc_named_color_reply
      (c : xcb_connection_t_access;
       cookie : xcb_alloc_named_color_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_alloc_named_color_reply_t;  -- /usr/include/xcb/xproto.h:14034
    pragma Import
      (C,
@@ -7562,7 +7562,7 @@ package XCB.XProto with
    function xcb_alloc_color_cells_reply
      (c : xcb_connection_t_access;
       cookie : xcb_alloc_color_cells_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_alloc_color_cells_reply_t;  -- /usr/include/xcb/xproto.h:14207
    pragma Import
      (C,
@@ -7628,7 +7628,7 @@ package XCB.XProto with
    function xcb_alloc_color_planes_reply
      (c : xcb_connection_t_access;
       cookie : xcb_alloc_color_planes_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_alloc_color_planes_reply_t;  -- /usr/include/xcb/xproto.h:14349
    pragma Import
      (C,
@@ -7775,7 +7775,7 @@ package XCB.XProto with
    function xcb_query_colors_reply
      (c : xcb_connection_t_access;
       cookie : xcb_query_colors_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_query_colors_reply_t;  -- /usr/include/xcb/xproto.h:14760
    pragma Import (C, xcb_query_colors_reply, "xcb_query_colors_reply");
 
@@ -7803,7 +7803,7 @@ package XCB.XProto with
    function xcb_lookup_color_reply
      (c : xcb_connection_t_access;
       cookie : xcb_lookup_color_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_lookup_color_reply_t;  -- /usr/include/xcb/xproto.h:14851
    pragma Import (C, xcb_lookup_color_reply, "xcb_lookup_color_reply");
 
@@ -7934,7 +7934,7 @@ package XCB.XProto with
    function xcb_query_best_size_reply
      (c : xcb_connection_t_access;
       cookie : xcb_query_best_size_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_query_best_size_reply_t;  -- /usr/include/xcb/xproto.h:15293
    pragma Import (C, xcb_query_best_size_reply, "xcb_query_best_size_reply");
 
@@ -7963,7 +7963,7 @@ package XCB.XProto with
    function xcb_query_extension_reply
      (c : xcb_connection_t_access;
       cookie : xcb_query_extension_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_query_extension_reply_t;  -- /usr/include/xcb/xproto.h:15404
    pragma Import (C, xcb_query_extension_reply, "xcb_query_extension_reply");
 
@@ -8003,7 +8003,7 @@ package XCB.XProto with
    function xcb_list_extensions_reply
      (c : xcb_connection_t_access;
       cookie : xcb_list_extensions_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_list_extensions_reply_t;  -- /usr/include/xcb/xproto.h:15509
    pragma Import (C, xcb_list_extensions_reply, "xcb_list_extensions_reply");
 
@@ -8090,7 +8090,7 @@ package XCB.XProto with
    function xcb_get_keyboard_mapping_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_keyboard_mapping_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_keyboard_mapping_reply_t;  -- /usr/include/xcb/xproto.h:15699
    pragma Import
      (C,
@@ -8141,7 +8141,7 @@ package XCB.XProto with
    function xcb_get_keyboard_control_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_keyboard_control_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_keyboard_control_reply_t;  -- /usr/include/xcb/xproto.h:15831
    pragma Import
      (C,
@@ -8199,7 +8199,7 @@ package XCB.XProto with
    function xcb_get_pointer_control_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_pointer_control_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_pointer_control_reply_t;  -- /usr/include/xcb/xproto.h:16021
    pragma Import
      (C,
@@ -8243,7 +8243,7 @@ package XCB.XProto with
    function xcb_get_screen_saver_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_screen_saver_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_screen_saver_reply_t;  -- /usr/include/xcb/xproto.h:16158
    pragma Import (C, xcb_get_screen_saver_reply, "xcb_get_screen_saver_reply");
 
@@ -8331,8 +8331,8 @@ package XCB.XProto with
    function xcb_list_hosts_reply
      (c : xcb_connection_t_access;
       cookie : xcb_list_hosts_cookie_t;
-      e : access xcb_generic_error_t_access)
-      return access xcb_list_hosts_reply_t;  -- /usr/include/xcb/xproto.h:16412
+      e : out xcb_generic_error_t_access)
+     return access xcb_list_hosts_reply_t;  -- /usr/include/xcb/xproto.h:16412
    pragma Import (C, xcb_list_hosts_reply, "xcb_list_hosts_reply");
 
    function xcb_set_access_control_checked
@@ -8449,7 +8449,7 @@ package XCB.XProto with
    function xcb_set_pointer_mapping_reply
      (c : xcb_connection_t_access;
       cookie : xcb_set_pointer_mapping_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_set_pointer_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16771
    pragma Import
      (C,
@@ -8503,7 +8503,7 @@ package XCB.XProto with
    function xcb_get_pointer_mapping_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_pointer_mapping_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_pointer_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16889
    pragma Import
      (C,
@@ -8538,7 +8538,7 @@ package XCB.XProto with
    function xcb_set_modifier_mapping_reply
      (c : xcb_connection_t_access;
       cookie : xcb_set_modifier_mapping_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_set_modifier_mapping_reply_t;  -- /usr/include/xcb/xproto.h:16976
    pragma Import
      (C,
@@ -8592,7 +8592,7 @@ package XCB.XProto with
    function xcb_get_modifier_mapping_reply
      (c : xcb_connection_t_access;
       cookie : xcb_get_modifier_mapping_cookie_t;
-      e : access xcb_generic_error_t_access)
+      e : out xcb_generic_error_t_access)
       return access xcb_get_modifier_mapping_reply_t;  -- /usr/include/xcb/xproto.h:17094
    pragma Import
      (C,

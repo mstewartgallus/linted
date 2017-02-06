@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ package body Linted.Audio with
 
    Sampledata : array (0 .. Integer (GREATEST_PERIOD) - 1) of aliased short;
 
-   Test_Sample_Spec : aliased constant pa_sample_spec :=
+   Test_Sample_Spec : constant pa_sample_spec :=
      (format => PA_SAMPLE_S16LE,
       rate => unsigned (SAMPLE_RATE),
       channels => 1);
@@ -228,14 +228,14 @@ package body Linted.Audio with
    procedure On_Ready (c : pa_context_access) is
       Stream : pa_stream_access;
 
-      Buffer_Attr : aliased pa_buffer_attr;
+      Buffer_Attr : pa_buffer_attr;
       Latency : constant unsigned_long := 20000;
 
       Stream_Name : chars_ptr;
    begin
       Stream_Name := New_String ("Background Music");
 
-      Stream := pa_stream_new (c, Stream_Name, Test_Sample_Spec'Access, null);
+      Stream := pa_stream_new (c, Stream_Name, Test_Sample_Spec, null);
 
       Free (Stream_Name);
 
@@ -245,17 +245,16 @@ package body Linted.Audio with
          System.Null_Address);
 
       Buffer_Attr.maxlength :=
-        unsigned (pa_usec_to_bytes (Latency, Test_Sample_Spec'Access));
-      Buffer_Attr.minreq :=
-        unsigned (pa_usec_to_bytes (0, Test_Sample_Spec'Access));
+        unsigned (pa_usec_to_bytes (Latency, Test_Sample_Spec));
+      Buffer_Attr.minreq := unsigned (pa_usec_to_bytes (0, Test_Sample_Spec));
       Buffer_Attr.prebuf := -1;
       Buffer_Attr.tlength :=
-        unsigned (pa_usec_to_bytes (Latency, Test_Sample_Spec'Access));
+        unsigned (pa_usec_to_bytes (Latency, Test_Sample_Spec));
 
       if pa_stream_connect_playback
           (Stream,
            Null_Ptr,
-           Buffer_Attr'Access,
+           Buffer_Attr,
            PA_STREAM_INTERPOLATE_TIMING or
            PA_STREAM_ADJUST_LATENCY or
            PA_STREAM_AUTO_TIMING_UPDATE,

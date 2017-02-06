@@ -229,8 +229,8 @@ package Pulse.Volume with
 
    function pa_cvolume_compatible
      (v : System.Address;
-      ss : access constant Pulse.Sample.pa_sample_spec)
-      return Interfaces.C.int;  -- /usr/include/pulse/volume.h:297
+      ss : Pulse.Sample.pa_sample_spec)
+     return Interfaces.C.int;  -- /usr/include/pulse/volume.h:297
    pragma Import (C, pa_cvolume_compatible, "pa_cvolume_compatible");
 
    function pa_cvolume_compatible_with_channel_map

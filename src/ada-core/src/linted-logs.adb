@@ -14,20 +14,15 @@
 with Ada.Command_Line;
 
 with Interfaces.C;
-with Interfaces.C.Strings;
 
 with Libc.Syslog;
 
 package body Linted.Logs is
    package C renames Interfaces.C;
-   package C_Strings renames Interfaces.C.Strings;
 
    use type C.unsigned;
 
-   procedure syslog
-     (pri : C.int;
-      fmt : C_Strings.chars_ptr;
-      str : C_Strings.chars_ptr);
+   procedure syslog (pri : C.int; fmt : C.char_array; str : C.char_array);
    pragma Import (C, syslog, "syslog");
 
    procedure Log (Pri : Priority; Str : String) with
@@ -39,7 +34,7 @@ package body Linted.Logs is
            C.To_C (Ada.Command_Line.Command_Name);
       begin
          Libc.Syslog.openlog
-           (C_Strings.To_Chars_Ptr (Ident'Unchecked_Access),
+           (Ident,
             C.int (C.unsigned (Libc.Syslog.LOG_PID) or Libc.Syslog.LOG_NDELAY),
             Libc.Syslog.LOG_USER);
       end;
@@ -53,13 +48,10 @@ package body Linted.Logs is
             Sys_Pri := Libc.Syslog.LOG_INFO;
       end case;
       declare
-         Fmt : aliased C.char_array := C.To_C ("%s");
-         C_Str : aliased C.char_array := C.To_C (Str);
+         Fmt : C.char_array := C.To_C ("%s");
+         C_Str : C.char_array := C.To_C (Str);
       begin
-         syslog
-           (Sys_Pri,
-            C_Strings.To_Chars_Ptr (Fmt'Unchecked_Access),
-            C_Strings.To_Chars_Ptr (C_Str'Unchecked_Access));
+         syslog (Sys_Pri, Fmt, C_Str);
       end;
    end Log;
 

@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -21,20 +21,19 @@ package Libc.Sys.Poll with
    subtype nfds_t is unsigned_long;  -- /usr/include/sys/poll.h:36
 
    type pollfd is record
-      fd : aliased int;  -- /usr/include/sys/poll.h:41
-      events : aliased short;  -- /usr/include/sys/poll.h:42
-      revents : aliased short;  -- /usr/include/sys/poll.h:43
+      fd : int;  -- /usr/include/sys/poll.h:41
+      events : short;  -- /usr/include/sys/poll.h:42
+      revents : short;  -- /usr/include/sys/poll.h:43
    end record;
-   pragma Convention (C_Pass_By_Copy, pollfd);  -- /usr/include/sys/poll.h:39
 
    function poll
-     (fds : access pollfd;
+     (fds : in out pollfd;
       nfds : nfds_t;
       timeout : int) return int;  -- /usr/include/sys/poll.h:57
    pragma Import (C, poll, "poll");
 
    function ppoll
-     (fds : access pollfd;
+     (fds : in out pollfd;
       nfds : nfds_t;
       timeout : access constant Libc.Time.GNU.timespec;
       ss : access constant Libc.Signal.GNU.sigset_t)

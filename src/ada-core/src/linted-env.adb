@@ -48,28 +48,23 @@ package body Linted.Env with
          Value : String;
          Overwrite : Boolean) return Errors.Error
       is
-         N : aliased C.char_array := C.To_C (Name);
-         V : aliased C.char_array := C.To_C (Value);
+         N : C.char_array := C.To_C (Name);
+         V : C.char_array := C.To_C (Value);
       begin
          return Errors.Error
-             (Libc.Stdlib.GNU.setenv
-                (C.Strings.To_Chars_Ptr (N'Unchecked_Access),
-                 C.Strings.To_Chars_Ptr (V'Unchecked_Access),
-                 (if Overwrite then 1 else 0)));
+             (Libc.Stdlib.GNU.setenv (N, V, (if Overwrite then 1 else 0)));
       end Lock_Set;
 
       function Lock_Get (Name : String) return String is
-         N : aliased C.char_array := C.To_C (Name);
+         N : C.char_array := C.To_C (Name);
          P : C.Strings.chars_ptr;
       begin
-         P := Libc.Stdlib.getenv (C.Strings.To_Chars_Ptr (N'Unchecked_Access));
+         P := Libc.Stdlib.getenv (N);
          if P = C.Strings.Null_Ptr then
             return "";
          else
             return C.Strings.Value (P);
          end if;
       end Lock_Get;
-
    end Env_Lock;
-
 end Linted.Env;

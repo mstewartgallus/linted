@@ -267,9 +267,6 @@ package Pulse.Def with
       minreq : aliased Libc.Stdint.uint32_t;  -- /usr/include/pulse/def.h:400
       fragsize : aliased Libc.Stdint.uint32_t;  -- /usr/include/pulse/def.h:410
    end record;
-   pragma Convention
-     (C_Pass_By_Copy,
-      pa_buffer_attr);  -- /usr/include/pulse/def.h:359
 
    type pa_error_code is
      (PA_OK,

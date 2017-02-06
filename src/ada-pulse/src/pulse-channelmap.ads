@@ -261,7 +261,7 @@ package Pulse.Channelmap with
 
    function pa_channel_map_compatible
      (map : System.Address;
-      ss : access constant Pulse.Sample.pa_sample_spec)
+      ss : Pulse.Sample.pa_sample_spec)
      return int;  -- /usr/include/pulse/channelmap.h:328
    pragma Import (C, pa_channel_map_compatible, "pa_channel_map_compatible");
 

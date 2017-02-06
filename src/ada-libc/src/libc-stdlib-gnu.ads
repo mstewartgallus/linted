@@ -275,7 +275,8 @@ package Libc.Stdlib.GNU with
       arg : System.Address) return int;  -- /usr/include/stdlib.h:535
    pragma Import (C, on_exit, "on_exit");
 
-   procedure quick_exit (status : int);  -- /usr/include/stdlib.h:549
+   procedure quick_exit (status : int) with
+      No_Return;  -- /usr/include/stdlib.h:549
    pragma Import (C, quick_exit, "quick_exit");
 
    function secure_getenv
@@ -289,8 +290,8 @@ package Libc.Stdlib.GNU with
    pragma Import (C, putenv, "putenv");
 
    function setenv
-     (name : Interfaces.C.Strings.chars_ptr;
-      value : Interfaces.C.Strings.chars_ptr;
+     (name : char_array;
+      value : char_array;
       replace : int) return int;  -- /usr/include/stdlib.h:584
    pragma Import (C, setenv, "setenv");
 

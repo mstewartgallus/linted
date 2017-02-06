@@ -358,7 +358,7 @@ is
    begin
       loop
          declare
-            Pollfd : aliased Libc.Sys.Poll.pollfd :=
+            Pollfd : Libc.Sys.Poll.pollfd :=
               (Interfaces.C.int (Object), 0, 0);
          begin
             if Listen_Events (Readable) then
@@ -374,7 +374,7 @@ is
                     Libc.Sys.Poll.POLLOUT);
             end if;
 
-            Nfds := Libc.Sys.Poll.poll (Pollfd'Unchecked_Access, 1, -1);
+            Nfds := Libc.Sys.Poll.poll (Pollfd, 1, -1);
 
             if
               (Interfaces.C.unsigned (Pollfd.events) and
@@ -409,28 +409,31 @@ is
    end Do_Poll;
 
    procedure Do_Work with Spark_Mode is
-      New_Command : Any_Command;
    begin
-      My_Command_Queue.Dequeue (New_Command);
+      loop
+	 declare
+	    New_Command : Any_Command;
+	 begin
+	    My_Command_Queue.Dequeue (New_Command);
 
-      case New_Command.C.T is
-	 when Invalid_Type =>
-	    raise Program_Error;
+	    case New_Command.C.T is
+	       when Invalid_Type =>
+		  raise Program_Error;
 
-	 when Write_Type =>
-	    Do_Write (New_Command.C.Write_Object);
-	 when Read_Type =>
-	    Do_Read (New_Command.C.Read_Object);
-	 when Poll_Type =>
-	    Do_Poll (New_Command.C.Poll_Object);
-      end case;
+	       when Write_Type =>
+		  Do_Write (New_Command.C.Write_Object);
+	       when Read_Type =>
+		  Do_Read (New_Command.C.Read_Object);
+	       when Poll_Type =>
+		  Do_Poll (New_Command.C.Poll_Object);
+	    end case;
+	 end;
+      end loop;
    end Do_Work;
 
    task body Worker_Task with Spark_Mode => Off is
    begin
-      loop
-	 Do_Work;
-      end loop;
+      Do_Work;
    end Worker_Task;
 
    function Read_Future_Is_Live

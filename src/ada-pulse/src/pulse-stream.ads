@@ -68,7 +68,7 @@ package Pulse.Stream with
    function pa_stream_new
      (c : Pulse.Context.pa_context_access;
       name : Interfaces.C.Strings.chars_ptr;
-      ss : access constant Pulse.Sample.pa_sample_spec;
+      ss : Pulse.Sample.pa_sample_spec;
       map : access constant Pulse.Channelmap.pa_channel_map)
       return pa_stream_access;  -- /usr/include/pulse/stream.h:344
    pragma Import (C, pa_stream_new, "pa_stream_new");
@@ -76,7 +76,7 @@ package Pulse.Stream with
    function pa_stream_new_with_proplist
      (c : Pulse.Context.pa_context_access;
       name : Interfaces.C.Strings.chars_ptr;
-      ss : access constant Pulse.Sample.pa_sample_spec;
+      ss : Pulse.Sample.pa_sample_spec;
       map : access constant Pulse.Channelmap.pa_channel_map;
       p : pa_stream_access)
      return System.Address;  -- /usr/include/pulse/stream.h:353
@@ -139,7 +139,7 @@ package Pulse.Stream with
    function pa_stream_connect_playback
      (s : pa_stream_access;
       dev : Interfaces.C.Strings.chars_ptr;
-      attr : access constant Pulse.Def.pa_buffer_attr;
+      attr : Pulse.Def.pa_buffer_attr;
       flags : Pulse.Def.pa_stream_flags_t;
       volume : access constant Pulse.Volume.pa_cvolume;
       sync_stream : System.Address)
@@ -149,7 +149,7 @@ package Pulse.Stream with
    function pa_stream_connect_record
      (s : pa_stream_access;
       dev : Interfaces.C.Strings.chars_ptr;
-      attr : access constant Pulse.Def.pa_buffer_attr;
+      attr : Pulse.Def.pa_buffer_attr;
       flags : Pulse.Def.pa_stream_flags_t)
      return int;  -- /usr/include/pulse/stream.h:448
    pragma Import (C, pa_stream_connect_record, "pa_stream_connect_record");
@@ -405,7 +405,7 @@ package Pulse.Stream with
 
    function pa_stream_set_buffer_attr
      (s : pa_stream_access;
-      attr : access constant Pulse.Def.pa_buffer_attr;
+      attr : Pulse.Def.pa_buffer_attr;
       cb : pa_stream_success_cb_t;
       userdata : System.Address)
      return System.Address;  -- /usr/include/pulse/stream.h:761

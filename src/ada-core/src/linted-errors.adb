@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces.C.Strings;
-
 with Libc.Errno;
 with Libc.String;
 
@@ -27,14 +25,10 @@ package body Linted.Errors is
    begin
       loop
          declare
-            Buf : aliased Interfaces.C.char_array :=
-              (1 .. N + 1 => Interfaces.C.nul);
+            Buf : Interfaces.C.char_array (1 .. N + 1) :=
+              (others => Interfaces.C.nul);
          begin
-            Err :=
-              Libc.String.strerror_r
-                (Interfaces.C.int (E),
-                 Interfaces.C.Strings.To_Chars_Ptr (Buf'Unchecked_Access),
-                 N);
+            Err := Libc.String.strerror_r (Interfaces.C.int (E), Buf, N);
             if Err /= Libc.Errno.ERANGE then
                if 0 = Err then
                   Buf (N) := Interfaces.C.nul;

@@ -357,7 +357,7 @@ package Libc.String is
 
    function strerror_r
      (errnum : Interfaces.C.int;
-      buf : Interfaces.C.Strings.chars_ptr;
+      buf : in out Interfaces.C.char_array;
       buflen : Libc.Stddef.size_t) return Interfaces.C.int;
    pragma Import (C, strerror_r, "__xpg_strerror_r");
 

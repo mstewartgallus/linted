@@ -45,6 +45,7 @@ package body Linted.Drawer with
    use type Interfaces.Unsigned_32;
    use type Errors.Error;
    use type XCB.xcb_connection_t_access;
+   use type XCB.xcb_generic_error_t_access;
    use type C.unsigned_char;
    use type C.C_float;
 
@@ -172,7 +173,7 @@ package body Linted.Drawer with
                if Init then
                   Read_Future_Live := False;
                   declare
-                     GPU_Update : aliased GPU.Update;
+                     GPU_Update : GPU.Update;
                   begin
                      GPU_Update.X_Position :=
                        C.C_float (Read_Event.Data.X_Position) * (1.0 / 4096.0);
@@ -198,7 +199,7 @@ package body Linted.Drawer with
                        (6.28318530717958647692528 /
                         (C.C_float (Update.Nat'Last) + 1.0));
 
-                     GPU.Update_State (Context, GPU_Update'Unchecked_Access);
+                     GPU.Update_State (Context, GPU_Update);
                   end;
 
                   Update_Reader.Read
@@ -391,6 +392,25 @@ package body Linted.Drawer with
          raise Program_Error with Errors.To_String (Err);
       end if;
 
+      declare
+         Error : XCB.xcb_generic_error_t_access;
+         Reply : access XCB.XProto.xcb_get_geometry_reply_t;
+
+         procedure Free (Event : access XCB.XProto.xcb_get_geometry_reply_t);
+         pragma Import (C, Free, "free");
+
+      begin
+         Error := XCB.xcb_request_check (Connection, Ck);
+         Err := XCB_Conn_Error (Connection);
+         if Err /= 0 then
+            raise Program_Error with Errors.To_String (Err);
+         end if;
+
+         if Error /= null then
+            raise Program_Error;
+         end if;
+      end;
+
       Geom_CK :=
         XCB.XProto.xcb_get_geometry
           (Connection,
@@ -401,7 +421,7 @@ package body Linted.Drawer with
       end if;
 
       declare
-         Error : aliased access XCB.xcb_generic_error_t;
+         Error : XCB.xcb_generic_error_t_access;
          Reply : access XCB.XProto.xcb_get_geometry_reply_t;
 
          procedure Free (Event : access XCB.XProto.xcb_get_geometry_reply_t);
@@ -409,10 +429,7 @@ package body Linted.Drawer with
 
       begin
          Reply :=
-           XCB.XProto.xcb_get_geometry_reply
-             (Connection,
-              Geom_CK,
-              Error'Unchecked_Access);
+           XCB.XProto.xcb_get_geometry_reply (Connection, Geom_CK, Error);
 
          Err := XCB_Conn_Error (Connection);
          if Err /= 0 then

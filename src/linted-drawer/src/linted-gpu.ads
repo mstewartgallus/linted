@@ -29,16 +29,15 @@ package Linted.GPU with
    type Context_Access is access all Context;
 
    type Update is record
-      Z_Rotation : aliased Interfaces.C.C_float;  -- lntd/gpu.h:34
-      X_Rotation : aliased Interfaces.C.C_float;  -- lntd/gpu.h:35
-      X_Position : aliased Interfaces.C.C_float;  -- lntd/gpu.h:37
-      Y_Position : aliased Interfaces.C.C_float;  -- lntd/gpu.h:38
-      Z_Position : aliased Interfaces.C.C_float;  -- lntd/gpu.h:39
-      MX_Position : aliased Interfaces.C.C_float;  -- lntd/gpu.h:41
-      MY_Position : aliased Interfaces.C.C_float;  -- lntd/gpu.h:42
-      MZ_Position : aliased Interfaces.C.C_float;  -- lntd/gpu.h:43
+      Z_Rotation : Interfaces.C.C_float;  -- lntd/gpu.h:34
+      X_Rotation : Interfaces.C.C_float;  -- lntd/gpu.h:35
+      X_Position : Interfaces.C.C_float;  -- lntd/gpu.h:37
+      Y_Position : Interfaces.C.C_float;  -- lntd/gpu.h:38
+      Z_Position : Interfaces.C.C_float;  -- lntd/gpu.h:39
+      MX_Position : Interfaces.C.C_float;  -- lntd/gpu.h:41
+      MY_Position : Interfaces.C.C_float;  -- lntd/gpu.h:42
+      MZ_Position : Interfaces.C.C_float;  -- lntd/gpu.h:43
    end record;
-   pragma Convention (C_Pass_By_Copy, Update);  -- lntd/gpu.h:33
 
    function Context_Create
      (Con : out Context_Access) return Errors.Error;  -- lntd/gpu.h:47
@@ -59,7 +58,7 @@ package Linted.GPU with
 
    procedure Update_State
      (Con : Context_Access;
-      gpu_update : access constant Update);  -- lntd/gpu.h:55
+      gpu_update : Update);  -- lntd/gpu.h:55
    pragma Import (C, Update_State, "lntd_gpu_update_state");
 
    procedure Resize

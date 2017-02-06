@@ -145,14 +145,15 @@ package Libc.Stdlib with
      return Interfaces.C.int;  -- /usr/include/stdlib.h:519
    pragma Import (C, atexit, "atexit");
 
-   procedure c_exit (status : Interfaces.C.int);  -- /usr/include/stdlib.h:543
+   procedure c_exit (status : Interfaces.C.int) with
+      No_Return;  -- /usr/include/stdlib.h:543
    pragma Import (C, c_exit, "exit");
 
    --  skipped func _Exit
 
    function getenv
-     (name : Interfaces.C.Strings.chars_ptr)
-      return Interfaces.C.Strings.chars_ptr;  -- /usr/include/stdlib.h:564
+     (name : Interfaces.C.char_array)
+     return Interfaces.C.Strings.chars_ptr;  -- /usr/include/stdlib.h:564
    pragma Import (C, getenv, "getenv");
 
    function c_system

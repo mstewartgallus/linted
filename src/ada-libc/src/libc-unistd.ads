@@ -295,6 +295,7 @@ package Libc.Unistd is
    pragma Import (C, nice, "nice");
 
    procedure u_exit (status : int) with
+      No_Return,
       Spark_Mode => Off;
    pragma Import (C, u_exit, "_exit");
 

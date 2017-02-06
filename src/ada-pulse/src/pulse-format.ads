@@ -115,7 +115,7 @@ package Pulse.Format with
    pragma Import (C, pa_format_info_from_string, "pa_format_info_from_string");
 
    function pa_format_info_from_sample_spec
-     (ss : access Pulse.Sample.pa_sample_spec;
+     (ss : Pulse.Sample.pa_sample_spec;
       map : access Pulse.Channelmap.pa_channel_map)
       return access pa_format_info;  -- /usr/include/pulse/format.h:134
    pragma Import
@@ -125,7 +125,7 @@ package Pulse.Format with
 
    function pa_format_info_to_sample_spec
      (f : access pa_format_info;
-      ss : access Pulse.Sample.pa_sample_spec;
+      ss : out Pulse.Sample.pa_sample_spec;
       map : access Pulse.Channelmap.pa_channel_map)
      return int;  -- /usr/include/pulse/format.h:141
    pragma Import

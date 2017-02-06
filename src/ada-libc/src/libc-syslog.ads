@@ -77,7 +77,7 @@ package Libc.Syslog with
    pragma Import (C, closelog, "closelog");
 
    procedure openlog
-     (ident : Interfaces.C.Strings.chars_ptr;
+     (ident : char_array;
       option : int;
       facility : int);  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:181
    pragma Import (C, openlog, "openlog");
@@ -87,7 +87,7 @@ package Libc.Syslog with
      return int;  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:184
    pragma Import (C, setlogmask, "setlogmask");
 
-   procedure syslog (pri : int; fmt : Interfaces.C.Strings.chars_ptr  -- , ...
+   procedure syslog (pri : int; fmt : char_array  -- , ...
    );  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:190
    pragma Import (C, syslog, "syslog");
 
