@@ -35,7 +35,7 @@ package body Linted.Last_Chance with
            Ada.Characters.Latin_1.LF);
       Res : Interfaces.C.long;
    begin
-      --  Res := Libc.Unistd.write (2, X (X'First)'Address, X'Length);
+      Res := Libc.Unistd.write (2, X (X'First)'Address, X'Length);
       pragma Unreferenced (Res);
       Libc.Stdlib.c_exit (1);
    end Last_Chance_Handler;

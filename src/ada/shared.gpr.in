@@ -34,7 +34,7 @@ abstract project Shared is
   		    "-g",
   		    "-fvar-tracking-assignments",
 
-  		    -- "-O3",
+  		    "-O3",
 
   		    "-fvisibility=hidden",
   		    "-fdata-sections",

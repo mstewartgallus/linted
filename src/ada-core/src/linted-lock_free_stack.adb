@@ -11,42 +11,26 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Linted.Atomics;
+
 package body Linted.Lock_Free_Stack with
      Refined_State => (State => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
 is
+   type My_Ix is new Ix with
+        Default_Value => 0;
 
-   subtype My_Ix is Natural range 0 .. Natural (Ix'Last);
+   package My_Atomics is new Atomics (My_Ix);
 
    type Element_Array is array (My_Ix range 1 .. My_Ix (Ix'Last)) of Element_T;
 
    Buf_Contents : Element_Array;
 
-   protected type Node_Access with
-      Lock_Free is
-      procedure Set (New_Ptr : My_Ix) with
-         Global => null,
-         Depends => (Node_Access => New_Ptr, null => Node_Access);
-      function Get return My_Ix with
-         Global => null,
-         Depends => (Get'Result => Node_Access);
-      procedure Compare_And_Swap
-        (Old_Ptr : My_Ix;
-         New_Ptr : My_Ix;
-         Success : in out Boolean) with
-         Global => null,
-         Depends =>
-         (Success => (Old_Ptr, Node_Access),
-          Node_Access => (Node_Access, Old_Ptr, New_Ptr),
-          null => Success);
-   private
-      Ptr : My_Ix := 0;
-   end Node_Access;
-
-   type Node_Array is array (My_Ix range 1 .. My_Ix (Ix'Last)) of Node_Access;
+   type Node_Array is
+     array (My_Ix range 1 .. My_Ix (Ix'Last)) of My_Atomics.Atomic;
 
    Buf_Nodes : Node_Array;
-   Buf_Head : Node_Access;
-   Buf_Free : Node_Access;
+   Buf_Head : My_Atomics.Atomic;
+   Buf_Free : My_Atomics.Atomic;
 
    procedure Allocate (Free : out My_Ix) with
       Global => (In_Out => (Buf_Nodes, Buf_Free)),
@@ -62,43 +46,17 @@ is
       (Buf_Nodes => (Buf_Nodes, Buf_Free, Head),
        Buf_Free => (Buf_Free, Head));
 
-   procedure Push_Node (N : in out Node_Access; Free : My_Ix) with
+   procedure Push_Node (N : in out My_Atomics.Atomic; Free : My_Ix) with
       Pre => Free /= 0,
       Global => (In_Out => Buf_Nodes),
       Depends => (N => (Free, N), Buf_Nodes => (Free, Buf_Nodes, N));
 
-   procedure Pop_Node (N : in out Node_Access; Head : out My_Ix) with
+   procedure Pop_Node (N : in out My_Atomics.Atomic; Head : out My_Ix) with
       Global => (In_Out => Buf_Nodes),
       Depends =>
       (Head => (Buf_Nodes, N),
        N => (Buf_Nodes, N),
        Buf_Nodes => (N, Buf_Nodes));
-
-   protected body Node_Access is
-      procedure Set (New_Ptr : My_Ix) is
-      begin
-         Ptr := New_Ptr;
-      end Set;
-
-      function Get return My_Ix is
-      begin
-         return Ptr;
-      end Get;
-
-      procedure Compare_And_Swap
-        (Old_Ptr : My_Ix;
-         New_Ptr : My_Ix;
-         Success : in out Boolean)
-      is
-      begin
-         if Old_Ptr = Ptr then
-            Ptr := New_Ptr;
-            Success := True;
-         else
-            Success := False;
-         end if;
-      end Compare_And_Swap;
-   end Node_Access;
 
    procedure Allocate (Free : out My_Ix) is
    begin
@@ -127,14 +85,14 @@ is
       end if;
    end Try_Push;
 
-   procedure Push_Node (N : in out Node_Access; Free : My_Ix) is
+   procedure Push_Node (N : in out My_Atomics.Atomic; Free : My_Ix) is
       Head : My_Ix;
-      Swapped : Boolean := False;
+      Swapped : Boolean;
    begin
       loop
-         Head := N.Get;
-         Buf_Nodes (Free).Set (Head);
-         N.Compare_And_Swap (Head, Free, Swapped);
+         My_Atomics.Get (N, Head);
+         My_Atomics.Set (Buf_Nodes (Free), Head);
+         My_Atomics.Compare_And_Swap (N, Head, Free, Swapped);
          exit when Swapped;
       end loop;
    end Push_Node;
@@ -167,17 +125,17 @@ is
       end if;
    end Try_Pop;
 
-   procedure Pop_Node (N : in out Node_Access; Head : out My_Ix) is
+   procedure Pop_Node (N : in out My_Atomics.Atomic; Head : out My_Ix) is
       New_Head : My_Ix;
-      Swapped : Boolean := False;
+      Swapped : Boolean;
    begin
       loop
-         Head := N.Get;
+         My_Atomics.Get (N, Head);
          if Head = 0 then
             exit;
          else
-            New_Head := Buf_Nodes (Head).Get;
-            N.Compare_And_Swap (Head, New_Head, Swapped);
+            My_Atomics.Get (Buf_Nodes (Head), New_Head);
+            My_Atomics.Compare_And_Swap (N, Head, New_Head, Swapped);
             exit when Swapped;
          end if;
       end loop;
