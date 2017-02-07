@@ -12,13 +12,13 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Linted.Wait_Lists;
-with Linted.Stack;
+with Linted.Lock_Free_Stack;
 
 package body Linted.Queue with
      Refined_State =>
      (State => (My_Stack.State, Buf_Has_Free_Space, Buf_Has_Contents))
 is
-   package My_Stack is new Stack (Element_T, Ix, Is_Valid);
+   package My_Stack is new Lock_Free_Stack (Element_T, Ix, Is_Valid);
    Buf_Has_Free_Space : Wait_Lists.Wait_List;
    Buf_Has_Contents : Wait_Lists.Wait_List;
 
@@ -29,7 +29,7 @@ is
       Init : Boolean;
    begin
       loop
-         My_Stack.Try_Enqueue (Element, Init);
+         My_Stack.Try_Push (Element, Init);
          exit when Init;
          Wait_Lists.Wait (Buf_Has_Free_Space);
       end loop;
@@ -43,7 +43,7 @@ is
       Init : Boolean;
    begin
       loop
-         My_Stack.Try_Dequeue (Element, Init);
+         My_Stack.Try_Pop (Element, Init);
          exit when Init;
          Wait_Lists.Wait (Buf_Has_Contents);
       end loop;

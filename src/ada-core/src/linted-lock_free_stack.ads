@@ -15,17 +15,17 @@ generic
    type Element_T is private;
    type Ix is mod <>;
    with function Is_Valid (Element : Element_T) return Boolean;
-package Linted.Stack with
+package Linted.Lock_Free_Stack with
    Abstract_State => (State with External) is
    pragma Elaborate_Body;
 
-   procedure Try_Enqueue (Element : Element_T; Success : out Boolean) with
+   procedure Try_Push (Element : Element_T; Success : out Boolean) with
       Global => (In_Out => State),
       Depends => (State => (State, Element), Success => State),
       Pre => Is_Valid (Element);
 
-   procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) with
+   procedure Try_Pop (Element : out Element_T; Success : out Boolean) with
       Global => (In_Out => State),
       Depends => ((State, Element) => State, Success => State),
       Post => (if Success then Is_Valid (Element) else True);
-end Linted.Stack;
+end Linted.Lock_Free_Stack;

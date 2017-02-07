@@ -11,7 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package body Linted.Stack with
+package body Linted.Lock_Free_Stack with
      Refined_State => (State => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
 is
 
@@ -62,11 +62,12 @@ is
       (Buf_Nodes => (Buf_Nodes, Buf_Free, Head),
        Buf_Free => (Buf_Free, Head));
 
-   procedure Enqueue_Node (N : in out Node_Access; Free : My_Ix) with
+   procedure Push_Node (N : in out Node_Access; Free : My_Ix) with
+      Pre => Free /= 0,
       Global => (In_Out => Buf_Nodes),
       Depends => (N => (Free, N), Buf_Nodes => (Free, Buf_Nodes, N));
 
-   procedure Dequeue_Node (N : in out Node_Access; Head : out My_Ix) with
+   procedure Pop_Node (N : in out Node_Access; Head : out My_Ix) with
       Global => (In_Out => Buf_Nodes),
       Depends =>
       (Head => (Buf_Nodes, N),
@@ -101,15 +102,18 @@ is
 
    procedure Allocate (Free : out My_Ix) is
    begin
-      Dequeue_Node (Buf_Free, Free);
+      Pop_Node (Buf_Free, Free);
    end Allocate;
 
    procedure Deallocate (Head : My_Ix) is
    begin
-      Enqueue_Node (Buf_Free, Head);
+      Push_Node (Buf_Free, Head);
    end Deallocate;
 
-   procedure Try_Enqueue (Element : Element_T; Success : out Boolean) is
+   procedure Try_Push (Element : Element_T; Success : out Boolean) with
+      Refined_Global =>
+      (In_Out => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
+   is
       Free : My_Ix;
    begin
       Allocate (Free);
@@ -118,12 +122,12 @@ is
          Success := False;
       else
          Buf_Contents (Free) := Element;
-         Enqueue_Node (Buf_Head, Free);
+         Push_Node (Buf_Head, Free);
          Success := True;
       end if;
-   end Try_Enqueue;
+   end Try_Push;
 
-   procedure Enqueue_Node (N : in out Node_Access; Free : My_Ix) is
+   procedure Push_Node (N : in out Node_Access; Free : My_Ix) is
       Head : My_Ix;
       Swapped : Boolean := False;
    begin
@@ -133,12 +137,15 @@ is
          N.Compare_And_Swap (Head, Free, Swapped);
          exit when Swapped;
       end loop;
-   end Enqueue_Node;
+   end Push_Node;
 
-   procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) is
+   procedure Try_Pop (Element : out Element_T; Success : out Boolean) with
+      Refined_Global =>
+      (In_Out => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
+   is
       Head : My_Ix;
    begin
-      Dequeue_Node (Buf_Head, Head);
+      Pop_Node (Buf_Head, Head);
 
       if 0 = Head then
          declare
@@ -158,9 +165,9 @@ is
          Deallocate (Head);
          Success := True;
       end if;
-   end Try_Dequeue;
+   end Try_Pop;
 
-   procedure Dequeue_Node (N : in out Node_Access; Head : out My_Ix) is
+   procedure Pop_Node (N : in out Node_Access; Head : out My_Ix) is
       New_Head : My_Ix;
       Swapped : Boolean := False;
    begin
@@ -174,7 +181,7 @@ is
             exit when Swapped;
          end if;
       end loop;
-   end Dequeue_Node;
+   end Pop_Node;
 
 begin
    declare
@@ -186,4 +193,4 @@ begin
       end loop;
       Buf_Free.Set (Old_Node);
    end;
-end Linted.Stack;
+end Linted.Lock_Free_Stack;
