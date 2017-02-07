@@ -1,4 +1,4 @@
--- Copyright 2015 Steven Stewart-Gallus
+-- Copyright 2015,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 with Interfaces.C;
 with Interfaces.C.Strings;
 with System;
-with Interfaces.C.Extensions;
 
 package Libc.Stdlib with
      Spark_Mode => Off is
@@ -102,13 +101,13 @@ package Libc.Stdlib with
      return Interfaces.C.unsigned_long;  -- /usr/include/stdlib.h:187
    pragma Import (C, strtoul, "strtoul");
 
-   function strtoull
-     (nptr : Interfaces.C.Strings.chars_ptr;
-      endptr : System.Address;
-      base : Interfaces.C.int)
-      return Interfaces.C.Extensions
-       .unsigned_long_long;  -- /usr/include/stdlib.h:214
-   pragma Import (C, strtoull, "strtoull");
+   --  function strtoull
+   --    (nptr : Interfaces.C.Strings.chars_ptr;
+   --     endptr : System.Address;
+   --     base : Interfaces.C.int)
+   --     return Interfaces.C.Extensions
+   --      .unsigned_long_long;  -- /usr/include/stdlib.h:214
+   --  pragma Import (C, strtoull, "strtoull");
 
    function rand return Interfaces.C.int;  -- /usr/include/stdlib.h:374
    pragma Import (C, rand, "rand");

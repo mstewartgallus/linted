@@ -11,6 +11,9 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Ada.Exceptions;
+with Ada.Text_IO;
+
 with Libc.Errno;
 with Libc.Errno.POSIX_2008;
 with Libc.Sys.Poll;
@@ -19,6 +22,7 @@ with Libc.Unistd;
 
 with Linted.Channels;
 with Linted.Queue;
+with Linted.Last_Chance;
 
 package body Linted.IO_Pool with
   Refined_State => (Command_Queue => (My_Command_Queue.State),
@@ -94,10 +98,15 @@ is
    type Poll_Ix is mod Max_Poll_Futures + 1;
    type Command_Ix is mod Max_Command_Queue_Capacity + 1;
 
-   package Spare_Read_Futures is new Queue (Live_Read_Future, Read_Ix);
-   package Spare_Write_Futures is new Queue (Live_Write_Future, Write_Ix);
-   package Spare_Poll_Futures is new Queue (Live_Poll_Future, Poll_Ix);
-   package My_Command_Queue is new Queue (Any_Command, Command_Ix);
+   function Read_Is_Valid (Element : Live_Read_Future) return Boolean is (True);
+   function Write_Is_Valid (Element : Live_Write_Future) return Boolean is (True);
+   function Poll_Is_Valid (Element : Live_Poll_Future) return Boolean is (True);
+   function Command_Is_Valid (Element : Any_Command) return Boolean is (Element.C.T /= Invalid_Type);
+
+   package Spare_Read_Futures is new Queue (Live_Read_Future, Read_Ix, Read_Is_Valid);
+   package Spare_Write_Futures is new Queue (Live_Write_Future, Write_Ix, Write_Is_Valid);
+   package Spare_Poll_Futures is new Queue (Live_Poll_Future, Poll_Ix, Poll_Is_Valid);
+   package My_Command_Queue is new Queue (Any_Command, Command_Ix, Command_Is_Valid);
 
    task type Worker_Task with Global => (In_Out => (My_Command_Queue.State,
    						    Read_Future_Channels,
@@ -158,7 +167,9 @@ is
       Buf : System.Address;
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
-      Future : out Read_Future)
+      Future : out Read_Future) with
+     Refined_Global => (In_Out => (Spare_Read_Futures.State,
+				   My_Command_Queue.State))
    is
       Live : Live_Read_Future;
    begin
@@ -174,7 +185,8 @@ is
 
    procedure Read_Wait
      (Future : in out Read_Future;
-      Event : out Reader_Event)
+      Event : out Reader_Event) with
+     Refined_Global => (In_Out => (Spare_Read_Futures.State, Read_Future_Channels))
    is
       Live : Live_Read_Future := Live_Read_Future (Future);
    begin
@@ -186,7 +198,8 @@ is
    procedure Read_Poll
      (Future : in out Read_Future;
       Event : out Reader_Event;
-      Init : out Boolean)
+      Init : out Boolean) with
+     Refined_Global => (In_Out => (Spare_Read_Futures.State, Read_Future_Channels))
    is
       Live : Live_Read_Future := Live_Read_Future (Future);
    begin
@@ -202,7 +215,8 @@ is
       Buf : System.Address;
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
-      Future : out Write_Future)
+      Future : out Write_Future) with
+     Refined_Global => (In_Out => (Spare_Write_Futures.State, My_Command_Queue.State))
    is
       Live : Live_Write_Future;
    begin
@@ -213,7 +227,8 @@ is
 
    procedure Write_Wait
      (Future : in out Write_Future;
-      Event : out Writer_Event)
+      Event : out Writer_Event) with
+     Refined_Global => (In_Out => (Spare_Write_Futures.State, Write_Future_Channels))
    is
       Live : Live_Write_Future := Live_Write_Future (Future);
    begin
@@ -225,7 +240,8 @@ is
    procedure Write_Poll
      (Future : in out Write_Future;
       Event : out Writer_Event;
-      Init : out Boolean)
+      Init : out Boolean) with
+     Refined_Global => (In_Out => (Spare_Write_Futures.State, Write_Future_Channels))
    is
       Live : Live_Write_Future := Live_Write_Future (Future);
    begin
@@ -240,7 +256,8 @@ is
      (Object : KOs.KO;
       Events : Poller_Event_Set;
       Signaller : Triggers.Signaller;
-      Future : out Poll_Future)
+      Future : out Poll_Future) with
+     Refined_Global => (In_Out => (Spare_Poll_Futures.State, My_Command_Queue.State))
    is
       Live : Live_Poll_Future;
    begin
@@ -251,7 +268,8 @@ is
 
    procedure Poll_Wait
      (Future : in out Poll_Future;
-      Event : out Poller_Event)
+      Event : out Poller_Event) with
+     Refined_Global => (In_Out => (Spare_Poll_Futures.State, Poll_Future_Channels))
    is
       Live : Live_Poll_Future := Live_Poll_Future (Future);
    begin
@@ -263,7 +281,8 @@ is
    procedure Poll_Poll
      (Future : in out Poll_Future;
       Event : out Poller_Event;
-      Init : out Boolean)
+      Init : out Boolean) with
+     Refined_Global => (In_Out => (Spare_Poll_Futures.State, Poll_Future_Channels))
    is
       Live : Live_Poll_Future := Live_Poll_Future (Future);
    begin
@@ -434,6 +453,11 @@ is
    task body Worker_Task with Spark_Mode => Off is
    begin
       Do_Work;
+   exception
+     when The_Error : others =>
+      Ada.Text_IO.Put_Line ("Unexpected error.");
+      Ada.Text_IO.Put_Line (Ada.Exceptions.Exception_Information (The_Error));
+      Ada.Text_IO.Skip_Line;
    end Worker_Task;
 
    function Read_Future_Is_Live

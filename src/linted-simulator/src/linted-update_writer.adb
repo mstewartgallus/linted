@@ -37,7 +37,8 @@ package body Linted.Update_Writer is
      (others => (others => 16#7F#));
 
    type Ix is mod Max_Nodes + 1;
-   package Spare_Futures is new Queue (Future, Ix);
+   function Is_Valid (Element : Future) return Boolean is (True);
+   package Spare_Futures is new Queue (Future, Ix, Is_Valid);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 

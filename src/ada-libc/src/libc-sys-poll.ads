@@ -12,8 +12,8 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Interfaces.C; use Interfaces.C;
-limited with Libc.Signal.GNU;
-limited with Libc.Time.GNU;
+with Libc.Signal.GNU;
+with Libc.Time.GNU;
 
 package Libc.Sys.Poll with
      Spark_Mode => Off is

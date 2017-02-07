@@ -17,7 +17,8 @@ with Linted.Last_Chance;
 package body Linted.Tests is
    Len : constant := 20;
    type Ix is mod Len + 1;
-   package My_Queue is new Queue (Integer, Ix);
+   function Is_Valid (X : Integer) return Boolean is (True);
+   package My_Queue is new Queue (Integer, Ix, Is_Valid);
 
    procedure Run is
    begin

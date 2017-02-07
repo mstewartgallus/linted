@@ -42,7 +42,8 @@ package body Linted.Window_Notifier is
      (others => (others => 16#7F#));
 
    type Ix is mod Max_Nodes + 1;
-   package Spare_Futures is new Queue (Live_Future, Ix);
+   function Is_Valid (Element : Live_Future) return Boolean is (True);
+   package Spare_Futures is new Queue (Live_Future, Ix, Is_Valid);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 

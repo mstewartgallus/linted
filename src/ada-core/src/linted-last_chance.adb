@@ -11,10 +11,12 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Ada.Characters.Latin_1;
 with Ada.Exceptions;
 
 with Interfaces.C;
 
+with Libc.Stdlib;
 with Libc.Unistd;
 
 package body Linted.Last_Chance with
@@ -28,11 +30,13 @@ package body Linted.Last_Chance with
 
    procedure Last_Chance_Handler (Except : Exceptions.Exception_Occurrence) is
       X : aliased Interfaces.C.char_array :=
-        Interfaces.C.To_C (Exceptions.Exception_Information (Except));
+        Interfaces.C.To_C
+          (Exceptions.Exception_Information (Except) &
+           Ada.Characters.Latin_1.LF);
       Res : Interfaces.C.long;
    begin
-      Res := Libc.Unistd.write (2, X'Address, X'Length);
+      --  Res := Libc.Unistd.write (2, X (X'First)'Address, X'Length);
       pragma Unreferenced (Res);
-      Libc.Unistd.u_exit (1);
+      Libc.Stdlib.c_exit (1);
    end Last_Chance_Handler;
 end Linted.Last_Chance;

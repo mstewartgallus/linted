@@ -1,4 +1,4 @@
--- Copyright 2016 Steven Stewart-Gallus
+-- Copyright 2016,2017 Steven Stewart-Gallus
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -358,7 +358,8 @@ package Libc.String is
    function strerror_r
      (errnum : Interfaces.C.int;
       buf : in out Interfaces.C.char_array;
-      buflen : Libc.Stddef.size_t) return Interfaces.C.int;
+      buflen : Libc.Stddef.size_t) return Interfaces.C.int with
+      Spark_Mode => Off;
    pragma Import (C, strerror_r, "__xpg_strerror_r");
 
    -- Translate error number to string according to the locale L.
