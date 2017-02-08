@@ -42,6 +42,6 @@ private
 
    type Wait_List is record
       Root : Node_Access_Atomics.Atomic;
-      Pending : Boolean_Atomics.Atomic;
+      Triggered : Boolean_Atomics.Atomic;
    end record;
 end Linted.Wait_Lists;

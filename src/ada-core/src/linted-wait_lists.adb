@@ -37,79 +37,69 @@ package body Linted.Wait_Lists with
    end Insert;
 
    procedure Wait (W : in out Wait_List) is
-      N : aliased Node;
-      P : Default_False;
+      Is_Triggered : Default_False;
    begin
-      Boolean_Atomics.Swap (W.Pending, P, False);
-      if not P then
-         Insert (W, N'Unchecked_Access);
-         STC.Suspend_Until_True (N.Trigger);
-      end if;
+      loop
+	 Boolean_Atomics.Get (W.Triggered, Is_Triggered);
+	 if Is_Triggered then
+	    exit;
+	 end if;
+	 declare
+	    N : aliased Node;
+	 begin
+	    Insert (W, N'Unchecked_Access);
+	    STC.Suspend_Until_True (N.Trigger);
+	 end;
+      end loop;
+      Boolean_Atomics.Set (W.Triggered, False);
    end Wait;
 
    procedure Broadcast (W : in out Wait_List) is
       Root : Node_Access;
-      Next : Node_Access;
    begin
+      Boolean_Atomics.Set (W.Triggered, True);
       Node_Access_Atomics.Swap (W.Root, Root, null);
-      if null = Root then
-         Boolean_Atomics.Set (W.Pending, True);
-      end if;
 
       while Root /= null loop
-         Next := Root.Next;
-         Root.Next := null;
-         STC.Set_True (Root.Trigger);
-         Root := Next;
+	 declare
+	    Next : Node_Access;
+	 begin
+	    Next := Root.Next;
+	    Root.Next := null;
+	    STC.Set_True (Root.Trigger);
+	    Root := Next;
+	 end;
       end loop;
    end Broadcast;
 
    procedure Signal (W : in out Wait_List) is
       Root : Node_Access;
-      Success : Boolean;
-      P : Default_False;
    begin
-      loop
-         Node_Access_Atomics.Swap (W.Root, Root, null);
-         if null = Root then
-            Boolean_Atomics.Set (W.Pending, True);
-            exit;
-         end if;
+      Boolean_Atomics.Set (W.Triggered, True);
+      Node_Access_Atomics.Swap (W.Root, Root, null);
 
-         declare
-            Next : Node_Access;
-         begin
-            Next := Root.Next;
-            Root.Next := null;
-            STC.Set_True (Root.Trigger);
-            Root := Next;
-         end;
-         if null = Root then
-            exit;
-         end if;
+      if null = Root then
+	 return;
+      end if;
 
-         Node_Access_Atomics.Compare_And_Swap (W.Root, null, Root, Success);
-         if Success then
-            Boolean_Atomics.Swap (W.Pending, P, False);
-            if not P then
-               exit;
-            end if;
-         end if;
+      declare
+	 Next : Node_Access;
+      begin
+	 Next := Root.Next;
+	 Root.Next := null;
+	 STC.Set_True (Root.Trigger);
+	 Root := Next;
+      end;
 
-         --  We have to broadcast in the worst case when we possibly were
-         --  signalled more than once.
-         loop
-            declare
-               Next : Node_Access;
-            begin
-               Next := Root.Next;
-               Root.Next := null;
-               STC.Set_True (Root.Trigger);
-               Root := Next;
-            end;
-            exit when Root = null;
-         end loop;
-         exit;
+      while Root /= null loop
+	 declare
+	    Next : Node_Access;
+	 begin
+	    Next := Root.Next;
+	    Root.Next := null;
+	    Insert (W, Root);
+	    Root := Next;
+	 end;
       end loop;
    end Signal;
 end Linted.Wait_Lists;
