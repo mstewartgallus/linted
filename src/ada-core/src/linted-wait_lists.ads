@@ -11,37 +11,15 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+private with Linted.Atomics;
+
 package Linted.Wait_Lists with
      Spark_Mode is
    pragma Preelaborate;
 
-   type Node_Nonnull_Access is private;
-   type Node_Access is private;
-
-   protected type Wait_List is
-   private
-      procedure Insert (N : Node_Nonnull_Access) with
-         Global => null,
-         Depends => (Wait_List => (N, Wait_List));
-      procedure Remove (N : Node_Nonnull_Access) with
-         Global => null,
-         Depends => (Wait_List => (N, Wait_List));
-      procedure Broadcast with
-         Global => null,
-         Depends => (Wait_List => Wait_List);
-      procedure Signal with
-         Global => null,
-         Depends => (Wait_List => Wait_List);
-
-      First : Node_Access;
-      Last : Node_Access;
-      Pending_Signal : Boolean := False;
-   end Wait_List;
+   type Wait_List is limited private;
 
    procedure Wait (W : in out Wait_List) with
-      Global => null,
-      Depends => (W => W);
-   procedure Broadcast (W : in out Wait_List) with
       Global => null,
       Depends => (W => W);
    procedure Signal (W : in out Wait_List) with
@@ -52,6 +30,15 @@ private
    pragma SPARK_Mode (Off);
 
    type Node;
-   type Node_Nonnull_Access is not null access all Node;
    type Node_Access is access all Node;
+   type Default_False is new Boolean with
+        Default_Value => False;
+
+   package Node_Access_Atomics is new Atomics (Node_Access);
+   package Boolean_Atomics is new Atomics (Default_False);
+
+   type Wait_List is record
+      Root : Node_Access_Atomics.Atomic;
+      Pending : Boolean_Atomics.Atomic;
+   end record;
 end Linted.Wait_Lists;

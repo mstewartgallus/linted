@@ -34,6 +34,11 @@ package Linted.Atomics is
          (Success => (Old_Ptr, Atomic),
           Atomic => (Atomic, Old_Ptr, New_Ptr),
           null => Success);
+      procedure Swap (Old_Ptr : in out Element_T; New_Ptr : Element_T) with
+         Global => null,
+         Depends =>
+         (Old_Ptr => (Old_Ptr, Atomic),
+          Atomic => (Atomic, New_Ptr));
 
       Ptr : Element_T;
    end Atomic;
@@ -53,4 +58,10 @@ package Linted.Atomics is
       Depends =>
       (Success => (A, Old_Element),
        A => (A, Old_Element, New_Element));
+   procedure Swap
+     (A : in out Atomic;
+      Old_Element : out Element_T;
+      New_Element : Element_T) with
+      Global => null,
+      Depends => (Old_Element => A, A => (A, New_Element));
 end Linted.Atomics;

@@ -133,11 +133,10 @@ is
          My_Atomics.Get (N, Head);
          if Head = 0 then
             exit;
-         else
-            My_Atomics.Get (Buf_Nodes (Head), New_Head);
-            My_Atomics.Compare_And_Swap (N, Head, New_Head, Swapped);
-            exit when Swapped;
          end if;
+	 My_Atomics.Get (Buf_Nodes (Head), New_Head);
+	 My_Atomics.Compare_And_Swap (N, Head, New_Head, Swapped);
+	 exit when Swapped;
       end loop;
    end Pop_Node;
 

@@ -41,9 +41,6 @@ package Linted.Triggers with
    procedure Signal (S : Signaller) with
       Global => null,
       Pre => not Is_Null_Signaller (S);
-   procedure Broadcast (S : Signaller) with
-      Global => null,
-      Pre => not Is_Null_Signaller (S);
 
 private
    pragma SPARK_Mode (Off);

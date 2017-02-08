@@ -19,93 +19,53 @@ package body Linted.Wait_Lists with
 
    type Node is record
       Trigger : STC.Suspension_Object;
-      Prev_Trigger : Node_Access;
-      Next_Trigger : Node_Access;
+      Next : Node_Access;
    end record;
 
-   protected body Wait_List is
-      procedure Insert (N : Node_Nonnull_Access) is
-      begin
-	 pragma Assert (N.Next_Trigger = null);
-	 pragma Assert (N.Prev_Trigger = null);
-
-	 if Pending_Signal then
-	    STC.Set_True (N.Trigger);
-	    Pending_Signal := False;
-	 end if;
-
-         if First = null or Last = null then
-            First := Node_Access (N);
-         else
-	    N.Prev_Trigger := Last;
-            Last.Next_Trigger := Node_Access (N);
-         end if;
-         Last := Node_Access (N);
-      end Insert;
-
-      procedure Remove (N : Node_Nonnull_Access) is
-	 Prev : Node_Access;
-	 Next : Node_Access;
-      begin
-	 Prev := N.Prev_Trigger;
-	 Next := N.Next_Trigger;
-
-	 if null = Prev then
-	    First := Next;
-	 else
-	    Prev.Next_Trigger := Next;
-	 end if;
-
-	 if null = Next then
-	    Last := Prev;
-	 else
-	    Next.Prev_Trigger := Prev;
-	 end if;
-      end Remove;
-
-      procedure Broadcast is
-         Current_Trigger : Node_Access;
-      begin
-         Current_Trigger := First;
-	 if null = Current_Trigger then
-	    Pending_Signal := True;
-	 else
-	    loop
-	       STC.Set_True (Current_Trigger.Trigger);
-	       Current_Trigger := Current_Trigger.Next_Trigger;
-	       exit when null = Current_Trigger;
-	    end loop;
-	 end if;
-      end Broadcast;
-
-      procedure Signal is
-         Current_Trigger : Node_Access;
-      begin
-         Current_Trigger := First;
-
-         if null = Current_Trigger then
-	    Pending_Signal := True;
-	 else
-            STC.Set_True (Current_Trigger.Trigger);
-         end if;
-      end Signal;
-   end Wait_List;
+   procedure Insert (W : in out Wait_List; N : Node_Access) is
+      Head : Node_Access;
+      Success : Boolean;
+   begin
+      loop
+         Node_Access_Atomics.Get (W.Root, Head);
+         N.Next := Head;
+         Node_Access_Atomics.Compare_And_Swap (W.Root, Head, N, Success);
+         exit when Success;
+      end loop;
+   end Insert;
 
    procedure Wait (W : in out Wait_List) is
       N : aliased Node;
+      P : Default_False;
    begin
-      W.Insert (N'Unchecked_Access);
-      STC.Suspend_Until_True (N.Trigger);
-      W.Remove (N'Unchecked_Access);
+      Boolean_Atomics.Swap (W.Pending, P, False);
+      if not P then
+         Insert (W, N'Unchecked_Access);
+         STC.Suspend_Until_True (N.Trigger);
+      end if;
    end Wait;
 
-   procedure Broadcast (W : in out Wait_List) is
-   begin
-      W.Broadcast;
-   end Broadcast;
-
    procedure Signal (W : in out Wait_List) is
+      Root : Node_Access;
+      Next : Node_Access;
    begin
-      W.Signal;
+      Boolean_Atomics.Set (W.Pending, True);
+      Node_Access_Atomics.Swap (W.Root, Root, null);
+      if Root /= null then
+         Next := Root.Next;
+         Root.Next := null;
+         Boolean_Atomics.Set (W.Pending, False);
+         STC.Set_True (Root.Trigger);
+
+         loop
+            exit when Next = null;
+            declare
+               New_Next : Node_Access := Next.Next;
+            begin
+               Insert (W, Next);
+               Next := New_Next;
+            end;
+         end loop;
+      end if;
    end Signal;
 end Linted.Wait_Lists;

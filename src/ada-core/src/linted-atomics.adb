@@ -36,6 +36,12 @@ package body Linted.Atomics is
             Success := False;
          end if;
       end Compare_And_Swap;
+
+      procedure Swap (Old_Ptr : in out Element_T; New_Ptr : Element_T) is
+      begin
+         Old_Ptr := Ptr;
+         Ptr := New_Ptr;
+      end Swap;
    end Atomic;
 
    procedure Set (A : in out Atomic; Element : Element_T) is
@@ -58,4 +64,14 @@ package body Linted.Atomics is
       Success := False;
       A.Compare_And_Swap (Old_Element, New_Element, Success);
    end Compare_And_Swap;
+
+   procedure Swap
+     (A : in out Atomic;
+      Old_Element : out Element_T;
+      New_Element : Element_T)
+   is
+   begin
+      A.Swap (Old_Element, New_Element);
+   end Swap;
+
 end Linted.Atomics;

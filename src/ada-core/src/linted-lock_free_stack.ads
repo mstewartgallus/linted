@@ -16,6 +16,7 @@ generic
    type Ix is mod <>;
    with function Is_Valid (Element : Element_T) return Boolean;
 package Linted.Lock_Free_Stack with
+   Initializes => State,
    Abstract_State => (State with External) is
    pragma Elaborate_Body;
 
