@@ -39,28 +39,38 @@ package body Linted.Wait_Lists with
 
    procedure Insert_Lots (W : in out Wait_List; Root : Node_Access) is
       Success : Boolean;
-      Current_Root : Node_Access;
+      Tip : Node_Access;
    begin
-      Current_Root := Root;
-      while Current_Root /= null loop
-         --  Perf opt in the case that there are no waiters
-         Node_Access_Atomics.Compare_And_Swap
-           (W.Root,
-            null,
-            Current_Root,
-            Success);
-         if Success then
-            exit;
-         end if;
+      Tip := Root;
+      if Tip = null then
+	 return;
+      end if;
 
-         declare
-            Next : Node_Access;
-         begin
-            Next := Current_Root.Next;
-            Current_Root.Next := null;
-            Insert (W, Current_Root);
-            Current_Root := Next;
-         end;
+      loop
+	 declare
+	    Next : Node_Access;
+	 begin
+	    Next := Tip.Next;
+	    exit when Next = null;
+	    Tip := Next;
+	 end;
+      end loop;
+
+      loop
+	 declare
+	    Current_Root : Node_Access;
+	 begin
+	    Node_Access_Atomics.Get (W.Root, Current_Root);
+	    Tip.Next := Current_Root;
+	    Node_Access_Atomics.Compare_And_Swap
+	      (W.Root,
+	       Current_Root,
+	       Root,
+	       Success);
+	    if Success then
+	       exit;
+	    end if;
+	 end;
       end loop;
    end Insert_Lots;
 
