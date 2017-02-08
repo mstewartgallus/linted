@@ -28,9 +28,10 @@ package body Linted.IO_Pool with
   Refined_State => (Command_Queue => (My_Command_Queue.State),
 		    Event_Queue => (Read_Future_Channels,
 				    Write_Future_Channels,
-				    Poll_Future_Channels),
+				    Poll_Future_Channels,
+				    Remind_Me_Future_Channels),
 		    Various => Worker_Tasks,
-		    Future_Pool => (Spare_Read_Futures.State, Spare_Write_Futures.State, Spare_Poll_Futures.State))
+		    Future_Pool => (Spare_Read_Futures.State, Spare_Write_Futures.State, Spare_Poll_Futures.State, Spare_Remind_Me_Futures.State))
 is
    package C renames Interfaces.C;
 
@@ -45,6 +46,8 @@ is
    type Live_Write_Future is new Write_Future range 1 .. Write_Future'Last with
      Default_Value => 1;
    type Live_Poll_Future is new Poll_Future range 1 .. Poll_Future'Last with
+     Default_Value => 1;
+   type Live_Remind_Me_Future is new Remind_Me_Future range 1 .. Remind_Me_Future'Last with
      Default_Value => 1;
 
    type Write_Command is record
@@ -71,7 +74,13 @@ is
       Signaller : Triggers.Signaller;
    end record;
 
-   type Command_Type is (Invalid_Type, Write_Type, Read_Type, Poll_Type);
+   type Remind_Me_Command is record
+      Time : Ada.Real_Time.Time;
+      Replier : Live_Remind_Me_Future;
+      Signaller : Triggers.Signaller;
+   end record;
+
+   type Command_Type is (Invalid_Type, Write_Type, Read_Type, Poll_Type, Remind_Me_Type);
 
    type Command (T : Command_Type := Invalid_Type) is record
       case T is
@@ -83,6 +92,8 @@ is
             Read_Object : Read_Command;
          when Poll_Type =>
             Poll_Object : Poller_Command;
+         when Remind_Me_Type =>
+            Remind_Me_Object : Remind_Me_Command;
       end case;
    end record;
 
@@ -96,28 +107,33 @@ is
    type Read_Ix is mod Max_Read_Futures + 1;
    type Write_Ix is mod Max_Write_Futures + 1;
    type Poll_Ix is mod Max_Poll_Futures + 1;
+   type Remind_Me_Ix is mod Max_Remind_Me_Futures + 1;
    type Command_Ix is mod Max_Command_Queue_Capacity + 1;
 
    function Read_Is_Valid (Element : Live_Read_Future) return Boolean is (True);
    function Write_Is_Valid (Element : Live_Write_Future) return Boolean is (True);
    function Poll_Is_Valid (Element : Live_Poll_Future) return Boolean is (True);
+   function Remind_Me_Is_Valid (Element : Live_Remind_Me_Future) return Boolean is (True);
    function Command_Is_Valid (Element : Any_Command) return Boolean is (Element.C.T /= Invalid_Type);
 
    package Spare_Read_Futures is new Queue (Live_Read_Future, Read_Ix, Read_Is_Valid);
    package Spare_Write_Futures is new Queue (Live_Write_Future, Write_Ix, Write_Is_Valid);
    package Spare_Poll_Futures is new Queue (Live_Poll_Future, Poll_Ix, Poll_Is_Valid);
+   package Spare_Remind_Me_Futures is new Queue (Live_Remind_Me_Future, Remind_Me_Ix, Remind_Me_Is_Valid);
    package My_Command_Queue is new Queue (Any_Command, Command_Ix, Command_Is_Valid);
 
    task type Worker_Task with Global => (In_Out => (My_Command_Queue.State,
    						    Read_Future_Channels,
    						    Write_Future_Channels,
-   						    Poll_Future_Channels
+   						    Poll_Future_Channels,
+						    Remind_Me_Future_Channels
    						   )),
      Spark_Mode,
      Depends => (My_Command_Queue.State => (My_Command_Queue.State),
    		 Read_Future_Channels => (Read_Future_Channels, My_Command_Queue.State),
    		 Write_Future_Channels => (Write_Future_Channels, My_Command_Queue.State),
    		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue.State),
+		 Remind_Me_Future_Channels => (Remind_Me_Future_Channels, My_Command_Queue.State),
    		 Worker_Task'Result => Worker_Task,
    		 Worker_Task => null
    		);
@@ -129,6 +145,7 @@ is
    package Writer_Event_Channels is new Channels (Writer_Event);
    package Reader_Event_Channels is new Channels (Reader_Event);
    package Poller_Event_Channels is new Channels (Poller_Event);
+   package Remind_Me_Event_Channels is new Channels (Remind_Me_Event);
 
    type Read_Future_Channels_Array is
      array (Live_Read_Future) of Reader_Event_Channels.Channel;
@@ -136,10 +153,13 @@ is
      array (Live_Write_Future) of Writer_Event_Channels.Channel;
    type Poller_Future_Channels_Array is
      array (Live_Poll_Future) of Poller_Event_Channels.Channel;
+   type Remind_Me_Future_Channels_Array is
+     array (Live_Remind_Me_Future) of Remind_Me_Event_Channels.Channel;
 
    Read_Future_Channels : Read_Future_Channels_Array;
    Write_Future_Channels : Write_Future_Channels_Array;
    Poll_Future_Channels : Poller_Future_Channels_Array;
+   Remind_Me_Future_Channels : Remind_Me_Future_Channels_Array;
 
    procedure Do_Work with Spark_Mode,
      Global => (In_Out => (My_Command_Queue.State,
@@ -161,6 +181,9 @@ is
    procedure Do_Poll (P : Poller_Command) with
       Global => (In_Out => Poll_Future_Channels),
       Depends => (Poll_Future_Channels => (P, Poll_Future_Channels));
+   procedure Do_Remind_Me (R : Remind_Me_Command) with
+      Global => (In_Out => Remind_Me_Future_Channels),
+      Depends => (Remind_Me_Future_Channels => (R, Remind_Me_Future_Channels));
 
    procedure Read
      (Object : KOs.KO;
@@ -292,6 +315,46 @@ is
          Future := 0;
       end if;
    end Poll_Poll;
+
+   procedure Remind_Me
+     (Time : Ada.Real_Time.Time;
+      Signaller : Triggers.Signaller;
+      Future : out Remind_Me_Future) with
+     Refined_Global => (In_Out => (Spare_Remind_Me_Futures.State, My_Command_Queue.State))
+   is
+      Live : Live_Remind_Me_Future;
+   begin
+      Spare_Remind_Me_Futures.Dequeue (Live);
+      My_Command_Queue.Enqueue (Any_Command'(C => (Remind_Me_Type, (Time, Live, Signaller))));
+      Future := Remind_Me_Future (Live);
+   end Remind_Me;
+
+   procedure Remind_Me_Wait
+     (Future : in out Remind_Me_Future;
+      Event : out Remind_Me_Event) with
+     Refined_Global => (In_Out => (Spare_Remind_Me_Futures.State, Remind_Me_Future_Channels))
+   is
+      Live : Live_Remind_Me_Future := Live_Remind_Me_Future (Future);
+   begin
+      Remind_Me_Event_Channels.Pop (Remind_Me_Future_Channels (Live), Event);
+      Spare_Remind_Me_Futures.Enqueue (Live);
+      Future := 0;
+   end Remind_Me_Wait;
+
+   procedure Remind_Me_Poll
+     (Future : in out Remind_Me_Future;
+      Event : out Remind_Me_Event;
+      Init : out Boolean) with
+     Refined_Global => (In_Out => (Spare_Remind_Me_Futures.State, Remind_Me_Future_Channels))
+   is
+      Live : Live_Remind_Me_Future := Live_Remind_Me_Future (Future);
+   begin
+      Remind_Me_Event_Channels.Poll (Remind_Me_Future_Channels (Live), Event, Init);
+      if Init then
+	 Spare_Remind_Me_Futures.Enqueue (Live);
+         Future := 0;
+      end if;
+   end Remind_Me_Poll;
 
    procedure Do_Write (W : Write_Command) with Spark_Mode => Off is
       Err : C.int;
@@ -427,6 +490,21 @@ is
       end if;
    end Do_Poll;
 
+   procedure Do_Remind_Me (R : Remind_Me_Command) is
+
+      Time : constant Ada.Real_Time.Time := R.Time;
+      Replier : constant Live_Remind_Me_Future := R.Replier;
+      Signaller : constant Triggers.Signaller := R.Signaller;
+      Event : Remind_Me_Event;
+   begin
+      delay until Time;
+
+      Remind_Me_Event_Channels.Push (Remind_Me_Future_Channels (Replier), Event);
+      if not Triggers.Is_Null_Signaller (Signaller) then
+         Triggers.Broadcast (Signaller);
+      end if;
+   end Do_Remind_Me;
+
    procedure Do_Work with Spark_Mode is
    begin
       loop
@@ -445,6 +523,8 @@ is
 		  Do_Read (New_Command.C.Read_Object);
 	       when Poll_Type =>
 		  Do_Poll (New_Command.C.Poll_Object);
+	       when Remind_Me_Type =>
+		  Do_Remind_Me (New_Command.C.Remind_Me_Object);
 	    end case;
 	 end;
       end loop;
@@ -469,6 +549,9 @@ is
    function Poll_Future_Is_Live
      (Future : Poll_Future) return Boolean is
      (Future /= 0);
+   function Remind_Me_Future_Is_Live
+     (Future : Remind_Me_Future) return Boolean is
+     (Future /= 0);
 
 begin
    for II in 1 .. Max_Read_Futures loop
@@ -481,5 +564,9 @@ begin
 
    for II in 1 .. Max_Poll_Futures loop
       Spare_Poll_Futures.Enqueue (Live_Poll_Future (Poll_Future (II)));
+   end loop;
+
+   for II in 1 .. Max_Remind_Me_Futures loop
+      Spare_Remind_Me_Futures.Enqueue (Live_Remind_Me_Future (Remind_Me_Future (II)));
    end loop;
 end Linted.IO_Pool;

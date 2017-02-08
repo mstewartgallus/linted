@@ -14,7 +14,6 @@
 private with Ada.Command_Line;
 private with Ada.Real_Time;
 
-private with Linted.Channels;
 private with Linted.Controls_Reader;
 private with Linted.Errors;
 private with Linted.KOs;
@@ -35,19 +34,9 @@ package body Linted.Simulator with
    use type Types.Int;
    use type Real_Time.Time;
 
-   type Tick_Event is record
-      null;
-   end record;
-
-   package Timer_Event_Channels is new Linted.Channels (Tick_Event);
-
-   procedure On_Tick;
    task Main_Task;
 
-   package My_Timer is new Timer.Worker (On_Tick);
-
    package My_Trigger is new Triggers.Handle;
-   Timer_Event_Channel : Timer_Event_Channels.Channel;
 
    task body Main_Task is
       Controller_KO : KOs.KO;
@@ -77,6 +66,9 @@ package body Linted.Simulator with
 
       Write_Future : Update_Writer.Future;
       Write_Future_Live : Boolean := False;
+
+      Remind_Me_Future : Timer.Future;
+      Remind_Me_Future_Live : Boolean := False;
 
       Update_Pending : Boolean := False;
    begin
@@ -112,7 +104,8 @@ package body Linted.Simulator with
 
       Next_Time := Real_Time.Clock;
 
-      My_Timer.Wait_Until (Next_Time);
+      Timer.Remind_Me (Next_Time, My_Trigger.Signal_Handle, Remind_Me_Future);
+      Remind_Me_Future_Live := True;
 
       loop
          Triggers.Wait (My_Trigger.Wait_Handle);
@@ -149,19 +142,27 @@ package body Linted.Simulator with
             end;
          end if;
 
-         declare
-            Event : Tick_Event;
-            Success : Boolean;
-         begin
-            Timer_Event_Channels.Poll (Timer_Event_Channel, Event, Success);
-            if Success then
-               Simulate.Tick (My_State);
-               Update_Pending := True;
-               Next_Time :=
-                 Next_Time + Real_Time.Nanoseconds ((1000000000 / 60) / 2);
-               My_Timer.Wait_Until (Next_Time);
-            end if;
-         end;
+         if Remind_Me_Future_Live then
+            declare
+               Event : Timer.Event;
+               Success : Boolean;
+            begin
+               Timer.Remind_Me_Poll (Remind_Me_Future, Event, Success);
+               if Success then
+                  Remind_Me_Future_Live := False;
+
+                  Simulate.Tick (My_State);
+                  Update_Pending := True;
+                  Next_Time :=
+                    Next_Time + Real_Time.Nanoseconds ((1000000000 / 60) / 2);
+                  Timer.Remind_Me
+                    (Next_Time,
+                     My_Trigger.Signal_Handle,
+                     Remind_Me_Future);
+                  Remind_Me_Future_Live := True;
+               end if;
+            end;
+         end if;
 
          if Update_Pending and not Write_Future_Live then
             Update_Writer.Write
@@ -193,11 +194,4 @@ package body Linted.Simulator with
          end if;
       end loop;
    end Main_Task;
-
-   procedure On_Tick is
-      T : Tick_Event;
-   begin
-      Timer_Event_Channels.Push (Timer_Event_Channel, T);
-      Triggers.Broadcast (My_Trigger.Signal_Handle);
-   end On_Tick;
 end Linted.Simulator;

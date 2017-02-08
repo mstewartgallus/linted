@@ -11,6 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Ada.Real_Time;
 with Interfaces.C;
 with System;
 
@@ -48,6 +49,8 @@ is
         (Poller_Event_Type'First .. Poller_Event_Type'Last => False);
       Err : Errors.Error;
    end record;
+
+   type Remind_Me_Event is null record;
 
    type Read_Future is limited private with
       Preelaborable_Initialization;
@@ -197,10 +200,60 @@ is
       Post =>
       (if Init then not Poll_Future_Is_Live (Future)
        else Poll_Future_Is_Live (Future));
+
+   type Remind_Me_Future is limited private with
+      Preelaborable_Initialization;
+
+   function Remind_Me_Future_Is_Live
+     (Future : Remind_Me_Future) return Boolean with
+      Ghost,
+      Global => null,
+      Depends => (Remind_Me_Future_Is_Live'Result => Future);
+
+   procedure Remind_Me
+     (Time : Ada.Real_Time.Time;
+      Signaller : Triggers.Signaller;
+      Future : out Remind_Me_Future) with
+      Global => (In_Out => (Command_Queue, Future_Pool)),
+      Depends =>
+      (Future => (Future_Pool, Signaller),
+       Command_Queue => (Future_Pool, Command_Queue, Time),
+       Future_Pool => (Future_Pool)),
+      Post => Remind_Me_Future_Is_Live (Future);
+
+   procedure Remind_Me_Wait
+     (Future : in out Remind_Me_Future;
+      Event : out Remind_Me_Event) with
+      Global => (In_Out => (Event_Queue, Future_Pool)),
+      Depends =>
+      (Future => null,
+       Event => (Event_Queue, Future),
+       Event_Queue => (Future, Event_Queue),
+       Future_Pool => (Future, Future_Pool)),
+      Pre => Remind_Me_Future_Is_Live (Future),
+      Post => not Remind_Me_Future_Is_Live (Future);
+
+   procedure Remind_Me_Poll
+     (Future : in out Remind_Me_Future;
+      Event : out Remind_Me_Event;
+      Init : out Boolean) with
+      Global => (In_Out => (Event_Queue, Future_Pool)),
+      Depends =>
+      (Future => (Event_Queue, Future),
+       Event => (Event_Queue, Future),
+       Init => (Event_Queue, Future),
+       Event_Queue => (Future, Event_Queue),
+       Future_Pool => (Future, Event_Queue, Future_Pool)),
+      Pre => Remind_Me_Future_Is_Live (Future),
+      Post =>
+      (if Init then not Remind_Me_Future_Is_Live (Future)
+       else Remind_Me_Future_Is_Live (Future));
+
 private
    Max_Read_Futures : constant := 64;
    Max_Write_Futures : constant := 64;
    Max_Poll_Futures : constant := 64;
+   Max_Remind_Me_Futures : constant := 64;
    Max_Command_Queue_Capacity : constant := 64;
 
    type Read_Future is mod Max_Read_Futures + 1 with
@@ -208,5 +261,7 @@ private
    type Write_Future is mod Max_Write_Futures + 1 with
         Default_Value => 0;
    type Poll_Future is mod Max_Poll_Futures + 1 with
+        Default_Value => 0;
+   type Remind_Me_Future is mod Max_Remind_Me_Futures + 1 with
         Default_Value => 0;
 end Linted.IO_Pool;
