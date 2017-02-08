@@ -25,18 +25,16 @@ is
 
    Buf_Contents : Element_Array;
 
-   type Node_Array is
-     array (My_Ix range 1 .. My_Ix (Ix'Last)) of My_Atomics.Atomic;
+   type Node_Array is array (My_Ix range 1 .. My_Ix (Ix'Last)) of My_Ix;
 
    Buf_Nodes : Node_Array;
    Buf_Head : My_Atomics.Atomic;
    Buf_Free : My_Atomics.Atomic;
 
    procedure Allocate (Free : out My_Ix) with
-      Global => (In_Out => (Buf_Nodes, Buf_Free)),
+      Global => (In_Out => Buf_Free, Input => Buf_Nodes),
       Depends =>
       (Free => (Buf_Free, Buf_Nodes),
-       Buf_Nodes => (Buf_Nodes, Buf_Free),
        Buf_Free => (Buf_Nodes, Buf_Free));
 
    procedure Deallocate (Head : My_Ix) with
@@ -52,11 +50,8 @@ is
       Depends => (N => (Free, N), Buf_Nodes => (Free, Buf_Nodes, N));
 
    procedure Pop_Node (N : in out My_Atomics.Atomic; Head : out My_Ix) with
-      Global => (In_Out => Buf_Nodes),
-      Depends =>
-      (Head => (Buf_Nodes, N),
-       N => (Buf_Nodes, N),
-       Buf_Nodes => (N, Buf_Nodes));
+      Global => (Input => Buf_Nodes),
+      Depends => (Head => (Buf_Nodes, N), N => (Buf_Nodes, N));
 
    procedure Allocate (Free : out My_Ix) is
    begin
@@ -91,7 +86,7 @@ is
    begin
       loop
          My_Atomics.Get (N, Head);
-         My_Atomics.Set (Buf_Nodes (Free), Head);
+         Buf_Nodes (Free) := Head;
          My_Atomics.Compare_And_Swap (N, Head, Free, Swapped);
          exit when Swapped;
       end loop;
@@ -134,9 +129,9 @@ is
          if Head = 0 then
             exit;
          end if;
-	 My_Atomics.Get (Buf_Nodes (Head), New_Head);
-	 My_Atomics.Compare_And_Swap (N, Head, New_Head, Swapped);
-	 exit when Swapped;
+         New_Head := Buf_Nodes (Head);
+         My_Atomics.Compare_And_Swap (N, Head, New_Head, Swapped);
+         exit when Swapped;
       end loop;
    end Pop_Node;
 
@@ -145,7 +140,7 @@ begin
       Old_Node : My_Ix := 0;
    begin
       for II in 1 .. My_Ix (Ix'Last) loop
-         Buf_Nodes (II).Set (Old_Node);
+         Buf_Nodes (II) := Old_Node;
          Old_Node := II;
       end loop;
       Buf_Free.Set (Old_Node);
