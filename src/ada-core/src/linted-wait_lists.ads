@@ -22,7 +22,7 @@ package Linted.Wait_Lists with
    procedure Wait (W : in out Wait_List) with
       Global => null,
       Depends => (W => W);
-   procedure Signal (W : in out Wait_List) with
+   procedure Broadcast (W : in out Wait_List) with
       Global => null,
       Depends => (W => W);
 

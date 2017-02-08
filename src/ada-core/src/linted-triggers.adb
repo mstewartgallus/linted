@@ -30,8 +30,8 @@ package body Linted.Triggers with
       Wait_Lists.Wait (W.all);
    end Wait;
 
-   procedure Signal (S : Signaller) is
+   procedure Broadcast (S : Signaller) is
    begin
-      Wait_Lists.Signal (S.all);
-   end Signal;
+      Wait_Lists.Broadcast (S.all);
+   end Broadcast;
 end Linted.Triggers;

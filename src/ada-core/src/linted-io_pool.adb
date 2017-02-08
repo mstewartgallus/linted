@@ -322,7 +322,7 @@ is
         (Write_Future_Channels (Replier),
          (Err => Errors.Error (Err), Bytes_Written => Bytes_Written));
       if not Triggers.Is_Null_Signaller (Signaller) then
-         Triggers.Signal (Signaller);
+         Triggers.Broadcast (Signaller);
       end if;
    end Do_Write;
 
@@ -358,7 +358,7 @@ is
         (Read_Future_Channels (Replier),
          (Err => Errors.Error (Err), Bytes_Read => Bytes_Read));
       if not Triggers.Is_Null_Signaller (Signaller) then
-         Triggers.Signal (Signaller);
+         Triggers.Broadcast (Signaller);
       end if;
    end Do_Read;
 
@@ -423,7 +423,7 @@ is
         (Poll_Future_Channels (Replier),
          (Err => Errors.Error (Err), Events => Heard_Events));
       if not Triggers.Is_Null_Signaller (Signaller) then
-         Triggers.Signal (Signaller);
+         Triggers.Broadcast (Signaller);
       end if;
    end Do_Poll;
 

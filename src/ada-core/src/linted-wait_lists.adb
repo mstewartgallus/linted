@@ -22,6 +22,8 @@ package body Linted.Wait_Lists with
       Next : Node_Access;
    end record;
 
+   procedure Insert (W : in out Wait_List; N : Node_Access);
+
    procedure Insert (W : in out Wait_List; N : Node_Access) is
       Head : Node_Access;
       Success : Boolean;
@@ -45,27 +47,20 @@ package body Linted.Wait_Lists with
       end if;
    end Wait;
 
-   procedure Signal (W : in out Wait_List) is
+   procedure Broadcast (W : in out Wait_List) is
       Root : Node_Access;
       Next : Node_Access;
    begin
-      Boolean_Atomics.Set (W.Pending, True);
       Node_Access_Atomics.Swap (W.Root, Root, null);
-      if Root /= null then
+      if null = Root then
+	 Boolean_Atomics.Set (W.Pending, True);
+      end if;
+
+      while Root /= null loop
          Next := Root.Next;
          Root.Next := null;
-         Boolean_Atomics.Set (W.Pending, False);
          STC.Set_True (Root.Trigger);
-
-         loop
-            exit when Next = null;
-            declare
-               New_Next : Node_Access := Next.Next;
-            begin
-               Insert (W, Next);
-               Next := New_Next;
-            end;
-         end loop;
-      end if;
-   end Signal;
+	 Root := Next;
+      end loop;
+   end Broadcast;
 end Linted.Wait_Lists;

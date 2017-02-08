@@ -38,7 +38,7 @@ package Linted.Triggers with
    procedure Wait (W : Waiter) with
       Global => null,
       Pre => not Is_Null_Waiter (W);
-   procedure Signal (S : Signaller) with
+   procedure Broadcast (S : Signaller) with
       Global => null,
       Pre => not Is_Null_Signaller (S);
 

@@ -198,6 +198,6 @@ package body Linted.Simulator with
       T : Tick_Event;
    begin
       Timer_Event_Channels.Push (Timer_Event_Channel, T);
-      Triggers.Signal (My_Trigger.Signal_Handle);
+      Triggers.Broadcast (My_Trigger.Signal_Handle);
    end On_Tick;
 end Linted.Simulator;
