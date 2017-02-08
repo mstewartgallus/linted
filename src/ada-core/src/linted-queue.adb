@@ -33,7 +33,7 @@ is
          exit when Init;
          Wait_Lists.Wait (Buf_Has_Free_Space);
       end loop;
-      Wait_Lists.Broadcast (Buf_Has_Contents);
+      Wait_Lists.Signal (Buf_Has_Contents);
    end Enqueue;
 
    procedure Dequeue (Element : out Element_T) with
@@ -47,6 +47,6 @@ is
          exit when Init;
          Wait_Lists.Wait (Buf_Has_Contents);
       end loop;
-      Wait_Lists.Broadcast (Buf_Has_Free_Space);
+      Wait_Lists.Signal (Buf_Has_Free_Space);
    end Dequeue;
 end Linted.Queue;

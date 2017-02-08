@@ -198,10 +198,10 @@ is
       (if Init then not Poll_Future_Is_Live (Future)
        else Poll_Future_Is_Live (Future));
 private
-   Max_Read_Futures : constant := 32;
-   Max_Write_Futures : constant := 32;
-   Max_Poll_Futures : constant := 32;
-   Max_Command_Queue_Capacity : constant := 32;
+   Max_Read_Futures : constant := 64;
+   Max_Write_Futures : constant := 64;
+   Max_Poll_Futures : constant := 64;
+   Max_Command_Queue_Capacity : constant := 64;
 
    type Read_Future is mod Max_Read_Futures + 1 with
         Default_Value => 0;

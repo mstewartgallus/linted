@@ -49,11 +49,11 @@ abstract project Shared is
   		    -- "-fverbose-asm",
   		    -- "-save-temps=cwd",
 
-  		    "-fstack-usage",
+  		    "-fstack-usage"
 
-  		    "-fstack-check",
-  		    "-ftrapv",
-  		    "-fsanitize=undefined"
+  		    -- "-fstack-check",
+  		    -- "-ftrapv",
+  		    -- "-fsanitize=undefined"
   		    -- "-fsanitize=leak"
 
   		   );

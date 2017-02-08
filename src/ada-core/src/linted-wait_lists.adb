@@ -53,14 +53,63 @@ package body Linted.Wait_Lists with
    begin
       Node_Access_Atomics.Swap (W.Root, Root, null);
       if null = Root then
-	 Boolean_Atomics.Set (W.Pending, True);
+         Boolean_Atomics.Set (W.Pending, True);
       end if;
 
       while Root /= null loop
          Next := Root.Next;
          Root.Next := null;
          STC.Set_True (Root.Trigger);
-	 Root := Next;
+         Root := Next;
       end loop;
    end Broadcast;
+
+   procedure Signal (W : in out Wait_List) is
+      Root : Node_Access;
+      Success : Boolean;
+      P : Default_False;
+   begin
+      loop
+         Node_Access_Atomics.Swap (W.Root, Root, null);
+         if null = Root then
+            Boolean_Atomics.Set (W.Pending, True);
+            exit;
+         end if;
+
+         declare
+            Next : Node_Access;
+         begin
+            Next := Root.Next;
+            Root.Next := null;
+            STC.Set_True (Root.Trigger);
+            Root := Next;
+         end;
+         if null = Root then
+            exit;
+         end if;
+
+         Node_Access_Atomics.Compare_And_Swap (W.Root, null, Root, Success);
+         if Success then
+            Boolean_Atomics.Swap (W.Pending, P, False);
+            if not P then
+               exit;
+            end if;
+         end if;
+
+         --  We have to broadcast in the worst case when we possibly were
+         --  signalled more than once.
+         loop
+            declare
+               Next : Node_Access;
+            begin
+               Next := Root.Next;
+               Root.Next := null;
+               STC.Set_True (Root.Trigger);
+               Root := Next;
+            end;
+            exit when Root = null;
+         end loop;
+         exit;
+      end loop;
+   end Signal;
 end Linted.Wait_Lists;
