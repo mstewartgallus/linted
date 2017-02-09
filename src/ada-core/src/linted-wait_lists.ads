@@ -18,7 +18,8 @@ package Linted.Wait_Lists with
      Spark_Mode is
    pragma Preelaborate;
 
-   type Wait_List is limited private;
+   type Wait_List is limited private with
+      Preelaborable_Initialization;
 
    procedure Wait (W : in out Wait_List) with
       Global => null,
@@ -41,7 +42,8 @@ private
    type Node_Ptr is access all Node;
 
    package Tagged_Accessors is
-      type Node_Access is private;
+      type Node_Access is private with
+         Preelaborable_Initialization;
 
       type Tag_Type is (Normal, Pinned);
 

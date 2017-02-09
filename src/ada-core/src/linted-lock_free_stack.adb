@@ -11,32 +11,22 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Interfaces;
-
-with Linted.Sched;
 with Linted.Atomics;
+with Linted.ABAs;
+with Linted.Sched;
 
 package body Linted.Lock_Free_Stack with
      Refined_State => (State => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
 is
-   use type Interfaces.Unsigned_32;
 
    type My_Ix is new Ix with
         Default_Value => 0;
-   type ABA is mod 2**16 with
-        Default_Value => 0;
-   subtype U32 is Interfaces.Unsigned_32;
 
-   type ABA_Ix is new U32 with
-        Default_Value => 0,
-        Dynamic_Predicate => U32 (ABA_Ix and 16#FFFF#) <= U32 (My_Ix'Last);
-
-   function Make_ABA_Ix (My_Index : My_Ix; My_Tag : ABA) return ABA_Ix;
-   function Index (X : ABA_Ix) return My_Ix;
-   function Tag (X : ABA_Ix) return ABA;
-
-   package Aba_Atomics is new Atomics (ABA_Ix);
+   package ABA is new ABAs (My_Ix);
+   package Aba_Atomics is new Atomics (ABA.ABA);
    package Access_Atomics is new Atomics (My_Ix);
+
+   use type ABA.Tag_T;
 
    type Element_Array is array (My_Ix range 1 .. My_Ix (Ix'Last)) of Element_T;
 
@@ -48,22 +38,6 @@ is
    Buf_Nodes : Node_Array;
    Buf_Head : Aba_Atomics.Atomic;
    Buf_Free : Aba_Atomics.Atomic;
-
-   function Make_ABA_Ix (My_Index : My_Ix; My_Tag : ABA) return ABA_Ix is
-   begin
-      return ABA_Ix (My_Index) or
-        ABA_Ix (Interfaces.Shift_Left (Interfaces.Unsigned_32 (My_Tag), 16));
-   end Make_ABA_Ix;
-
-   function Index (X : ABA_Ix) return My_Ix is
-   begin
-      return My_Ix (X and 16#FFFF#);
-   end Index;
-
-   function Tag (X : ABA_Ix) return ABA is
-   begin
-      return ABA (Interfaces.Shift_Right (Interfaces.Unsigned_32 (X), 16));
-   end Tag;
 
    procedure Allocate (Free : out My_Ix) with
       Global => (In_Out => (Buf_Nodes, Buf_Free)),
@@ -119,17 +93,17 @@ is
    end Try_Push;
 
    procedure Push_Node (N : in out Aba_Atomics.Atomic; Free : My_Ix) is
-      Head : ABA_Ix;
+      Head : ABA.ABA;
       Swapped : Boolean;
       Backoff : Sched.Backoff_State;
    begin
       loop
          Aba_Atomics.Get (N, Head);
-         Access_Atomics.Set (Buf_Nodes (Free), Index (Head));
+         Access_Atomics.Set (Buf_Nodes (Free), ABA.Element (Head));
          Aba_Atomics.Compare_And_Swap
            (N,
             Head,
-            Make_ABA_Ix (Free, Tag (Head) + 1),
+            ABA.Initialize (Free, ABA.Tag (Head) + 1),
             Swapped);
          exit when Swapped;
          Sched.Backoff (Backoff);
@@ -167,24 +141,24 @@ is
    procedure Pop_Node (N : in out Aba_Atomics.Atomic; Head : out My_Ix) is
       New_Head : My_Ix;
       Swapped : Boolean;
-      ABA_Head : ABA_Ix;
+      ABA_Head : ABA.ABA;
       Backoff : Sched.Backoff_State;
    begin
       loop
          Aba_Atomics.Get (N, ABA_Head);
-         if Index (ABA_Head) = 0 then
+         if ABA.Element (ABA_Head) = 0 then
             exit;
          end if;
-         Access_Atomics.Get (Buf_Nodes (Index (ABA_Head)), New_Head);
+         Access_Atomics.Get (Buf_Nodes (ABA.Element (ABA_Head)), New_Head);
          Aba_Atomics.Compare_And_Swap
            (N,
             ABA_Head,
-            Make_ABA_Ix (New_Head, Tag (ABA_Head) + 1),
+            ABA.Initialize (New_Head, ABA.Tag (ABA_Head) + 1),
             Swapped);
          exit when Swapped;
          Sched.Backoff (Backoff);
       end loop;
-      Head := Index (ABA_Head);
+      Head := ABA.Element (ABA_Head);
    end Pop_Node;
 
 begin
@@ -195,6 +169,6 @@ begin
          Buf_Nodes (II).Set (Old_Node);
          Old_Node := II;
       end loop;
-      Buf_Free.Set (Make_ABA_Ix (Old_Node, 0));
+      Buf_Free.Set (ABA.Initialize (Old_Node, 0));
    end;
 end Linted.Lock_Free_Stack;
