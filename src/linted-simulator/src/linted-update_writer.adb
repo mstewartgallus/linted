@@ -29,16 +29,16 @@ package body Linted.Update_Writer is
    use type C.size_t;
    use type Errors.Error;
 
-   Max_Nodes : constant := 1;
+   type Live_Future is new Future range 1 .. Future'Last with
+        Default_Value => 1;
 
-   Write_Futures : array (Future range 1 .. Max_Nodes) of Writer.Future;
-   Data_Being_Written : array
-   (Future range 1 .. Max_Nodes) of aliased Update.Storage :=
+   Write_Futures : array (Live_Future) of Writer.Future;
+   Data_Being_Written : array (Live_Future) of aliased Update.Storage :=
      (others => (others => 16#7F#));
 
    type Ix is mod Max_Nodes + 1;
-   function Is_Valid (Element : Future) return Boolean is (True);
-   package Spare_Futures is new Queue (Future, Ix, Is_Valid);
+   function Is_Valid (Element : Live_Future) return Boolean is (True);
+   package Spare_Futures is new Queue (Live_Future, Ix, Is_Valid);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 
@@ -48,23 +48,26 @@ package body Linted.Update_Writer is
       Signaller : Triggers.Signaller;
       F : out Future) with
       Spark_Mode => Off is
+      Live : Live_Future;
    begin
-      Spare_Futures.Dequeue (F);
-      Update.To_Storage (U, Data_Being_Written (F));
+      Spare_Futures.Dequeue (Live);
+      Update.To_Storage (U, Data_Being_Written (Live));
       Writer.Write
         (Object,
-         Data_Being_Written (F) (1)'Address,
+         Data_Being_Written (Live) (1)'Address,
          Update.Storage_Size,
          Signaller,
-         Write_Futures (F));
+         Write_Futures (Live));
+      F := Future (Live);
    end Write;
 
    procedure Write_Wait (F : in out Future; E : out Errors.Error) is
       W_Event : Writer.Event;
+      Live : Live_Future := Live_Future (F);
    begin
-      Writer.Write_Wait (Write_Futures (F), W_Event);
+      Writer.Write_Wait (Write_Futures (Live), W_Event);
       E := W_Event.Err;
-      Spare_Futures.Enqueue (F);
+      Spare_Futures.Enqueue (Live);
       F := 0;
    end Write_Wait;
 
@@ -74,11 +77,12 @@ package body Linted.Update_Writer is
       Init : out Boolean)
    is
       W_Event : Writer.Event;
+      Live : Live_Future := Live_Future (F);
    begin
-      Writer.Write_Poll (Write_Futures (F), W_Event, Init);
+      Writer.Write_Poll (Write_Futures (Live), W_Event, Init);
       if Init then
          E := W_Event.Err;
-         Spare_Futures.Enqueue (F);
+         Spare_Futures.Enqueue (Live);
          F := 0;
       else
          E := Errors.Success;
@@ -87,6 +91,6 @@ package body Linted.Update_Writer is
 
 begin
    for II in 1 .. Max_Nodes loop
-      Spare_Futures.Enqueue (Future (II));
+      Spare_Futures.Enqueue (Live_Future (Future (II)));
    end loop;
 end Linted.Update_Writer;

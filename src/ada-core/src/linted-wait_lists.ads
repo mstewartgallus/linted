@@ -12,7 +12,6 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 private with Linted.Atomics;
-private with Ada.Synchronous_Task_Control;
 
 package Linted.Wait_Lists with
      Spark_Mode is
@@ -38,19 +37,6 @@ private
    type Node (T : Node_Type := Normal_Type);
 
    type Node_Access is access all Node;
-
-   type Node (T : Node_Type := Normal_Type) is record
-      Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
-      Next : Node_Access;
-      case T is
-	 when Normal_Type =>
-	    null;
-	 when Signal_Type =>
-	    null;
-	 when Broadcast_Type =>
-	    null;
-      end case;
-   end record;
 
    type Default_False is new Boolean with
         Default_Value => False;
