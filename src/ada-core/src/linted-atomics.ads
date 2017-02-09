@@ -37,8 +37,9 @@ package Linted.Atomics is
       procedure Swap (Old_Ptr : in out Element_T; New_Ptr : Element_T) with
          Global => null,
          Depends =>
-         (Old_Ptr => (Old_Ptr, Atomic),
-          Atomic => (Atomic, New_Ptr));
+         (Old_Ptr => Atomic,
+          Atomic => (Atomic, New_Ptr),
+          null => Old_Ptr);
 
       Ptr : Element_T;
    end Atomic;

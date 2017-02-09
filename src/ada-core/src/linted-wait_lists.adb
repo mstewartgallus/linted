@@ -67,9 +67,7 @@ package body Linted.Wait_Lists with
 	       Current_Root,
 	       Root,
 	       Success);
-	    if Success then
-	       exit;
-	    end if;
+	    exit when Success;
 	 end;
       end loop;
    end Insert_Lots;
@@ -77,19 +75,17 @@ package body Linted.Wait_Lists with
    procedure Wait (W : in out Wait_List) is
       Is_Triggered : Default_False;
    begin
-      loop
-         Boolean_Atomics.Get (W.Triggered, Is_Triggered);
-         if Is_Triggered then
-            exit;
-         end if;
-         declare
-            N : aliased Node;
-         begin
-            Insert (W, N'Unchecked_Access);
-            STC.Suspend_Until_True (N.Trigger);
-         end;
-      end loop;
-      Boolean_Atomics.Set (W.Triggered, False);
+      Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
+      if Is_Triggered then
+	 return;
+      end if;
+
+      declare
+	 N : aliased Node;
+      begin
+	 Insert (W, N'Unchecked_Access);
+	 STC.Suspend_Until_True (N.Trigger);
+      end;
    end Wait;
 
    procedure Broadcast (W : in out Wait_List) is

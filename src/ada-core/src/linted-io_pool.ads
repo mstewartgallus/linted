@@ -50,7 +50,9 @@ is
       Err : Errors.Error;
    end record;
 
-   type Remind_Me_Event is null record;
+   type Remind_Me_Event is record
+      Dummy : Natural := 0;
+   end record;
 
    type Read_Future is limited private with
       Preelaborable_Initialization;
@@ -216,8 +218,8 @@ is
       Future : out Remind_Me_Future) with
       Global => (In_Out => (Command_Queue, Future_Pool)),
       Depends =>
-      (Future => (Future_Pool, Signaller),
-       Command_Queue => (Future_Pool, Command_Queue, Time),
+      (Future => (Future_Pool),
+       Command_Queue => (Signaller, Future_Pool, Command_Queue, Time),
        Future_Pool => (Future_Pool)),
       Post => Remind_Me_Future_Is_Live (Future);
 
@@ -227,7 +229,7 @@ is
       Global => (In_Out => (Event_Queue, Future_Pool)),
       Depends =>
       (Future => null,
-       Event => (Event_Queue, Future),
+       Event => (Future, Event_Queue),
        Event_Queue => (Future, Event_Queue),
        Future_Pool => (Future, Future_Pool)),
       Pre => Remind_Me_Future_Is_Live (Future),
@@ -240,7 +242,7 @@ is
       Global => (In_Out => (Event_Queue, Future_Pool)),
       Depends =>
       (Future => (Event_Queue, Future),
-       Event => (Event_Queue, Future),
+       Event => (Future, Event_Queue),
        Init => (Event_Queue, Future),
        Event_Queue => (Future, Event_Queue),
        Future_Pool => (Future, Event_Queue, Future_Pool)),
@@ -250,11 +252,11 @@ is
        else Remind_Me_Future_Is_Live (Future));
 
 private
-   Max_Read_Futures : constant := 64;
-   Max_Write_Futures : constant := 64;
-   Max_Poll_Futures : constant := 64;
-   Max_Remind_Me_Futures : constant := 64;
-   Max_Command_Queue_Capacity : constant := 64;
+   Max_Read_Futures : constant := 10;
+   Max_Write_Futures : constant := 10;
+   Max_Poll_Futures : constant := 10;
+   Max_Remind_Me_Futures : constant := 10;
+   Max_Command_Queue_Capacity : constant := 10;
 
    type Read_Future is mod Max_Read_Futures + 1 with
         Default_Value => 0;

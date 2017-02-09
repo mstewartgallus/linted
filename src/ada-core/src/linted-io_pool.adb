@@ -75,7 +75,7 @@ is
    end record;
 
    type Remind_Me_Command is record
-      Time : Ada.Real_Time.Time;
+      Time : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
       Replier : Live_Remind_Me_Future;
       Signaller : Triggers.Signaller;
    end record;
@@ -165,12 +165,16 @@ is
      Global => (In_Out => (My_Command_Queue.State,
 			   Read_Future_Channels,
 			   Write_Future_Channels,
-			   Poll_Future_Channels
-			  )),
+			   Poll_Future_Channels,
+			   Remind_Me_Future_Channels
+			  ),
+	       Input => Ada.Real_Time.Clock_Time),
      Depends => (My_Command_Queue.State => (My_Command_Queue.State),
    		 Read_Future_Channels => (Read_Future_Channels, My_Command_Queue.State),
    		 Write_Future_Channels => (Write_Future_Channels, My_Command_Queue.State),
-   		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue.State));
+   		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue.State),
+		 Remind_Me_Future_Channels => (Remind_Me_Future_Channels, My_Command_Queue.State),
+		null => Ada.Real_Time.Clock_Time);
 
    procedure Do_Write (W : Write_Command) with
      Global => (In_Out => Write_Future_Channels),
@@ -182,8 +186,9 @@ is
       Global => (In_Out => Poll_Future_Channels),
       Depends => (Poll_Future_Channels => (P, Poll_Future_Channels));
    procedure Do_Remind_Me (R : Remind_Me_Command) with
-      Global => (In_Out => Remind_Me_Future_Channels),
-      Depends => (Remind_Me_Future_Channels => (R, Remind_Me_Future_Channels));
+      Global => (In_Out => Remind_Me_Future_Channels, Input => Ada.Real_Time.Clock_Time),
+     Depends => (Remind_Me_Future_Channels => (R, Remind_Me_Future_Channels),
+					      null => Ada.Real_Time.Clock_Time);
 
    procedure Read
      (Object : KOs.KO;
@@ -491,7 +496,6 @@ is
    end Do_Poll;
 
    procedure Do_Remind_Me (R : Remind_Me_Command) is
-
       Time : constant Ada.Real_Time.Time := R.Time;
       Replier : constant Live_Remind_Me_Future := R.Replier;
       Signaller : constant Triggers.Signaller := R.Signaller;

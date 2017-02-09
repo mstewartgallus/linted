@@ -70,7 +70,9 @@ package body Linted.Atomics is
       Old_Element : out Element_T;
       New_Element : Element_T)
    is
+      Dummy : Element_T;
    begin
+      Old_Element := Dummy;
       A.Swap (Old_Element, New_Element);
    end Swap;
 
