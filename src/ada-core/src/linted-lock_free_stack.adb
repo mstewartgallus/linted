@@ -13,7 +13,7 @@
 -- permissions and limitations under the License.
 with Interfaces;
 
-with Libc.Sched;
+with Linted.Sched;
 with Linted.Atomics;
 
 package body Linted.Lock_Free_Stack with
@@ -121,6 +121,7 @@ is
    procedure Push_Node (N : in out Aba_Atomics.Atomic; Free : My_Ix) is
       Head : ABA_Ix;
       Swapped : Boolean;
+      Backoff : Sched.Backoff_State;
    begin
       loop
          Aba_Atomics.Get (N, Head);
@@ -131,7 +132,7 @@ is
             Make_ABA_Ix (Free, Tag (Head) + 1),
             Swapped);
          exit when Swapped;
-         Libc.Sched.sched_yield;
+         Sched.Backoff (Backoff);
       end loop;
    end Push_Node;
 
@@ -167,6 +168,7 @@ is
       New_Head : My_Ix;
       Swapped : Boolean;
       ABA_Head : ABA_Ix;
+      Backoff : Sched.Backoff_State;
    begin
       loop
          Aba_Atomics.Get (N, ABA_Head);
@@ -180,7 +182,7 @@ is
             Make_ABA_Ix (New_Head, Tag (ABA_Head) + 1),
             Swapped);
          exit when Swapped;
-         Libc.Sched.sched_yield;
+         Sched.Backoff (Backoff);
       end loop;
       Head := Index (ABA_Head);
    end Pop_Node;

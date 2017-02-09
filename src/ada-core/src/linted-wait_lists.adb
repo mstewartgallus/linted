@@ -11,7 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Libc.Sched;
+with Linted.Sched;
 
 with Ada.Unchecked_Conversion;
 
@@ -72,6 +72,7 @@ package body Linted.Wait_Lists with
    procedure Insert (W : in out Wait_List; N : Node_Ptr) is
       Head : Tagged_Accessors.Node_Access;
       Success : Boolean;
+      Backoff : Sched.Backoff_State;
    begin
       loop
          Node_Access_Atomics.Get (W.Root, Head);
@@ -84,7 +85,7 @@ package body Linted.Wait_Lists with
                Success);
             exit when Success;
          end if;
-         Libc.Sched.sched_yield;
+         Sched.Backoff (Backoff);
       end loop;
    end Insert;
 
@@ -108,6 +109,7 @@ package body Linted.Wait_Lists with
       Head : Tagged_Accessors.Node_Access;
       New_Head : Tagged_Accessors.Node_Access;
       Success : Boolean;
+      Backoff : Sched.Backoff_State;
    begin
       loop
          Node_Access_Atomics.Get (W.Root, Head);
@@ -127,7 +129,7 @@ package body Linted.Wait_Lists with
                Success);
             exit when Success;
          end if;
-         Libc.Sched.sched_yield;
+         Sched.Backoff (Backoff);
       end loop;
 
       Node_Access_Atomics.Set
