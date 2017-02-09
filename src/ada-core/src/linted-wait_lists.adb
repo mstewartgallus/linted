@@ -11,6 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Libc.Sched;
+
 with Ada.Synchronous_Task_Control;
 
 package body Linted.Wait_Lists with
@@ -42,6 +44,7 @@ package body Linted.Wait_Lists with
          N.Next := Head;
          Node_Access_Atomics.Compare_And_Swap (W.Root, Head, N, Success);
          exit when Success;
+	 Libc.Sched.sched_yield;
       end loop;
    end Insert;
 

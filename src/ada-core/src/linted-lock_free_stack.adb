@@ -13,17 +13,23 @@
 -- permissions and limitations under the License.
 with Interfaces;
 
+with Libc.Sched;
 with Linted.Atomics;
 
 package body Linted.Lock_Free_Stack with
      Refined_State => (State => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
 is
+   use type Interfaces.Unsigned_32;
+
    type My_Ix is new Ix with
         Default_Value => 0;
    type ABA is mod 2**16 with
         Default_Value => 0;
-   type ABA_Ix is new Interfaces.Unsigned_32 with
-        Default_Value => 0;
+   subtype U32 is Interfaces.Unsigned_32;
+
+   type ABA_Ix is new U32 with
+        Default_Value => 0,
+        Dynamic_Predicate => U32 (ABA_Ix and 16#FFFF#) <= U32 (My_Ix'Last);
 
    function Make_ABA_Ix (My_Index : My_Ix; My_Tag : ABA) return ABA_Ix;
    function Index (X : ABA_Ix) return My_Ix;
@@ -125,6 +131,7 @@ is
             Make_ABA_Ix (Free, Tag (Head) + 1),
             Swapped);
          exit when Swapped;
+         Libc.Sched.sched_yield;
       end loop;
    end Push_Node;
 
@@ -173,6 +180,7 @@ is
             Make_ABA_Ix (New_Head, Tag (ABA_Head) + 1),
             Swapped);
          exit when Swapped;
+         Libc.Sched.sched_yield;
       end loop;
       Head := Index (ABA_Head);
    end Pop_Node;
