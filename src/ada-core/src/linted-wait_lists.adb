@@ -85,6 +85,7 @@ package body Linted.Wait_Lists with
    procedure Collect (W : in out Wait_List) is
       Root : Node_Access;
       Signals : Natural := 0;
+      Do_Broadcast : Boolean := False;
    begin
       loop
          Node_Access_Atomics.Swap (W.Root, Root, null);
@@ -97,7 +98,9 @@ package body Linted.Wait_Lists with
 
                case Root.T is
                   when Normal_Type =>
-                     if Signals > 0 then
+                     if Do_Broadcast then
+			STC.Set_True (Root.Trigger);
+		     elsif Signals > 0 then
                         Signals := Signals - 1;
                         STC.Set_True (Root.Trigger);
                      else
@@ -109,24 +112,12 @@ package body Linted.Wait_Lists with
                   when Broadcast_Type =>
                      STC.Set_True (Root.Trigger);
                      Root := Next;
-                     goto Do_Broadcast;
+		     Do_Broadcast := True;
                end case;
                Root := Next;
             end;
          end loop;
          exit when null = Root or Signals = 0;
-      end loop;
-      return;
-      <<Do_Broadcast>>
-      while Root /= null loop
-         declare
-            Next : Node_Access;
-         begin
-            Next := Root.Next;
-            Root.Next := null;
-            STC.Set_True (Root.Trigger);
-            Root := Next;
-         end;
       end loop;
    end Collect;
 end Linted.Wait_Lists;
