@@ -13,76 +13,29 @@
 -- permissions and limitations under the License.
 with Linted.Sched;
 
-with Ada.Unchecked_Conversion;
-
 package body Linted.Wait_Lists with
      Spark_Mode => Off is
    package STC renames Ada.Synchronous_Task_Control;
 
-   package body Tagged_Accessors is
-      function To (Ptr : Node_Ptr) return Node_Access is
-      begin
-         return To (Ptr, Normal);
-      end To;
-
-      function To (Ptr : Node_Ptr; My_Tag : Tag_Type) return Node_Access is
-         function Convert is new Ada.Unchecked_Conversion
-           (Source => Node_Ptr,
-            Target => Node_Access);
-         Tag_N : Node_Access;
-         Converted : Node_Access;
-      begin
-         Converted := Convert (Ptr);
-         pragma Assert ((Converted and 2#1#) = 0);
-         case My_Tag is
-            when Normal =>
-               Tag_N := 0;
-            when Pinned =>
-               Tag_N := 1;
-         end case;
-         return Converted or Tag_N;
-      end To;
-
-      function From (Ptr : Node_Access) return Node_Ptr is
-         function Convert is new Ada.Unchecked_Conversion
-           (Source => Node_Access,
-            Target => Node_Ptr);
-      begin
-         return Convert (Ptr and not 2#1#);
-      end From;
-
-      function Tag (Ptr : Node_Access) return Tag_Type is
-      begin
-         case Ptr and 2#1# is
-            when 0 =>
-               return Normal;
-            when 1 =>
-               return Pinned;
-            when others =>
-               raise Constraint_Error;
-         end case;
-      end Tag;
-   end Tagged_Accessors;
-
-   use type Tagged_Accessors.Tag_Type;
+   use type Tags.Tag_Bits;
    use type Sched.Backoff_State;
 
-   procedure Insert (W : in out Wait_List; N : Node_Ptr);
-   procedure Pop (W : in out Wait_List; N : out Node_Ptr);
+   procedure Insert (W : in out Wait_List; N : Node_Access);
+   procedure Pop (W : in out Wait_List; N : out Node_Access);
 
-   procedure Insert (W : in out Wait_List; N : Node_Ptr) is
-      Head : Tagged_Accessors.Node_Access;
+   procedure Insert (W : in out Wait_List; N : Node_Access) is
+      Head : Tags.Tagged_Access;
       Success : Boolean;
       Backoff : Sched.Backoff_State;
    begin
       loop
          Node_Access_Atomics.Get (W.Root, Head);
-         if Tagged_Accessors.Tag (Head) /= Tagged_Accessors.Pinned then
-            N.Next := Tagged_Accessors.From (Head);
+         if Tags.Tag (Head) /= 1 then
+            N.Next := Tags.From (Head);
             Node_Access_Atomics.Compare_And_Swap
               (W.Root,
                Head,
-               Tagged_Accessors.To (N),
+               Tags.To (N),
                Success);
             exit when Success;
          end if;
@@ -111,23 +64,21 @@ package body Linted.Wait_Lists with
       end;
    end Wait;
 
-   procedure Pop (W : in out Wait_List; N : out Node_Ptr) is
-      Head : Tagged_Accessors.Node_Access;
-      New_Head : Tagged_Accessors.Node_Access;
+   procedure Pop (W : in out Wait_List; N : out Node_Access) is
+      Head : Tags.Tagged_Access;
+      New_Head : Tags.Tagged_Access;
       Success : Boolean;
       Backoff : Sched.Backoff_State;
    begin
       loop
          Node_Access_Atomics.Get (W.Root, Head);
-         if null = Tagged_Accessors.From (Head) then
+         if null = Tags.From (Head) then
             N := null;
             return;
          end if;
-         if Tagged_Accessors.Tag (Head) /= Tagged_Accessors.Pinned then
+         if Tags.Tag (Head) /= 1 then
             New_Head :=
-              Tagged_Accessors.To
-                (Tagged_Accessors.From (Head),
-                 Tagged_Accessors.Pinned);
+              Tags.To (Tags.From (Head), 1);
             Node_Access_Atomics.Compare_And_Swap
               (W.Root,
                Head,
@@ -140,13 +91,13 @@ package body Linted.Wait_Lists with
 
       Node_Access_Atomics.Set
         (W.Root,
-         Tagged_Accessors.To (Tagged_Accessors.From (Head).Next));
-      Tagged_Accessors.From (Head).Next := null;
-      N := Tagged_Accessors.From (Head);
+         Tags.To (Tags.From (Head).Next));
+      Tags.From (Head).Next := null;
+      N := Tags.From (Head);
    end Pop;
 
    procedure Broadcast (W : in out Wait_List) is
-      Head : Node_Ptr;
+      Head : Node_Access;
    begin
       Boolean_Atomics.Set (W.Triggered, True);
       loop
@@ -157,7 +108,7 @@ package body Linted.Wait_Lists with
    end Broadcast;
 
    procedure Signal (W : in out Wait_List) is
-      Head : Node_Ptr;
+      Head : Node_Access;
    begin
       Boolean_Atomics.Set (W.Triggered, True);
 

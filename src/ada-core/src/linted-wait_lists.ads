@@ -15,6 +15,7 @@ with Ada.Real_Time;
 private with Ada.Synchronous_Task_Control;
 
 private with Linted.Atomics;
+private with Linted.Tagged_Accessors;
 
 package Linted.Wait_Lists with
      Spark_Mode is
@@ -41,29 +42,15 @@ private
    type Default_False is new Boolean with
         Default_Value => False;
 
-   type Node_Ptr is access all Node;
-
-   package Tagged_Accessors is
-      type Node_Access is private with
-         Preelaborable_Initialization;
-
-      type Tag_Type is (Normal, Pinned);
-
-      function To (Ptr : Node_Ptr) return Node_Access;
-      function To (Ptr : Node_Ptr; My_Tag : Tag_Type) return Node_Access;
-      function From (Ptr : Node_Access) return Node_Ptr;
-      function Tag (Ptr : Node_Access) return Tag_Type;
-   private
-      type Node_Access is mod 2**64 with
-           Default_Value => 0;
-   end Tagged_Accessors;
+   type Node_Access is access all Node;
 
    type Node is record
       Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
-      Next : Node_Ptr;
+      Next : Node_Access;
    end record;
 
-   package Node_Access_Atomics is new Atomics (Tagged_Accessors.Node_Access);
+   package Tags is new Tagged_Accessors (Node, Node_Access);
+   package Node_Access_Atomics is new Atomics (Tags.Tagged_Access);
    package Boolean_Atomics is new Atomics (Default_False);
 
    type Wait_List is record
