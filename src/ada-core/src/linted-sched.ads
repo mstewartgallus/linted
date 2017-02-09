@@ -14,11 +14,10 @@
 package Linted.Sched is
    pragma Preelaborate;
 
-   type Backoff_State is private;
+   type Backoff_State is mod 2**32 with
+        Default_Value => 0;
 
    procedure Backoff (State : in out Backoff_State) with
-      Spark_Mode;
-private
-   type Backoff_State is range 0 .. 2**32 with
-        Default_Value => 0;
+      Spark_Mode,
+      Inline_Always;
 end Linted.Sched;

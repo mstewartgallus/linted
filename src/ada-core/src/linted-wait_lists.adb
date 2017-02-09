@@ -65,6 +65,7 @@ package body Linted.Wait_Lists with
    end Tagged_Accessors;
 
    use type Tagged_Accessors.Tag_Type;
+   use type Sched.Backoff_State;
 
    procedure Insert (W : in out Wait_List; N : Node_Ptr);
    procedure Pop (W : in out Wait_List; N : out Node_Ptr);
@@ -91,11 +92,16 @@ package body Linted.Wait_Lists with
 
    procedure Wait (W : in out Wait_List) is
       Is_Triggered : Default_False;
+      Backoff : Sched.Backoff_State;
    begin
-      Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
-      if Is_Triggered then
-         return;
-      end if;
+      loop
+	 Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
+	 if Is_Triggered then
+	    return;
+	 end if;
+	 Sched.Backoff (Backoff);
+	 exit when Backoff > 10;
+      end loop;
 
       declare
          N : aliased Node;
