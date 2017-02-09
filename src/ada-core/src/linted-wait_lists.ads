@@ -38,14 +38,16 @@ private
    type Default_False is new Boolean with
         Default_Value => False;
 
+   type Node_Ptr is access all Node;
+
    package Tagged_Accessors is
       type Node_Access is private;
 
-      type Tag_Type is (Normal, Signal, Broadcast);
+      type Tag_Type is (Normal, Pinned);
 
-      function To (Ptr : access Node) return Node_Access;
-      function To (Ptr : access Node; My_Tag : Tag_Type) return Node_Access;
-      function From (Ptr : Node_Access) return access Node;
+      function To (Ptr : Node_Ptr) return Node_Access;
+      function To (Ptr : Node_Ptr; My_Tag : Tag_Type) return Node_Access;
+      function From (Ptr : Node_Access) return Node_Ptr;
       function Tag (Ptr : Node_Access) return Tag_Type;
    private
       type Node_Access is mod 2**64 with
@@ -54,7 +56,7 @@ private
 
    type Node is record
       Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
-      Next : Tagged_Accessors.Node_Access;
+      Next : Node_Ptr;
    end record;
 
    package Node_Access_Atomics is new Atomics (Tagged_Accessors.Node_Access);
