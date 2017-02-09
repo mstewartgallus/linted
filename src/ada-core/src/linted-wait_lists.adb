@@ -164,30 +164,36 @@ package body Linted.Wait_Lists with
       Root : Tagged_Accessors.Node_Access;
       Do_Broadcast : Boolean := False;
    begin
-      Node_Access_Atomics.Swap (W.Root, Root, Tagged_Accessors.To (null));
+      loop
+	 Node_Access_Atomics.Swap (W.Root, Root, Tagged_Accessors.To (null));
 
-      while Tagged_Accessors.From (Root) /= null loop
-         declare
-            Next : Tagged_Accessors.Node_Access;
-         begin
-            Next := Tagged_Accessors.From (Root).Next;
-            Tagged_Accessors.From (Root).Next := Tagged_Accessors.To (null);
+	 while Tagged_Accessors.From (Root) /= null loop
+	    declare
+	       Next : Tagged_Accessors.Node_Access;
+	    begin
+	       Next := Tagged_Accessors.From (Root).Next;
+	       Tagged_Accessors.From (Root).Next := Tagged_Accessors.To (null);
 
-            case Tagged_Accessors.Tag (Root) is
-               when Tagged_Accessors.Normal =>
-                  if Do_Broadcast then
-                     STC.Set_True (Tagged_Accessors.From (Root).Trigger);
-                  else
-                     Insert (W, Tagged_Accessors.From (Root));
-                  end if;
-               when Tagged_Accessors.Signal =>
-                  STC.Set_True (Tagged_Accessors.From (Root).Trigger);
-               when Tagged_Accessors.Broadcast =>
-                  STC.Set_True (Tagged_Accessors.From (Root).Trigger);
-                  Do_Broadcast := True;
-            end case;
-            Root := Next;
-         end;
+	       case Tagged_Accessors.Tag (Root) is
+		  when Tagged_Accessors.Normal =>
+		     if Do_Broadcast then
+			STC.Set_True (Tagged_Accessors.From (Root).Trigger);
+		     else
+			Insert (W, Tagged_Accessors.From (Root));
+		     end if;
+		  when Tagged_Accessors.Signal =>
+		     STC.Set_True (Tagged_Accessors.From (Root).Trigger);
+		  when Tagged_Accessors.Broadcast =>
+		     STC.Set_True (Tagged_Accessors.From (Root).Trigger);
+		     Do_Broadcast := True;
+	       end case;
+	       Root := Next;
+	    end;
+	 end loop;
+
+	 if not Do_Broadcast or Tagged_Accessors.From (Root) = null then
+	    exit;
+	 end if;
       end loop;
    end Collect;
 end Linted.Wait_Lists;
