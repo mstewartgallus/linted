@@ -12,6 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 private with Linted.Atomics;
+private with Ada.Synchronous_Task_Control;
 
 package Linted.Wait_Lists with
      Spark_Mode is
@@ -32,16 +33,31 @@ package Linted.Wait_Lists with
 private
    pragma SPARK_Mode (Off);
 
-   type Node_Type is (Normal_Type, Signal_Type, Broadcast_Type);
-
-   type Node (T : Node_Type := Normal_Type);
-
-   type Node_Access is access all Node;
+   type Node;
 
    type Default_False is new Boolean with
         Default_Value => False;
 
-   package Node_Access_Atomics is new Atomics (Node_Access);
+   package Tagged_Accessors is
+      type Node_Access is private;
+
+      type Tag_Type is (Normal, Signal, Broadcast);
+
+      function To (Ptr : access Node) return Node_Access;
+      function To (Ptr : access Node; My_Tag : Tag_Type) return Node_Access;
+      function From (Ptr : Node_Access) return access Node;
+      function Tag (Ptr : Node_Access) return Tag_Type;
+   private
+      type Node_Access is mod 2**64 with
+           Default_Value => 0;
+   end Tagged_Accessors;
+
+   type Node is record
+      Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
+      Next : Tagged_Accessors.Node_Access;
+   end record;
+
+   package Node_Access_Atomics is new Atomics (Tagged_Accessors.Node_Access);
    package Boolean_Atomics is new Atomics (Default_False);
 
    type Wait_List is record
