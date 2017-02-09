@@ -11,25 +11,27 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Linted.Atomics;
+with Ada.Real_Time;
 private with Ada.Synchronous_Task_Control;
+
+private with Linted.Atomics;
 
 package Linted.Wait_Lists with
      Spark_Mode is
-   pragma Preelaborate;
+   pragma Elaborate_Body;
 
    type Wait_List is limited private with
       Preelaborable_Initialization;
 
    procedure Wait (W : in out Wait_List) with
-      Global => null,
-      Depends => (W => W);
+      Global => (Input => Ada.Real_Time.Clock_Time),
+      Depends => (W => W, null => Ada.Real_Time.Clock_Time);
    procedure Broadcast (W : in out Wait_List) with
-      Global => null,
-      Depends => (W => W);
+      Global => (Input => Ada.Real_Time.Clock_Time),
+      Depends => (W => W, null => Ada.Real_Time.Clock_Time);
    procedure Signal (W : in out Wait_List) with
-      Global => null,
-      Depends => (W => W);
+      Global => (Input => Ada.Real_Time.Clock_Time),
+      Depends => (W => W, null => Ada.Real_Time.Clock_Time);
 
 private
    pragma SPARK_Mode (Off);

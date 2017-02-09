@@ -11,6 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Ada.Real_Time;
+
 generic
    type Element_T is private;
    type Ix is mod <>;
@@ -21,12 +23,18 @@ package Linted.Lock_Free_Stack with
    pragma Elaborate_Body;
 
    procedure Try_Push (Element : Element_T; Success : out Boolean) with
-      Global => (In_Out => State),
-      Depends => (State => (State, Element), Success => State),
+      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
+      Depends =>
+      (State => (State, Element),
+       Success => State,
+       null => Ada.Real_Time.Clock_Time),
       Pre => Is_Valid (Element);
 
    procedure Try_Pop (Element : out Element_T; Success : out Boolean) with
-      Global => (In_Out => State),
-      Depends => ((State, Element) => State, Success => State),
+      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
+      Depends =>
+      ((State, Element) => State,
+       Success => State,
+       null => Ada.Real_Time.Clock_Time),
       Post => (if Success then Is_Valid (Element) else True);
 end Linted.Lock_Free_Stack;

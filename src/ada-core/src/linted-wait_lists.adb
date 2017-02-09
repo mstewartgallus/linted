@@ -95,12 +95,12 @@ package body Linted.Wait_Lists with
       Backoff : Sched.Backoff_State;
    begin
       loop
-	 Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
-	 if Is_Triggered then
-	    return;
-	 end if;
-	 Sched.Backoff (Backoff);
-	 exit when Backoff > 10;
+         Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
+         if Is_Triggered then
+            return;
+         end if;
+         Sched.Backoff (Backoff);
+         exit when Backoff > 10;
       end loop;
 
       declare

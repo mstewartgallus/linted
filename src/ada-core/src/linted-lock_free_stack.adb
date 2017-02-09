@@ -40,30 +40,40 @@ is
    Buf_Free : Aba_Atomics.Atomic;
 
    procedure Allocate (Free : out My_Ix) with
-      Global => (In_Out => (Buf_Nodes, Buf_Free)),
+      Global =>
+      (Input => Ada.Real_Time.Clock_Time,
+       In_Out => (Buf_Nodes, Buf_Free)),
       Depends =>
       (Free => (Buf_Free, Buf_Nodes),
        Buf_Nodes => (Buf_Nodes, Buf_Free),
-       Buf_Free => (Buf_Nodes, Buf_Free));
+       Buf_Free => (Buf_Nodes, Buf_Free),
+       null => Ada.Real_Time.Clock_Time);
 
    procedure Deallocate (Head : My_Ix) with
       Pre => Head /= 0,
-      Global => (In_Out => (Buf_Nodes, Buf_Free)),
+      Global =>
+      (Input => Ada.Real_Time.Clock_Time,
+       In_Out => (Buf_Nodes, Buf_Free)),
       Depends =>
       (Buf_Nodes => (Buf_Nodes, Buf_Free, Head),
-       Buf_Free => (Buf_Free, Head));
+       Buf_Free => (Buf_Free, Head),
+       null => Ada.Real_Time.Clock_Time);
 
    procedure Push_Node (N : in out Aba_Atomics.Atomic; Free : My_Ix) with
       Pre => Free /= 0,
-      Global => (In_Out => Buf_Nodes),
-      Depends => (N => (Free, N), Buf_Nodes => (Free, Buf_Nodes, N));
+      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => Buf_Nodes),
+      Depends =>
+      (N => (Free, N),
+       Buf_Nodes => (Free, Buf_Nodes, N),
+       null => Ada.Real_Time.Clock_Time);
 
    procedure Pop_Node (N : in out Aba_Atomics.Atomic; Head : out My_Ix) with
-      Global => (In_Out => Buf_Nodes),
+      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => Buf_Nodes),
       Depends =>
       (Head => (Buf_Nodes, N),
        N => (Buf_Nodes, N),
-       Buf_Nodes => (N, Buf_Nodes));
+       Buf_Nodes => (N, Buf_Nodes),
+       null => Ada.Real_Time.Clock_Time);
 
    procedure Allocate (Free : out My_Ix) is
    begin
@@ -77,7 +87,8 @@ is
 
    procedure Try_Push (Element : Element_T; Success : out Boolean) with
       Refined_Global =>
-      (In_Out => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
+      (Input => Ada.Real_Time.Clock_Time,
+       In_Out => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
    is
       Free : My_Ix;
    begin
@@ -112,7 +123,8 @@ is
 
    procedure Try_Pop (Element : out Element_T; Success : out Boolean) with
       Refined_Global =>
-      (In_Out => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
+      (Input => Ada.Real_Time.Clock_Time,
+       In_Out => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
    is
       Head : My_Ix;
    begin

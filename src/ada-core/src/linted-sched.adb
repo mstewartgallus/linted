@@ -15,9 +15,9 @@ with Libc.Sched;
 
 with System.Machine_Code;
 
-package body Linted.Sched is
-   procedure Backoff (State : in out Backoff_State) with
-      Spark_Mode => Off is
+package body Linted.Sched with
+     Spark_Mode => Off is
+   procedure Backoff (State : in out Backoff_State) is
    begin
       if State < 2 then
          null;

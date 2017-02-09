@@ -11,13 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package Linted.Sched is
-   pragma Preelaborate;
+with Ada.Real_Time;
+
+package Linted.Sched with
+     Spark_Mode is
+   pragma Elaborate_Body;
 
    type Backoff_State is mod 2**32 with
         Default_Value => 0;
 
    procedure Backoff (State : in out Backoff_State) with
-      Spark_Mode,
-      Inline_Always;
+      Inline_Always,
+      Global => (Input => Ada.Real_Time.Clock_Time),
+      Depends => (State => State, null => Ada.Real_Time.Clock_Time);
 end Linted.Sched;

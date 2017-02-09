@@ -15,7 +15,7 @@ private with Linted.Wait_Lists;
 
 package Linted.Triggers with
      Spark_Mode is
-   pragma Preelaborate;
+   pragma Elaborate_Body;
 
    type Waiter is private with
       Preelaborable_Initialization;
