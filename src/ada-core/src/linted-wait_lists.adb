@@ -84,13 +84,33 @@ package body Linted.Wait_Lists with
    end Pop;
 
    procedure Broadcast (W : in out Wait_List) is
-      Head : Node_Access;
+      Head : Tags.Tagged_Access;
+      N : Node_Access;
+      Success : Boolean;
    begin
       Boolean_Atomics.Set (W.Triggered, True);
+
       loop
-         Pop (W, Head);
-         exit when Head = null;
-         STC.Set_True (Head.Trigger);
+         Node_Access_Atomics.Get (W.Root, Head);
+         Node_Access_Atomics.Compare_And_Swap
+           (W.Root,
+            Head,
+            Tags.To (null, Tags.Tag (Head) + 1),
+            Success);
+         exit when Success;
+         Sched.Backoff (W.Head_Contention);
+      end loop;
+      Sched.Success (W.Head_Contention);
+
+      N := Tags.From (Head);
+      while N /= null loop
+	 declare
+	    Next : Node_Access;
+	 begin
+	    Next := N.Next;
+	    STC.Set_True (N.Trigger);
+	    N := Next;
+	 end;
       end loop;
    end Broadcast;
 
