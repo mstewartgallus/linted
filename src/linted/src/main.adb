@@ -119,11 +119,11 @@ begin
             Default_Value := E.Value;
          end;
 
-         Err :=
-           Linted.Env.Set
-             (U.To_String (Key),
-              U.To_String (Default_Value),
-              False);
+         Linted.Env.Set
+           (U.To_String (Key),
+            U.To_String (Default_Value),
+            False,
+            Err);
          if Err /= 0 then
             goto On_Err;
          end if;
@@ -135,7 +135,7 @@ begin
       P : String := Linted.Process.Id'Image (Pid);
       V : String := P (2 .. P'Last);
    begin
-      Err := Linted.Env.Set ("MANAGERPID", V, True);
+      Linted.Env.Set ("MANAGERPID", V, True, Err);
       if Err /= 0 then
          goto On_Err;
       end if;

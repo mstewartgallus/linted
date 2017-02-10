@@ -54,12 +54,15 @@ pragma Warnings ("ah.i.ktFK");
 -- pragma Restrictions (No_Entry_Calls_In_Elaboration_Code);
 pragma Discard_Names;
 
+pragma Restriction_Warnings (No_Allocators);
+pragma Restriction_Warnings (No_Protected_Type_Allocators);
+pragma Restriction_Warnings (No_Local_Protected_Objects);
+
 pragma Restrictions (Immediate_Reclamation);
 pragma Restrictions (Max_Asynchronous_Select_Nesting => 0);
 pragma Restrictions (Max_Select_Alternatives => 0);
 pragma Restrictions (Max_Storage_At_Blocking => 0);
 pragma Restrictions (Max_Tasks => 255);
-pragma Restrictions (No_Allocators);
 pragma Restrictions (No_Coextensions);
 pragma Restrictions (No_Dispatch);
 pragma Restrictions (No_Dispatching_Calls);
@@ -69,7 +72,6 @@ pragma Restrictions (No_Exception_Registration);
 pragma Restrictions (No_Implicit_Aliasing);
 pragma Restrictions (No_Implicit_Dynamic_Code);
 -- pragma Restrictions (No_IO);
-pragma Restrictions (No_Local_Protected_Objects);
 pragma Restrictions (No_Local_Timing_Events);
 pragma Restrictions (No_Long_Long_Integers);
 

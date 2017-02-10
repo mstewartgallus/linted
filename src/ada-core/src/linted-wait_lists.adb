@@ -21,21 +21,22 @@ package body Linted.Wait_Lists with
    procedure Insert (W : in out Wait_List; N : Node_Access);
    procedure Pop (W : in out Wait_List; N : out Node_Access);
 
+   Local_Waiter : Node_Access := null;
+   pragma Thread_Local_Storage (Local_Waiter);
+
    procedure Insert (W : in out Wait_List; N : Node_Access) is
       Head : Tags.Tagged_Access;
       Success : Boolean;
    begin
       loop
          Node_Access_Atomics.Get (W.Root, Head);
-         if Tags.Tag (Head) /= 1 then
-            N.Next := Tags.From (Head);
-            Node_Access_Atomics.Compare_And_Swap
-              (W.Root,
-               Head,
-               Tags.To (N),
-               Success);
-            exit when Success;
-         end if;
+         N.Next := Tags.From (Head);
+         Node_Access_Atomics.Compare_And_Swap
+           (W.Root,
+            Head,
+            Tags.To (N, Tags.Tag (Head) + 1),
+            Success);
+         exit when Success;
          Sched.Backoff (W.Head_Contention);
       end loop;
       Sched.Success (W.Head_Contention);
@@ -49,17 +50,16 @@ package body Linted.Wait_Lists with
          return;
       end if;
 
-      declare
-         N : aliased Node;
-      begin
-         Insert (W, N'Unchecked_Access);
-         STC.Suspend_Until_True (N.Trigger);
-      end;
+      if null = Local_Waiter then
+         Local_Waiter := new Node;
+      end if;
+
+      Insert (W, Local_Waiter);
+      STC.Suspend_Until_True (Local_Waiter.Trigger);
    end Wait;
 
    procedure Pop (W : in out Wait_List; N : out Node_Access) is
       Head : Tags.Tagged_Access;
-      New_Head : Tags.Tagged_Access;
       Success : Boolean;
    begin
       loop
@@ -69,22 +69,18 @@ package body Linted.Wait_Lists with
             Sched.Success (W.Head_Contention);
             return;
          end if;
-         if Tags.Tag (Head) /= 1 then
-            New_Head := Tags.To (Tags.From (Head), 1);
-            Node_Access_Atomics.Compare_And_Swap
-              (W.Root,
-               Head,
-               New_Head,
-               Success);
-            exit when Success;
-         end if;
+         N := Tags.From (Head);
+         --  .Next is safe because nodes are never deallocated
+         Node_Access_Atomics.Compare_And_Swap
+           (W.Root,
+            Head,
+            Tags.To (N.Next, Tags.Tag (Head) + 1),
+            Success);
+         exit when Success;
          Sched.Backoff (W.Head_Contention);
       end loop;
       Sched.Success (W.Head_Contention);
-
-      Node_Access_Atomics.Set (W.Root, Tags.To (Tags.From (Head).Next));
-      Tags.From (Head).Next := null;
-      N := Tags.From (Head);
+      N.Next := null;
    end Pop;
 
    procedure Broadcast (W : in out Wait_List) is

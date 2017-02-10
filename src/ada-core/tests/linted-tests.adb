@@ -16,19 +16,21 @@ with Linted.Last_Chance;
 
 package body Linted.Tests is
    Len : constant := 20;
-   type Ix is mod Len + 1;
-   function Is_Valid (X : Integer) return Boolean is (True);
-   package My_Queue is new Queue (Integer, Ix, Is_Valid);
+   type Ix is mod Len + 1 with Default_Value => 0;
+   type Int is mod Len + 1 with Default_Value => 0;
+
+   function Is_Valid (X : Int) return Boolean is (True);
+   package My_Queue is new Queue (Int, Ix, Is_Valid);
 
    procedure Run is
    begin
-      for II in 1 .. Len loop
+      for II in 1 .. Int (Len) loop
 	 My_Queue.Enqueue (II);
       end loop;
 
-      for II in 1 .. Len loop
+      for II in 1 .. Int (Len) loop
 	 declare
-	    Current : Integer;
+	    Current : Int;
 	 begin
 	    My_Queue.Dequeue (Current);
 	    pragma Assert (Current = II);

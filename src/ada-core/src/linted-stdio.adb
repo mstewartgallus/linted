@@ -14,14 +14,11 @@
 with Ada.Characters.Latin_1;
 with Ada.Unchecked_Conversion;
 
-with Interfaces.C.Strings;
-
 with Linted.Writer;
 with Linted.Triggers;
 
 package body Linted.Stdio is
    package C renames Interfaces.C;
-   package C_Strings renames Interfaces.C.Strings;
 
    use Linted.Errors;
    use Linted.KOs;
@@ -32,16 +29,12 @@ package body Linted.Stdio is
       Write_String (Object, Str & Ada.Characters.Latin_1.LF, Dummy);
    end Write_Line;
 
-   procedure Write_String (Object : KO; Str : String; Err : out Error) is
-      function Convert is new Ada.Unchecked_Conversion
-        (C_Strings.chars_ptr,
-         System.Address);
-      X : C_Strings.chars_ptr;
+   procedure Write_String (Object : KO; Str : String; Err : out Error) with
+      Spark_Mode => Off is
+      X : C.char_array := C.To_C (Str);
       Bytes_Written : C.size_t;
    begin
-      X := C_Strings.New_String (Str);
-      Write (Object, Convert (X), C_Strings.Strlen (X), Bytes_Written, Err);
-      C_Strings.Free (X);
+      Write (Object, X (X'First)'Address, X'Length, Bytes_Written, Err);
    end Write_String;
 
    procedure Write

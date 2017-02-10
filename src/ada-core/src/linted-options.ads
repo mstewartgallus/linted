@@ -13,8 +13,7 @@
 -- permissions and limitations under the License.
 generic
    type Element_T is private;
-package Linted.Options with
-   Abstract_State => null is
+package Linted.Options is
    pragma Pure;
 
    type Option (Empty : Boolean := True) is record

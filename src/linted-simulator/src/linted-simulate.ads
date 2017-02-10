@@ -15,7 +15,7 @@ with Linted.Controls;
 with Linted.Types;
 
 package Linted.Simulate is
-   pragma Elaborate_Body;
+   pragma Pure;
 
    type State is record
       Controls : Linted.Controls.Packet;

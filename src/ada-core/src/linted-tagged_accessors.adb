@@ -26,7 +26,7 @@ package body Linted.Tagged_Accessors is
       Converted : Tagged_Access;
    begin
       Converted := Convert (Ptr);
-      pragma Assert ((Converted and 2#1#) = 0);
+      pragma Assert ((Converted and 2#11#) = 0);
       return Converted or Tagged_Access (Tag);
    end To;
 
@@ -35,11 +35,11 @@ package body Linted.Tagged_Accessors is
 	(Source => Tagged_Access,
 	 Target => Access_T);
    begin
-      return Convert (Ptr and not 2#1#);
+      return Convert (Ptr and not 2#11#);
    end From;
 
    function Tag (Ptr : Tagged_Access) return Tag_Bits is
    begin
-      return Tag_Bits (Ptr and 2#1#);
+      return Tag_Bits (Ptr and 2#11#);
    end Tag;
 end Linted.Tagged_Accessors;

@@ -14,12 +14,23 @@
 with Linted.Errors;
 
 package Linted.Env with
-     Spark_Mode => Off is
+     Spark_Mode,
+     Abstract_State =>
+     (Environment with
+      Synchronous,
+      External => (Async_Readers, Async_Writers))
+is
    pragma Preelaborate;
 
-   function Set
+   procedure Set
      (Name : String;
       Value : String;
-      Overwrite : Boolean) return Errors.Error;
-   function Get (Name : String) return String;
+      Overwrite : Boolean;
+      Err : out Errors.Error) with
+      Global => (In_Out => Environment),
+      Depends => ((Err, Environment) => (Environment, Name, Value, Overwrite));
+   function Get (Name : String) return String with
+      Volatile_Function,
+      Global => (Input => Environment),
+      Depends => (Get'Result => Environment);
 end Linted.Env;

@@ -18,7 +18,8 @@ with Libc.Stdlib.GNU;
 with Libc.Stdlib;
 
 package body Linted.Env with
-     Spark_Mode => Off is
+     Spark_Mode => Off,
+     Refined_State => (Environment => L) is
    package C renames Interfaces.C;
    package C_Strings renames Interfaces.C.Strings;
 
@@ -34,11 +35,15 @@ package body Linted.Env with
 
    L : Env_Lock;
 
-   function Set
+   procedure Set
      (Name : String;
       Value : String;
-      Overwrite : Boolean) return Errors.Error is
-     (L.Lock_Set (Name, Value, Overwrite));
+      Overwrite : Boolean;
+      Err : out Errors.Error)
+   is
+   begin
+      Err := L.Lock_Set (Name, Value, Overwrite);
+   end Set;
 
    function Get (Name : String) return String is (L.Lock_Get (Name));
 

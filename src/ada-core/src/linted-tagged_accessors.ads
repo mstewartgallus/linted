@@ -17,10 +17,12 @@ generic
    type Element_T (<>) is limited private;
    type Access_T is access all Element_T;
 package Linted.Tagged_Accessors is
+   pragma Pure;
+
    type Tagged_Access is private with
       Preelaborable_Initialization;
 
-   type Tag_Bits is mod 2**1 with
+   type Tag_Bits is mod 2**2 with
         Default_Value => 0;
 
    function To (Ptr : Access_T) return Tagged_Access;
