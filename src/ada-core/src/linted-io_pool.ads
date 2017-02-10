@@ -12,6 +12,8 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Real_Time;
+pragma Elaborate_All (Ada.Real_Time);
+
 with Interfaces.C;
 with System;
 
@@ -21,7 +23,7 @@ with Linted.Triggers;
 
 package Linted.IO_Pool with
      Spark_Mode,
-     Initializes => Future_Pool,
+     Initializes => (Future_Pool => Ada.Real_Time.Clock_Time),
      Abstract_State =>
      ((Command_Queue with External),
       (Event_Queue with External),

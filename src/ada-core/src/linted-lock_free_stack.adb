@@ -16,7 +16,14 @@ with Linted.ABAs;
 with Linted.Sched;
 
 package body Linted.Lock_Free_Stack with
-     Refined_State => (State => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
+     Refined_State =>
+     (State =>
+        (Buf_Contents,
+         Buf_Nodes,
+         Buf_Head,
+         Buf_Free,
+         Head_Contention,
+         Free_Contention))
 is
 
    type My_Ix is new Ix with
@@ -36,16 +43,21 @@ is
      array (My_Ix range 1 .. My_Ix (Ix'Last)) of Access_Atomics.Atomic;
 
    Buf_Nodes : Node_Array;
+
    Buf_Head : Aba_Atomics.Atomic;
+   Head_Contention : Sched.Contention;
+
    Buf_Free : Aba_Atomics.Atomic;
+   Free_Contention : Sched.Contention;
 
    procedure Allocate (Free : out My_Ix) with
       Global =>
       (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Nodes, Buf_Free)),
+       In_Out => (Buf_Nodes, Buf_Free, Free_Contention)),
       Depends =>
       (Free => (Buf_Free, Buf_Nodes),
        Buf_Nodes => (Buf_Nodes, Buf_Free),
+       Free_Contention => (Buf_Free, Buf_Nodes, Free_Contention),
        Buf_Free => (Buf_Nodes, Buf_Free),
        null => Ada.Real_Time.Clock_Time);
 
@@ -53,42 +65,57 @@ is
       Pre => Head /= 0,
       Global =>
       (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Nodes, Buf_Free)),
+       In_Out => (Buf_Nodes, Buf_Free, Free_Contention)),
       Depends =>
       (Buf_Nodes => (Buf_Nodes, Buf_Free, Head),
+       Free_Contention => (Buf_Free, Head, Free_Contention),
        Buf_Free => (Buf_Free, Head),
        null => Ada.Real_Time.Clock_Time);
 
-   procedure Push_Node (N : in out Aba_Atomics.Atomic; Free : My_Ix) with
+   procedure Push_Node
+     (N : in out Aba_Atomics.Atomic;
+      Contention : in out Sched.Contention;
+      Free : My_Ix) with
       Pre => Free /= 0,
       Global => (Input => Ada.Real_Time.Clock_Time, In_Out => Buf_Nodes),
       Depends =>
       (N => (Free, N),
+       Contention => (Free, N, Contention),
        Buf_Nodes => (Free, Buf_Nodes, N),
        null => Ada.Real_Time.Clock_Time);
 
-   procedure Pop_Node (N : in out Aba_Atomics.Atomic; Head : out My_Ix) with
+   procedure Pop_Node
+     (N : in out Aba_Atomics.Atomic;
+      Contention : in out Sched.Contention;
+      Head : out My_Ix) with
       Global => (Input => Ada.Real_Time.Clock_Time, In_Out => Buf_Nodes),
       Depends =>
       (Head => (Buf_Nodes, N),
+       Contention => (N, Buf_Nodes, Contention),
        N => (Buf_Nodes, N),
        Buf_Nodes => (N, Buf_Nodes),
        null => Ada.Real_Time.Clock_Time);
 
    procedure Allocate (Free : out My_Ix) is
    begin
-      Pop_Node (Buf_Free, Free);
+      Pop_Node (Buf_Free, Free_Contention, Free);
    end Allocate;
 
    procedure Deallocate (Head : My_Ix) is
    begin
-      Push_Node (Buf_Free, Head);
+      Push_Node (Buf_Free, Free_Contention, Head);
    end Deallocate;
 
    procedure Try_Push (Element : Element_T; Success : out Boolean) with
       Refined_Global =>
       (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
+       In_Out =>
+         (Buf_Contents,
+          Buf_Nodes,
+          Buf_Head,
+          Buf_Free,
+          Head_Contention,
+          Free_Contention))
    is
       Free : My_Ix;
    begin
@@ -98,15 +125,18 @@ is
          Success := False;
       else
          Buf_Contents (Free) := Element;
-         Push_Node (Buf_Head, Free);
+         Push_Node (Buf_Head, Head_Contention, Free);
          Success := True;
       end if;
    end Try_Push;
 
-   procedure Push_Node (N : in out Aba_Atomics.Atomic; Free : My_Ix) is
+   procedure Push_Node
+     (N : in out Aba_Atomics.Atomic;
+      Contention : in out Sched.Contention;
+      Free : My_Ix)
+   is
       Head : ABA.ABA;
       Swapped : Boolean;
-      Backoff : Sched.Backoff_State;
    begin
       loop
          Aba_Atomics.Get (N, Head);
@@ -117,18 +147,25 @@ is
             ABA.Initialize (Free, ABA.Tag (Head) + 1),
             Swapped);
          exit when Swapped;
-         Sched.Backoff (Backoff);
+         Sched.Backoff (Contention);
       end loop;
+      Sched.Success (Contention);
    end Push_Node;
 
    procedure Try_Pop (Element : out Element_T; Success : out Boolean) with
       Refined_Global =>
       (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Contents, Buf_Nodes, Buf_Head, Buf_Free))
+       In_Out =>
+         (Buf_Contents,
+          Buf_Nodes,
+          Buf_Head,
+          Buf_Free,
+          Head_Contention,
+          Free_Contention))
    is
       Head : My_Ix;
    begin
-      Pop_Node (Buf_Head, Head);
+      Pop_Node (Buf_Head, Head_Contention, Head);
 
       if 0 = Head then
          declare
@@ -150,11 +187,14 @@ is
       end if;
    end Try_Pop;
 
-   procedure Pop_Node (N : in out Aba_Atomics.Atomic; Head : out My_Ix) is
+   procedure Pop_Node
+     (N : in out Aba_Atomics.Atomic;
+      Contention : in out Sched.Contention;
+      Head : out My_Ix)
+   is
       New_Head : My_Ix;
       Swapped : Boolean;
       ABA_Head : ABA.ABA;
-      Backoff : Sched.Backoff_State;
    begin
       loop
          Aba_Atomics.Get (N, ABA_Head);
@@ -168,8 +208,9 @@ is
             ABA.Initialize (New_Head, ABA.Tag (ABA_Head) + 1),
             Swapped);
          exit when Swapped;
-         Sched.Backoff (Backoff);
+         Sched.Backoff (Contention);
       end loop;
+      Sched.Success (Contention);
       Head := ABA.Element (ABA_Head);
    end Pop_Node;
 

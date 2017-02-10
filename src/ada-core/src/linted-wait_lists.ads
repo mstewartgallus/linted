@@ -15,6 +15,7 @@ with Ada.Real_Time;
 private with Ada.Synchronous_Task_Control;
 
 private with Linted.Atomics;
+private with Linted.Sched;
 private with Linted.Tagged_Accessors;
 
 package Linted.Wait_Lists with
@@ -56,5 +57,7 @@ private
    type Wait_List is record
       Root : Node_Access_Atomics.Atomic;
       Triggered : Boolean_Atomics.Atomic;
+      Head_Contention : Sched.Contention;
+      Trigger_Failure : Sched.Contention;
    end record;
 end Linted.Wait_Lists;

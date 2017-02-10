@@ -12,13 +12,14 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Real_Time;
+pragma Elaborate_All (Ada.Real_Time);
 
 generic
    type Element_T is private;
    type Ix is mod <>;
    with function Is_Valid (Element : Element_T) return Boolean;
 package Linted.Queue with
-   Initializes => State,
+   Initializes => (State => Ada.Real_Time.Clock_Time),
    Abstract_State => (State with External) is
    pragma Elaborate_Body;
 

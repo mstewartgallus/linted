@@ -33,10 +33,8 @@ private
    subtype U32 is Interfaces.Unsigned_32;
    use type U32;
 
-   Max : constant U32 :=
-     Interfaces.Shift_Left (U32 (Element_T'Last), 16) or 16#FFFF#;
-
    type ABA is new U32 with
         Default_Value => 0,
-        Dynamic_Predicate => U32 (ABA) <= Max;
+        Dynamic_Predicate => U32 (ABA) <=
+        ((U32 (Element_T'Last) * 2**16) or 16#FFFF#);
 end Linted.ABAs;

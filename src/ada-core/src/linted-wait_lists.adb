@@ -11,8 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Sched;
-
 package body Linted.Wait_Lists with
      Spark_Mode => Off is
    package STC renames Ada.Synchronous_Task_Control;
@@ -26,7 +24,6 @@ package body Linted.Wait_Lists with
    procedure Insert (W : in out Wait_List; N : Node_Access) is
       Head : Tags.Tagged_Access;
       Success : Boolean;
-      Backoff : Sched.Backoff_State;
    begin
       loop
          Node_Access_Atomics.Get (W.Root, Head);
@@ -39,22 +36,18 @@ package body Linted.Wait_Lists with
                Success);
             exit when Success;
          end if;
-         Sched.Backoff (Backoff);
+         Sched.Backoff (W.Head_Contention);
       end loop;
+      Sched.Success (W.Head_Contention);
    end Insert;
 
    procedure Wait (W : in out Wait_List) is
       Is_Triggered : Default_False;
-      Backoff : Sched.Backoff_State;
    begin
-      loop
-         Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
-         if Is_Triggered then
-            return;
-         end if;
-         Sched.Backoff (Backoff);
-         exit when Backoff > 10;
-      end loop;
+      Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
+      if Is_Triggered then
+         return;
+      end if;
 
       declare
          N : aliased Node;
@@ -68,17 +61,16 @@ package body Linted.Wait_Lists with
       Head : Tags.Tagged_Access;
       New_Head : Tags.Tagged_Access;
       Success : Boolean;
-      Backoff : Sched.Backoff_State;
    begin
       loop
          Node_Access_Atomics.Get (W.Root, Head);
          if null = Tags.From (Head) then
             N := null;
+            Sched.Success (W.Head_Contention);
             return;
          end if;
          if Tags.Tag (Head) /= 1 then
-            New_Head :=
-              Tags.To (Tags.From (Head), 1);
+            New_Head := Tags.To (Tags.From (Head), 1);
             Node_Access_Atomics.Compare_And_Swap
               (W.Root,
                Head,
@@ -86,12 +78,11 @@ package body Linted.Wait_Lists with
                Success);
             exit when Success;
          end if;
-         Sched.Backoff (Backoff);
+         Sched.Backoff (W.Head_Contention);
       end loop;
+      Sched.Success (W.Head_Contention);
 
-      Node_Access_Atomics.Set
-        (W.Root,
-         Tags.To (Tags.From (Head).Next));
+      Node_Access_Atomics.Set (W.Root, Tags.To (Tags.From (Head).Next));
       Tags.From (Head).Next := null;
       N := Tags.From (Head);
    end Pop;
