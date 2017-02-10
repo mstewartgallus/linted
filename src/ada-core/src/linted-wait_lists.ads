@@ -58,6 +58,5 @@ private
       Root : Node_Access_Atomics.Atomic;
       Triggered : Boolean_Atomics.Atomic;
       Head_Contention : Sched.Contention;
-      Trigger_Failure : Sched.Contention;
    end record;
 end Linted.Wait_Lists;
