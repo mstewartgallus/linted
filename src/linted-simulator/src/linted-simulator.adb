@@ -43,9 +43,10 @@ package body Linted.Simulator with
       Updater_KO : KOs.KO;
 
       My_State : Simulate.State :=
-        (Objects =>
-           (0 => ((0, 0), (10 * 1024, 10 * 1024), (0, 0)),
-            1 => ((0, 0), (0, 0), (-1000, -1000))),
+        (Max_Objects => 2,
+         Objects =>
+           (1 => ((0, 0), (10 * 1024, 10 * 1024), (0, 0)),
+            2 => ((0, 0), (0, 0), (-1000, -1000))),
 
          Z_Rotation => Types.Sim_Angles.To_Angle (0, 1),
          X_Rotation => Types.Sim_Angles.To_Angle (3, 16),
@@ -168,18 +169,18 @@ package body Linted.Simulator with
             Update_Writer.Write
               (Updater_KO,
                (X_Position =>
-                  Update.Int (My_State.Objects (0) (Types.X).Value),
+                  Update.Int (My_State.Objects (1) (Types.X).Value),
                 Y_Position =>
-                  Update.Int (My_State.Objects (0) (Types.Y).Value),
+                  Update.Int (My_State.Objects (1) (Types.Y).Value),
                 Z_Position =>
-                  Update.Int (My_State.Objects (0) (Types.Z).Value),
+                  Update.Int (My_State.Objects (1) (Types.Z).Value),
 
                 MX_Position =>
-                  Update.Int (My_State.Objects (1) (Types.X).Value),
+                  Update.Int (My_State.Objects (2) (Types.X).Value),
                 MY_Position =>
-                  Update.Int (My_State.Objects (1) (Types.Y).Value),
+                  Update.Int (My_State.Objects (2) (Types.Y).Value),
                 MZ_Position =>
-                  Update.Int (My_State.Objects (1) (Types.Z).Value),
+                  Update.Int (My_State.Objects (2) (Types.Z).Value),
 
                 Z_Rotation =>
                   Update.Nat

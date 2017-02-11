@@ -11,9 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Exceptions;
-with Ada.Text_IO;
-
 with Libc.Errno;
 with Libc.Errno.POSIX_2008;
 with Libc.Sys.Poll;
@@ -546,14 +543,9 @@ is
       end loop;
    end Do_Work;
 
-   task body Worker_Task with Spark_Mode => Off is
+   task body Worker_Task is
    begin
       Do_Work;
-   exception
-     when The_Error : others =>
-      Ada.Text_IO.Put_Line ("Unexpected error.");
-      Ada.Text_IO.Put_Line (Ada.Exceptions.Exception_Information (The_Error));
-      Ada.Text_IO.Skip_Line;
    end Worker_Task;
 
    function Read_Future_Is_Live

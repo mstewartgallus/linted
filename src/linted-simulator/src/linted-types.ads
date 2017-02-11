@@ -34,7 +34,7 @@ package Linted.Types is
    type Position is (X, Y, Z);
    type Varying_Positions is array (Position) of Differentiable;
 
-   type Object_State is array (0 .. 1) of Types.Varying_Positions;
+   type Object_State is array (Positive range <>) of Types.Varying_Positions;
 
    function Absolute (X : Types.Int) return Types.Nat with
       Post => Absolute'Result <= Types.Nat (Types.Int'Last) + 1,

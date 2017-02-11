@@ -28,8 +28,6 @@ package body Linted.Simulate is
       Gravity : constant array (Types.Position) of Types.Int := (0, 0, 10);
       Normal_Force : array (Types.Position) of Types.Int := (0, 0, 0);
 
-      Forces : array (0 .. 1, Types.Position) of Types.Int;
-
       Cos_Z : Types.Int;
       Sin_Z : Types.Int;
 
@@ -52,7 +50,7 @@ package body Linted.Simulate is
              (Types.Sim_Sin (This.Z_Rotation) * Types.Fixed (Types.Int'Last)),
            32);
 
-      if This.Objects (0) (Types.Z).Value >= 0 then
+      if This.Objects (This.Objects'First) (Types.Z).Value >= 0 then
          Y_Thrust (Types.X) := Retreat_Or_Go_Forth * Sin_Z;
          Y_Thrust (Types.Y) := Retreat_Or_Go_Forth * Cos_Z;
 
@@ -70,16 +68,7 @@ package body Linted.Simulate is
          Thrusts (II) := X_Thrust (II) + (Y_Thrust (II) + Z_Thrust (II));
       end loop;
 
-      for II in Types.Position loop
-         Forces (0, II) := Gravity (II) + (Normal_Force (II) + Thrusts (II));
-      end loop;
-
-      for II in Types.Position loop
-         Forces (1, II) :=
-           Gravity (II) + ((Types.Int (This.Counter) mod 61) - 30);
-      end loop;
-
-      for Ix in 0 .. 1 loop
+      for Ix in This.Objects'Range loop
          for II in Types.Position loop
             declare
                Position : Types.Int;
@@ -99,7 +88,14 @@ package body Linted.Simulate is
                Position := This.Objects (Ix) (II).Value;
                Old_Position := This.Objects (Ix) (II).Old;
 
-               Force := Forces (Ix, II);
+               if Ix = 1 then
+                  Force := Gravity (II) + (Normal_Force (II) + Thrusts (II));
+               else
+                  Force :=
+                    Gravity (II) + ((Types.Int (This.Counter) mod 61) - 30);
+                  This.Counter :=
+                    (1664525 * This.Counter + 1013904223) mod 2147483648;
+               end if;
 
                Old_Velocity := Position - Old_Position;
 
@@ -147,7 +143,5 @@ package body Linted.Simulate is
         Types.Tilt_Clamped_Rotation
           (This.X_Rotation,
            -Types.Int (This.Controls.X_Tilt));
-
-      This.Counter := (1664525 * This.Counter + 1013904223) mod 2147483648;
    end Tick;
 end Linted.Simulate;

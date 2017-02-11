@@ -17,11 +17,11 @@ with Linted.Types;
 package Linted.Simulate is
    pragma Pure;
 
-   type State is record
+   type State (Max_Objects : Natural) is record
       Controls : Linted.Controls.Packet;
 
-      Objects : Types.Object_State :=
-        (0 .. 1 => (Types.X .. Types.Z => (0, 0)));
+      Objects : Types.Object_State (1 .. Max_Objects) :=
+        (others => (Types.X .. Types.Z => (0, 0)));
 
       Z_Rotation : Types.Sim_Angle;
       X_Rotation : Types.Sim_Angle;

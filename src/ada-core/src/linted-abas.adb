@@ -36,9 +36,15 @@ package body Linted.ABAs is
      (X : Interfaces.Unsigned_32) return Interfaces.Unsigned_32 is
      (Interfaces.Shift_Right (X, 16));
 
-   function Element
-     (X : ABA) return Element_T is
-     (Element_T (Shift (Interfaces.Unsigned_32 (X))));
+   function Element (X : ABA) return Element_T with
+      Refined_Post => Element'Result =
+      Element_T (Shift (Interfaces.Unsigned_32 (X)))
+   is
+   begin
+      -- By private encapsulation this is assured
+      pragma Assume (Is_Valid_ABA (X));
+      return Element_T (Shift (Interfaces.Unsigned_32 (X)));
+   end Element;
 
    function Tag (X : ABA) return Tag_T is (Tag_T (X and 16#FFFF#));
 

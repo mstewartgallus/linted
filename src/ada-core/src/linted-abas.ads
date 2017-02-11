@@ -27,9 +27,9 @@ package Linted.ABAs is
       Ghost;
 
    function Initialize (Element : Element_T; Tag : Tag_T) return ABA with
-      Depends => (Initialize'Result => (Element, Tag));
+      Depends => (Initialize'Result => (Element, Tag)),
+      Post => Is_Valid_ABA (Initialize'Result);
    function Element (X : ABA) return Element_T with
-      Pre => Is_Valid_ABA (X),
       Depends => (Element'Result => X);
    function Tag (X : ABA) return Tag_T with
       Depends => (Tag'Result => X);
