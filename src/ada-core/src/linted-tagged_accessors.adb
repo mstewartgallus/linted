@@ -13,7 +13,11 @@
 -- permissions and limitations under the License.
 with Ada.Unchecked_Conversion;
 
+with Interfaces;
+
 package body Linted.Tagged_Accessors is
+   use type Interfaces.Unsigned_64;
+
    function To (Ptr : Access_T) return Tagged_Access is
    begin
       return To (Ptr, 0);
@@ -21,25 +25,30 @@ package body Linted.Tagged_Accessors is
 
    function To (Ptr : Access_T; Tag : Tag_Bits) return Tagged_Access is
       function Convert is new Ada.Unchecked_Conversion
-	(Source => Access_T,
-	 Target => Tagged_Access);
+        (Source => Access_T,
+         Target => Tagged_Access);
       Converted : Tagged_Access;
    begin
       Converted := Convert (Ptr);
-      pragma Assert ((Converted and 2#11#) = 0);
-      return Converted or Tagged_Access (Tag);
+      pragma Assert
+        (Interfaces.Shift_Right (Interfaces.Unsigned_64 (Converted), 48) = 0);
+      return Converted or
+        Tagged_Access
+          (Interfaces.Shift_Left (Interfaces.Unsigned_64 (Tag), 48));
    end To;
 
    function From (Ptr : Tagged_Access) return Access_T is
       function Convert is new Ada.Unchecked_Conversion
-	(Source => Tagged_Access,
-	 Target => Access_T);
+        (Source => Tagged_Access,
+         Target => Access_T);
    begin
-      return Convert (Ptr and not 2#11#);
+      return Convert
+          (Ptr and 2#11111111_11111111_11111111_11111111_11111111_11111111#);
    end From;
 
    function Tag (Ptr : Tagged_Access) return Tag_Bits is
    begin
-      return Tag_Bits (Ptr and 2#11#);
+      return Tag_Bits
+          (Interfaces.Shift_Right (Interfaces.Unsigned_64 (Ptr), 48));
    end Tag;
 end Linted.Tagged_Accessors;

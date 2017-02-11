@@ -22,7 +22,7 @@ package Linted.Tagged_Accessors is
    type Tagged_Access is private with
       Preelaborable_Initialization;
 
-   type Tag_Bits is mod 2**2 with
+   type Tag_Bits is mod 2**16 with
         Default_Value => 0;
 
    function To (Ptr : Access_T) return Tagged_Access;
