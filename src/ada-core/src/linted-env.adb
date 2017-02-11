@@ -18,22 +18,19 @@ with Libc.Stdlib.GNU;
 with Libc.Stdlib;
 
 package body Linted.Env with
-     Spark_Mode => Off,
-     Refined_State => (Environment => L) is
+     Spark_Mode => Off is
    package C renames Interfaces.C;
    package C_Strings renames Interfaces.C.Strings;
 
    use type C_Strings.chars_ptr;
 
-   protected type Env_Lock is
+   protected Env_Lock is
       function Lock_Set
         (Name : String;
          Value : String;
          Overwrite : Boolean) return Errors.Error;
       function Lock_Get (Name : String) return String;
    end Env_Lock;
-
-   L : Env_Lock;
 
    procedure Set
      (Name : String;
@@ -42,10 +39,10 @@ package body Linted.Env with
       Err : out Errors.Error)
    is
    begin
-      Err := L.Lock_Set (Name, Value, Overwrite);
+      Err := Env_Lock.Lock_Set (Name, Value, Overwrite);
    end Set;
 
-   function Get (Name : String) return String is (L.Lock_Get (Name));
+   function Get (Name : String) return String is (Env_Lock.Lock_Get (Name));
 
    protected body Env_Lock is
       function Lock_Set
