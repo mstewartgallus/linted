@@ -33,7 +33,9 @@ package body Linted.Tests is
 	    Current : Int;
 	 begin
 	    My_Queue.Dequeue (Current);
-	    pragma Assert (Current = II);
+	    if Current /= II then
+	       raise Program_Error;
+	    end if;
 	 end;
       end loop;
    end Run;

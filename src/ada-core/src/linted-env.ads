@@ -15,6 +15,7 @@ with Linted.Errors;
 
 package Linted.Env with
      Spark_Mode,
+     Initializes => Environment,
      Abstract_State =>
      (Environment with
       Synchronous,

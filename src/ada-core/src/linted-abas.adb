@@ -12,21 +12,35 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 package body Linted.ABAs is
-   function Initialize (Element : Element_T; Tag : Tag_T) return ABA is
-   begin
-      return ABA
-          (Interfaces.Shift_Left (Interfaces.Unsigned_32 (Element), 16)) or
-        ABA (Tag);
-   end Initialize;
+   function Is_Valid_ABA
+     (X : ABA) return Boolean is
+     (Interfaces.Unsigned_32 (X) <=
+      (Interfaces.Shift_Left (Interfaces.Unsigned_32 (Element_T'Last), 16) or
+       16#FFFF#));
 
-   function Element (X : ABA) return Element_T is
-   begin
-      return Element_T
-          (Interfaces.Shift_Right (Interfaces.Unsigned_32 (X), 16));
-   end Element;
+   function Shift
+     (X : Interfaces.Unsigned_32) return Interfaces.Unsigned_32 with
+      Pre => X <=
+      (Interfaces.Shift_Left (Interfaces.Unsigned_32 (Element_T'Last), 16) or
+       16#FFFF#),
+      Post => Shift'Result <= 16#FFFF#
+      and then Shift'Result <= Interfaces.Unsigned_32 (Element_T'Last);
 
-   function Tag (X : ABA) return Tag_T is
-   begin
-      return Tag_T (X and 16#FFFF#);
-   end Tag;
+   function Initialize
+     (Element : Element_T;
+      Tag : Tag_T) return ABA is
+     (ABA (Interfaces.Shift_Left (Interfaces.Unsigned_32 (Element), 16)) or
+      ABA (Tag));
+
+   function Shift
+     (X : Interfaces.Unsigned_32) return Interfaces.Unsigned_32 is
+     (Interfaces.Shift_Right (X, 16));
+
+   function Element
+     (X : ABA) return Element_T is
+     (Element_T (Shift (Interfaces.Unsigned_32 (X))));
+
+   function Tag (X : ABA) return Tag_T is (Tag_T (X and 16#FFFF#));
+
+   procedure Lemma_Identity (E : Element_T; T : Tag_T) is null;
 end Linted.ABAs;

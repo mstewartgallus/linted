@@ -29,8 +29,9 @@ dist_pkgdefaultunits_DATA+=\
   %D%/units/window-notifier-gui.socket\
   %D%/units/window-notifier-drawer.socket\
   \
-  %D%/units/linted-audio.service\
   %D%/units/linted-drawer.service\
   %D%/units/linted-gui.service\
   %D%/units/linted-simulator.service\
   %D%/units/linted-window.service
+
+dist_pkgdefaultunits_DATA+=%D%/units/linted-audio.service

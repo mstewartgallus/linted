@@ -23,18 +23,25 @@ package Linted.ABAs is
    type ABA is private with
       Preelaborable_Initialization;
 
+   function Is_Valid_ABA (X : ABA) return Boolean with
+      Ghost;
+
    function Initialize (Element : Element_T; Tag : Tag_T) return ABA with
       Depends => (Initialize'Result => (Element, Tag));
    function Element (X : ABA) return Element_T with
+      Pre => Is_Valid_ABA (X),
       Depends => (Element'Result => X);
    function Tag (X : ABA) return Tag_T with
       Depends => (Tag'Result => X);
+
+   procedure Lemma_Identity (E : Element_T; T : Tag_T) with
+      Ghost,
+      Pre => Is_Valid_ABA (Initialize (E, T)),
+      Post => E = Element (Initialize (E, T)) and T = Tag (Initialize (E, T));
 private
    subtype U32 is Interfaces.Unsigned_32;
    use type U32;
 
    type ABA is new U32 with
-        Default_Value => 0,
-        Dynamic_Predicate => U32 (ABA) <=
-        ((U32 (Element_T'Last) * 2**16) or 16#FFFF#);
+        Default_Value => 0;
 end Linted.ABAs;

@@ -2171,11 +2171,11 @@ dist_pkgdefaultunits_DATA = src/factory/units/controller.socket \
 	src/factory/units/window.socket \
 	src/factory/units/window-notifier-gui.socket \
 	src/factory/units/window-notifier-drawer.socket \
-	src/factory/units/linted-audio.service \
 	src/factory/units/linted-drawer.service \
 	src/factory/units/linted-gui.service \
 	src/factory/units/linted-simulator.service \
-	src/factory/units/linted-window.service
+	src/factory/units/linted-window.service \
+	src/factory/units/linted-audio.service
 SUFFIXES = .rc .out .in
 AM_LIBTOOLFLAGS = --silent
 AM_CPPFLAGS = -I$(srcdir)/include $(am__append_3) $(am__append_4)
@@ -4322,7 +4322,7 @@ clean-_:
 .PHONY: prove
 prove: src/ada/shared.gpr
 	- env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/ada-core/linted.gpr
-# - env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
+	- env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-simulator/simulator.gpr
 # - env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-drawer/drawer.gpr
 # - env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(srcdir)/src/linted-audio/audio.gpr
 # - env $(ADAENV) gnatprove $(GPRPROVEFLAGS) -P$(builddir)/src/linted/start.gpr

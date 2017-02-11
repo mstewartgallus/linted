@@ -36,5 +36,5 @@ package Linted.Lock_Free_Stack with
       ((State, Element) => State,
        Success => State,
        null => Ada.Real_Time.Clock_Time),
-      Post => (if Success then Is_Valid (Element) else True);
+      Post => (if Success then Is_Valid (Element));
 end Linted.Lock_Free_Stack;
