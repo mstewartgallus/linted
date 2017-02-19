@@ -18,7 +18,7 @@ with System;
 with System.Storage_Elements;
 
 with Linted.Writer;
-with Linted.Queue;
+with Linted.Stack;
 
 package body Linted.Update_Writer is
    package C renames Interfaces.C;
@@ -36,9 +36,9 @@ package body Linted.Update_Writer is
    Data_Being_Written : array (Live_Future) of aliased Update.Storage :=
      (others => (others => 16#7F#));
 
-   type Ix is mod Max_Nodes + 1;
+   type Ix is mod Max_Nodes + 2;
    function Is_Valid (Element : Live_Future) return Boolean is (True);
-   package Spare_Futures is new Queue (Live_Future, Ix, Is_Valid);
+   package Spare_Futures is new Stack (Live_Future, Ix, Is_Valid);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 
@@ -50,7 +50,7 @@ package body Linted.Update_Writer is
       Spark_Mode => Off is
       Live : Live_Future;
    begin
-      Spare_Futures.Dequeue (Live);
+      Spare_Futures.Pop (Live);
       Update.To_Storage (U, Data_Being_Written (Live));
       Writer.Write
         (Object,
@@ -67,7 +67,7 @@ package body Linted.Update_Writer is
    begin
       Writer.Write_Wait (Write_Futures (Live), W_Event);
       E := W_Event.Err;
-      Spare_Futures.Enqueue (Live);
+      Spare_Futures.Push (Live);
       F := 0;
    end Write_Wait;
 
@@ -82,7 +82,7 @@ package body Linted.Update_Writer is
       Writer.Write_Poll (Write_Futures (Live), W_Event, Init);
       if Init then
          E := W_Event.Err;
-         Spare_Futures.Enqueue (Live);
+         Spare_Futures.Push (Live);
          F := 0;
       else
          E := Errors.Success;
@@ -91,6 +91,6 @@ package body Linted.Update_Writer is
 
 begin
    for II in 1 .. Max_Nodes loop
-      Spare_Futures.Enqueue (Live_Future (Future (II)));
+      Spare_Futures.Push (Live_Future (Future (II)));
    end loop;
 end Linted.Update_Writer;

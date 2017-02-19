@@ -18,7 +18,7 @@ with System.Storage_Elements;
 with System;
 
 with Linted.Reader;
-with Linted.Queue;
+with Linted.Stack;
 
 package body Linted.Controls_Reader is
    package C renames Interfaces.C;
@@ -40,9 +40,9 @@ package body Linted.Controls_Reader is
    Data_Being_Read : array (Live_Future) of aliased Controls.Storage :=
      (others => (others => 16#7F#));
 
-   type Ix is mod Max_Nodes + 1;
+   type Ix is mod Max_Nodes + 2;
    function Is_Valid (Element : Live_Future) return Boolean is (True);
-   package Spare_Futures is new Queue (Live_Future, Ix, Is_Valid);
+   package Spare_Futures is new Stack (Live_Future, Ix, Is_Valid);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 
@@ -53,7 +53,7 @@ package body Linted.Controls_Reader is
       Spark_Mode => Off is
       Live : Live_Future;
    begin
-      Spare_Futures.Dequeue (Live);
+      Spare_Futures.Pop (Live);
       Reader.Read
         (Object,
          Data_Being_Read (Live) (1)'Address,
@@ -77,7 +77,7 @@ package body Linted.Controls_Reader is
          end if;
          E := N_Event;
       end;
-      Spare_Futures.Enqueue (Live);
+      Spare_Futures.Push (Live);
       F := 0;
    end Read_Wait;
 
@@ -101,7 +101,7 @@ package body Linted.Controls_Reader is
             end if;
             E := N_Event;
          end;
-         Spare_Futures.Enqueue (Live);
+         Spare_Futures.Push (Live);
          F := 0;
       else
          declare
@@ -113,6 +113,6 @@ package body Linted.Controls_Reader is
    end Read_Poll;
 begin
    for II in 1 .. Max_Nodes loop
-      Spare_Futures.Enqueue (Live_Future (Future (II)));
+      Spare_Futures.Push (Live_Future (Future (II)));
    end loop;
 end Linted.Controls_Reader;

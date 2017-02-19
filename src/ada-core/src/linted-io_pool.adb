@@ -19,6 +19,7 @@ with Libc.Unistd;
 
 with Linted.Channels;
 with Linted.Queue;
+with Linted.Stack;
 with Linted.Last_Chance;
 
 package body Linted.IO_Pool with
@@ -101,11 +102,11 @@ is
       C : Command;
    end record;
 
-   type Read_Ix is mod Max_Read_Futures + 1;
-   type Write_Ix is mod Max_Write_Futures + 1;
-   type Poll_Ix is mod Max_Poll_Futures + 1;
-   type Remind_Me_Ix is mod Max_Remind_Me_Futures + 1;
-   type Command_Ix is mod Max_Command_Queue_Capacity + 1;
+   type Read_Ix is mod Max_Read_Futures + 2;
+   type Write_Ix is mod Max_Write_Futures + 2;
+   type Poll_Ix is mod Max_Poll_Futures + 2;
+   type Remind_Me_Ix is mod Max_Remind_Me_Futures + 2;
+   type Command_Ix is mod Max_Command_Queue_Capacity + 2;
 
    function Read_Is_Valid (Element : Live_Read_Future) return Boolean is (True);
    function Write_Is_Valid (Element : Live_Write_Future) return Boolean is (True);
@@ -113,10 +114,10 @@ is
    function Remind_Me_Is_Valid (Element : Live_Remind_Me_Future) return Boolean is (True);
    function Command_Is_Valid (Element : Any_Command) return Boolean is (Element.C.T /= Invalid_Type);
 
-   package Spare_Read_Futures is new Queue (Live_Read_Future, Read_Ix, Read_Is_Valid);
-   package Spare_Write_Futures is new Queue (Live_Write_Future, Write_Ix, Write_Is_Valid);
-   package Spare_Poll_Futures is new Queue (Live_Poll_Future, Poll_Ix, Poll_Is_Valid);
-   package Spare_Remind_Me_Futures is new Queue (Live_Remind_Me_Future, Remind_Me_Ix, Remind_Me_Is_Valid);
+   package Spare_Read_Futures is new Stack (Live_Read_Future, Read_Ix, Read_Is_Valid);
+   package Spare_Write_Futures is new Stack (Live_Write_Future, Write_Ix, Write_Is_Valid);
+   package Spare_Poll_Futures is new Stack (Live_Poll_Future, Poll_Ix, Poll_Is_Valid);
+   package Spare_Remind_Me_Futures is new Stack (Live_Remind_Me_Future, Remind_Me_Ix, Remind_Me_Is_Valid);
    package My_Command_Queue is new Queue (Any_Command, Command_Ix, Command_Is_Valid);
 
    task type Worker_Task with Global => (In_Out => (My_Command_Queue.State,
@@ -199,7 +200,7 @@ is
    is
       Live : Live_Read_Future;
    begin
-      Spare_Read_Futures.Dequeue (Live);
+      Spare_Read_Futures.Pop (Live);
       My_Command_Queue.Enqueue (Any_Command'(C => (Read_Type,
       				 (Object,
       				  Buf,
@@ -218,7 +219,7 @@ is
       Live : Live_Read_Future := Live_Read_Future (Future);
    begin
       Reader_Event_Channels.Pop (Read_Future_Channels (Live), Event);
-      Spare_Read_Futures.Enqueue (Live);
+      Spare_Read_Futures.Push (Live);
       Future := 0;
    end Read_Wait;
 
@@ -233,7 +234,7 @@ is
    begin
       Reader_Event_Channels.Poll (Read_Future_Channels (Live), Event, Init);
       if Init then
-	 Spare_Read_Futures.Enqueue (Live);
+	 Spare_Read_Futures.Push (Live);
          Future := 0;
       end if;
    end Read_Poll;
@@ -249,7 +250,7 @@ is
    is
       Live : Live_Write_Future;
    begin
-      Spare_Write_Futures.Dequeue (Live);
+      Spare_Write_Futures.Pop (Live);
       My_Command_Queue.Enqueue (Any_Command'(C => (Write_Type, (Object, Buf, Count, Live, Signaller))));
       Future := Write_Future (Live);
    end Write;
@@ -263,7 +264,7 @@ is
       Live : Live_Write_Future := Live_Write_Future (Future);
    begin
       Writer_Event_Channels.Pop (Write_Future_Channels (Live), Event);
-      Spare_Write_Futures.Enqueue (Live);
+      Spare_Write_Futures.Push (Live);
       Future := 0;
    end Write_Wait;
 
@@ -278,7 +279,7 @@ is
    begin
       Writer_Event_Channels.Poll (Write_Future_Channels (Live), Event, Init);
       if Init then
-	 Spare_Write_Futures.Enqueue (Live);
+	 Spare_Write_Futures.Push (Live);
          Future := 0;
       end if;
    end Write_Poll;
@@ -293,7 +294,7 @@ is
    is
       Live : Live_Poll_Future;
    begin
-      Spare_Poll_Futures.Dequeue (Live);
+      Spare_Poll_Futures.Pop (Live);
       My_Command_Queue.Enqueue (Any_Command'(C => (Poll_Type, (Object, Events, Live, Signaller))));
       Future := Poll_Future (Live);
    end Poll;
@@ -307,7 +308,7 @@ is
       Live : Live_Poll_Future := Live_Poll_Future (Future);
    begin
       Poller_Event_Channels.Pop (Poll_Future_Channels (Live), Event);
-      Spare_Poll_Futures.Enqueue (Live);
+      Spare_Poll_Futures.Push (Live);
       Future := 0;
    end Poll_Wait;
 
@@ -322,7 +323,7 @@ is
    begin
       Poller_Event_Channels.Poll (Poll_Future_Channels (Live), Event, Init);
       if Init then
-	 Spare_Poll_Futures.Enqueue (Live);
+	 Spare_Poll_Futures.Push (Live);
          Future := 0;
       end if;
    end Poll_Poll;
@@ -336,7 +337,7 @@ is
    is
       Live : Live_Remind_Me_Future;
    begin
-      Spare_Remind_Me_Futures.Dequeue (Live);
+      Spare_Remind_Me_Futures.Pop (Live);
       My_Command_Queue.Enqueue (Any_Command'(C => (Remind_Me_Type, (Time, Live, Signaller))));
       Future := Remind_Me_Future (Live);
    end Remind_Me;
@@ -350,7 +351,7 @@ is
       Live : Live_Remind_Me_Future := Live_Remind_Me_Future (Future);
    begin
       Remind_Me_Event_Channels.Pop (Remind_Me_Future_Channels (Live), Event);
-      Spare_Remind_Me_Futures.Enqueue (Live);
+      Spare_Remind_Me_Futures.Push (Live);
       Future := 0;
    end Remind_Me_Wait;
 
@@ -365,7 +366,7 @@ is
    begin
       Remind_Me_Event_Channels.Poll (Remind_Me_Future_Channels (Live), Event, Init);
       if Init then
-	 Spare_Remind_Me_Futures.Enqueue (Live);
+	 Spare_Remind_Me_Futures.Push (Live);
          Future := 0;
       end if;
    end Remind_Me_Poll;
@@ -563,18 +564,18 @@ is
 
 begin
    for II in 1 .. Max_Read_Futures loop
-      Spare_Read_Futures.Enqueue (Live_Read_Future (Read_Future (II)));
+      Spare_Read_Futures.Push (Live_Read_Future (Read_Future (II)));
    end loop;
 
    for II in 1 .. Max_Write_Futures loop
-      Spare_Write_Futures.Enqueue (Live_Write_Future (Write_Future (II)));
+      Spare_Write_Futures.Push (Live_Write_Future (Write_Future (II)));
    end loop;
 
    for II in 1 .. Max_Poll_Futures loop
-      Spare_Poll_Futures.Enqueue (Live_Poll_Future (Poll_Future (II)));
+      Spare_Poll_Futures.Push (Live_Poll_Future (Poll_Future (II)));
    end loop;
 
    for II in 1 .. Max_Remind_Me_Futures loop
-      Spare_Remind_Me_Futures.Enqueue (Live_Remind_Me_Future (Remind_Me_Future (II)));
+      Spare_Remind_Me_Futures.Push (Live_Remind_Me_Future (Remind_Me_Future (II)));
    end loop;
 end Linted.IO_Pool;

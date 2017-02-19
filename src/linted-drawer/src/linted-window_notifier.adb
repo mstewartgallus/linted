@@ -19,7 +19,7 @@ with System.Storage_Elements;
 
 with Linted.Errors;
 with Linted.Reader;
-with Linted.Queue;
+with Linted.Stack;
 
 package body Linted.Window_Notifier is
    package C renames Interfaces.C;
@@ -41,9 +41,9 @@ package body Linted.Window_Notifier is
    (Live_Future) of aliased Storage_Elements.Storage_Array (1 .. 1) :=
      (others => (others => 16#7F#));
 
-   type Ix is mod Max_Nodes + 1;
+   type Ix is mod Max_Nodes + 2;
    function Is_Valid (Element : Live_Future) return Boolean is (True);
-   package Spare_Futures is new Queue (Live_Future, Ix, Is_Valid);
+   package Spare_Futures is new Stack (Live_Future, Ix, Is_Valid);
 
    function Is_Live (F : Future) return Boolean is (F /= 0);
 
@@ -54,7 +54,7 @@ package body Linted.Window_Notifier is
       Spark_Mode => Off is
       Live : Live_Future;
    begin
-      Spare_Futures.Dequeue (Live);
+      Spare_Futures.Pop (Live);
       Reader.Read
         (Object,
          Data_Being_Read (Live) (1)'Address,
@@ -70,7 +70,7 @@ package body Linted.Window_Notifier is
    begin
       Reader.Read_Wait (Read_Futures (Live), R_Event);
       pragma Assert (R_Event.Err = Errors.Success);
-      Spare_Futures.Enqueue (Live);
+      Spare_Futures.Push (Live);
       F := 0;
    end Read_Wait;
 
@@ -81,12 +81,12 @@ package body Linted.Window_Notifier is
       Reader.Read_Poll (Read_Futures (Live), R_Event, Init);
       if Init then
          pragma Assert (R_Event.Err = Errors.Success);
-         Spare_Futures.Enqueue (Live);
+         Spare_Futures.Push (Live);
          F := 0;
       end if;
    end Read_Poll;
 begin
    for II in 1 .. Max_Nodes loop
-      Spare_Futures.Enqueue (Live_Future (Future (II)));
+      Spare_Futures.Push (Live_Future (Future (II)));
    end loop;
 end Linted.Window_Notifier;

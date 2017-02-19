@@ -16,11 +16,34 @@ with Linted.Last_Chance;
 
 package body Linted.Tests is
    Len : constant := 20;
-   type Ix is mod Len + 1 with Default_Value => 0;
+   type Ix is mod Len + 2 with Default_Value => 0;
    type Int is mod Len + 1 with Default_Value => 0;
 
    function Is_Valid (X : Int) return Boolean is (True);
    package My_Queue is new Queue (Int, Ix, Is_Valid);
+   package Second_Queue is new Queue (Int, Ix, Is_Valid);
+
+   task type Queuer;
+   task type Dequeuer;
+
+   Queuers : array (1 .. 4) of Queuer;
+   Dequeuers : array (1 .. 4) of Dequeuer;
+
+   task body Queuer is
+   begin
+      for II in 1 .. 20 loop
+	 Second_Queue.Enqueue (20);
+      end loop;
+   end Queuer;
+
+   task body Dequeuer is
+      Val : Int;
+   begin
+      for II in 1 .. 20 loop
+	 Second_Queue.Dequeue (Val);
+	 pragma Assert (Val = 20);
+      end loop;
+   end Dequeuer;
 
    procedure Run is
    begin
@@ -34,7 +57,7 @@ package body Linted.Tests is
 	 begin
 	    My_Queue.Dequeue (Current);
 	    if Current /= II then
-	       raise Program_Error;
+	       raise Program_Error with Int'Image (Current) & " /= " & Int'Image (II);
 	    end if;
 	 end;
       end loop;
