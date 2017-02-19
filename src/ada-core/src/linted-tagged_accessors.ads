@@ -14,8 +14,7 @@
 private with System;
 
 generic
-   type Element_T (<>) is limited private;
-   type Access_T is access all Element_T;
+   type Access_T is private;
 package Linted.Tagged_Accessors is
    pragma Pure;
 

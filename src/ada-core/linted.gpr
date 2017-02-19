@@ -15,7 +15,7 @@ with "shared.gpr";
 with "libc.gpr";
 
 project Linted is
-  for Languages use ("Ada");
+  for Languages use ("Ada", "C");
   for Source_Dirs use ("src");
   for Library_Kind use Shared'Library_Kind;
 

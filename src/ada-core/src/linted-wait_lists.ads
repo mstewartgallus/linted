@@ -12,9 +12,8 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Real_Time;
-private with Ada.Synchronous_Task_Control;
 
-private with Linted.Atomics;
+private with Linted.XAtomics;
 private with Linted.Sched;
 private with Linted.Tagged_Accessors;
 
@@ -22,8 +21,7 @@ package Linted.Wait_Lists with
      Spark_Mode is
    pragma Elaborate_Body;
 
-   type Wait_List is limited private with
-      Preelaborable_Initialization;
+   type Wait_List is limited private;
 
    procedure Wait (W : in out Wait_List) with
       Global => (Input => Ada.Real_Time.Clock_Time),
@@ -45,14 +43,9 @@ private
 
    type Node_Access is access all Node;
 
-   type Node is record
-      Trigger : Ada.Synchronous_Task_Control.Suspension_Object;
-      Next : Node_Access;
-   end record;
-
-   package Tags is new Tagged_Accessors (Node, Node_Access);
-   package Node_Access_Atomics is new Atomics (Tags.Tagged_Access);
-   package Boolean_Atomics is new Atomics (Default_False);
+   package Tags is new Tagged_Accessors (Node_Access);
+   package Node_Access_Atomics is new XAtomics (Tags.Tagged_Access);
+   package Boolean_Atomics is new XAtomics (Default_False);
 
    type Wait_List is record
       Root : Node_Access_Atomics.Atomic;
