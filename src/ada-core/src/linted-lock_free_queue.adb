@@ -19,7 +19,7 @@ with Linted.Lock_Free_Stack;
 --  Queue Algorithms from
 --  http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
 package body Linted.Lock_Free_Queue with
-     Refined_State => (State => (Buf_Contents, Tip.State, Free_List.State)) is
+     Refined_State => (State => (Tip.State, Free_List.State)) is
    pragma Compile_Time_Error (Ix'Last <= 1, "Queue will be empty");
    type My_Ix is new Ix with
         Default_Value => 0;
@@ -32,20 +32,23 @@ package body Linted.Lock_Free_Queue with
 
    type Element_Array is array (My_Ix range 1 .. My_Ix (Ix'Last)) of Element_T;
 
-   Buf_Contents : Element_Array;
-
    type Node_Array is
      array (My_Ix range 1 .. My_Ix (Ix'Last)) of Aba_Atomics.Atomic;
 
    package Tip with
         Abstract_State => (State with External) is
-      procedure Enqueue (Node : My_Ix) with
+      procedure Enqueue (Node : My_Ix; Element : Element_T) with
          Global => (Input => Ada.Real_Time.Clock_Time, In_Out => (State)),
-         Depends => (State => (State, Node), null => Ada.Real_Time.Clock_Time);
-      procedure Try_Dequeue (Dequeued : out My_Ix) with
+         Depends =>
+         (State => (State, Element, Node),
+          null => Ada.Real_Time.Clock_Time);
+      procedure Try_Dequeue
+        (Dequeued : out My_Ix;
+         Element : out Element_T) with
          Global => (Input => Ada.Real_Time.Clock_Time, In_Out => (State)),
          Depends =>
          (Dequeued => (State),
+          Element => State,
           State => (State),
           null => Ada.Real_Time.Clock_Time);
    end Tip;
@@ -75,22 +78,15 @@ package body Linted.Lock_Free_Queue with
          return;
       end if;
 
-      Buf_Contents (Free) := Element;
-      Tip.Enqueue (Free);
+      Tip.Enqueue (Free, Element);
       Success := True;
    end Try_Enqueue;
 
    procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) is
       Head : My_Ix;
    begin
-      Tip.Try_Dequeue (Head);
+      Tip.Try_Dequeue (Head, Element);
       if Head /= 0 then
-         Element := Buf_Contents (Head);
-         declare
-            Dummy : Element_T;
-         begin
-            Buf_Contents (Head) := Dummy;
-         end;
          Success := True;
          Free_List.Deallocate (Head);
       else
@@ -133,8 +129,14 @@ package body Linted.Lock_Free_Queue with
    package body Tip with
         Refined_State =>
         (State =>
-           (Buf_Nodes, Buf_Head, Buf_Tail, Head_Contention, Tail_Contention))
+           (Buf_Nodes,
+            Buf_Contents,
+            Buf_Head,
+            Buf_Tail,
+            Head_Contention,
+            Tail_Contention))
    is
+      Buf_Contents : Element_Array;
       Buf_Nodes : Node_Array;
 
       Buf_Head : Aba_Atomics.Atomic;
@@ -143,12 +145,13 @@ package body Linted.Lock_Free_Queue with
       Head_Contention : Sched.Contention;
       Tail_Contention : Sched.Contention;
 
-      procedure Enqueue (Node : My_Ix) is
+      procedure Enqueue (Node : My_Ix; Element : Element_T) is
          Tail : ABA.ABA;
          Tail_Again : ABA.ABA;
          Next : ABA.ABA;
          Success : Boolean;
       begin
+         Buf_Contents (Node) := Element;
          declare
             N : ABA.ABA;
          begin
@@ -191,7 +194,7 @@ package body Linted.Lock_Free_Queue with
             ABA.Initialize (Node, ABA.Tag (Tail) + 1));
       end Enqueue;
 
-      procedure Try_Dequeue (Dequeued : out My_Ix) is
+      procedure Try_Dequeue (Dequeued : out My_Ix; Element : out Element_T) is
          Head : ABA.ABA;
          Head_Again : ABA.ABA;
          Tail : ABA.ABA;
@@ -212,6 +215,11 @@ package body Linted.Lock_Free_Queue with
             if ABA.Element (Head) = ABA.Element (Tail) then
                if ABA.Element (Next) = 0 then
                   Sched.Success (Head_Contention);
+                  declare
+                     Dummy : Element_T;
+                  begin
+                     Element := Dummy;
+                  end;
                   Dequeued := 0;
                   return;
                end if;
@@ -220,6 +228,7 @@ package body Linted.Lock_Free_Queue with
                   Tail,
                   ABA.Initialize (ABA.Element (Next), ABA.Tag (Tail) + 1));
             else
+               Element := Buf_Contents (ABA.Element (Next));
                Aba_Atomics.Compare_And_Swap
                  (Buf_Head,
                   Head,
@@ -230,7 +239,16 @@ package body Linted.Lock_Free_Queue with
             end if;
          end loop;
          Sched.Success (Head_Contention);
-         Dequeued := ABA.Element (Next);
+         Dequeued := ABA.Element (Head);
+
+         declare
+            N : ABA.ABA;
+         begin
+            Aba_Atomics.Get (Buf_Nodes (Dequeued), N);
+            Aba_Atomics.Set
+              (Buf_Nodes (Dequeued),
+               ABA.Initialize (0, ABA.Tag (N)));
+         end;
       end Try_Dequeue;
 
    begin

@@ -27,6 +27,9 @@ package body Linted.Last_Chance with
    package Task_Term renames Ada.Task_Termination;
    package C renames Interfaces.C;
 
+   use type Exceptions.Exception_Id;
+   use type C.size_t;
+
    protected Grim_Reaper is
       procedure Last_Gasp
         (Term_Cause : Task_Term.Cause_Of_Termination;
@@ -40,13 +43,24 @@ package body Linted.Last_Chance with
          T : Task_Id.Task_Id;
          X : Exceptions.Exception_Occurrence)
       is
-         Str : aliased C.char_array :=
-           C.To_C (Exceptions.Exception_Information (X));
-         Res : C.long;
       begin
-         Res := Libc.Unistd.write (2, Str (Str'First)'Address, Str'Length);
-         pragma Unreferenced (Res);
-         Libc.Stdlib.c_exit (1);
+         if Exceptions.Exception_Identity (X) = Exceptions.Null_Id then
+            Libc.Stdlib.c_exit (0);
+         else
+            declare
+               Str : aliased C.char_array :=
+                 C.To_C (Exceptions.Exception_Information (X));
+               Res : C.long;
+            begin
+               Res :=
+                 Libc.Unistd.write
+                   (2,
+                    Str (Str'First)'Address,
+                    Str'Length - 1);
+               pragma Unreferenced (Res);
+            end;
+            Libc.Stdlib.c_exit (1);
+         end if;
       end Last_Gasp;
    end Grim_Reaper;
 begin
