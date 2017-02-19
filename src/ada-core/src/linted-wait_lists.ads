@@ -12,6 +12,7 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Real_Time;
+with Ada.Finalization;
 
 private with Linted.XAtomics;
 private with Linted.Sched;
@@ -33,6 +34,7 @@ package Linted.Wait_Lists with
       Global => (Input => Ada.Real_Time.Clock_Time),
       Depends => (W => W, null => Ada.Real_Time.Clock_Time);
 
+   procedure Initialize (W : in out Wait_List);
 private
    pragma SPARK_Mode (Off);
 
@@ -47,9 +49,11 @@ private
    package Node_Access_Atomics is new XAtomics (Tags.Tagged_Access);
    package Boolean_Atomics is new XAtomics (Default_False);
 
-   type Wait_List is record
-      Root : Node_Access_Atomics.Atomic;
+   type Wait_List is new Ada.Finalization.Limited_Controlled with record
+      Head : Node_Access_Atomics.Atomic;
+      Tail : Node_Access_Atomics.Atomic;
       Triggered : Boolean_Atomics.Atomic;
       Head_Contention : Sched.Contention;
+      Tail_Contention : Sched.Contention;
    end record;
 end Linted.Wait_Lists;
