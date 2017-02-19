@@ -43,7 +43,7 @@ package Linted.Update_Writer is
       Post => (if Init then not Is_Live (F) else Is_Live (F));
 
 private
-   Max_Nodes : constant := 1;
+   Max_Nodes : constant := 2;
 
    type Future is range 0 .. Max_Nodes + 1 with
         Default_Value => 0;

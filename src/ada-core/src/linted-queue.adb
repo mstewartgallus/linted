@@ -12,25 +12,25 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Linted.Wait_Lists;
-with Linted.Lock_Free_Stack;
+with Linted.Lock_Free_Queue;
 
 package body Linted.Queue with
      Refined_State =>
-     (State => (My_Stack.State, Buf_Has_Free_Space, Buf_Has_Contents))
+     (State => (My_Queue.State, Buf_Has_Free_Space, Buf_Has_Contents))
 is
-   package My_Stack is new Lock_Free_Stack (Element_T, Ix, Is_Valid);
+   package My_Queue is new Lock_Free_Queue (Element_T, Ix, Is_Valid);
    Buf_Has_Free_Space : Wait_Lists.Wait_List;
    Buf_Has_Contents : Wait_Lists.Wait_List;
 
    procedure Enqueue (Element : Element_T) with
       Refined_Global =>
       (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Stack.State))
+       In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Queue.State))
    is
       Init : Boolean;
    begin
       loop
-         My_Stack.Try_Push (Element, Init);
+         My_Queue.Try_Enqueue (Element, Init);
          exit when Init;
          Wait_Lists.Wait (Buf_Has_Free_Space);
       end loop;
@@ -40,15 +40,24 @@ is
    procedure Dequeue (Element : out Element_T) with
       Refined_Global =>
       (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Stack.State))
+       In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Queue.State))
    is
       Init : Boolean;
    begin
       loop
-         My_Stack.Try_Pop (Element, Init);
+         My_Queue.Try_Dequeue (Element, Init);
          exit when Init;
          Wait_Lists.Wait (Buf_Has_Contents);
       end loop;
       Wait_Lists.Signal (Buf_Has_Free_Space);
    end Dequeue;
+
+   procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) is
+   begin
+      My_Queue.Try_Dequeue (Element, Success);
+      if Success then
+         Wait_Lists.Signal (Buf_Has_Free_Space);
+      end if;
+   end Try_Dequeue;
+
 end Linted.Queue;

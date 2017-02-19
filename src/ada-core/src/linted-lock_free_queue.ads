@@ -12,33 +12,29 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Real_Time;
-pragma Elaborate_All (Ada.Real_Time);
 
 generic
    type Element_T is private;
    type Ix is mod <>;
    with function Is_Valid (Element : Element_T) return Boolean;
-package Linted.Queue with
+package Linted.Lock_Free_Queue with
+   Initializes => (State => Ada.Real_Time.Clock_Time),
    Abstract_State => (State with External) is
    pragma Elaborate_Body;
 
-   procedure Enqueue (Element : Element_T) with
-      Pre => Is_Valid (Element),
-      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
-      Depends => (State => (Element, State), null => Ada.Real_Time.Clock_Time);
-   procedure Dequeue (Element : out Element_T) with
-      Post => Is_Valid (Element),
+   procedure Try_Enqueue (Element : Element_T; Success : out Boolean) with
       Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
       Depends =>
-      (State => State,
-       Element => State,
-       null => Ada.Real_Time.Clock_Time);
-   procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) with
-      Post => (if Success then Is_Valid (Element)),
-      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
-      Depends =>
-      (State => State,
-       Element => State,
+      (State => (State, Element),
        Success => State,
-       null => Ada.Real_Time.Clock_Time);
-end Linted.Queue;
+       null => Ada.Real_Time.Clock_Time),
+      Pre => Is_Valid (Element);
+
+   procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) with
+      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
+      Depends =>
+      ((State, Element) => State,
+       Success => State,
+       null => Ada.Real_Time.Clock_Time),
+      Post => (if Success then Is_Valid (Element));
+end Linted.Lock_Free_Queue;
