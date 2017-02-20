@@ -132,13 +132,13 @@ package body Linted.Wait_Lists with
                Tags.To (Node, Tags.Tag (Next) + 1),
                Success);
             exit when Success;
-            Sched.Backoff (W.Tail_Contention);
          else
             Node_Access_Atomics.Compare_And_Swap
               (W.Tail,
                Tail,
                Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1));
          end if;
+	 Sched.Backoff (W.Tail_Contention);
       end loop;
       Sched.Success (W.Tail_Contention);
 
@@ -169,9 +169,9 @@ package body Linted.Wait_Lists with
 
          if Tags.From (Head) = Tags.From (Tail) then
             if Tags.From (Next) = null then
-               Sched.Success (W.Head_Contention);
+               Dequeued := null;
                Trigger := null;
-               return;
+               exit;
             end if;
             Node_Access_Atomics.Compare_And_Swap
               (W.Tail,
@@ -184,14 +184,18 @@ package body Linted.Wait_Lists with
                Head,
                Tags.To (Tags.From (Next), Tags.Tag (Head) + 1),
                Success);
-            exit when Success;
-            Sched.Backoff (W.Head_Contention);
+	    if Success then
+	       Dequeued := Tags.From (Head);
+	       exit;
+	    end if;
          end if;
+	 Sched.Backoff (W.Head_Contention);
       end loop;
       Sched.Success (W.Head_Contention);
 
-      Dequeued := Tags.From (Head);
-      Deallocate (Dequeued);
+      if Dequeued /= null then
+	 Deallocate (Dequeued);
+      end if;
    end Dequeue;
 
    procedure Allocate (N : out Node_Access) is

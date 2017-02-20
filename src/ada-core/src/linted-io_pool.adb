@@ -174,9 +174,9 @@ is
 	       Input => Ada.Real_Time.Clock_Time),
      Depends => (My_Command_Queue.State =>+ Wait_Lists.State,
    		 Read_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
-   		 Write_Future_Channels =>+ (My_Command_Queue.State,Wait_Lists.State),
-   		 Poll_Future_Channels =>+ (My_Command_Queue.State,Wait_Lists.State),
-		 Remind_Me_Future_Channels =>+ (My_Command_Queue.State,Wait_Lists.State),
+   		 Write_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
+   		 Poll_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
+		 Remind_Me_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
 		 Wait_Lists.State =>+ My_Command_Queue.State,
 		null => Ada.Real_Time.Clock_Time);
 

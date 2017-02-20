@@ -169,13 +169,13 @@ package body Linted.Lock_Free_Queue with
                   ABA.Initialize (Node, ABA.Tag (Next) + 1),
                   Success);
                exit when Success;
-               Sched.Backoff (Tail_Contention);
             else
                Aba_Atomics.Compare_And_Swap
                  (Buf_Tail,
                   Tail,
                   ABA.Initialize (ABA.Element (Next), ABA.Tag (Tail) + 1));
             end if;
+	    Sched.Backoff (Tail_Contention);
          end loop;
          Sched.Success (Tail_Contention);
 
@@ -226,8 +226,8 @@ package body Linted.Lock_Free_Queue with
                   ABA.Initialize (ABA.Element (Next), ABA.Tag (Head) + 1),
                   Success);
                exit when Success;
-               Sched.Backoff (Head_Contention);
             end if;
+	    Sched.Backoff (Head_Contention);
          end loop;
          Sched.Success (Head_Contention);
          Dequeued := ABA.Element (Head);
