@@ -11,21 +11,29 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Libc.Sched;
-
+with Ada.Dispatching;
 with System.Machine_Code;
 
-package body Linted.Sched with
-     Spark_Mode => Off is
+package body Linted.Sched is
 
    High_Contention_Count : constant := 16;
+
+   procedure Pause with
+      Spark_Mode,
+      Inline_Always;
+
+   procedure Pause with
+      Spark_Mode => Off is
+   begin
+      System.Machine_Code.Asm ("pause", Volatile => True);
+   end Pause;
 
    procedure Backoff (State : in out Backoff_State) is
    begin
       if State < 20 then
-         System.Machine_Code.Asm ("pause", Volatile => True);
+         Pause;
       else
-         Libc.Sched.sched_yield;
+         Ada.Dispatching.Yield;
       end if;
 
       if State /= Backoff_State'Last then
@@ -35,31 +43,31 @@ package body Linted.Sched with
 
    procedure Success (C : in out Contention) is
    begin
-      Contention_Atomics.Saturating_Decrement (C.Count);
+      Contention_Atomics.Saturating_Decrement (Contention_Atomics.Atomic (C));
    end Success;
 
    procedure Backoff (C : in out Contention) is
       My_Contention : Contention_T;
    begin
-      Contention_Atomics.Get (C.Count, My_Contention);
+      Contention_Atomics.Get (Contention_Atomics.Atomic (C), My_Contention);
 
-      Contention_Atomics.Saturating_Decrement (C.Count);
+      Contention_Atomics.Saturating_Decrement (Contention_Atomics.Atomic (C));
 
       if My_Contention < High_Contention_Count then
-         System.Machine_Code.Asm ("pause", Volatile => True);
+         Pause;
       else
-         Libc.Sched.sched_yield;
+         Ada.Dispatching.Yield;
       end if;
    end Backoff;
 
    procedure Backoff (C : in out Contention; Highly_Contended : out Boolean) is
       My_Contention : Contention_T;
    begin
-      Contention_Atomics.Get (C.Count, My_Contention);
-      Contention_Atomics.Saturating_Decrement (C.Count);
+      Contention_Atomics.Get (Contention_Atomics.Atomic (C), My_Contention);
+      Contention_Atomics.Saturating_Decrement (Contention_Atomics.Atomic (C));
 
       if My_Contention < High_Contention_Count then
-         System.Machine_Code.Asm ("pause", Volatile => True);
+         Pause;
          Highly_Contended := False;
          return;
       end if;
