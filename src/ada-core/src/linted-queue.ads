@@ -11,9 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Real_Time;
-pragma Elaborate_All (Ada.Real_Time);
-
 generic
    type Element_T is private;
    type Ix is mod <>;
@@ -24,21 +21,14 @@ package Linted.Queue with
 
    procedure Enqueue (Element : Element_T) with
       Pre => Is_Valid (Element),
-      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
-      Depends => (State => (Element, State), null => Ada.Real_Time.Clock_Time);
+      Global => (In_Out => State),
+      Depends => (State => (Element, State));
    procedure Dequeue (Element : out Element_T) with
       Post => Is_Valid (Element),
-      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
-      Depends =>
-      (State => State,
-       Element => State,
-       null => Ada.Real_Time.Clock_Time);
+      Global => (In_Out => State),
+      Depends => (State => State, Element => State);
    procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) with
       Post => (if Success then Is_Valid (Element)),
-      Global => (Input => Ada.Real_Time.Clock_Time, In_Out => State),
-      Depends =>
-      (State => State,
-       Element => State,
-       Success => State,
-       null => Ada.Real_Time.Clock_Time);
+      Global => (In_Out => State),
+      Depends => (State => State, Element => State, Success => State);
 end Linted.Queue;

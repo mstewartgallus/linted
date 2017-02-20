@@ -13,8 +13,8 @@
 -- permissions and limitations under the License.
 private with Linted.Mod_Atomics;
 
-package Linted.Sched is
-   pragma Elaborate_Body;
+package Linted.Sched with Spark_Mode is
+   pragma Preelaborate;
 
    type Contention is limited private with
       Preelaborable_Initialization;
@@ -45,6 +45,8 @@ package Linted.Sched is
       Depends => ((Highly_Contended, C) => C);
 
 private
+   pragma Spark_Mode (Off);
+
    type Contention_T is mod 2**32 with
         Default_Value => 0;
    package Contention_Atomics is new Mod_Atomics (Contention_T);

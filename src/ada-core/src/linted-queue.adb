@@ -24,8 +24,7 @@ is
 
    procedure Enqueue (Element : Element_T) with
       Refined_Global =>
-      (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Queue.State))
+      (In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Queue.State))
    is
       Init : Boolean;
    begin
@@ -39,8 +38,7 @@ is
 
    procedure Dequeue (Element : out Element_T) with
       Refined_Global =>
-      (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Queue.State))
+      (In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Queue.State))
    is
       Init : Boolean;
    begin

@@ -194,7 +194,7 @@ is
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
       Future : out Read_Future) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Read_Futures.State,
 				   My_Command_Queue.State))
    is
@@ -213,7 +213,7 @@ is
    procedure Read_Wait
      (Future : in out Read_Future;
       Event : out Reader_Event) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Read_Futures.State, Read_Future_Channels))
    is
       Live : Live_Read_Future := Live_Read_Future (Future);
@@ -227,7 +227,7 @@ is
      (Future : in out Read_Future;
       Event : out Reader_Event;
       Init : out Boolean) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Read_Futures.State, Read_Future_Channels))
    is
       Live : Live_Read_Future := Live_Read_Future (Future);
@@ -245,7 +245,7 @@ is
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
       Future : out Write_Future) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Write_Futures.State, My_Command_Queue.State))
    is
       Live : Live_Write_Future;
@@ -258,7 +258,7 @@ is
    procedure Write_Wait
      (Future : in out Write_Future;
       Event : out Writer_Event) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Write_Futures.State, Write_Future_Channels))
    is
       Live : Live_Write_Future := Live_Write_Future (Future);
@@ -272,7 +272,7 @@ is
      (Future : in out Write_Future;
       Event : out Writer_Event;
       Init : out Boolean) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Write_Futures.State, Write_Future_Channels))
    is
       Live : Live_Write_Future := Live_Write_Future (Future);
@@ -289,7 +289,7 @@ is
       Events : Poller_Event_Set;
       Signaller : Triggers.Signaller;
       Future : out Poll_Future) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Poll_Futures.State, My_Command_Queue.State))
    is
       Live : Live_Poll_Future;
@@ -302,7 +302,7 @@ is
    procedure Poll_Wait
      (Future : in out Poll_Future;
       Event : out Poller_Event) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Poll_Futures.State, Poll_Future_Channels))
    is
       Live : Live_Poll_Future := Live_Poll_Future (Future);
@@ -316,7 +316,7 @@ is
      (Future : in out Poll_Future;
       Event : out Poller_Event;
       Init : out Boolean) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Poll_Futures.State, Poll_Future_Channels))
    is
       Live : Live_Poll_Future := Live_Poll_Future (Future);
@@ -332,7 +332,7 @@ is
      (Time : Ada.Real_Time.Time;
       Signaller : Triggers.Signaller;
       Future : out Remind_Me_Future) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Remind_Me_Futures.State, My_Command_Queue.State))
    is
       Live : Live_Remind_Me_Future;
@@ -345,7 +345,7 @@ is
    procedure Remind_Me_Wait
      (Future : in out Remind_Me_Future;
       Event : out Remind_Me_Event) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Remind_Me_Futures.State, Remind_Me_Future_Channels))
    is
       Live : Live_Remind_Me_Future := Live_Remind_Me_Future (Future);
@@ -359,7 +359,7 @@ is
      (Future : in out Remind_Me_Future;
       Event : out Remind_Me_Event;
       Init : out Boolean) with
-     Refined_Global => (Input => Ada.Real_Time.Clock_Time,
+     Refined_Global => (
 			In_Out => (Spare_Remind_Me_Futures.State, Remind_Me_Future_Channels))
    is
       Live : Live_Remind_Me_Future := Live_Remind_Me_Future (Future);

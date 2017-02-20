@@ -38,34 +38,25 @@ package body Linted.Lock_Free_Queue with
    package Tip with
         Abstract_State => (State with External) is
       procedure Enqueue (Node : My_Ix; Element : Element_T) with
-         Global => (Input => Ada.Real_Time.Clock_Time, In_Out => (State)),
-         Depends =>
-         (State => (State, Element, Node),
-          null => Ada.Real_Time.Clock_Time);
+         Global => (In_Out => (State)),
+         Depends => (State => (State, Element, Node));
       procedure Try_Dequeue
         (Dequeued : out My_Ix;
          Element : out Element_T) with
-         Global => (Input => Ada.Real_Time.Clock_Time, In_Out => (State)),
-         Depends =>
-         (Dequeued => (State),
-          Element => State,
-          State => (State),
-          null => Ada.Real_Time.Clock_Time);
+         Global => (In_Out => (State)),
+         Depends => (Dequeued => (State), Element => State, State => (State));
    end Tip;
 
    package Free_List with
         Abstract_State => (State with External) is
       procedure Allocate (Head : out My_Ix) with
-         Global => (Input => Ada.Real_Time.Clock_Time, In_Out => (State)),
-         Depends =>
-         (Head => (State),
-          State => (State),
-          null => Ada.Real_Time.Clock_Time);
+         Global => (In_Out => (State)),
+         Depends => (Head => (State), State => (State));
 
       procedure Deallocate (Head : My_Ix) with
          Pre => Head /= 0,
-         Global => (Input => Ada.Real_Time.Clock_Time, In_Out => (State)),
-         Depends => (State => (State, Head), null => Ada.Real_Time.Clock_Time);
+         Global => (In_Out => (State)),
+         Depends => (State => (State, Head));
    end Free_List;
 
    procedure Try_Enqueue (Element : Element_T; Success : out Boolean) is

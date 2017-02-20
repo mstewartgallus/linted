@@ -11,7 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Ada.Real_Time;
 with Ada.Finalization;
 
 private with Linted.XAtomics;
@@ -25,14 +24,14 @@ package Linted.Wait_Lists with
    type Wait_List is limited private;
 
    procedure Wait (W : in out Wait_List) with
-      Global => (Input => Ada.Real_Time.Clock_Time),
-      Depends => (W => W, null => Ada.Real_Time.Clock_Time);
+      Global => null,
+      Depends => (W => W);
    procedure Broadcast (W : in out Wait_List) with
-      Global => (Input => Ada.Real_Time.Clock_Time),
-      Depends => (W => W, null => Ada.Real_Time.Clock_Time);
+      Global => null,
+      Depends => (W => W);
    procedure Signal (W : in out Wait_List) with
-      Global => (Input => Ada.Real_Time.Clock_Time),
-      Depends => (W => W, null => Ada.Real_Time.Clock_Time);
+      Global => null,
+      Depends => (W => W);
 
    procedure Initialize (W : in out Wait_List);
 private

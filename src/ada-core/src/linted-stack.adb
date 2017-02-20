@@ -24,8 +24,7 @@ is
 
    procedure Push (Element : Element_T) with
       Refined_Global =>
-      (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Stack.State))
+      (In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Stack.State))
    is
       Init : Boolean;
    begin
@@ -39,8 +38,7 @@ is
 
    procedure Pop (Element : out Element_T) with
       Refined_Global =>
-      (Input => Ada.Real_Time.Clock_Time,
-       In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Stack.State))
+      (In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Stack.State))
    is
       Init : Boolean;
    begin
