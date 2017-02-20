@@ -25,14 +25,15 @@ package Linted.Stack with
       Pre => Is_Valid (Element),
       Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      ((Wait_Lists.State, State) => (Element, State, Wait_Lists.State));
+      (Wait_Lists.State =>+ (Element, State),
+       State =>+ (Element, Wait_Lists.State));
    procedure Pop (Element : out Element_T) with
       Post => Is_Valid (Element),
       Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
       (State =>+ Wait_Lists.State,
        Element => State,
-       Wait_Lists.State => (State, Wait_Lists.State));
+       Wait_Lists.State =>+ State);
    procedure Try_Pop (Element : out Element_T; Success : out Boolean) with
       Post => (if Success then Is_Valid (Element)),
       Global => (In_Out => (State, Wait_Lists.State)),
@@ -40,5 +41,5 @@ package Linted.Stack with
       (State =>+ Wait_Lists.State,
        Element => State,
        Success => State,
-       Wait_Lists.State => (State, Wait_Lists.State));
+       Wait_Lists.State =>+ State);
 end Linted.Stack;

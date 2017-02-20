@@ -22,11 +22,11 @@ package Linted.Lock_Free_Queue with
 
    procedure Try_Enqueue (Element : Element_T; Success : out Boolean) with
       Global => (In_Out => State),
-      Depends => (State => (State, Element), Success => State),
+      Depends => (State =>+ Element, Success => State),
       Pre => Is_Valid (Element);
 
    procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) with
       Global => (In_Out => State),
-      Depends => ((State, Element) => State, Success => State),
+      Depends => (State =>+ null, Element => State, Success => State),
       Post => (if Success then Is_Valid (Element));
 end Linted.Lock_Free_Queue;

@@ -21,16 +21,13 @@ package Linted.Channels is
       --  Overwrites old values
       procedure Push (Element : Element_T) with
          Global => null,
-         Depends => (Channel => (Element, Channel));
+         Depends => (Channel =>+ Element);
       entry Pop_Impl (Element : out Element_T) with
          Global => null,
-         Depends => (Element => Channel, Channel => Channel);
+         Depends => (Element => Channel, Channel =>+ null);
       procedure Poll (Element : out Element_T; Success : out Boolean) with
          Global => null,
-         Depends =>
-         (Element => Channel,
-          Channel => Channel,
-          Success => Channel);
+         Depends => (Element => Channel, Channel =>+ null, Success => Channel);
 
       Current : Element_T;
       Full : Boolean := False;
@@ -38,16 +35,16 @@ package Linted.Channels is
 
    procedure Push (This : in out Channel; Element : Element_T) with
       Global => null,
-      Depends => (This => (Element, This));
+      Depends => (This =>+ Element);
    procedure Pop (This : in out Channel; Element : out Element_T) with
       Global => null,
-      Depends => (Element => This, This => This);
+      Depends => (Element => This, This =>+ null);
    procedure Poll
      (This : in out Channel;
       Element : out Element_T;
       Success : out Boolean) with
       Global => null,
-      Depends => ((Element, Success) => This, This => This);
+      Depends => ((Element, Success) => This, This =>+ null);
 
 private
 end Linted.Channels;

@@ -24,7 +24,7 @@ package Linted.XAtomics with
 
    procedure Set (A : in out Atomic; Element : Element_T) with
       Global => null,
-      Depends => (A => (A, Element));
+      Depends => (A =>+ Element);
    procedure Get (A : in out Atomic; Element : out Element_T) with
       Global => null,
       Depends => (Element => A, A => A);
@@ -36,19 +36,19 @@ package Linted.XAtomics with
       Global => null,
       Depends =>
       (Success => (A, Old_Element),
-       A => (A, Old_Element, New_Element));
+       A =>+ (Old_Element, New_Element));
    procedure Compare_And_Swap
      (A : in out Atomic;
       Old_Element : Element_T;
       New_Element : Element_T) with
       Global => null,
-      Depends => (A => (A, Old_Element, New_Element));
+      Depends => (A =>+ (Old_Element, New_Element));
    procedure Swap
      (A : in out Atomic;
       Old_Element : out Element_T;
       New_Element : Element_T) with
       Global => null,
-      Depends => (Old_Element => A, A => (A, New_Element));
+      Depends => (Old_Element => A, A =>+ New_Element);
 private
    type Dummy is mod 2**64 with
         Atomic,

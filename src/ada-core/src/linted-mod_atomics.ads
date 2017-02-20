@@ -32,27 +32,24 @@ package Linted.Mod_Atomics is
          Global => null,
          Depends =>
          (Success => (Old_Ptr, Atomic),
-          Atomic => (Atomic, Old_Ptr, New_Ptr),
+          Atomic =>+ (Old_Ptr, New_Ptr),
           null => Success);
       procedure Swap (Old_Ptr : in out Element_T; New_Ptr : Element_T) with
          Global => null,
-         Depends =>
-         (Old_Ptr => Atomic,
-          Atomic => (Atomic, New_Ptr),
-          null => Old_Ptr);
+         Depends => (Old_Ptr => Atomic, Atomic =>+ New_Ptr, null => Old_Ptr);
       procedure Saturating_Increment with
          Global => null,
-         Depends => (Atomic => Atomic);
+         Depends => (Atomic =>+ null);
       procedure Saturating_Decrement with
          Global => null,
-         Depends => (Atomic => Atomic);
+         Depends => (Atomic =>+ null);
 
       Ptr : Element_T;
    end Atomic;
 
    procedure Set (A : in out Atomic; Element : Element_T) with
       Global => null,
-      Depends => (A => (A, Element));
+      Depends => (A =>+ Element);
    procedure Get (A : in out Atomic; Element : out Element_T) with
       Global => null,
       Depends => (Element => A, A => A);
@@ -64,13 +61,13 @@ package Linted.Mod_Atomics is
       Global => null,
       Depends =>
       (Success => (A, Old_Element),
-       A => (A, Old_Element, New_Element));
+       A =>+ (Old_Element, New_Element));
    procedure Swap
      (A : in out Atomic;
       Old_Element : out Element_T;
       New_Element : Element_T) with
       Global => null,
-      Depends => (Old_Element => A, A => (A, New_Element));
+      Depends => (Old_Element => A, A =>+ New_Element);
 
    procedure Saturating_Increment (A : in out Atomic) with
       Global => null,

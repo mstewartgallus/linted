@@ -32,29 +32,26 @@ package Linted.Atomics is
          Global => null,
          Depends =>
          (Success => (Old_Ptr, Atomic),
-          Atomic => (Atomic, Old_Ptr, New_Ptr),
+          Atomic =>+ (Old_Ptr, New_Ptr),
           null => Success);
       procedure Compare_And_Swap
         (Old_Ptr : Element_T;
          New_Ptr : Element_T) with
          Global => null,
-         Depends => (Atomic => (Atomic, Old_Ptr, New_Ptr));
+         Depends => (Atomic =>+ (Old_Ptr, New_Ptr));
       procedure Swap (Old_Ptr : in out Element_T; New_Ptr : Element_T) with
          Global => null,
-         Depends =>
-         (Old_Ptr => Atomic,
-          Atomic => (Atomic, New_Ptr),
-          null => Old_Ptr);
+         Depends => (Old_Ptr => Atomic, Atomic =>+ New_Ptr, null => Old_Ptr);
 
       Ptr : Element_T;
    end Atomic;
 
    procedure Set (A : in out Atomic; Element : Element_T) with
       Global => null,
-      Depends => (A => (A, Element));
+      Depends => (A =>+ Element);
    procedure Get (A : in out Atomic; Element : out Element_T) with
       Global => null,
-      Depends => (Element => A, A => A);
+      Depends => (Element => A, A =>+ null);
    procedure Compare_And_Swap
      (A : in out Atomic;
       Old_Element : Element_T;
@@ -63,17 +60,17 @@ package Linted.Atomics is
       Global => null,
       Depends =>
       (Success => (A, Old_Element),
-       A => (A, Old_Element, New_Element));
+       A =>+ (Old_Element, New_Element));
    procedure Compare_And_Swap
      (A : in out Atomic;
       Old_Element : Element_T;
       New_Element : Element_T) with
       Global => null,
-      Depends => (A => (A, Old_Element, New_Element));
+      Depends => (A =>+ (Old_Element, New_Element));
    procedure Swap
      (A : in out Atomic;
       Old_Element : out Element_T;
       New_Element : Element_T) with
       Global => null,
-      Depends => (Old_Element => A, A => (A, New_Element));
+      Depends => (Old_Element => A, A =>+ New_Element);
 end Linted.Atomics;
