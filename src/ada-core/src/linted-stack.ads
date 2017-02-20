@@ -11,6 +11,8 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with Linted.Wait_Lists;
+
 generic
    type Element_T is private;
    type Ix is mod <>;
@@ -21,14 +23,22 @@ package Linted.Stack with
 
    procedure Push (Element : Element_T) with
       Pre => Is_Valid (Element),
-      Global => (In_Out => State),
-      Depends => (State => (Element, State));
+      Global => (In_Out => (State, Wait_Lists.State)),
+      Depends =>
+      ((Wait_Lists.State, State) => (Element, State, Wait_Lists.State));
    procedure Pop (Element : out Element_T) with
       Post => Is_Valid (Element),
-      Global => (In_Out => State),
-      Depends => (State => State, Element => State);
+      Global => (In_Out => (State, Wait_Lists.State)),
+      Depends =>
+      (State =>+ Wait_Lists.State,
+       Element => State,
+       Wait_Lists.State => (State, Wait_Lists.State));
    procedure Try_Pop (Element : out Element_T; Success : out Boolean) with
       Post => (if Success then Is_Valid (Element)),
-      Global => (In_Out => State),
-      Depends => (State => State, Element => State, Success => State);
+      Global => (In_Out => (State, Wait_Lists.State)),
+      Depends =>
+      (State =>+ Wait_Lists.State,
+       Element => State,
+       Success => State,
+       Wait_Lists.State => (State, Wait_Lists.State));
 end Linted.Stack;

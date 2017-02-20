@@ -11,7 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Wait_Lists;
 with Linted.Lock_Free_Stack;
 
 package body Linted.Stack with
@@ -24,7 +23,11 @@ is
 
    procedure Push (Element : Element_T) with
       Refined_Global =>
-      (In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Stack.State))
+      (In_Out =>
+         (Buf_Has_Free_Space,
+          Buf_Has_Contents,
+          My_Stack.State,
+          Wait_Lists.State))
    is
       Init : Boolean;
    begin
@@ -38,7 +41,11 @@ is
 
    procedure Pop (Element : out Element_T) with
       Refined_Global =>
-      (In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Stack.State))
+      (In_Out =>
+         (Buf_Has_Free_Space,
+          Buf_Has_Contents,
+          My_Stack.State,
+          Wait_Lists.State))
    is
       Init : Boolean;
    begin
@@ -50,7 +57,10 @@ is
       Wait_Lists.Signal (Buf_Has_Free_Space);
    end Pop;
 
-   procedure Try_Pop (Element : out Element_T; Success : out Boolean) is
+   procedure Try_Pop (Element : out Element_T; Success : out Boolean) with
+      Refined_Global =>
+      (In_Out => (Buf_Has_Free_Space, My_Stack.State, Wait_Lists.State))
+   is
    begin
       My_Stack.Try_Pop (Element, Success);
       if Success then

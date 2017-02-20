@@ -120,20 +120,24 @@ is
    package Spare_Remind_Me_Futures is new Stack (Live_Remind_Me_Future, Remind_Me_Ix, Remind_Me_Is_Valid);
    package My_Command_Queue is new Queue (Any_Command, Command_Ix, Command_Is_Valid);
 
-   task type Worker_Task with Global => (In_Out => (My_Command_Queue.State,
+   task type Worker_Task with Global => (Input => Ada.Real_Time.Clock_Time,
+					 In_Out => (My_Command_Queue.State,
    						    Read_Future_Channels,
    						    Write_Future_Channels,
    						    Poll_Future_Channels,
-						    Remind_Me_Future_Channels
+						    Remind_Me_Future_Channels,
+						    Wait_Lists.State
    						   )),
      Spark_Mode,
-     Depends => (My_Command_Queue.State => (My_Command_Queue.State),
-   		 Read_Future_Channels => (Read_Future_Channels, My_Command_Queue.State),
-   		 Write_Future_Channels => (Write_Future_Channels, My_Command_Queue.State),
-   		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue.State),
-		 Remind_Me_Future_Channels => (Remind_Me_Future_Channels, My_Command_Queue.State),
+     Depends => (My_Command_Queue.State =>+ Wait_Lists.State,
+   		 Read_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
+   		 Write_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
+   		 Poll_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
+		 Remind_Me_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
+		 Wait_Lists.State =>+ My_Command_Queue.State,
    		 Worker_Task'Result => Worker_Task,
-   		 Worker_Task => null
+   		 Worker_Task => null,
+		 null => Ada.Real_Time.Clock_Time
    		);
 
    type Worker_Array is array (1 .. 16) of Worker_Task;
@@ -164,28 +168,30 @@ is
 			   Read_Future_Channels,
 			   Write_Future_Channels,
 			   Poll_Future_Channels,
-			   Remind_Me_Future_Channels
+			   Remind_Me_Future_Channels,
+			   Wait_Lists.State
 			  ),
 	       Input => Ada.Real_Time.Clock_Time),
-     Depends => (My_Command_Queue.State => (My_Command_Queue.State),
-   		 Read_Future_Channels => (Read_Future_Channels, My_Command_Queue.State),
-   		 Write_Future_Channels => (Write_Future_Channels, My_Command_Queue.State),
-   		 Poll_Future_Channels => (Poll_Future_Channels, My_Command_Queue.State),
-		 Remind_Me_Future_Channels => (Remind_Me_Future_Channels, My_Command_Queue.State),
+     Depends => (My_Command_Queue.State =>+ Wait_Lists.State,
+   		 Read_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
+   		 Write_Future_Channels =>+ (My_Command_Queue.State,Wait_Lists.State),
+   		 Poll_Future_Channels =>+ (My_Command_Queue.State,Wait_Lists.State),
+		 Remind_Me_Future_Channels =>+ (My_Command_Queue.State,Wait_Lists.State),
+		 Wait_Lists.State =>+ My_Command_Queue.State,
 		null => Ada.Real_Time.Clock_Time);
 
    procedure Do_Write (W : Write_Command) with
      Global => (In_Out => Write_Future_Channels),
-      Depends => (Write_Future_Channels => (W, Write_Future_Channels));
+      Depends => (Write_Future_Channels =>+ W);
    procedure Do_Read (R : Read_Command) with
       Global => (In_Out => Read_Future_Channels),
-      Depends => (Read_Future_Channels => (R, Read_Future_Channels));
+      Depends => (Read_Future_Channels =>+ R);
    procedure Do_Poll (P : Poller_Command) with
       Global => (In_Out => Poll_Future_Channels),
-      Depends => (Poll_Future_Channels => (P, Poll_Future_Channels));
+      Depends => (Poll_Future_Channels =>+ P);
    procedure Do_Remind_Me (R : Remind_Me_Command) with
       Global => (In_Out => Remind_Me_Future_Channels, Input => Ada.Real_Time.Clock_Time),
-     Depends => (Remind_Me_Future_Channels => (R, Remind_Me_Future_Channels),
+     Depends => (Remind_Me_Future_Channels =>+ R,
 					      null => Ada.Real_Time.Clock_Time);
 
    procedure Read
@@ -196,7 +202,8 @@ is
       Future : out Read_Future) with
      Refined_Global => (
 			In_Out => (Spare_Read_Futures.State,
-				   My_Command_Queue.State))
+				   My_Command_Queue.State,
+				   Wait_Lists.State))
    is
       Live : Live_Read_Future;
    begin
@@ -214,7 +221,8 @@ is
      (Future : in out Read_Future;
       Event : out Reader_Event) with
      Refined_Global => (
-			In_Out => (Spare_Read_Futures.State, Read_Future_Channels))
+			In_Out => (Spare_Read_Futures.State, Read_Future_Channels,
+				   Wait_Lists.State))
    is
       Live : Live_Read_Future := Live_Read_Future (Future);
    begin
@@ -228,7 +236,8 @@ is
       Event : out Reader_Event;
       Init : out Boolean) with
      Refined_Global => (
-			In_Out => (Spare_Read_Futures.State, Read_Future_Channels))
+			In_Out => (Spare_Read_Futures.State, Read_Future_Channels,
+				  Wait_Lists.State))
    is
       Live : Live_Read_Future := Live_Read_Future (Future);
    begin
@@ -246,7 +255,8 @@ is
       Signaller : Triggers.Signaller;
       Future : out Write_Future) with
      Refined_Global => (
-			In_Out => (Spare_Write_Futures.State, My_Command_Queue.State))
+			In_Out => (Spare_Write_Futures.State, My_Command_Queue.State,
+				  Wait_Lists.State))
    is
       Live : Live_Write_Future;
    begin
@@ -259,7 +269,8 @@ is
      (Future : in out Write_Future;
       Event : out Writer_Event) with
      Refined_Global => (
-			In_Out => (Spare_Write_Futures.State, Write_Future_Channels))
+			In_Out => (Spare_Write_Futures.State, Write_Future_Channels,
+				  Wait_Lists.State))
    is
       Live : Live_Write_Future := Live_Write_Future (Future);
    begin
@@ -273,7 +284,8 @@ is
       Event : out Writer_Event;
       Init : out Boolean) with
      Refined_Global => (
-			In_Out => (Spare_Write_Futures.State, Write_Future_Channels))
+			In_Out => (Spare_Write_Futures.State, Write_Future_Channels,
+				  Wait_Lists.State))
    is
       Live : Live_Write_Future := Live_Write_Future (Future);
    begin
@@ -290,7 +302,8 @@ is
       Signaller : Triggers.Signaller;
       Future : out Poll_Future) with
      Refined_Global => (
-			In_Out => (Spare_Poll_Futures.State, My_Command_Queue.State))
+			In_Out => (Spare_Poll_Futures.State, My_Command_Queue.State,
+				  Wait_Lists.State))
    is
       Live : Live_Poll_Future;
    begin
@@ -303,7 +316,8 @@ is
      (Future : in out Poll_Future;
       Event : out Poller_Event) with
      Refined_Global => (
-			In_Out => (Spare_Poll_Futures.State, Poll_Future_Channels))
+			In_Out => (Spare_Poll_Futures.State, Poll_Future_Channels,
+				  Wait_Lists.State))
    is
       Live : Live_Poll_Future := Live_Poll_Future (Future);
    begin
@@ -316,8 +330,8 @@ is
      (Future : in out Poll_Future;
       Event : out Poller_Event;
       Init : out Boolean) with
-     Refined_Global => (
-			In_Out => (Spare_Poll_Futures.State, Poll_Future_Channels))
+     Refined_Global => (In_Out => (Spare_Poll_Futures.State, Poll_Future_Channels,
+				  Wait_Lists.State))
    is
       Live : Live_Poll_Future := Live_Poll_Future (Future);
    begin
@@ -333,7 +347,8 @@ is
       Signaller : Triggers.Signaller;
       Future : out Remind_Me_Future) with
      Refined_Global => (
-			In_Out => (Spare_Remind_Me_Futures.State, My_Command_Queue.State))
+			In_Out => (Spare_Remind_Me_Futures.State, My_Command_Queue.State,
+				  Wait_Lists.State))
    is
       Live : Live_Remind_Me_Future;
    begin
@@ -346,7 +361,8 @@ is
      (Future : in out Remind_Me_Future;
       Event : out Remind_Me_Event) with
      Refined_Global => (
-			In_Out => (Spare_Remind_Me_Futures.State, Remind_Me_Future_Channels))
+			In_Out => (Spare_Remind_Me_Futures.State, Remind_Me_Future_Channels,
+				  Wait_Lists.State))
    is
       Live : Live_Remind_Me_Future := Live_Remind_Me_Future (Future);
    begin
@@ -360,7 +376,8 @@ is
       Event : out Remind_Me_Event;
       Init : out Boolean) with
      Refined_Global => (
-			In_Out => (Spare_Remind_Me_Futures.State, Remind_Me_Future_Channels))
+			In_Out => (Spare_Remind_Me_Futures.State, Remind_Me_Future_Channels,
+				  Wait_Lists.State))
    is
       Live : Live_Remind_Me_Future := Live_Remind_Me_Future (Future);
    begin

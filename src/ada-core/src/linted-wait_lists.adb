@@ -18,12 +18,12 @@ with Ada.Synchronous_Task_Control;
 --  http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
 
 package body Linted.Wait_Lists with
-     Spark_Mode => Off is
+     Spark_Mode => Off,
+     Refined_State => (State => (Free_List, Free_List_Contention)) is
    package STC renames Ada.Synchronous_Task_Control;
 
    use type Tags.Tagged_Access;
    use type Tags.Tag_Bits;
-   use type Node_Access;
    use type Sched.Backoff_State;
 
    type Suspend is record
@@ -51,7 +51,8 @@ package body Linted.Wait_Lists with
    procedure Initialize (W : in out Wait_List) is
       N : Node_Access;
    begin
-      Allocate (N);
+      --  Can't use the free list
+      N := new Node;
       N.Next := Node_Access_Atomics.To (Tags.To (null, 0));
       W.Head := Node_Access_Atomics.To (Tags.To (N, 0));
       W.Tail := Node_Access_Atomics.To (Tags.To (N, 0));
@@ -59,7 +60,6 @@ package body Linted.Wait_Lists with
 
    procedure Wait (W : in out Wait_List) is
       Is_Triggered : Default_False;
-      Waiter : Node_Access;
    begin
       Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
       if Is_Triggered then
@@ -67,7 +67,7 @@ package body Linted.Wait_Lists with
       end if;
 
       if null = Local_Trigger then
-	 Local_Trigger := new Suspend;
+         Local_Trigger := new Suspend;
       end if;
 
       Enqueue (W, Local_Trigger);
@@ -81,9 +81,9 @@ package body Linted.Wait_Lists with
       W.Triggered := Boolean_Atomics.To (True);
 
       loop
-	 Dequeue (W, Trigger);
-	 exit when null = Trigger;
-	 STC.Set_True (Trigger.Suspend);
+         Dequeue (W, Trigger);
+         exit when null = Trigger;
+         STC.Set_True (Trigger.Suspend);
       end loop;
    end Broadcast;
 
@@ -109,43 +109,43 @@ package body Linted.Wait_Lists with
       Node.Trigger := Trigger;
 
       declare
-	 N : Tags.Tagged_Access;
+         N : Tags.Tagged_Access;
       begin
-	 N := Node_Access_Atomics.From (Node.Next);
-	 Node.Next := Node_Access_Atomics.To (Tags.To (null, Tags.Tag (N)));
+         N := Node_Access_Atomics.From (Node.Next);
+         Node.Next := Node_Access_Atomics.To (Tags.To (null, Tags.Tag (N)));
       end;
 
       loop
-	 loop
-	    Tail := Node_Access_Atomics.From (W.Tail);
-	    Next := Node_Access_Atomics.From (Tags.From (Tail).Next);
-	    Tail_Again := Node_Access_Atomics.From (W.Tail);
-	    exit when Tail = Tail_Again;
-	    Sched.Backoff (W.Tail_Contention);
-	 end loop;
-	 Sched.Success (W.Tail_Contention);
+         loop
+            Tail := Node_Access_Atomics.From (W.Tail);
+            Next := Node_Access_Atomics.From (Tags.From (Tail).Next);
+            Tail_Again := Node_Access_Atomics.From (W.Tail);
+            exit when Tail = Tail_Again;
+            Sched.Backoff (W.Tail_Contention);
+         end loop;
+         Sched.Success (W.Tail_Contention);
 
-	 if Tags.From (Next) = null then
-	    Node_Access_Atomics.Compare_And_Swap
-	      (Tags.From (Tail).Next,
-	       Next,
-	       Tags.To (Node, Tags.Tag (Next) + 1),
-	       Success);
-	    exit when Success;
-	    Sched.Backoff (W.Tail_Contention);
-	 else
-	    Node_Access_Atomics.Compare_And_Swap
-	      (W.Tail,
-	       Tail,
-	       Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1));
-	 end if;
+         if Tags.From (Next) = null then
+            Node_Access_Atomics.Compare_And_Swap
+              (Tags.From (Tail).Next,
+               Next,
+               Tags.To (Node, Tags.Tag (Next) + 1),
+               Success);
+            exit when Success;
+            Sched.Backoff (W.Tail_Contention);
+         else
+            Node_Access_Atomics.Compare_And_Swap
+              (W.Tail,
+               Tail,
+               Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1));
+         end if;
       end loop;
       Sched.Success (W.Tail_Contention);
 
       Node_Access_Atomics.Compare_And_Swap
-	(W.Tail,
-	 Tail,
-	 Tags.To (Node, Tags.Tag (Tail) + 1));
+        (W.Tail,
+         Tail,
+         Tags.To (Node, Tags.Tag (Tail) + 1));
    end Enqueue;
 
    procedure Dequeue (W : in out Wait_List; Trigger : out Suspend_Access) is
@@ -157,36 +157,36 @@ package body Linted.Wait_Lists with
       Dequeued : Node_Access;
    begin
       loop
-	 loop
-	    Head := Node_Access_Atomics.From (W.Head);
-	    Tail := Node_Access_Atomics.From (W.Tail);
-	    Next := Node_Access_Atomics.From (Tags.From (Head).Next);
-	    Head_Again := Node_Access_Atomics.From (W.Head);
-	    exit when Head = Head_Again;
-	    Sched.Backoff (W.Head_Contention);
-	 end loop;
-	 Sched.Success (W.Head_Contention);
+         loop
+            Head := Node_Access_Atomics.From (W.Head);
+            Tail := Node_Access_Atomics.From (W.Tail);
+            Next := Node_Access_Atomics.From (Tags.From (Head).Next);
+            Head_Again := Node_Access_Atomics.From (W.Head);
+            exit when Head = Head_Again;
+            Sched.Backoff (W.Head_Contention);
+         end loop;
+         Sched.Success (W.Head_Contention);
 
-	 if Tags.From (Head) = Tags.From (Tail) then
-	    if Tags.From (Next) = null then
-	       Sched.Success (W.Head_Contention);
-	       Trigger := null;
-	       return;
-	    end if;
-	    Node_Access_Atomics.Compare_And_Swap
-	      (W.Tail,
-	       Tail,
-	       Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1));
-	 else
-	    Trigger := Tags.From (Next).Trigger;
-	    Node_Access_Atomics.Compare_And_Swap
-	      (W.Head,
-	       Head,
-	       Tags.To (Tags.From (Next), Tags.Tag (Head) + 1),
-	       Success);
-	    exit when Success;
-	    Sched.Backoff (W.Head_Contention);
-	 end if;
+         if Tags.From (Head) = Tags.From (Tail) then
+            if Tags.From (Next) = null then
+               Sched.Success (W.Head_Contention);
+               Trigger := null;
+               return;
+            end if;
+            Node_Access_Atomics.Compare_And_Swap
+              (W.Tail,
+               Tail,
+               Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1));
+         else
+            Trigger := Tags.From (Next).Trigger;
+            Node_Access_Atomics.Compare_And_Swap
+              (W.Head,
+               Head,
+               Tags.To (Tags.From (Next), Tags.Tag (Head) + 1),
+               Success);
+            exit when Success;
+            Sched.Backoff (W.Head_Contention);
+         end if;
       end loop;
       Sched.Success (W.Head_Contention);
 
@@ -200,7 +200,7 @@ package body Linted.Wait_Lists with
       Success : Boolean;
    begin
       loop
-	 Head := Node_Access_Atomics.From (Free_List);
+         Head := Node_Access_Atomics.From (Free_List);
          if null = Tags.From (Head) then
             N := new Node;
             Sched.Success (Free_List_Contention);
@@ -208,7 +208,7 @@ package body Linted.Wait_Lists with
          end if;
          N := Tags.From (Head);
          --  .Next is safe because nodes are never deallocated
-	 Next := Node_Access_Atomics.From (N.Next);
+         Next := Node_Access_Atomics.From (N.Next);
          Node_Access_Atomics.Compare_And_Swap
            (Free_List,
             Head,

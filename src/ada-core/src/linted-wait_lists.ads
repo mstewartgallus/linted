@@ -18,22 +18,25 @@ private with Linted.Sched;
 private with Linted.Tagged_Accessors;
 
 package Linted.Wait_Lists with
-     Spark_Mode is
+     Spark_Mode,
+     Abstract_State => (State with External) is
    pragma Elaborate_Body;
 
    type Wait_List is limited private;
 
    procedure Wait (W : in out Wait_List) with
-      Global => null,
-      Depends => (W => W);
+      Global => (In_Out => State),
+      Depends => ((State, W) => (State, W));
    procedure Broadcast (W : in out Wait_List) with
-      Global => null,
-      Depends => (W => W);
+      Global => (In_Out => State),
+      Depends => ((State, W) => (State, W));
    procedure Signal (W : in out Wait_List) with
+      Global => (In_Out => State),
+      Depends => ((State, W) => (State, W));
+
+   procedure Initialize (W : in out Wait_List) with
       Global => null,
       Depends => (W => W);
-
-   procedure Initialize (W : in out Wait_List);
 private
    pragma SPARK_Mode (Off);
 

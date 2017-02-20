@@ -11,7 +11,6 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-with Linted.Wait_Lists;
 with Linted.Lock_Free_Queue;
 
 package body Linted.Queue with
@@ -24,7 +23,11 @@ is
 
    procedure Enqueue (Element : Element_T) with
       Refined_Global =>
-      (In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Queue.State))
+      (In_Out =>
+         (Buf_Has_Free_Space,
+          Buf_Has_Contents,
+          My_Queue.State,
+          Wait_Lists.State))
    is
       Init : Boolean;
    begin
@@ -38,7 +41,11 @@ is
 
    procedure Dequeue (Element : out Element_T) with
       Refined_Global =>
-      (In_Out => (Buf_Has_Free_Space, Buf_Has_Contents, My_Queue.State))
+      (In_Out =>
+         (Buf_Has_Free_Space,
+          Buf_Has_Contents,
+          My_Queue.State,
+          Wait_Lists.State))
    is
       Init : Boolean;
    begin
@@ -50,7 +57,10 @@ is
       Wait_Lists.Signal (Buf_Has_Free_Space);
    end Dequeue;
 
-   procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) is
+   procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) with
+      Refined_Global =>
+      (In_Out => (Buf_Has_Free_Space, My_Queue.State, Wait_Lists.State))
+   is
    begin
       My_Queue.Try_Dequeue (Element, Success);
       if Success then

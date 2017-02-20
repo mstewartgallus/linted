@@ -14,11 +14,13 @@
 with Ada.Dispatching;
 with System.Machine_Code;
 
-package body Linted.Sched with Spark_Mode => Off is
+package body Linted.Sched is
 
    High_Contention_Count : constant := 16;
 
-   procedure Pause with Inline_Always;
+   procedure Pause with
+      Spark_Mode,
+      Inline_Always;
 
    procedure Pause with
       Spark_Mode => Off is

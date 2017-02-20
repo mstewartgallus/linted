@@ -11,13 +11,17 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-private with Linted.Mod_Atomics;
+with Linted.Mod_Atomics;
 
-package Linted.Sched with Spark_Mode is
+package Linted.Sched with
+     Spark_Mode is
    pragma Preelaborate;
 
-   type Contention is limited private with
-      Preelaborable_Initialization;
+   type Contention_T is mod 2**32 with
+        Default_Value => 0;
+   package Contention_Atomics is new Mod_Atomics (Contention_T);
+
+   subtype Contention is Contention_Atomics.Atomic;
 
    type Backoff_State is mod 2**32 with
         Default_Value => 0;
@@ -43,13 +47,4 @@ package Linted.Sched with Spark_Mode is
       Inline_Always,
       Global => (null),
       Depends => ((Highly_Contended, C) => C);
-
-private
-   pragma Spark_Mode (Off);
-
-   type Contention_T is mod 2**32 with
-        Default_Value => 0;
-   package Contention_Atomics is new Mod_Atomics (Contention_T);
-
-   type Contention is new Contention_Atomics.Atomic;
 end Linted.Sched;
