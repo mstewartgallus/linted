@@ -33,10 +33,6 @@ package Linted.Wait_Lists with
    procedure Signal (W : in out Wait_List) with
       Global => (In_Out => State),
       Depends => ((State, W) => (State, W));
-
-   procedure Initialize (W : in out Wait_List) with
-      Global => null,
-      Depends => (W => W);
 private
    pragma SPARK_Mode (Off);
 
@@ -51,11 +47,19 @@ private
    package Node_Access_Atomics is new XAtomics (Tags.Tagged_Access);
    package Boolean_Atomics is new XAtomics (Default_False);
 
-   type Wait_List is new Ada.Finalization.Limited_Controlled with record
+   type Queue is new Ada.Finalization.Limited_Controlled with record
       Head : Node_Access_Atomics.Atomic;
       Tail : Node_Access_Atomics.Atomic;
-      Triggered : Boolean_Atomics.Atomic;
       Head_Contention : Sched.Contention;
       Tail_Contention : Sched.Contention;
+   end record;
+
+   overriding procedure Initialize (Q : in out Queue) with
+      Global => null,
+      Depends => (Q => Q);
+
+   type Wait_List is record
+      Q : Queue;
+      Triggered : Boolean_Atomics.Atomic;
    end record;
 end Linted.Wait_Lists;

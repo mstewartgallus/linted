@@ -67,5 +67,4 @@ is
          Wait_Lists.Signal (Buf_Has_Free_Space);
       end if;
    end Try_Dequeue;
-
 end Linted.Queue;
