@@ -24,10 +24,14 @@ package Linted.Tagged_Accessors is
    type Tag_Bits is mod 2**16 with
         Default_Value => 0;
 
-   function To (Ptr : Access_T) return Tagged_Access;
-   function To (Ptr : Access_T; Tag : Tag_Bits) return Tagged_Access;
-   function From (Ptr : Tagged_Access) return Access_T;
-   function Tag (Ptr : Tagged_Access) return Tag_Bits;
+   function To (Ptr : Access_T) return Tagged_Access with
+      Inline_Always;
+   function To (Ptr : Access_T; Tag : Tag_Bits) return Tagged_Access with
+      Inline_Always;
+   function From (Ptr : Tagged_Access) return Access_T with
+      Inline_Always;
+   function Tag (Ptr : Tagged_Access) return Tag_Bits with
+      Inline_Always;
 private
    type Uintptr is mod System.Memory_Size;
    type Tagged_Access is new Uintptr with

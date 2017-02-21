@@ -19,13 +19,17 @@ package Linted.XAtomics with
 
    type Atomic is private;
 
-   function To (Element : Element_T) return Atomic;
-   function From (A : Atomic) return Element_T;
+   function To (Element : Element_T) return Atomic with
+      Inline_Always;
+   function From (A : Atomic) return Element_T with
+      Inline_Always;
 
    procedure Set (A : in out Atomic; Element : Element_T) with
+      Inline_Always,
       Global => null,
       Depends => (A =>+ Element);
    procedure Get (A : in out Atomic; Element : out Element_T) with
+      Inline_Always,
       Global => null,
       Depends => (Element => A, A => A);
    procedure Compare_And_Swap
@@ -33,6 +37,7 @@ package Linted.XAtomics with
       Old_Element : Element_T;
       New_Element : Element_T;
       Success : out Boolean) with
+      Inline_Always,
       Global => null,
       Depends =>
       (Success => (A, Old_Element),
@@ -41,12 +46,14 @@ package Linted.XAtomics with
      (A : in out Atomic;
       Old_Element : Element_T;
       New_Element : Element_T) with
+      Inline_Always,
       Global => null,
       Depends => (A =>+ (Old_Element, New_Element));
    procedure Swap
      (A : in out Atomic;
       Old_Element : out Element_T;
       New_Element : Element_T) with
+      Inline_Always,
       Global => null,
       Depends => (Old_Element => A, A =>+ New_Element);
 private

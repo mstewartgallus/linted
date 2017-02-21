@@ -11,6 +11,7 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
+with System;
 with Ada.Unchecked_Conversion;
 with Interfaces.C;
 
@@ -28,31 +29,34 @@ package body Linted.XAtomics with
    function To (Element : Element_T) return Atomic is (Real_To (Element));
    function From (A : Atomic) return Element_T is (Real_From (A));
 
-   procedure Atomic_Store (A : in out Atomic; Element : Atomic);
-   pragma Import (C, Atomic_Store, "atomic_store");
-
-   function Atomic_Load (A : in out Atomic) return Atomic;
-   pragma Import (C, Atomic_Load, "atomic_load");
+   ATOMIC_SEQ_CST : constant := 5;
 
    function Atomic_Compare_Exchange
-     (A : in out Atomic;
-      Expected : Atomic;
-      Desired : Atomic) return Interfaces.C.int;
-   pragma Import (C, Atomic_Compare_Exchange, "atomic_compare_exchange");
+     (Ptr : System.Address;
+      Expected : System.Address;
+      Desired : Atomic;
+      Weak : Boolean;
+      Success_Memmodel : Interfaces.C.int;
+      Failure_Memmodel : Interfaces.C.int) return Boolean;
+   pragma Import
+     (Intrinsic,
+      Atomic_Compare_Exchange,
+      "__atomic_compare_exchange_8");
 
    function Atomic_Exchange
-     (A : in out Atomic;
-      New_Element : Atomic) return Atomic;
-   pragma Import (C, Atomic_Exchange, "atomic_exchange");
+     (Ptr : System.Address;
+      New_Value : Atomic;
+      Memmodel : Interfaces.C.int) return Atomic;
+   pragma Import (Intrinsic, Atomic_Exchange, "__atomic_exchange_8");
 
    procedure Set (A : in out Atomic; Element : Element_T) is
    begin
-      Atomic_Store (A, To (Element));
+      A := To (Element);
    end Set;
 
    procedure Get (A : in out Atomic; Element : out Element_T) is
    begin
-      Element := From (Atomic_Load (A));
+      Element := From (A);
    end Get;
 
    procedure Compare_And_Swap
@@ -61,9 +65,16 @@ package body Linted.XAtomics with
       New_Element : Element_T;
       Success : out Boolean)
    is
+      Expected : Atomic := To (Old_Element);
    begin
       Success :=
-        Atomic_Compare_Exchange (A, To (Old_Element), To (New_Element)) /= 0;
+        Atomic_Compare_Exchange
+          (A'Address,
+           Expected'Address,
+           To (New_Element),
+           False,
+           ATOMIC_SEQ_CST,
+           ATOMIC_SEQ_CST);
    end Compare_And_Swap;
 
    procedure Compare_And_Swap
@@ -71,10 +82,17 @@ package body Linted.XAtomics with
       Old_Element : Element_T;
       New_Element : Element_T)
    is
-      Unused : Interfaces.C.int;
+      Expected : Atomic := To (Old_Element);
+      Unused : Boolean;
    begin
       Unused :=
-        Atomic_Compare_Exchange (A, To (Old_Element), To (New_Element));
+        Atomic_Compare_Exchange
+          (A'Address,
+           Expected'Address,
+           To (New_Element),
+           False,
+           ATOMIC_SEQ_CST,
+           ATOMIC_SEQ_CST);
       pragma Unused (Unused);
    end Compare_And_Swap;
 
@@ -84,6 +102,7 @@ package body Linted.XAtomics with
       New_Element : Element_T)
    is
    begin
-      Old_Element := From (Atomic_Exchange (A, To (New_Element)));
+      Old_Element :=
+        From (Atomic_Exchange (A'Address, To (New_Element), ATOMIC_SEQ_CST));
    end Swap;
 end Linted.XAtomics;

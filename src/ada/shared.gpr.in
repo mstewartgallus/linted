@@ -47,8 +47,8 @@ abstract project Shared is
 
   		    "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-  		    -- "-fverbose-asm",
-  		    -- "-save-temps=cwd",
+  		    "-fverbose-asm",
+  		    "-save-temps=cwd",
 
   		    "-fstack-usage"
 
@@ -65,7 +65,7 @@ abstract project Shared is
   		    -- "-gnatD",
   		    -- "-gnatR3s",
 
-  						    -- "-gnatn",
+  						    "-gnatn",
   						    "-gnateA");
      for Default_Switches ("C") use C_Switches;
   end Compiler;

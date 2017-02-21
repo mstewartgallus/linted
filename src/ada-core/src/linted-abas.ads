@@ -27,11 +27,14 @@ package Linted.ABAs is
       Ghost;
 
    function Initialize (Element : Element_T; Tag : Tag_T) return ABA with
+      Inline_Always,
       Depends => (Initialize'Result => (Element, Tag)),
       Post => Is_Valid_ABA (Initialize'Result);
    function Element (X : ABA) return Element_T with
+      Inline_Always,
       Depends => (Element'Result => X);
    function Tag (X : ABA) return Tag_T with
+      Inline_Always,
       Depends => (Tag'Result => X);
 
    procedure Lemma_Identity (E : Element_T; T : Tag_T) with

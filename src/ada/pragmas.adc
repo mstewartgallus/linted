@@ -69,7 +69,6 @@ pragma Restrictions (No_Dispatching_Calls);
 pragma Restrictions (No_Entry_Queue);
 pragma Restrictions (No_Enumeration_Maps);
 pragma Restrictions (No_Exception_Registration);
-pragma Restrictions (No_Implicit_Aliasing);
 pragma Restrictions (No_Implicit_Dynamic_Code);
 -- pragma Restrictions (No_IO);
 pragma Restrictions (No_Local_Timing_Events);
