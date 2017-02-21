@@ -19,11 +19,6 @@ package Linted.XAtomics with
 
    type Atomic is limited private;
 
-   function To (Element : Element_T) return Atomic with
-      Inline_Always;
-   function From (A : Atomic) return Element_T with
-      Inline_Always;
-
    procedure Set (A : in out Atomic; Element : Element_T) with
       Inline_Always,
       Global => null,

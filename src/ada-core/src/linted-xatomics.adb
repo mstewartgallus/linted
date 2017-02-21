@@ -26,11 +26,6 @@ package body Linted.XAtomics with
      (Source => Dummy,
       Target => Element_T);
 
-   function To
-     (Element : Element_T) return Atomic is
-     (Atomic'(Value => Real_To (Element)));
-   function From (A : Atomic) return Element_T is (Real_From (A.Value));
-
    ATOMIC_SEQ_CST : constant := 5;
 
    function Atomic_Compare_Exchange
@@ -53,12 +48,12 @@ package body Linted.XAtomics with
 
    procedure Set (A : in out Atomic; Element : Element_T) is
    begin
-      A := To (Element);
+      A.Value := Real_To (Element);
    end Set;
 
    procedure Get (A : in out Atomic; Element : out Element_T) is
    begin
-      Element := From (A);
+      Element := Real_From (A.Value);
    end Get;
 
    procedure Compare_And_Swap
