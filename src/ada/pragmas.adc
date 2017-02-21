@@ -72,7 +72,6 @@ pragma Restrictions (No_Exception_Registration);
 pragma Restrictions (No_Implicit_Dynamic_Code);
 -- pragma Restrictions (No_IO);
 pragma Restrictions (No_Local_Timing_Events);
-pragma Restrictions (No_Long_Long_Integers);
 
 pragma Restrictions (No_Obsolescent_Features);
 pragma Restrictions (No_Recursion);

@@ -52,14 +52,12 @@ package Linted.XAtomics with
       Global => null,
       Depends => (Old_Element => A, A =>+ New_Element);
 private
-   type Dummy is mod 2**64 with
-        Atomic,
-        Default_Value => 0;
-   pragma Convention (C, Dummy);
+   subtype Dummy is Element_T;
 
    -- A record has to be used so that it is passed by pointer
    type Atomic is record
-      Value : Dummy;
+      Value : Dummy with
+         Atomic;
    end record;
    pragma Convention (C, Atomic);
 end Linted.XAtomics;

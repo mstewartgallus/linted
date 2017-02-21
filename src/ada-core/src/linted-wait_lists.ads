@@ -40,6 +40,7 @@ private
 
    type Default_False is new Boolean with
         Default_Value => False;
+   for Default_False'Size use 8;
 
    type Node_Access is access all Node;
 
