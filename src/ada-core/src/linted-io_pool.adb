@@ -17,7 +17,6 @@ with Libc.Sys.Poll;
 with Libc.Sys.Types;
 with Libc.Unistd;
 
-with Linted.Channels;
 with Linted.Queue;
 with Linted.Stack;
 with Linted.Last_Chance;
@@ -123,7 +122,7 @@ is
    package Spare_Remind_Me_Futures is new Stack (Live_Remind_Me_Future, Remind_Me_Ix, Remind_Me_Is_Valid);
    package My_Command_Queue is new Queue (Any_Command, Command_Ix, Command_Is_Valid);
 
-   task type Worker_Task with Global => (Input => Ada.Real_Time.Clock_Time,
+   task type Worker_Task with Spark_Mode, Global => (Input => Ada.Real_Time.Clock_Time,
 					 In_Out => (My_Command_Queue.State,
    						    Read_Future_Channels,
    						    Write_Future_Channels,
@@ -142,13 +141,28 @@ is
 		 null => Ada.Real_Time.Clock_Time
    		);
 
+   procedure Do_Work with
+     Spark_Mode,
+     No_Return,
+     Global => (Input => Ada.Real_Time.Clock_Time,
+		In_Out => (My_Command_Queue.State,
+			   Read_Future_Channels,
+			   Write_Future_Channels,
+			   Poll_Future_Channels,
+			   Remind_Me_Future_Channels,
+			   Wait_Lists.State
+			  )),
+     Depends => (My_Command_Queue.State =>+ Wait_Lists.State,
+   		 Read_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
+   		 Write_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
+   		 Poll_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
+		 Remind_Me_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
+		 Wait_Lists.State =>+ My_Command_Queue.State,
+		 null => Ada.Real_Time.Clock_Time
+   		);
+
    type Worker_Task_Array is array (Integer range <>) of Worker_Task;
    Worker_Tasks : Worker_Task_Array (1 .. 16);
-
-   package Writer_Event_Channels is new Channels (Writer_Event);
-   package Reader_Event_Channels is new Channels (Reader_Event);
-   package Poller_Event_Channels is new Channels (Poller_Event);
-   package Remind_Me_Event_Channels is new Channels (Remind_Me_Event);
 
    type Read_Future_Channels_Array is
      array (Live_Read_Future) of Reader_Event_Channels.Channel;
@@ -520,7 +534,12 @@ is
       end if;
    end Do_Remind_Me;
 
-   task body Worker_Task is
+   task body Worker_Task with Spark_Mode => Off is
+   begin
+      Do_Work;
+   end Worker_Task;
+
+   procedure Do_Work is
    begin
       loop
 	 declare
@@ -543,7 +562,7 @@ is
 	    end case;
 	 end;
       end loop;
-   end Worker_Task;
+   end Do_Work;
 
    function Read_Future_Is_Live
      (Future : Read_Future) return Boolean is

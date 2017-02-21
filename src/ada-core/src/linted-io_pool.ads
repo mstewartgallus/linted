@@ -16,6 +16,7 @@ with Ada.Real_Time;
 with Interfaces.C;
 with System;
 
+private with Linted.Channels;
 with Linted.Errors;
 with Linted.KOs;
 with Linted.Triggers;
@@ -261,4 +262,9 @@ private
         Default_Value => 0;
    type Remind_Me_Future is mod Max_Remind_Me_Futures + 1 with
         Default_Value => 0;
+
+   package Writer_Event_Channels is new Channels (Writer_Event);
+   package Reader_Event_Channels is new Channels (Reader_Event);
+   package Poller_Event_Channels is new Channels (Poller_Event);
+   package Remind_Me_Event_Channels is new Channels (Remind_Me_Event);
 end Linted.IO_Pool;

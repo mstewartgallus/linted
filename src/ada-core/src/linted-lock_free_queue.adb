@@ -33,23 +33,29 @@ is
    pragma Compile_Time_Error (Ix'Last <= 1, "Queue will be empty");
    type My_Ix is new Ix with
         Default_Value => 0;
+   type Valid_Ix is new My_Ix range 1 .. My_Ix'Last with
+        Default_Value => 1;
 
    package ABA is new ABAs (My_Ix);
+   package Valid_ABA is new ABAs (Valid_Ix);
    package Aba_Atomics is new Atomics (ABA.ABA);
+   package Valid_Aba_Atomics is new Atomics (Valid_ABA.ABA);
 
    use type ABA.ABA;
    use type ABA.Tag_T;
 
-   type Element_Array is array (My_Ix range 1 .. My_Ix (Ix'Last)) of Element_T;
+   use type Valid_ABA.ABA;
+   use type Valid_ABA.Tag_T;
 
-   type Node_Array is
-     array (My_Ix range 1 .. My_Ix (Ix'Last)) of Aba_Atomics.Atomic;
+   type Element_Array is array (Valid_Ix) of Element_T;
+
+   type Node_Array is array (Valid_Ix) of Aba_Atomics.Atomic;
 
    Buf_Contents : Element_Array;
    Buf_Nodes : Node_Array;
 
-   Buf_Head : Aba_Atomics.Atomic;
-   Buf_Tail : Aba_Atomics.Atomic;
+   Buf_Head : Valid_Aba_Atomics.Atomic;
+   Buf_Tail : Valid_Aba_Atomics.Atomic;
 
    Head_Contention : Sched.Contention;
    Tail_Contention : Sched.Contention;
@@ -57,7 +63,7 @@ is
    Free_List : Aba_Atomics.Atomic;
    Free_List_Contention : Sched.Contention;
 
-   procedure Enqueue (Node : My_Ix; Element : Element_T) with
+   procedure Enqueue (Node : Valid_Ix; Element : Element_T) with
       Global =>
       (In_Out => (Buf_Nodes, Buf_Contents, Buf_Tail, Tail_Contention)),
       Depends =>
@@ -85,7 +91,7 @@ is
        Free_List =>+ (Buf_Nodes, Free_List),
        Free_List_Contention =>+ (Free_List, Buf_Nodes));
 
-   procedure Deallocate (N : My_Ix) with
+   procedure Deallocate (N : Valid_Ix) with
       Global => (In_Out => (Buf_Nodes, Free_List, Free_List_Contention)),
       Depends =>
       (Buf_Nodes =>+ (N, Free_List),
@@ -102,7 +108,7 @@ is
          return;
       end if;
 
-      Enqueue (Free, Element);
+      Enqueue (Valid_Ix (Free), Element);
       Success := True;
    end Try_Enqueue;
 
@@ -112,7 +118,7 @@ is
       Try_Dequeue (Head, Element);
       if Head /= 0 then
          Success := True;
-         Deallocate (Head);
+         Deallocate (Valid_Ix (Head));
       else
          declare
             Dummy : Element_T;
@@ -137,7 +143,7 @@ is
          end if;
          N := ABA.Element (Head);
          --  the next is safe because nodes are never deallocated
-         Aba_Atomics.Get (Buf_Nodes (N), Next);
+         Aba_Atomics.Get (Buf_Nodes (Valid_Ix (N)), Next);
          Aba_Atomics.Compare_And_Swap
            (Free_List,
             Head,
@@ -147,10 +153,10 @@ is
          Sched.Backoff (Free_List_Contention);
       end loop;
       Sched.Success (Free_List_Contention);
-      Aba_Atomics.Set (Buf_Nodes (N), ABA.Initialize (0, 0));
+      Aba_Atomics.Set (Buf_Nodes (Valid_Ix (N)), ABA.Initialize (0, 0));
    end Try_Allocate;
 
-   procedure Deallocate (N : My_Ix) is
+   procedure Deallocate (N : Valid_Ix) is
       Head : ABA.ABA;
       Success : Boolean;
    begin
@@ -163,7 +169,7 @@ is
          Aba_Atomics.Compare_And_Swap
            (Free_List,
             Head,
-            ABA.Initialize (N, ABA.Tag (Head) + 1),
+            ABA.Initialize (My_Ix (N), ABA.Tag (Head) + 1),
             Success);
          exit when Success;
          Sched.Backoff (Free_List_Contention);
@@ -171,9 +177,9 @@ is
       Sched.Success (Free_List_Contention);
    end Deallocate;
 
-   procedure Enqueue (Node : My_Ix; Element : Element_T) is
-      Tail : ABA.ABA;
-      Tail_Again : ABA.ABA;
+   procedure Enqueue (Node : Valid_Ix; Element : Element_T) is
+      Tail : Valid_ABA.ABA;
+      Tail_Again : Valid_ABA.ABA;
       Next : ABA.ABA;
       Success : Boolean;
    begin
@@ -187,9 +193,9 @@ is
 
       loop
          loop
-            Aba_Atomics.Get (Buf_Tail, Tail);
-            Aba_Atomics.Get (Buf_Nodes (ABA.Element (Tail)), Next);
-            Aba_Atomics.Get (Buf_Tail, Tail_Again);
+            Valid_Aba_Atomics.Get (Buf_Tail, Tail);
+            Aba_Atomics.Get (Buf_Nodes (Valid_ABA.Element (Tail)), Next);
+            Valid_Aba_Atomics.Get (Buf_Tail, Tail_Again);
             exit when Tail = Tail_Again;
             Sched.Backoff (Tail_Contention);
          end loop;
@@ -197,46 +203,50 @@ is
 
          if ABA.Element (Next) = 0 then
             Aba_Atomics.Compare_And_Swap
-              (Buf_Nodes (ABA.Element (Tail)),
+              (Buf_Nodes (Valid_ABA.Element (Tail)),
                Next,
-               ABA.Initialize (Node, ABA.Tag (Next) + 1),
+               ABA.Initialize (My_Ix (Node), ABA.Tag (Next) + 1),
                Success);
             exit when Success;
          else
-            Aba_Atomics.Compare_And_Swap
+            Valid_Aba_Atomics.Compare_And_Swap
               (Buf_Tail,
                Tail,
-               ABA.Initialize (ABA.Element (Next), ABA.Tag (Tail) + 1));
+               Valid_ABA.Initialize
+                 (Valid_Ix (ABA.Element (Next)),
+                  Valid_ABA.Tag (Tail) + 1));
          end if;
          Sched.Backoff (Tail_Contention);
       end loop;
       Sched.Success (Tail_Contention);
 
-      Aba_Atomics.Compare_And_Swap
+      Valid_Aba_Atomics.Compare_And_Swap
         (Buf_Tail,
          Tail,
-         ABA.Initialize (Node, ABA.Tag (Tail) + 1));
+         Valid_ABA.Initialize (Node, Valid_ABA.Tag (Tail) + 1));
    end Enqueue;
 
    procedure Try_Dequeue (Dequeued : out My_Ix; Element : out Element_T) is
-      Head : ABA.ABA;
-      Head_Again : ABA.ABA;
-      Tail : ABA.ABA;
+      Head : Valid_ABA.ABA;
+      Head_Again : Valid_ABA.ABA;
+      Tail : Valid_ABA.ABA;
       Next : ABA.ABA;
       Success : Boolean;
    begin
       loop
          loop
-            Aba_Atomics.Get (Buf_Head, Head);
-            Aba_Atomics.Get (Buf_Tail, Tail);
-            Aba_Atomics.Get (Buf_Nodes (ABA.Element (Head)), Next);
-            Aba_Atomics.Get (Buf_Head, Head_Again);
+            Valid_Aba_Atomics.Get (Buf_Head, Head);
+            Valid_Aba_Atomics.Get (Buf_Tail, Tail);
+            Aba_Atomics.Get
+              (Buf_Nodes (Valid_Ix (Valid_ABA.Element (Head))),
+               Next);
+            Valid_Aba_Atomics.Get (Buf_Head, Head_Again);
             exit when Head = Head_Again;
             Sched.Backoff (Head_Contention);
          end loop;
          Sched.Success (Head_Contention);
 
-         if ABA.Element (Head) = ABA.Element (Tail) then
+         if Valid_ABA.Element (Head) = Valid_ABA.Element (Tail) then
             if ABA.Element (Next) = 0 then
                Sched.Success (Head_Contention);
                declare
@@ -247,45 +257,51 @@ is
                Dequeued := 0;
                return;
             end if;
-            Aba_Atomics.Compare_And_Swap
+            Valid_Aba_Atomics.Compare_And_Swap
               (Buf_Tail,
                Tail,
-               ABA.Initialize (ABA.Element (Next), ABA.Tag (Tail) + 1));
+               Valid_ABA.Initialize
+                 (Valid_Ix (ABA.Element (Next)),
+                  Valid_ABA.Tag (Tail) + 1));
          else
-            Element := Buf_Contents (ABA.Element (Next));
-            Aba_Atomics.Compare_And_Swap
+            Element := Buf_Contents (Valid_Ix (ABA.Element (Next)));
+            Valid_Aba_Atomics.Compare_And_Swap
               (Buf_Head,
                Head,
-               ABA.Initialize (ABA.Element (Next), ABA.Tag (Head) + 1),
+               Valid_ABA.Initialize
+                 (Valid_Ix (ABA.Element (Next)),
+                  Valid_ABA.Tag (Head) + 1),
                Success);
             exit when Success;
          end if;
          Sched.Backoff (Head_Contention);
       end loop;
       Sched.Success (Head_Contention);
-      Dequeued := ABA.Element (Head);
+      Dequeued := My_Ix (Valid_ABA.Element (Head));
 
       declare
          N : ABA.ABA;
       begin
-         Aba_Atomics.Get (Buf_Nodes (Dequeued), N);
+         Aba_Atomics.Get (Buf_Nodes (Valid_Ix (Dequeued)), N);
          Aba_Atomics.Set
-           (Buf_Nodes (Dequeued),
+           (Buf_Nodes (Valid_Ix (Dequeued)),
             ABA.Initialize (0, ABA.Tag (N)));
       end;
    end Try_Dequeue;
 
 begin
-   for II in 1 .. My_Ix (Ix'Last) loop
+   for II in 1 .. Valid_Ix'Last loop
       Deallocate (II);
    end loop;
 
    declare
       Free : My_Ix;
+      Valid_Free : Valid_Ix;
    begin
       Try_Allocate (Free);
-      Aba_Atomics.Set (Buf_Head, ABA.Initialize (Free, 0));
-      Aba_Atomics.Set (Buf_Tail, ABA.Initialize (Free, 0));
-      Aba_Atomics.Set (Buf_Nodes (Free), ABA.Initialize (0, 0));
+      Valid_Free := Valid_Ix (Free);
+      Valid_Aba_Atomics.Set (Buf_Head, Valid_ABA.Initialize (Valid_Free, 0));
+      Valid_Aba_Atomics.Set (Buf_Tail, Valid_ABA.Initialize (Valid_Free, 0));
+      Aba_Atomics.Set (Buf_Nodes (Valid_Free), ABA.Initialize (0, 0));
    end;
 end Linted.Lock_Free_Queue;
