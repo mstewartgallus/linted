@@ -14,12 +14,22 @@
 with Linted.Atomics;
 with Linted.ABAs;
 with Linted.Sched;
-with Linted.Lock_Free_Stack;
+
 --  Simple, Fast, and Practical Non-Blocking and Blocking Concurrent
 --  Queue Algorithms from
 --  http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
 package body Linted.Lock_Free_Queue with
-     Refined_State => (State => (Tip.State, Free_List.State)) is
+     Refined_State =>
+     (State =>
+        (Buf_Nodes,
+         Buf_Contents,
+         Buf_Head,
+         Buf_Tail,
+         Head_Contention,
+         Tail_Contention,
+         Free_List_Contention,
+         Free_List))
+is
    pragma Compile_Time_Error (Ix'Last <= 1, "Queue will be empty");
    type My_Ix is new Ix with
         Default_Value => 0;
@@ -35,51 +45,74 @@ package body Linted.Lock_Free_Queue with
    type Node_Array is
      array (My_Ix range 1 .. My_Ix (Ix'Last)) of Aba_Atomics.Atomic;
 
-   package Tip with
-        Abstract_State => (State with External) is
-      procedure Enqueue (Node : My_Ix; Element : Element_T) with
-         Global => (In_Out => (State)),
-         Depends => (State => (State, Element, Node));
-      procedure Try_Dequeue
-        (Dequeued : out My_Ix;
-         Element : out Element_T) with
-         Global => (In_Out => (State)),
-         Depends => (Dequeued => (State), Element => State, State => (State));
-   end Tip;
+   Buf_Contents : Element_Array;
+   Buf_Nodes : Node_Array;
 
-   package Free_List with
-        Abstract_State => (State with External) is
-      procedure Allocate (Head : out My_Ix) with
-         Global => (In_Out => (State)),
-         Depends => (Head => (State), State => (State));
+   Buf_Head : Aba_Atomics.Atomic;
+   Buf_Tail : Aba_Atomics.Atomic;
 
-      procedure Deallocate (Head : My_Ix) with
-         Pre => Head /= 0,
-         Global => (In_Out => (State)),
-         Depends => (State => (State, Head));
-   end Free_List;
+   Head_Contention : Sched.Contention;
+   Tail_Contention : Sched.Contention;
+
+   Free_List : Aba_Atomics.Atomic;
+   Free_List_Contention : Sched.Contention;
+
+   procedure Enqueue (Node : My_Ix; Element : Element_T) with
+      Global =>
+      (In_Out => (Buf_Nodes, Buf_Contents, Buf_Tail, Tail_Contention)),
+      Depends =>
+      (Buf_Nodes =>+ (Buf_Tail, Node),
+       Buf_Contents =>+ (Node, Element),
+       Buf_Tail =>+ (Buf_Nodes, Node),
+       Tail_Contention =>+ (Node, Buf_Nodes, Buf_Tail));
+   procedure Try_Dequeue (Dequeued : out My_Ix; Element : out Element_T) with
+      Global =>
+      (Input => Buf_Contents,
+       In_Out => (Buf_Nodes, Buf_Head, Buf_Tail, Head_Contention)),
+      Depends =>
+      (Buf_Nodes =>+ (Buf_Head, Buf_Tail),
+       Buf_Head =>+ (Buf_Nodes, Buf_Tail),
+       Buf_Tail =>+ (Buf_Nodes, Buf_Head),
+       Head_Contention =>+ (Buf_Head, Buf_Nodes, Buf_Tail),
+       Element => (Buf_Contents, Buf_Head, Buf_Nodes, Buf_Tail),
+       Dequeued => (Buf_Head, Buf_Nodes, Buf_Tail));
+
+   procedure Try_Allocate (N : out My_Ix) with
+      Global => (In_Out => (Buf_Nodes, Free_List, Free_List_Contention)),
+      Depends =>
+      (N => (Free_List, Buf_Nodes),
+       Buf_Nodes =>+ Free_List,
+       Free_List =>+ (Buf_Nodes, Free_List),
+       Free_List_Contention =>+ (Free_List, Buf_Nodes));
+
+   procedure Deallocate (N : My_Ix) with
+      Global => (In_Out => (Buf_Nodes, Free_List, Free_List_Contention)),
+      Depends =>
+      (Buf_Nodes =>+ (N, Free_List),
+       Free_List =>+ N,
+       Free_List_Contention =>+ (Free_List, N));
 
    procedure Try_Enqueue (Element : Element_T; Success : out Boolean) is
       Free : My_Ix;
    begin
-      Free_List.Allocate (Free);
+      Try_Allocate (Free);
 
       if 0 = Free then
          Success := False;
          return;
       end if;
 
-      Tip.Enqueue (Free, Element);
+      Enqueue (Free, Element);
       Success := True;
    end Try_Enqueue;
 
    procedure Try_Dequeue (Element : out Element_T; Success : out Boolean) is
       Head : My_Ix;
    begin
-      Tip.Try_Dequeue (Head, Element);
+      Try_Dequeue (Head, Element);
       if Head /= 0 then
          Success := True;
-         Free_List.Deallocate (Head);
+         Deallocate (Head);
       else
          declare
             Dummy : Element_T;
@@ -90,166 +123,169 @@ package body Linted.Lock_Free_Queue with
       end if;
    end Try_Dequeue;
 
-   package body Free_List with
-        Refined_State => (State => (Stack.State)) is
-      function Is_Valid (M : My_Ix) return Boolean is (True);
-      package Stack is new Lock_Free_Stack (My_Ix, My_Ix, Is_Valid);
-
-      procedure Allocate (Head : out My_Ix) is
-         Success : Boolean;
-      begin
-         Stack.Try_Pop (Head, Success);
-         if not Success then
-            Head := 0;
-         end if;
-      end Allocate;
-
-      procedure Deallocate (Head : My_Ix) is
-         Success : Boolean;
-      begin
-         Stack.Try_Push (Head, Success);
-         pragma Assert (Success);
-      end Deallocate;
-
+   procedure Try_Allocate (N : out My_Ix) is
+      Head : ABA.ABA;
+      Next : ABA.ABA;
+      Success : Boolean;
    begin
-      for II in 1 .. My_Ix (Ix'Last) loop
-         Deallocate (II);
+      loop
+         Aba_Atomics.Get (Free_List, Head);
+         if 0 = ABA.Element (Head) then
+            N := 0;
+            Sched.Success (Free_List_Contention);
+            return;
+         end if;
+         N := ABA.Element (Head);
+         --  the next is safe because nodes are never deallocated
+         Aba_Atomics.Get (Buf_Nodes (N), Next);
+         Aba_Atomics.Compare_And_Swap
+           (Free_List,
+            Head,
+            ABA.Initialize (ABA.Element (Next), ABA.Tag (Head) + 1),
+            Success);
+         exit when Success;
+         Sched.Backoff (Free_List_Contention);
       end loop;
-   end Free_List;
+      Sched.Success (Free_List_Contention);
+      Aba_Atomics.Set (Buf_Nodes (N), ABA.Initialize (0, 0));
+   end Try_Allocate;
 
-   package body Tip with
-        Refined_State =>
-        (State =>
-           (Buf_Nodes,
-            Buf_Contents,
-            Buf_Head,
-            Buf_Tail,
-            Head_Contention,
-            Tail_Contention))
-   is
-      Buf_Contents : Element_Array;
-      Buf_Nodes : Node_Array;
+   procedure Deallocate (N : My_Ix) is
+      Head : ABA.ABA;
+      Success : Boolean;
+   begin
+      Aba_Atomics.Set (Buf_Nodes (N), ABA.Initialize (0, 0));
+      loop
+         Aba_Atomics.Get (Free_List, Head);
+         Aba_Atomics.Set
+           (Buf_Nodes (N),
+            ABA.Initialize (ABA.Element (Head), 0));
+         Aba_Atomics.Compare_And_Swap
+           (Free_List,
+            Head,
+            ABA.Initialize (N, ABA.Tag (Head) + 1),
+            Success);
+         exit when Success;
+         Sched.Backoff (Free_List_Contention);
+      end loop;
+      Sched.Success (Free_List_Contention);
+   end Deallocate;
 
-      Buf_Head : Aba_Atomics.Atomic;
-      Buf_Tail : Aba_Atomics.Atomic;
-
-      Head_Contention : Sched.Contention;
-      Tail_Contention : Sched.Contention;
-
-      procedure Enqueue (Node : My_Ix; Element : Element_T) is
-         Tail : ABA.ABA;
-         Tail_Again : ABA.ABA;
-         Next : ABA.ABA;
-         Success : Boolean;
+   procedure Enqueue (Node : My_Ix; Element : Element_T) is
+      Tail : ABA.ABA;
+      Tail_Again : ABA.ABA;
+      Next : ABA.ABA;
+      Success : Boolean;
+   begin
+      Buf_Contents (Node) := Element;
+      declare
+         N : ABA.ABA;
       begin
-         Buf_Contents (Node) := Element;
-         declare
-            N : ABA.ABA;
-         begin
-            Aba_Atomics.Get (Buf_Nodes (Node), N);
-            Aba_Atomics.Set
-              (Buf_Nodes (Node),
-               ABA.Initialize (0, ABA.Tag (N)));
-         end;
+         Aba_Atomics.Get (Buf_Nodes (Node), N);
+         Aba_Atomics.Set (Buf_Nodes (Node), ABA.Initialize (0, ABA.Tag (N)));
+      end;
 
+      loop
          loop
-            loop
-               Aba_Atomics.Get (Buf_Tail, Tail);
-               Aba_Atomics.Get (Buf_Nodes (ABA.Element (Tail)), Next);
-               Aba_Atomics.Get (Buf_Tail, Tail_Again);
-               exit when Tail = Tail_Again;
-               Sched.Backoff (Tail_Contention);
-            end loop;
-            Sched.Success (Tail_Contention);
-
-            if ABA.Element (Next) = 0 then
-               Aba_Atomics.Compare_And_Swap
-                 (Buf_Nodes (ABA.Element (Tail)),
-                  Next,
-                  ABA.Initialize (Node, ABA.Tag (Next) + 1),
-                  Success);
-               exit when Success;
-            else
-               Aba_Atomics.Compare_And_Swap
-                 (Buf_Tail,
-                  Tail,
-                  ABA.Initialize (ABA.Element (Next), ABA.Tag (Tail) + 1));
-            end if;
-	    Sched.Backoff (Tail_Contention);
+            Aba_Atomics.Get (Buf_Tail, Tail);
+            Aba_Atomics.Get (Buf_Nodes (ABA.Element (Tail)), Next);
+            Aba_Atomics.Get (Buf_Tail, Tail_Again);
+            exit when Tail = Tail_Again;
+            Sched.Backoff (Tail_Contention);
          end loop;
          Sched.Success (Tail_Contention);
 
-         Aba_Atomics.Compare_And_Swap
-           (Buf_Tail,
-            Tail,
-            ABA.Initialize (Node, ABA.Tag (Tail) + 1));
-      end Enqueue;
+         if ABA.Element (Next) = 0 then
+            Aba_Atomics.Compare_And_Swap
+              (Buf_Nodes (ABA.Element (Tail)),
+               Next,
+               ABA.Initialize (Node, ABA.Tag (Next) + 1),
+               Success);
+            exit when Success;
+         else
+            Aba_Atomics.Compare_And_Swap
+              (Buf_Tail,
+               Tail,
+               ABA.Initialize (ABA.Element (Next), ABA.Tag (Tail) + 1));
+         end if;
+         Sched.Backoff (Tail_Contention);
+      end loop;
+      Sched.Success (Tail_Contention);
 
-      procedure Try_Dequeue (Dequeued : out My_Ix; Element : out Element_T) is
-         Head : ABA.ABA;
-         Head_Again : ABA.ABA;
-         Tail : ABA.ABA;
-         Next : ABA.ABA;
-         Success : Boolean;
-      begin
+      Aba_Atomics.Compare_And_Swap
+        (Buf_Tail,
+         Tail,
+         ABA.Initialize (Node, ABA.Tag (Tail) + 1));
+   end Enqueue;
+
+   procedure Try_Dequeue (Dequeued : out My_Ix; Element : out Element_T) is
+      Head : ABA.ABA;
+      Head_Again : ABA.ABA;
+      Tail : ABA.ABA;
+      Next : ABA.ABA;
+      Success : Boolean;
+   begin
+      loop
          loop
-            loop
-               Aba_Atomics.Get (Buf_Head, Head);
-               Aba_Atomics.Get (Buf_Tail, Tail);
-               Aba_Atomics.Get (Buf_Nodes (ABA.Element (Head)), Next);
-               Aba_Atomics.Get (Buf_Head, Head_Again);
-               exit when Head = Head_Again;
-               Sched.Backoff (Head_Contention);
-            end loop;
-            Sched.Success (Head_Contention);
-
-            if ABA.Element (Head) = ABA.Element (Tail) then
-               if ABA.Element (Next) = 0 then
-                  Sched.Success (Head_Contention);
-                  declare
-                     Dummy : Element_T;
-                  begin
-                     Element := Dummy;
-                  end;
-                  Dequeued := 0;
-                  return;
-               end if;
-               Aba_Atomics.Compare_And_Swap
-                 (Buf_Tail,
-                  Tail,
-                  ABA.Initialize (ABA.Element (Next), ABA.Tag (Tail) + 1));
-            else
-               Element := Buf_Contents (ABA.Element (Next));
-               Aba_Atomics.Compare_And_Swap
-                 (Buf_Head,
-                  Head,
-                  ABA.Initialize (ABA.Element (Next), ABA.Tag (Head) + 1),
-                  Success);
-               exit when Success;
-            end if;
-	    Sched.Backoff (Head_Contention);
+            Aba_Atomics.Get (Buf_Head, Head);
+            Aba_Atomics.Get (Buf_Tail, Tail);
+            Aba_Atomics.Get (Buf_Nodes (ABA.Element (Head)), Next);
+            Aba_Atomics.Get (Buf_Head, Head_Again);
+            exit when Head = Head_Again;
+            Sched.Backoff (Head_Contention);
          end loop;
          Sched.Success (Head_Contention);
-         Dequeued := ABA.Element (Head);
 
-         declare
-            N : ABA.ABA;
-         begin
-            Aba_Atomics.Get (Buf_Nodes (Dequeued), N);
-            Aba_Atomics.Set
-              (Buf_Nodes (Dequeued),
-               ABA.Initialize (0, ABA.Tag (N)));
-         end;
-      end Try_Dequeue;
+         if ABA.Element (Head) = ABA.Element (Tail) then
+            if ABA.Element (Next) = 0 then
+               Sched.Success (Head_Contention);
+               declare
+                  Dummy : Element_T;
+               begin
+                  Element := Dummy;
+               end;
+               Dequeued := 0;
+               return;
+            end if;
+            Aba_Atomics.Compare_And_Swap
+              (Buf_Tail,
+               Tail,
+               ABA.Initialize (ABA.Element (Next), ABA.Tag (Tail) + 1));
+         else
+            Element := Buf_Contents (ABA.Element (Next));
+            Aba_Atomics.Compare_And_Swap
+              (Buf_Head,
+               Head,
+               ABA.Initialize (ABA.Element (Next), ABA.Tag (Head) + 1),
+               Success);
+            exit when Success;
+         end if;
+         Sched.Backoff (Head_Contention);
+      end loop;
+      Sched.Success (Head_Contention);
+      Dequeued := ABA.Element (Head);
 
-   begin
       declare
-         Free : My_Ix;
+         N : ABA.ABA;
       begin
-         Free_List.Allocate (Free);
-         Aba_Atomics.Set (Buf_Head, ABA.Initialize (Free, 0));
-         Aba_Atomics.Set (Buf_Tail, ABA.Initialize (Free, 0));
-         Aba_Atomics.Set (Buf_Nodes (Free), ABA.Initialize (0, 0));
+         Aba_Atomics.Get (Buf_Nodes (Dequeued), N);
+         Aba_Atomics.Set
+           (Buf_Nodes (Dequeued),
+            ABA.Initialize (0, ABA.Tag (N)));
       end;
-   end Tip;
+   end Try_Dequeue;
+
+begin
+   for II in 1 .. My_Ix (Ix'Last) loop
+      Deallocate (II);
+   end loop;
+
+   declare
+      Free : My_Ix;
+   begin
+      Try_Allocate (Free);
+      Aba_Atomics.Set (Buf_Head, ABA.Initialize (Free, 0));
+      Aba_Atomics.Set (Buf_Tail, ABA.Initialize (Free, 0));
+      Aba_Atomics.Set (Buf_Nodes (Free), ABA.Initialize (0, 0));
+   end;
 end Linted.Lock_Free_Queue;

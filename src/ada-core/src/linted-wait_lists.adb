@@ -243,5 +243,4 @@ package body Linted.Wait_Lists with
       end loop;
       Sched.Success (Free_List_Contention);
    end Deallocate;
-
 end Linted.Wait_Lists;

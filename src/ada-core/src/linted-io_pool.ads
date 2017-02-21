@@ -24,13 +24,8 @@ pragma Elaborate_All (Linted.Wait_Lists);
 
 package Linted.IO_Pool with
      Spark_Mode,
-     Initializes => (Future_Pool => Wait_Lists.State),
-     Abstract_State =>
-     ((Command_Queue with External),
-      (Event_Queue with External),
-      (Various with External),
-      (Future_Pool with External))
-is
+     Initializes => (State => Wait_Lists.State),
+     Abstract_State => (State with External) is
    pragma Elaborate_Body;
    use type Interfaces.C.int;
 
@@ -71,26 +66,22 @@ is
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
       Future : out Read_Future) with
-      Global => (In_Out => (Command_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      (Future => Future_Pool,
-       Command_Queue =>
-         + (Buf, Count, Object, Signaller, Future_Pool, Wait_Lists.State),
-       Future_Pool =>+ Wait_Lists.State,
-       Wait_Lists.State =>
-         + (Buf, Count, Command_Queue, Future_Pool, Object, Signaller)),
+      (State =>+ (Buf, Count, Object, Signaller, Wait_Lists.State),
+       Future => State,
+       Wait_Lists.State =>+ (Buf, Count, State, Object, Signaller)),
       Post => Read_Future_Is_Live (Future);
 
    procedure Read_Wait
      (Future : in out Read_Future;
       Event : out Reader_Event) with
-      Global => (In_Out => (Event_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
       (Future => null,
-       Event => (Event_Queue, Future),
-       Event_Queue =>+ Future,
-       Future_Pool =>+ (Future, Wait_Lists.State),
-       Wait_Lists.State =>+ (Future, Future_Pool)),
+       Event => (State, Future),
+       State =>+ (Future, Wait_Lists.State),
+       Wait_Lists.State =>+ (Future, State)),
       Pre => Read_Future_Is_Live (Future),
       Post => not Read_Future_Is_Live (Future);
 
@@ -98,14 +89,13 @@ is
      (Future : in out Read_Future;
       Event : out Reader_Event;
       Init : out Boolean) with
-      Global => (In_Out => (Event_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      (Future =>+ Event_Queue,
-       Event => (Event_Queue, Future),
-       Init => (Event_Queue, Future),
-       Event_Queue =>+ Future,
-       Future_Pool =>+ (Future, Event_Queue, Wait_Lists.State),
-       Wait_Lists.State =>+ (Future, Event_Queue, Future_Pool)),
+      (Future =>+ State,
+       Event => (State, Future),
+       Init => (State, Future),
+       State =>+ (Future, Wait_Lists.State),
+       Wait_Lists.State =>+ (Future, State)),
       Pre => Read_Future_Is_Live (Future),
       Post =>
       (if Init then not Read_Future_Is_Live (Future)
@@ -125,26 +115,22 @@ is
       Count : Interfaces.C.size_t;
       Signaller : Triggers.Signaller;
       Future : out Write_Future) with
-      Global => (In_Out => (Command_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      (Future => Future_Pool,
-       Command_Queue =>
-         + (Buf, Count, Future_Pool, Object, Signaller, Wait_Lists.State),
-       Future_Pool =>+ Wait_Lists.State,
-       Wait_Lists.State =>
-         + (Buf, Count, Command_Queue, Future_Pool, Object, Signaller)),
+      (Future => State,
+       State =>+ (Buf, Count, Object, Signaller, Wait_Lists.State),
+       Wait_Lists.State =>+ (Buf, Count, State, Object, Signaller)),
       Post => Write_Future_Is_Live (Future);
 
    procedure Write_Wait
      (Future : in out Write_Future;
       Event : out Writer_Event) with
-      Global => (In_Out => (Event_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
       (Future => null,
-       Event => (Event_Queue, Future),
-       Event_Queue =>+ Future,
-       Future_Pool =>+ (Future, Wait_Lists.State),
-       Wait_Lists.State =>+ (Future, Future_Pool)),
+       Event => (State, Future),
+       State =>+ (Future, Wait_Lists.State),
+       Wait_Lists.State =>+ (Future, State)),
       Pre => Write_Future_Is_Live (Future),
       Post => not Write_Future_Is_Live (Future);
 
@@ -152,14 +138,13 @@ is
      (Future : in out Write_Future;
       Event : out Writer_Event;
       Init : out Boolean) with
-      Global => (In_Out => (Event_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      (Future =>+ Event_Queue,
-       Event => (Event_Queue, Future),
-       Init => (Event_Queue, Future),
-       Event_Queue =>+ Future,
-       Future_Pool =>+ (Future, Event_Queue, Wait_Lists.State),
-       Wait_Lists.State =>+ (Future, Event_Queue, Future_Pool)),
+      (Future =>+ State,
+       Event => (State, Future),
+       Init => (State, Future),
+       State =>+ (Future, State, Wait_Lists.State),
+       Wait_Lists.State =>+ (Future, State)),
       Pre => Write_Future_Is_Live (Future),
       Post =>
       (if Init then not Write_Future_Is_Live (Future)
@@ -178,26 +163,22 @@ is
       Events : Poller_Event_Set;
       Signaller : Triggers.Signaller;
       Future : out Poll_Future) with
-      Global => (In_Out => (Command_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      (Future => Future_Pool,
-       Command_Queue =>
-         + (Events, Future_Pool, Object, Signaller, Wait_Lists.State),
-       Future_Pool =>+ Wait_Lists.State,
-       Wait_Lists.State =>
-         + (Events, Command_Queue, Future_Pool, Object, Signaller)),
+      (Future => State,
+       State =>+ (Events, State, Object, Signaller, Wait_Lists.State),
+       Wait_Lists.State =>+ (Events, State, Object, Signaller)),
       Post => Poll_Future_Is_Live (Future);
 
    procedure Poll_Wait
      (Future : in out Poll_Future;
       Event : out Poller_Event) with
-      Global => (In_Out => (Event_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
       (Future => null,
-       Event => (Event_Queue, Future),
-       Event_Queue =>+ Future,
-       Future_Pool =>+ (Future, Wait_Lists.State),
-       Wait_Lists.State =>+ (Future, Future_Pool)),
+       Event => (State, Future),
+       State =>+ (Future, Wait_Lists.State),
+       Wait_Lists.State =>+ (Future, State)),
       Pre => Poll_Future_Is_Live (Future),
       Post => not Poll_Future_Is_Live (Future);
 
@@ -205,14 +186,13 @@ is
      (Future : in out Poll_Future;
       Event : out Poller_Event;
       Init : out Boolean) with
-      Global => (In_Out => (Event_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      (Future =>+ Event_Queue,
-       Event => (Event_Queue, Future),
-       Init => (Event_Queue, Future),
-       Event_Queue =>+ Future,
-       Future_Pool =>+ (Future, Event_Queue, Wait_Lists.State),
-       Wait_Lists.State =>+ (Future, Event_Queue, Future_Pool)),
+      (Future =>+ State,
+       Event => (State, Future),
+       Init => (State, Future),
+       State =>+ (Future, Wait_Lists.State),
+       Wait_Lists.State =>+ (Future, State)),
       Pre => Poll_Future_Is_Live (Future),
       Post =>
       (if Init then not Poll_Future_Is_Live (Future)
@@ -231,24 +211,22 @@ is
      (Time : Ada.Real_Time.Time;
       Signaller : Triggers.Signaller;
       Future : out Remind_Me_Future) with
-      Global => (In_Out => (Command_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      (Future => Future_Pool,
-       Command_Queue =>+ (Signaller, Future_Pool, Time, Wait_Lists.State),
-       Future_Pool =>+ Wait_Lists.State,
-       Wait_Lists.State =>+ (Command_Queue, Future_Pool, Signaller, Time)),
+      (Future => State,
+       State =>+ (Signaller, Time, Wait_Lists.State),
+       Wait_Lists.State =>+ (State, Signaller, Time)),
       Post => Remind_Me_Future_Is_Live (Future);
 
    procedure Remind_Me_Wait
      (Future : in out Remind_Me_Future;
       Event : out Remind_Me_Event) with
-      Global => (In_Out => (Event_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
       (Future => null,
-       Event => (Future, Event_Queue),
-       Event_Queue =>+ Future,
-       Future_Pool =>+ (Future, Wait_Lists.State),
-       Wait_Lists.State =>+ (Future, Future_Pool)),
+       Event => (Future, State),
+       State =>+ (Future, Wait_Lists.State),
+       Wait_Lists.State =>+ (Future, State)),
       Pre => Remind_Me_Future_Is_Live (Future),
       Post => not Remind_Me_Future_Is_Live (Future);
 
@@ -256,14 +234,13 @@ is
      (Future : in out Remind_Me_Future;
       Event : out Remind_Me_Event;
       Init : out Boolean) with
-      Global => (In_Out => (Event_Queue, Future_Pool, Wait_Lists.State)),
+      Global => (In_Out => (State, Wait_Lists.State)),
       Depends =>
-      (Future =>+ Event_Queue,
-       Event => (Future, Event_Queue),
-       Init => (Event_Queue, Future),
-       Event_Queue =>+ Future,
-       Future_Pool =>+ (Future, Event_Queue, Wait_Lists.State),
-       Wait_Lists.State =>+ (Future, Event_Queue, Future_Pool)),
+      (Future =>+ State,
+       Event => (Future, State),
+       Init => (State, Future),
+       State =>+ (Future, Wait_Lists.State),
+       Wait_Lists.State =>+ (Future, State)),
       Pre => Remind_Me_Future_Is_Live (Future),
       Post =>
       (if Init then not Remind_Me_Future_Is_Live (Future)

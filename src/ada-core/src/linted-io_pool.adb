@@ -23,13 +23,16 @@ with Linted.Stack;
 with Linted.Last_Chance;
 
 package body Linted.IO_Pool with
-  Refined_State => (Command_Queue => (My_Command_Queue.State),
-		    Event_Queue => (Read_Future_Channels,
-				    Write_Future_Channels,
-				    Poll_Future_Channels,
-				    Remind_Me_Future_Channels),
-		    Various => Worker_Tasks,
-		    Future_Pool => (Spare_Read_Futures.State, Spare_Write_Futures.State, Spare_Poll_Futures.State, Spare_Remind_Me_Futures.State))
+  Refined_State => (State => (My_Command_Queue.State,
+			      Read_Future_Channels,
+			      Write_Future_Channels,
+			      Poll_Future_Channels,
+			      Remind_Me_Future_Channels,
+			      Worker_Tasks,
+			      Spare_Read_Futures.State,
+			      Spare_Write_Futures.State,
+			      Spare_Poll_Futures.State,
+			      Spare_Remind_Me_Futures.State))
 is
    package C renames Interfaces.C;
 
@@ -128,7 +131,6 @@ is
 						    Remind_Me_Future_Channels,
 						    Wait_Lists.State
    						   )),
-     Spark_Mode,
      Depends => (My_Command_Queue.State =>+ Wait_Lists.State,
    		 Read_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
    		 Write_Future_Channels =>+ (Wait_Lists.State, My_Command_Queue.State),
@@ -140,9 +142,8 @@ is
 		 null => Ada.Real_Time.Clock_Time
    		);
 
-   type Worker_Array is array (1 .. 16) of Worker_Task;
-
-   Worker_Tasks : Worker_Array;
+   type Worker_Task_Array is array (Integer range <>) of Worker_Task;
+   Worker_Tasks : Worker_Task_Array (1 .. 16);
 
    package Writer_Event_Channels is new Channels (Writer_Event);
    package Reader_Event_Channels is new Channels (Reader_Event);
@@ -162,23 +163,6 @@ is
    Write_Future_Channels : Write_Future_Channels_Array;
    Poll_Future_Channels : Poller_Future_Channels_Array;
    Remind_Me_Future_Channels : Remind_Me_Future_Channels_Array;
-
-   procedure Do_Work with Spark_Mode,
-     Global => (In_Out => (My_Command_Queue.State,
-			   Read_Future_Channels,
-			   Write_Future_Channels,
-			   Poll_Future_Channels,
-			   Remind_Me_Future_Channels,
-			   Wait_Lists.State
-			  ),
-	       Input => Ada.Real_Time.Clock_Time),
-     Depends => (My_Command_Queue.State =>+ Wait_Lists.State,
-   		 Read_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
-   		 Write_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
-   		 Poll_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
-		 Remind_Me_Future_Channels =>+ (My_Command_Queue.State, Wait_Lists.State),
-		 Wait_Lists.State =>+ My_Command_Queue.State,
-		null => Ada.Real_Time.Clock_Time);
 
    procedure Do_Write (W : Write_Command) with
      Global => (In_Out => Write_Future_Channels),
@@ -536,7 +520,7 @@ is
       end if;
    end Do_Remind_Me;
 
-   procedure Do_Work with Spark_Mode is
+   task body Worker_Task is
    begin
       loop
 	 declare
@@ -559,11 +543,6 @@ is
 	    end case;
 	 end;
       end loop;
-   end Do_Work;
-
-   task body Worker_Task is
-   begin
-      Do_Work;
    end Worker_Task;
 
    function Read_Future_Is_Live
