@@ -21,20 +21,22 @@ package body Linted.XAtomics with
 
    function Real_To is new Ada.Unchecked_Conversion
      (Source => Element_T,
-      Target => Atomic);
+      Target => Dummy);
    function Real_From is new Ada.Unchecked_Conversion
-     (Source => Atomic,
+     (Source => Dummy,
       Target => Element_T);
 
-   function To (Element : Element_T) return Atomic is (Real_To (Element));
-   function From (A : Atomic) return Element_T is (Real_From (A));
+   function To
+     (Element : Element_T) return Atomic is
+     (Atomic'(Value => Real_To (Element)));
+   function From (A : Atomic) return Element_T is (Real_From (A.Value));
 
    ATOMIC_SEQ_CST : constant := 5;
 
    function Atomic_Compare_Exchange
      (Ptr : System.Address;
       Expected : System.Address;
-      Desired : Atomic;
+      Desired : Dummy;
       Weak : Boolean;
       Success_Memmodel : Interfaces.C.int;
       Failure_Memmodel : Interfaces.C.int) return Boolean;
@@ -45,8 +47,8 @@ package body Linted.XAtomics with
 
    function Atomic_Exchange
      (Ptr : System.Address;
-      New_Value : Atomic;
-      Memmodel : Interfaces.C.int) return Atomic;
+      New_Value : Dummy;
+      Memmodel : Interfaces.C.int) return Dummy;
    pragma Import (Intrinsic, Atomic_Exchange, "__atomic_exchange_8");
 
    procedure Set (A : in out Atomic; Element : Element_T) is
@@ -65,13 +67,13 @@ package body Linted.XAtomics with
       New_Element : Element_T;
       Success : out Boolean)
    is
-      Expected : Atomic := To (Old_Element);
+      Expected : Dummy := Real_To (Old_Element);
    begin
       Success :=
         Atomic_Compare_Exchange
-          (A'Address,
+          (A.Value'Address,
            Expected'Address,
-           To (New_Element),
+           Real_To (New_Element),
            False,
            ATOMIC_SEQ_CST,
            ATOMIC_SEQ_CST);
@@ -82,14 +84,14 @@ package body Linted.XAtomics with
       Old_Element : Element_T;
       New_Element : Element_T)
    is
-      Expected : Atomic := To (Old_Element);
+      Expected : Dummy := Real_To (Old_Element);
       Unused : Boolean;
    begin
       Unused :=
         Atomic_Compare_Exchange
-          (A'Address,
+          (A.Value'Address,
            Expected'Address,
-           To (New_Element),
+           Real_To (New_Element),
            False,
            ATOMIC_SEQ_CST,
            ATOMIC_SEQ_CST);
@@ -103,6 +105,10 @@ package body Linted.XAtomics with
    is
    begin
       Old_Element :=
-        From (Atomic_Exchange (A'Address, To (New_Element), ATOMIC_SEQ_CST));
+        Real_From
+          (Atomic_Exchange
+             (A.Value'Address,
+              Real_To (New_Element),
+              ATOMIC_SEQ_CST));
    end Swap;
 end Linted.XAtomics;

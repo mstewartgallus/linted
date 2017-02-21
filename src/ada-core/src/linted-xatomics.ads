@@ -17,7 +17,7 @@ package Linted.XAtomics with
    Spark_Mode is
    pragma Pure;
 
-   type Atomic is private;
+   type Atomic is limited private;
 
    function To (Element : Element_T) return Atomic with
       Inline_Always;
@@ -62,6 +62,9 @@ private
         Default_Value => 0;
    pragma Convention (C, Dummy);
 
-   type Atomic is new Dummy;
+   -- A record has to be used so that it is passed by pointer
+   type Atomic is record
+      Value : Dummy;
+   end record;
    pragma Convention (C, Atomic);
 end Linted.XAtomics;

@@ -68,7 +68,7 @@ package body Linted.Wait_Lists with
       Trigger : Suspend_Access;
       Success : Boolean;
    begin
-      W.Triggered := Boolean_Atomics.To (True);
+      Boolean_Atomics.Set (W.Triggered, True);
 
       loop
          Dequeue (W.Q, Trigger);
@@ -80,7 +80,7 @@ package body Linted.Wait_Lists with
    procedure Signal (W : in out Wait_List) is
       Trigger : Suspend_Access;
    begin
-      W.Triggered := Boolean_Atomics.To (True);
+      Boolean_Atomics.Set (W.Triggered, True);
 
       Dequeue (W.Q, Trigger);
       if Trigger /= null then
@@ -93,9 +93,9 @@ package body Linted.Wait_Lists with
    begin
       --  Can't use the free list
       N := new Node;
-      N.Next := Node_Access_Atomics.To (Tags.To (null, 0));
-      Q.Head := Node_Access_Atomics.To (Tags.To (N, 0));
-      Q.Tail := Node_Access_Atomics.To (Tags.To (N, 0));
+      Node_Access_Atomics.Set (N.Next, Tags.To (null, 0));
+      Node_Access_Atomics.Set (Q.Head, Tags.To (N, 0));
+      Node_Access_Atomics.Set (Q.Tail, Tags.To (N, 0));
    end Initialize;
 
    procedure Enqueue (Q : in out Queue; Trigger : Suspend_Access) is
@@ -111,15 +111,15 @@ package body Linted.Wait_Lists with
       declare
          N : Tags.Tagged_Access;
       begin
-         N := Node_Access_Atomics.From (Node.Next);
-         Node.Next := Node_Access_Atomics.To (Tags.To (null, Tags.Tag (N)));
+         Node_Access_Atomics.Get (Node.Next, N);
+	 Node_Access_Atomics.Set (Node.Next, Tags.To (null, Tags.Tag (N)));
       end;
 
       loop
          loop
-            Tail := Node_Access_Atomics.From (Q.Tail);
-            Next := Node_Access_Atomics.From (Tags.From (Tail).Next);
-            Tail_Again := Node_Access_Atomics.From (Q.Tail);
+            Node_Access_Atomics.Get (Q.Tail, Tail);
+            Node_Access_Atomics.Get (Tags.From (Tail).Next, Next);
+            Node_Access_Atomics.Get (Q.Tail, Tail_Again);
             exit when Tail = Tail_Again;
             Sched.Backoff (Q.Tail_Contention);
          end loop;
@@ -158,10 +158,10 @@ package body Linted.Wait_Lists with
    begin
       loop
          loop
-            Head := Node_Access_Atomics.From (Q.Head);
-            Tail := Node_Access_Atomics.From (Q.Tail);
-            Next := Node_Access_Atomics.From (Tags.From (Head).Next);
-            Head_Again := Node_Access_Atomics.From (Q.Head);
+            Node_Access_Atomics.Get (Q.Head, Head);
+            Node_Access_Atomics.Get (Q.Tail, Tail);
+            Node_Access_Atomics.Get (Tags.From (Head).Next, Next);
+            Node_Access_Atomics.Get (Q.Head, Head_Again);
             exit when Head = Head_Again;
             Sched.Backoff (Q.Head_Contention);
          end loop;
@@ -204,7 +204,7 @@ package body Linted.Wait_Lists with
       Success : Boolean;
    begin
       loop
-         Head := Node_Access_Atomics.From (Free_List);
+         Node_Access_Atomics.Get (Free_List, Head);
          if null = Tags.From (Head) then
             N := new Node;
             Sched.Success (Free_List_Contention);
@@ -212,7 +212,7 @@ package body Linted.Wait_Lists with
          end if;
          N := Tags.From (Head);
          --  .Next is safe because nodes are never deallocated
-         Next := Node_Access_Atomics.From (N.Next);
+         Node_Access_Atomics.Get (N.Next, Next);
          Node_Access_Atomics.Compare_And_Swap
            (Free_List,
             Head,
@@ -222,17 +222,17 @@ package body Linted.Wait_Lists with
          Sched.Backoff (Free_List_Contention);
       end loop;
       Sched.Success (Free_List_Contention);
-      N.Next := Node_Access_Atomics.To (Tags.To (null, 0));
+      Node_Access_Atomics.Set (N.Next, Tags.To (null, 0));
    end Allocate;
 
    procedure Deallocate (N : Node_Access) is
       Head : Tags.Tagged_Access;
       Success : Boolean;
    begin
-      N.Next := Node_Access_Atomics.To (Tags.To (null, 0));
+      Node_Access_Atomics.Set (N.Next, Tags.To (null, 0));
       loop
-         Head := Node_Access_Atomics.From (Free_List);
-         N.Next := Node_Access_Atomics.To (Tags.To (Tags.From (Head), 0));
+         Node_Access_Atomics.Get (Free_List, Head);
+         Node_Access_Atomics.Set (N.Next, Tags.To (Tags.From (Head), 0));
          Node_Access_Atomics.Compare_And_Swap
            (Free_List,
             Head,
