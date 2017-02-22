@@ -29,16 +29,64 @@ package body Linted.XAtomics with
        Element_T'Size = 64),
       "Nonatomic size");
 
+   --  We only use this when the element is the right size so it is safe.
+   pragma Warnings (Off);
    function To_8 is new Ada.Unchecked_Conversion (Element_T, Unsigned_8);
    function From_8 is new Ada.Unchecked_Conversion (Unsigned_8, Element_T);
+
    function To_16 is new Ada.Unchecked_Conversion (Element_T, Unsigned_16);
    function From_16 is new Ada.Unchecked_Conversion (Unsigned_16, Element_T);
+
    function To_32 is new Ada.Unchecked_Conversion (Element_T, Unsigned_32);
    function From_32 is new Ada.Unchecked_Conversion (Unsigned_32, Element_T);
+
    function To_64 is new Ada.Unchecked_Conversion (Element_T, Unsigned_64);
    function From_64 is new Ada.Unchecked_Conversion (Unsigned_64, Element_T);
+   pragma Warnings (On);
 
-   ATOMIC_SEQ_CST : constant := 5;
+   procedure Atomic_Store_1
+     (Ptr : System.Address;
+      Val : Unsigned_8;
+      Memmodel : Interfaces.C.int);
+   pragma Import (Intrinsic, Atomic_Store_1, "__atomic_store_1");
+
+   procedure Atomic_Store_2
+     (Ptr : System.Address;
+      Val : Unsigned_16;
+      Memmodel : Interfaces.C.int);
+   pragma Import (Intrinsic, Atomic_Store_2, "__atomic_store_2");
+
+   procedure Atomic_Store_4
+     (Ptr : System.Address;
+      Val : Unsigned_32;
+      Memmodel : Interfaces.C.int);
+   pragma Import (Intrinsic, Atomic_Store_4, "__atomic_store_4");
+
+   procedure Atomic_Store_8
+     (Ptr : System.Address;
+      Val : Unsigned_64;
+      Memmodel : Interfaces.C.int);
+   pragma Import (Intrinsic, Atomic_Store_8, "__atomic_store_8");
+
+   function Atomic_Load_1
+     (Ptr : System.Address;
+      Memmodel : Interfaces.C.int) return Unsigned_8;
+   pragma Import (Intrinsic, Atomic_Load_1, "__atomic_load_1");
+
+   function Atomic_Load_2
+     (Ptr : System.Address;
+      Memmodel : Interfaces.C.int) return Unsigned_16;
+   pragma Import (Intrinsic, Atomic_Load_2, "__atomic_load_2");
+
+   function Atomic_Load_4
+     (Ptr : System.Address;
+      Memmodel : Interfaces.C.int) return Unsigned_32;
+   pragma Import (Intrinsic, Atomic_Load_4, "__atomic_load_4");
+
+   function Atomic_Load_8
+     (Ptr : System.Address;
+      Memmodel : Interfaces.C.int) return Unsigned_64;
+   pragma Import (Intrinsic, Atomic_Load_8, "__atomic_load_8");
 
    function Atomic_Compare_Exchange_1
      (Ptr : System.Address;
@@ -112,23 +160,57 @@ package body Linted.XAtomics with
       Memmodel : Interfaces.C.int) return Unsigned_64;
    pragma Import (Intrinsic, Atomic_Exchange_8, "__atomic_exchange_8");
 
-   procedure Set (A : in out Atomic; Element : Element_T) is
+   procedure Store
+     (A : in out Atomic;
+      Element : Element_T;
+      Memory_Model : Memory_Order := Memory_Order_Seq_Cst)
+   is
+      M : constant Interfaces.C.int := Memory_Order'Pos (Memory_Model);
    begin
-      A.Value := Element;
-   end Set;
+      case A.Value'Size is
+         when 8 =>
+            Atomic_Store_1 (A.Value'Address, To_8 (Element), M);
+         when 16 =>
+            Atomic_Store_2 (A.Value'Address, To_16 (Element), M);
+         when 32 =>
+            Atomic_Store_4 (A.Value'Address, To_32 (Element), M);
+         when 64 =>
+            Atomic_Store_8 (A.Value'Address, To_64 (Element), M);
+         when others =>
+            raise Program_Error;
+      end case;
+   end Store;
 
-   procedure Get (A : in out Atomic; Element : out Element_T) is
+   function Load
+     (A : Atomic;
+      Memory_Model : Memory_Order := Memory_Order_Seq_Cst) return Element_T
+   is
+      M : constant Interfaces.C.int := Memory_Order'Pos (Memory_Model);
    begin
-      Element := A.Value;
-   end Get;
+      case A.Value'Size is
+         when 8 =>
+            return From_8 (Atomic_Load_1 (A.Value'Address, M));
+         when 16 =>
+            return From_16 (Atomic_Load_2 (A.Value'Address, M));
+         when 32 =>
+            return From_32 (Atomic_Load_4 (A.Value'Address, M));
+         when 64 =>
+            return From_64 (Atomic_Load_8 (A.Value'Address, M));
+         when others =>
+            raise Program_Error;
+      end case;
+   end Load;
 
-   procedure Compare_And_Swap
+   procedure Compare_Exchange_Weak
      (A : in out Atomic;
       Old_Element : Element_T;
       New_Element : Element_T;
-      Success : out Boolean)
+      Success : out Boolean;
+      Success_Memory_Model : Memory_Order := Memory_Order_Seq_Cst;
+      Failure_Memory_Model : Memory_Order := Memory_Order_Seq_Cst)
    is
-      New_Value : Element_T := New_Element;
+      M : constant Interfaces.C.int := Memory_Order'Pos (Success_Memory_Model);
+      N : constant Interfaces.C.int := Memory_Order'Pos (Failure_Memory_Model);
       Expected : Element_T := Old_Element;
    begin
       case A.Value'Size is
@@ -137,50 +219,54 @@ package body Linted.XAtomics with
               Atomic_Compare_Exchange_1
                 (A.Value'Address,
                  Expected'Address,
-                 To_8 (New_Value),
-                 False,
-                 ATOMIC_SEQ_CST,
-                 ATOMIC_SEQ_CST);
+                 To_8 (New_Element),
+                 True,
+                 M,
+                 N);
          when 16 =>
             Success :=
               Atomic_Compare_Exchange_2
                 (A.Value'Address,
                  Expected'Address,
-                 To_16 (New_Value),
-                 False,
-                 ATOMIC_SEQ_CST,
-                 ATOMIC_SEQ_CST);
+                 To_16 (New_Element),
+                 True,
+                 M,
+                 N);
          when 32 =>
             Success :=
               Atomic_Compare_Exchange_4
                 (A.Value'Address,
                  Expected'Address,
-                 To_32 (New_Value),
-                 False,
-                 ATOMIC_SEQ_CST,
-                 ATOMIC_SEQ_CST);
+                 To_32 (New_Element),
+                 True,
+                 M,
+                 N);
          when 64 =>
             Success :=
               Atomic_Compare_Exchange_8
                 (A.Value'Address,
                  Expected'Address,
-                 To_64 (New_Value),
-                 False,
-                 ATOMIC_SEQ_CST,
-                 ATOMIC_SEQ_CST);
+                 To_64 (New_Element),
+                 True,
+                 M,
+                 N);
          when others =>
             raise Program_Error;
       end case;
-   end Compare_And_Swap;
+      pragma Unused (Success);
+   end Compare_Exchange_Weak;
 
-   procedure Compare_And_Swap
+   procedure Compare_Exchange_Strong
      (A : in out Atomic;
       Old_Element : Element_T;
-      New_Element : Element_T)
+      New_Element : Element_T;
+      Success : out Boolean;
+      Success_Memory_Model : Memory_Order := Memory_Order_Seq_Cst;
+      Failure_Memory_Model : Memory_Order := Memory_Order_Seq_Cst)
    is
-      New_Value : Dummy := New_Element;
-      Expected : Dummy := Old_Element;
-      Success : Boolean;
+      M : constant Interfaces.C.int := Memory_Order'Pos (Success_Memory_Model);
+      N : constant Interfaces.C.int := Memory_Order'Pos (Failure_Memory_Model);
+      Expected : Element_T := Old_Element;
    begin
       case A.Value'Size is
          when 8 =>
@@ -188,83 +274,71 @@ package body Linted.XAtomics with
               Atomic_Compare_Exchange_1
                 (A.Value'Address,
                  Expected'Address,
-                 To_8 (New_Value),
+                 To_8 (New_Element),
                  False,
-                 ATOMIC_SEQ_CST,
-                 ATOMIC_SEQ_CST);
+                 M,
+                 N);
          when 16 =>
             Success :=
               Atomic_Compare_Exchange_2
                 (A.Value'Address,
                  Expected'Address,
-                 To_16 (New_Value),
+                 To_16 (New_Element),
                  False,
-                 ATOMIC_SEQ_CST,
-                 ATOMIC_SEQ_CST);
+                 M,
+                 N);
          when 32 =>
             Success :=
               Atomic_Compare_Exchange_4
                 (A.Value'Address,
                  Expected'Address,
-                 To_32 (New_Value),
+                 To_32 (New_Element),
                  False,
-                 ATOMIC_SEQ_CST,
-                 ATOMIC_SEQ_CST);
+                 M,
+                 N);
          when 64 =>
             Success :=
               Atomic_Compare_Exchange_8
                 (A.Value'Address,
                  Expected'Address,
-                 To_64 (New_Value),
+                 To_64 (New_Element),
                  False,
-                 ATOMIC_SEQ_CST,
-                 ATOMIC_SEQ_CST);
+                 M,
+                 N);
          when others =>
             raise Program_Error;
       end case;
       pragma Unused (Success);
-   end Compare_And_Swap;
+   end Compare_Exchange_Strong;
 
-   procedure Swap
+   procedure Exchange
      (A : in out Atomic;
       Old_Element : out Element_T;
-      New_Element : Element_T)
+      New_Element : Element_T;
+      Memory_Model : Memory_Order := Memory_Order_Seq_Cst)
    is
-      Result : Dummy;
-      New_Value : Dummy := New_Element;
+      M : constant Interfaces.C.int := Memory_Order'Pos (Memory_Model);
+      Result : Element_T;
    begin
       case A.Value'Size is
          when 8 =>
-            Result :=
+            Old_Element :=
               From_8
-                (Atomic_Exchange_1
-                   (A.Value'Address,
-                    To_8 (New_Value),
-                    ATOMIC_SEQ_CST));
+                (Atomic_Exchange_1 (A.Value'Address, To_8 (New_Element), M));
          when 16 =>
-            Result :=
+            Old_Element :=
               From_16
-                (Atomic_Exchange_2
-                   (A.Value'Address,
-                    To_16 (New_Value),
-                    ATOMIC_SEQ_CST));
+                (Atomic_Exchange_2 (A.Value'Address, To_16 (New_Element), M));
          when 32 =>
-            Result :=
+            Old_Element :=
               From_32
-                (Atomic_Exchange_4
-                   (A.Value'Address,
-                    To_32 (New_Value),
-                    ATOMIC_SEQ_CST));
+                (Atomic_Exchange_4 (A.Value'Address, To_32 (New_Element), M));
          when 64 =>
-            Result :=
+            Old_Element :=
               From_64
-                (Atomic_Exchange_8
-                   (A.Value'Address,
-                    To_64 (New_Value),
-                    ATOMIC_SEQ_CST));
+                (Atomic_Exchange_8 (A.Value'Address, To_64 (New_Element), M));
          when others =>
             raise Program_Error;
       end case;
-      Old_Element := Result;
-   end Swap;
+   end Exchange;
 end Linted.XAtomics;

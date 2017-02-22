@@ -19,45 +19,70 @@ package Linted.XAtomics with
 
    type Atomic is limited private;
 
-   procedure Set (A : in out Atomic; Element : Element_T) with
+   type Memory_Order is
+     (Memory_Order_Relaxed,
+      Memory_Order_Consume,
+      Memory_Order_Acquire,
+      Memory_Order_Release,
+      Memory_Order_Acq_Rel,
+      Memory_Order_Seq_Cst);
+
+   procedure Store
+     (A : in out Atomic;
+      Element : Element_T;
+      Memory_Model : Memory_Order := Memory_Order_Seq_Cst) with
       Inline_Always,
       Global => null,
-      Depends => (A =>+ Element);
-   procedure Get (A : in out Atomic; Element : out Element_T) with
+      Depends => (A =>+ (Element, Memory_Model));
+   function Load
+     (A : Atomic;
+      Memory_Model : Memory_Order :=
+        Memory_Order_Seq_Cst)
+      return Element_T with
       Inline_Always,
       Global => null,
-      Depends => (Element => A, A => A);
-   procedure Compare_And_Swap
+      Depends => (Load'Result => (A, Memory_Model));
+   procedure Compare_Exchange_Strong
      (A : in out Atomic;
       Old_Element : Element_T;
       New_Element : Element_T;
-      Success : out Boolean) with
+      Success : out Boolean;
+      Success_Memory_Model : Memory_Order := Memory_Order_Seq_Cst;
+      Failure_Memory_Model : Memory_Order := Memory_Order_Seq_Cst) with
       Inline_Always,
       Global => null,
       Depends =>
-      (Success => (A, Old_Element),
-       A =>+ (Old_Element, New_Element));
-   procedure Compare_And_Swap
+      (Success => (A, Old_Element, Success_Memory_Model),
+       A =>+ (Old_Element, New_Element, Failure_Memory_Model));
+   procedure Compare_Exchange_Weak
      (A : in out Atomic;
       Old_Element : Element_T;
-      New_Element : Element_T) with
+      New_Element : Element_T;
+      Success : out Boolean;
+      Success_Memory_Model : Memory_Order := Memory_Order_Seq_Cst;
+      Failure_Memory_Model : Memory_Order := Memory_Order_Seq_Cst) with
       Inline_Always,
       Global => null,
-      Depends => (A =>+ (Old_Element, New_Element));
-   procedure Swap
+      Depends =>
+      (Success => (A, Old_Element, Success_Memory_Model),
+       A =>+ (Old_Element, New_Element, Failure_Memory_Model));
+
+   procedure Exchange
      (A : in out Atomic;
       Old_Element : out Element_T;
-      New_Element : Element_T) with
+      New_Element : Element_T;
+      Memory_Model : Memory_Order := Memory_Order_Seq_Cst) with
       Inline_Always,
       Global => null,
-      Depends => (Old_Element => A, A =>+ New_Element);
+      Depends =>
+      (Old_Element => (A, Memory_Model),
+       A =>+ (New_Element, Memory_Model));
 private
-   subtype Dummy is Element_T;
-
    -- A record has to be used so that it is passed by pointer
    type Atomic is record
-      Value : Dummy with
+      Value : Element_T with
          Atomic;
-   end record;
+   end record with
+      Volatile;
    pragma Convention (C, Atomic);
 end Linted.XAtomics;

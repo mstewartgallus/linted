@@ -51,7 +51,7 @@ package body Linted.Wait_Lists with
    procedure Wait (W : in out Wait_List) is
       Is_Triggered : Default_False;
    begin
-      Boolean_Atomics.Swap (W.Triggered, Is_Triggered, False);
+      Boolean_Atomics.Exchange (W.Triggered, Is_Triggered, False);
       if Is_Triggered then
          return;
       end if;
@@ -68,7 +68,7 @@ package body Linted.Wait_Lists with
       Trigger : Suspend_Access;
       Success : Boolean;
    begin
-      Boolean_Atomics.Set (W.Triggered, True);
+      Boolean_Atomics.Store (W.Triggered, True);
 
       loop
          Dequeue (W.Q, Trigger);
@@ -80,7 +80,7 @@ package body Linted.Wait_Lists with
    procedure Signal (W : in out Wait_List) is
       Trigger : Suspend_Access;
    begin
-      Boolean_Atomics.Set (W.Triggered, True);
+      Boolean_Atomics.Store (W.Triggered, True);
 
       Dequeue (W.Q, Trigger);
       if Trigger /= null then
@@ -93,9 +93,9 @@ package body Linted.Wait_Lists with
    begin
       --  Can't use the free list
       N := new Node;
-      Node_Access_Atomics.Set (N.Next, Tags.To (null, 0));
-      Node_Access_Atomics.Set (Q.Head, Tags.To (N, 0));
-      Node_Access_Atomics.Set (Q.Tail, Tags.To (N, 0));
+      Node_Access_Atomics.Store (N.Next, Tags.To (null, 0));
+      Node_Access_Atomics.Store (Q.Head, Tags.To (N, 0));
+      Node_Access_Atomics.Store (Q.Tail, Tags.To (N, 0));
    end Initialize;
 
    procedure Enqueue (Q : in out Queue; Trigger : Suspend_Access) is
@@ -104,6 +104,7 @@ package body Linted.Wait_Lists with
       Tail_Again : Tags.Tagged_Access;
       Next : Tags.Tagged_Access;
       Success : Boolean;
+      Unused : Boolean;
    begin
       Allocate (Node);
       Node.Trigger := Trigger;
@@ -111,41 +112,43 @@ package body Linted.Wait_Lists with
       declare
          N : Tags.Tagged_Access;
       begin
-         Node_Access_Atomics.Get (Node.Next, N);
-	 Node_Access_Atomics.Set (Node.Next, Tags.To (null, Tags.Tag (N)));
+         N := Node_Access_Atomics.Load (Node.Next);
+         Node_Access_Atomics.Store (Node.Next, Tags.To (null, Tags.Tag (N)));
       end;
 
       loop
          loop
-            Node_Access_Atomics.Get (Q.Tail, Tail);
-            Node_Access_Atomics.Get (Tags.From (Tail).Next, Next);
-            Node_Access_Atomics.Get (Q.Tail, Tail_Again);
+            Tail := Node_Access_Atomics.Load (Q.Tail);
+            Next := Node_Access_Atomics.Load (Tags.From (Tail).Next);
+            Tail_Again := Node_Access_Atomics.Load (Q.Tail);
             exit when Tail = Tail_Again;
             Sched.Backoff (Q.Tail_Contention);
          end loop;
          Sched.Success (Q.Tail_Contention);
 
          if Tags.From (Next) = null then
-            Node_Access_Atomics.Compare_And_Swap
+            Node_Access_Atomics.Compare_Exchange_Strong
               (Tags.From (Tail).Next,
                Next,
                Tags.To (Node, Tags.Tag (Next) + 1),
                Success);
             exit when Success;
          else
-            Node_Access_Atomics.Compare_And_Swap
+            Node_Access_Atomics.Compare_Exchange_Strong
               (Q.Tail,
                Tail,
-               Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1));
+               Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1),
+               Unused);
          end if;
-	 Sched.Backoff (Q.Tail_Contention);
+         Sched.Backoff (Q.Tail_Contention);
       end loop;
       Sched.Success (Q.Tail_Contention);
 
-      Node_Access_Atomics.Compare_And_Swap
+      Node_Access_Atomics.Compare_Exchange_Strong
         (Q.Tail,
          Tail,
-         Tags.To (Node, Tags.Tag (Tail) + 1));
+         Tags.To (Node, Tags.Tag (Tail) + 1),
+         Unused);
    end Enqueue;
 
    procedure Dequeue (Q : in out Queue; Trigger : out Suspend_Access) is
@@ -155,13 +158,14 @@ package body Linted.Wait_Lists with
       Next : Tags.Tagged_Access;
       Success : Boolean;
       Dequeued : Node_Access;
+      Unused : Boolean;
    begin
       loop
          loop
-            Node_Access_Atomics.Get (Q.Head, Head);
-            Node_Access_Atomics.Get (Q.Tail, Tail);
-            Node_Access_Atomics.Get (Tags.From (Head).Next, Next);
-            Node_Access_Atomics.Get (Q.Head, Head_Again);
+            Head := Node_Access_Atomics.Load (Q.Head);
+            Tail := Node_Access_Atomics.Load (Q.Tail);
+            Next := Node_Access_Atomics.Load (Tags.From (Head).Next);
+            Head_Again := Node_Access_Atomics.Load (Q.Head);
             exit when Head = Head_Again;
             Sched.Backoff (Q.Head_Contention);
          end loop;
@@ -173,28 +177,29 @@ package body Linted.Wait_Lists with
                Trigger := null;
                exit;
             end if;
-            Node_Access_Atomics.Compare_And_Swap
+            Node_Access_Atomics.Compare_Exchange_Strong
               (Q.Tail,
                Tail,
-               Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1));
+               Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1),
+               Unused);
          else
             Trigger := Tags.From (Next).Trigger;
-            Node_Access_Atomics.Compare_And_Swap
+            Node_Access_Atomics.Compare_Exchange_Strong
               (Q.Head,
                Head,
                Tags.To (Tags.From (Next), Tags.Tag (Head) + 1),
                Success);
-	    if Success then
-	       Dequeued := Tags.From (Head);
-	       exit;
-	    end if;
+            if Success then
+               Dequeued := Tags.From (Head);
+               exit;
+            end if;
          end if;
-	 Sched.Backoff (Q.Head_Contention);
+         Sched.Backoff (Q.Head_Contention);
       end loop;
       Sched.Success (Q.Head_Contention);
 
       if Dequeued /= null then
-	 Deallocate (Dequeued);
+         Deallocate (Dequeued);
       end if;
    end Dequeue;
 
@@ -204,7 +209,7 @@ package body Linted.Wait_Lists with
       Success : Boolean;
    begin
       loop
-         Node_Access_Atomics.Get (Free_List, Head);
+         Head := Node_Access_Atomics.Load (Free_List);
          if null = Tags.From (Head) then
             N := new Node;
             Sched.Success (Free_List_Contention);
@@ -212,8 +217,8 @@ package body Linted.Wait_Lists with
          end if;
          N := Tags.From (Head);
          --  .Next is safe because nodes are never deallocated
-         Node_Access_Atomics.Get (N.Next, Next);
-         Node_Access_Atomics.Compare_And_Swap
+         Next := Node_Access_Atomics.Load (N.Next);
+         Node_Access_Atomics.Compare_Exchange_Strong
            (Free_List,
             Head,
             Tags.To (Tags.From (Next), Tags.Tag (Head) + 1),
@@ -222,18 +227,18 @@ package body Linted.Wait_Lists with
          Sched.Backoff (Free_List_Contention);
       end loop;
       Sched.Success (Free_List_Contention);
-      Node_Access_Atomics.Set (N.Next, Tags.To (null, 0));
+      Node_Access_Atomics.Store (N.Next, Tags.To (null, 0));
    end Allocate;
 
    procedure Deallocate (N : Node_Access) is
       Head : Tags.Tagged_Access;
       Success : Boolean;
    begin
-      Node_Access_Atomics.Set (N.Next, Tags.To (null, 0));
+      Node_Access_Atomics.Store (N.Next, Tags.To (null, 0));
       loop
-         Node_Access_Atomics.Get (Free_List, Head);
-         Node_Access_Atomics.Set (N.Next, Tags.To (Tags.From (Head), 0));
-         Node_Access_Atomics.Compare_And_Swap
+         Head := Node_Access_Atomics.Load (Free_List);
+         Node_Access_Atomics.Store (N.Next, Tags.To (Tags.From (Head), 0));
+         Node_Access_Atomics.Compare_Exchange_Strong
            (Free_List,
             Head,
             Tags.To (N, Tags.Tag (Head) + 1),

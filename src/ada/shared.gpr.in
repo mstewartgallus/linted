@@ -30,7 +30,8 @@ abstract project Shared is
   end Builder;
 
   package Compiler is
-     C_Switches := ("-Wall", "-Wextra",
+     C_Switches := (
+     "-Wall", "-Wextra",
       -- "-Wstack-usage=500",
   		    "-g",
   		    "-fvar-tracking-assignments",
