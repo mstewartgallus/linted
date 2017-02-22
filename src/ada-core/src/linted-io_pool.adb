@@ -165,13 +165,13 @@ is
    Worker_Tasks : Worker_Task_Array (1 .. 16);
 
    type Read_Future_Channels_Array is
-     array (Live_Read_Future) of Reader_Event_Channels.Channel;
+     array (Live_Read_Future) of Reader_Event_Channels.Channel with Independent_Components;
    type Write_Future_Channels_Array is
-     array (Live_Write_Future) of Writer_Event_Channels.Channel;
+     array (Live_Write_Future) of Writer_Event_Channels.Channel with Independent_Components;
    type Poller_Future_Channels_Array is
-     array (Live_Poll_Future) of Poller_Event_Channels.Channel;
+     array (Live_Poll_Future) of Poller_Event_Channels.Channel with Independent_Components;
    type Remind_Me_Future_Channels_Array is
-     array (Live_Remind_Me_Future) of Remind_Me_Event_Channels.Channel;
+     array (Live_Remind_Me_Future) of Remind_Me_Event_Channels.Channel with Independent_Components;
 
    Read_Future_Channels : Read_Future_Channels_Array;
    Write_Future_Channels : Write_Future_Channels_Array;

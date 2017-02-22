@@ -34,7 +34,8 @@ package body Linted.Wait_Lists with
    type Suspend_Access is access Suspend;
 
    type Node is record
-      Trigger : Suspend_Access;
+      Trigger : Suspend_Access with
+         Independent;
       Next : Node_Access_Atomics.Atomic;
    end record;
 
@@ -62,7 +63,11 @@ package body Linted.Wait_Lists with
       end if;
 
       if null = Local_Trigger then
+         --  In this case allocation is okay because it is bounded by
+         --  the number of tasks
+         pragma Warnings (Off);
          Local_Trigger := new Suspend;
+         pragma Warnings (On);
       end if;
 
       Enqueue (W.Q, Local_Trigger);
@@ -71,7 +76,6 @@ package body Linted.Wait_Lists with
 
    procedure Broadcast (W : in out Wait_List) is
       Trigger : Suspend_Access;
-      Success : Boolean;
    begin
       Boolean_Atomics.Store (W.Triggered, True, Memory_Order_Release);
 
@@ -96,8 +100,11 @@ package body Linted.Wait_Lists with
    procedure Initialize (Q : in out Queue) is
       N : Node_Access;
    begin
-      --  Can't use the free list
+      --  Can't use the free list. Allocation is bounded by the number
+      --  of Wait_Lists
+      pragma Warnings (Off);
       N := new Node;
+      pragma Warnings (On);
       Node_Access_Atomics.Store
         (N.Next,
          Tags.To (null, 0),
@@ -241,7 +248,10 @@ package body Linted.Wait_Lists with
       loop
          Head := Node_Access_Atomics.Load (Free_List);
          if null = Tags.From (Head) then
+            --  Allocation is bounded by the number of tasks
+            pragma Warnings (Off);
             N := new Node;
+            pragma Warnings (On);
             Sched.Success (Free_List_Contention);
             return;
          end if;

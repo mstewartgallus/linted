@@ -14,9 +14,10 @@
 private with System;
 
 generic
-   type Access_T is private;
+   type Element_T;
+   type Access_T is access Element_T;
 package Linted.Tagged_Accessors is
-   pragma Pure;
+   pragma Preelaborate;
 
    type Tagged_Access is private with
       Preelaborable_Initialization;

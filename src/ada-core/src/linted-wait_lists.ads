@@ -44,7 +44,7 @@ private
 
    type Node_Access is access all Node;
 
-   package Tags is new Tagged_Accessors (Node_Access);
+   package Tags is new Tagged_Accessors (Node, Node_Access);
    package Node_Access_Atomics is new GCC_Atomics.Atomic_Ts
      (Tags.Tagged_Access);
    package Boolean_Atomics is new GCC_Atomics.Atomic_Ts (Default_False);

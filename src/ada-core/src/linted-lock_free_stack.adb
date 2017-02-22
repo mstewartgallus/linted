@@ -35,12 +35,15 @@ is
 
    use type ABA.Tag_T;
 
-   type Element_Array is array (My_Ix range 1 .. My_Ix (Ix'Last)) of Element_T;
+   type Element_Array is
+     array (My_Ix range 1 .. My_Ix (Ix'Last)) of Element_T with
+        Independent_Components;
 
    Buf_Contents : Element_Array;
 
    type Node_Array is
-     array (My_Ix range 1 .. My_Ix (Ix'Last)) of Access_Atomics.Atomic;
+     array (My_Ix range 1 .. My_Ix (Ix'Last)) of Access_Atomics.Atomic with
+        Independent_Components;
 
    Buf_Nodes : Node_Array;
 

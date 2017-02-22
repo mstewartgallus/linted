@@ -36,9 +36,11 @@ package body Linted.Controls_Reader is
    type Live_Future is new Future range 1 .. Future'Last with
         Default_Value => 1;
 
-   Read_Futures : array (Live_Future) of Reader.Future;
+   Read_Futures : array (Live_Future) of Reader.Future with
+      Independent_Components;
    Data_Being_Read : array (Live_Future) of aliased Controls.Storage :=
-     (others => (others => 16#7F#));
+     (others => (others => 16#7F#)) with
+      Independent_Components;
 
    type Ix is mod Max_Nodes + 2;
    function Is_Valid (Element : Live_Future) return Boolean is (True);

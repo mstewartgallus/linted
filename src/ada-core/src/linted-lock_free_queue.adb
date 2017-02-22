@@ -47,9 +47,10 @@ is
    use type Valid_ABA.ABA;
    use type Valid_ABA.Tag_T;
 
-   type Element_Array is array (Valid_Ix) of Element_T;
-
-   type Node_Array is array (Valid_Ix) of Aba_Atomics.Atomic;
+   type Element_Array is array (Valid_Ix) of Element_T with
+        Independent_Components;
+   type Node_Array is array (Valid_Ix) of Aba_Atomics.Atomic with
+        Independent_Components;
 
    Buf_Contents : Element_Array;
    Buf_Nodes : Node_Array;
