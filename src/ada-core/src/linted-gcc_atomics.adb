@@ -233,10 +233,8 @@ package body Linted.GCC_Atomics with
          Success_Order : Memory_Order := Memory_Order_Seq_Cst;
          Failure_Order : Memory_Order := Memory_Order_Seq_Cst)
       is
-         M : constant Interfaces.C.int :=
-           Memory_Order'Pos (Success_Order);
-         N : constant Interfaces.C.int :=
-           Memory_Order'Pos (Failure_Order);
+         M : constant Interfaces.C.int := Memory_Order'Pos (Success_Order);
+         N : constant Interfaces.C.int := Memory_Order'Pos (Failure_Order);
          Expected : Element_T := Old_Element;
       begin
          case A.Value'Size is
@@ -290,10 +288,8 @@ package body Linted.GCC_Atomics with
          Success_Order : Memory_Order := Memory_Order_Seq_Cst;
          Failure_Order : Memory_Order := Memory_Order_Seq_Cst)
       is
-         M : constant Interfaces.C.int :=
-           Memory_Order'Pos (Success_Order);
-         N : constant Interfaces.C.int :=
-           Memory_Order'Pos (Failure_Order);
+         M : constant Interfaces.C.int := Memory_Order'Pos (Success_Order);
+         N : constant Interfaces.C.int := Memory_Order'Pos (Failure_Order);
          Expected : Element_T := Old_Element;
       begin
          case A.Value'Size is

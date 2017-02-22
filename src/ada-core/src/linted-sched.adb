@@ -12,21 +12,13 @@
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
 with Ada.Dispatching;
-with System.Machine_Code;
 
 package body Linted.Sched is
 
    High_Contention_Count : constant := 16;
 
-   procedure Pause with
-      Spark_Mode,
-      Inline_Always;
-
-   procedure Pause with
-      Spark_Mode => Off is
-   begin
-      System.Machine_Code.Asm ("pause", Volatile => True);
-   end Pause;
+   procedure Pause;
+   pragma Import (Intrinsic, Pause, "__builtin_ia32_pause");
 
    procedure Backoff (State : in out Backoff_State) is
    begin

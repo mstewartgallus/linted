@@ -24,9 +24,9 @@ package Linted.GCC_Atomics with
       Memory_Order_Seq_Cst);
 
    procedure Thread_Fence (Order : Memory_Order) with
-     Inline_Always;
+      Inline_Always;
    procedure Signal_Fence (Order : Memory_Order) with
-     Inline_Always;
+      Inline_Always;
 
    generic
       type Element_T is private;
@@ -43,9 +43,7 @@ package Linted.GCC_Atomics with
          Depends => (A =>+ (Element, Order));
       function Load
         (A : Atomic;
-         Order : Memory_Order :=
-           Memory_Order_Seq_Cst)
-         return Element_T with
+         Order : Memory_Order := Memory_Order_Seq_Cst) return Element_T with
          Inline_Always,
          Global => null,
          Depends => (Load'Result => (A, Order));
@@ -81,9 +79,7 @@ package Linted.GCC_Atomics with
          Order : Memory_Order := Memory_Order_Seq_Cst) with
          Inline_Always,
          Global => null,
-         Depends =>
-         (Old_Element => (A, Order),
-          A =>+ (New_Element, Order));
+         Depends => (Old_Element => (A, Order), A =>+ (New_Element, Order));
    private
       -- A record has to be used so that it is passed by pointer
       type Atomic is record
