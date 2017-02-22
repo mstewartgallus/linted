@@ -256,32 +256,11 @@ package Libc.Unistd is
       Spark_Mode => Off;  -- /usr/include/unistd.h:563
    pragma Import (C, execv, "execv");
 
-   function execle
-     (path : Interfaces.C.Strings.chars_ptr;
-      arg : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int with
-      Spark_Mode => Off;  -- /usr/include/unistd.h:568
-   pragma Import (C, execle, "execle");
-
-   function execl
-     (path : Interfaces.C.Strings.chars_ptr;
-      arg : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int with
-      Spark_Mode => Off;  -- /usr/include/unistd.h:573
-   pragma Import (C, execl, "execl");
-
    function execvp
      (file : Interfaces.C.Strings.chars_ptr;
       argv : System.Address) return int with
       Spark_Mode => Off;  -- /usr/include/unistd.h:578
    pragma Import (C, execvp, "execvp");
-
-   function execlp
-     (file : Interfaces.C.Strings.chars_ptr;
-      arg : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int with
-      Spark_Mode => Off;  -- /usr/include/unistd.h:584
-   pragma Import (C, execlp, "execlp");
 
    function execvpe
      (file : Interfaces.C.Strings.chars_ptr;
@@ -664,7 +643,7 @@ package Libc.Unistd is
    function syscall (sysno : long  -- , ...
    ) return long with
       Spark_Mode => Off;  -- /usr/include/unistd.h:1058
-   pragma Import (C, syscall, "syscall");
+   pragma Import (C_Variadic_1, syscall, "syscall");
 
    function lockf
      (fd : int;

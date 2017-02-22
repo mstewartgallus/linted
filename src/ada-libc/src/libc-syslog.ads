@@ -89,7 +89,7 @@ package Libc.Syslog with
 
    procedure syslog (pri : int; fmt : char_array  -- , ...
    );  -- /usr/include/x86_64-linux-gnu/sys/syslog.h:190
-   pragma Import (C, syslog, "syslog");
+   pragma Import (C_Variadic_2, syslog, "syslog");
 
    procedure vsyslog
      (pri : int;

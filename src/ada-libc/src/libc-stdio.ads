@@ -98,45 +98,6 @@ package Libc.Stdio with
       size : size_t);  -- /usr/include/stdio.h:343
    pragma Import (C, setbuffer, "setbuffer");
 
-   function fprintf
-     (stream : access FILE;
-      format : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int;  -- /usr/include/stdio.h:356
-   pragma Import (C, fprintf, "fprintf");
-
-   function fscanf
-     (stream : access FILE;
-      format : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int;  -- /usr/include/stdio.h:425
-   pragma Import (C, fscanf, "fscanf");
-
-   function printf (format : Interfaces.C.Strings.chars_ptr  -- , ...
-   ) return int;  -- /usr/include/stdio.h:362
-   pragma Import (C, printf, "printf");
-
-   function scanf (format : Interfaces.C.Strings.chars_ptr  -- , ...
-   ) return int;  -- /usr/include/stdio.h:431
-   pragma Import (C, scanf, "scanf");
-
-   function snprintf
-     (s : Interfaces.C.Strings.chars_ptr;
-      maxlen : size_t;
-      format : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int;  -- /usr/include/stdio.h:386
-   pragma Import (C, snprintf, "snprintf");
-
-   function sprintf
-     (s : Interfaces.C.Strings.chars_ptr;
-      format : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int;  -- /usr/include/stdio.h:364
-   pragma Import (C, sprintf, "sprintf");
-
-   function sscanf
-     (s : Interfaces.C.Strings.chars_ptr;
-      format : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int;  -- /usr/include/stdio.h:433
-   pragma Import (C, sscanf, "sscanf");
-
    function vfprintf
      (s : access FILE;
       format : Interfaces.C.Strings.chars_ptr;
@@ -167,23 +128,11 @@ package Libc.Stdio with
       arg : access System.Address) return int;  -- /usr/include/stdio.h:399
    pragma Import (C, vasprintf, "vasprintf");
 
-   function asprintf
-     (ptr : System.Address;
-      fmt : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int;  -- /usr/include/stdio.h:405
-   pragma Import (C, asprintf, "asprintf");
-
    function vdprintf
      (fd : int;
       fmt : Interfaces.C.Strings.chars_ptr;
       arg : access System.Address) return int;  -- /usr/include/stdio.h:412
    pragma Import (C, vdprintf, "vdprintf");
-
-   function dprintf
-     (fd : int;
-      fmt : Interfaces.C.Strings.chars_ptr  -- , ...
-      ) return int;  -- /usr/include/stdio.h:415
-   pragma Import (C, dprintf, "dprintf");
 
    function vfscanf
      (s : access FILE;

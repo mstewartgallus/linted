@@ -225,17 +225,17 @@ package body Linted.GCC_Atomics with
          end case;
       end Load;
 
-      procedure Compare_Exchange_Weak
+      function Compare_Exchange_Weak
         (A : in out Atomic;
          Old_Element : Element_T;
          New_Element : Element_T;
-         Success : out Boolean;
          Success_Order : Memory_Order := Memory_Order_Seq_Cst;
-         Failure_Order : Memory_Order := Memory_Order_Seq_Cst)
+         Failure_Order : Memory_Order := Memory_Order_Seq_Cst) return Boolean
       is
          M : constant Interfaces.C.int := Memory_Order'Pos (Success_Order);
          N : constant Interfaces.C.int := Memory_Order'Pos (Failure_Order);
          Expected : Element_T := Old_Element;
+         Success : Boolean;
       begin
          case A.Value'Size is
             when 8 =>
@@ -277,20 +277,20 @@ package body Linted.GCC_Atomics with
             when others =>
                raise Program_Error;
          end case;
-         pragma Unused (Success);
+         return Success;
       end Compare_Exchange_Weak;
 
-      procedure Compare_Exchange_Strong
+      function Compare_Exchange_Strong
         (A : in out Atomic;
          Old_Element : Element_T;
          New_Element : Element_T;
-         Success : out Boolean;
          Success_Order : Memory_Order := Memory_Order_Seq_Cst;
-         Failure_Order : Memory_Order := Memory_Order_Seq_Cst)
+         Failure_Order : Memory_Order := Memory_Order_Seq_Cst) return Boolean
       is
          M : constant Interfaces.C.int := Memory_Order'Pos (Success_Order);
          N : constant Interfaces.C.int := Memory_Order'Pos (Failure_Order);
          Expected : Element_T := Old_Element;
+         Success : Boolean;
       begin
          case A.Value'Size is
             when 8 =>
@@ -332,17 +332,16 @@ package body Linted.GCC_Atomics with
             when others =>
                raise Program_Error;
          end case;
-         pragma Unused (Success);
+         return Success;
       end Compare_Exchange_Strong;
 
-      procedure Exchange
+      function Exchange
         (A : in out Atomic;
-         Old_Element : out Element_T;
          New_Element : Element_T;
-         Order : Memory_Order := Memory_Order_Seq_Cst)
+         Order : Memory_Order := Memory_Order_Seq_Cst) return Element_T
       is
          M : constant Interfaces.C.int := Memory_Order'Pos (Order);
-         Result : Element_T;
+         Old_Element : Element_T;
       begin
          case A.Value'Size is
             when 8 =>
@@ -376,6 +375,7 @@ package body Linted.GCC_Atomics with
             when others =>
                raise Program_Error;
          end case;
+         return Old_Element;
       end Exchange;
    end Atomic_Ts;
 end Linted.GCC_Atomics;

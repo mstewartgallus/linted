@@ -94,7 +94,7 @@ package Libc.Fcntl with
      (fd : Interfaces.C.int;
       cmd : Interfaces.C.int  -- , ...
       ) return Interfaces.C.int;  -- /usr/include/fcntl.h:137
-   pragma Import (C, fcntl, "fcntl");
+   pragma Import (C_Variadic_2, fcntl, "fcntl");
 
    function open
      (file : Interfaces.C.Strings.chars_ptr;
@@ -115,14 +115,14 @@ package Libc.Fcntl with
       file : Interfaces.C.Strings.chars_ptr;
       oflag : Interfaces.C.int  -- , ...
       ) return Interfaces.C.int;  -- /usr/include/fcntl.h:170
-   pragma Import (C, openat, "openat");
+   pragma Import (C_Variadic_3, openat, "openat");
 
    function openat64
      (fd : Interfaces.C.int;
       file : Interfaces.C.Strings.chars_ptr;
       oflag : Interfaces.C.int  -- , ...
       ) return Interfaces.C.int;  -- /usr/include/fcntl.h:181
-   pragma Import (C, openat64, "openat64");
+   pragma Import (C_Variadic_3, openat64, "openat64");
 
    function creat
      (file : Interfaces.C.Strings.chars_ptr;

@@ -23,7 +23,7 @@ package body Linted.Logs is
    use type C.unsigned;
 
    procedure syslog (pri : C.int; fmt : C.char_array; str : C.char_array);
-   pragma Import (C, syslog, "syslog");
+   pragma Import (C_Variadic_2, syslog, "syslog");
 
    procedure Log (Pri : Priority; Str : String) with
       Spark_Mode => Off is

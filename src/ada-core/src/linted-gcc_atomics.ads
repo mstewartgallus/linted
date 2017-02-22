@@ -11,8 +11,11 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
 -- implied.  See the License for the specific language governing
 -- permissions and limitations under the License.
-package Linted.GCC_Atomics with
-     Spark_Mode is
+
+-- Memory ordering stuff isn't understood by SPARK and can be used to
+-- produce unsafe code.
+   package Linted.GCC_Atomics with
+     Spark_Mode => Off is
    pragma Pure;
 
    type Memory_Order is
@@ -31,55 +34,42 @@ package Linted.GCC_Atomics with
    generic
       type Element_T is private;
    package Atomic_Ts with
-      Spark_Mode is
+      Spark_Mode => Off is
       type Atomic is limited private;
 
       procedure Store
         (A : in out Atomic;
          Element : Element_T;
          Order : Memory_Order := Memory_Order_Seq_Cst) with
-         Inline_Always,
-         Global => null,
-         Depends => (A =>+ (Element, Order));
+         Inline_Always;
       function Load
         (A : Atomic;
          Order : Memory_Order := Memory_Order_Seq_Cst) return Element_T with
-         Inline_Always,
-         Global => null,
-         Depends => (Load'Result => (A, Order));
-      procedure Compare_Exchange_Strong
+         Inline_Always;
+      function Compare_Exchange_Strong
         (A : in out Atomic;
          Old_Element : Element_T;
          New_Element : Element_T;
-         Success : out Boolean;
          Success_Order : Memory_Order := Memory_Order_Seq_Cst;
-         Failure_Order : Memory_Order := Memory_Order_Seq_Cst) with
-         Inline_Always,
-         Global => null,
-         Depends =>
-         (Success => (A, Old_Element, Success_Order),
-          A =>+ (Old_Element, New_Element, Failure_Order));
-      procedure Compare_Exchange_Weak
+         Failure_Order : Memory_Order :=
+           Memory_Order_Seq_Cst)
+         return Boolean with
+         Inline_Always;
+      function Compare_Exchange_Weak
         (A : in out Atomic;
          Old_Element : Element_T;
          New_Element : Element_T;
-         Success : out Boolean;
          Success_Order : Memory_Order := Memory_Order_Seq_Cst;
-         Failure_Order : Memory_Order := Memory_Order_Seq_Cst) with
-         Inline_Always,
-         Global => null,
-         Depends =>
-         (Success => (A, Old_Element, Success_Order),
-          A =>+ (Old_Element, New_Element, Failure_Order));
+         Failure_Order : Memory_Order :=
+           Memory_Order_Seq_Cst)
+         return Boolean with
+         Inline_Always;
 
-      procedure Exchange
+      function Exchange
         (A : in out Atomic;
-         Old_Element : out Element_T;
          New_Element : Element_T;
-         Order : Memory_Order := Memory_Order_Seq_Cst) with
-         Inline_Always,
-         Global => null,
-         Depends => (Old_Element => (A, Order), A =>+ (New_Element, Order));
+         Order : Memory_Order := Memory_Order_Seq_Cst) return Element_T with
+         Inline_Always;
    private
       -- A record has to be used so that it is passed by pointer
       type Atomic is record
