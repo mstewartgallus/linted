@@ -13,7 +13,7 @@
 -- permissions and limitations under the License.
 with Ada.Finalization;
 
-private with Linted.XAtomics;
+private with Linted.GCC_Atomics;
 private with Linted.Sched;
 private with Linted.Tagged_Accessors;
 
@@ -45,8 +45,9 @@ private
    type Node_Access is access all Node;
 
    package Tags is new Tagged_Accessors (Node_Access);
-   package Node_Access_Atomics is new XAtomics (Tags.Tagged_Access);
-   package Boolean_Atomics is new XAtomics (Default_False);
+   package Node_Access_Atomics is new GCC_Atomics.Atomic_Ts
+     (Tags.Tagged_Access);
+   package Boolean_Atomics is new GCC_Atomics.Atomic_Ts (Default_False);
 
    type Queue is new Ada.Finalization.Limited_Controlled with record
       Head : Node_Access_Atomics.Atomic;

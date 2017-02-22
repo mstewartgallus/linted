@@ -18,15 +18,23 @@ with Interfaces;
 package body Linted.Tagged_Accessors is
    use type Interfaces.Unsigned_64;
 
+   --  Warnings are off because of a spurious warning about strict
+   --  aliasing
+   pragma Warnings (Off);
+   function Convert is new Ada.Unchecked_Conversion
+     (Source => Access_T,
+      Target => Tagged_Access);
+   function Convert is new Ada.Unchecked_Conversion
+     (Source => Tagged_Access,
+      Target => Access_T);
+   pragma Warnings (On);
+
    function To (Ptr : Access_T) return Tagged_Access is
    begin
       return To (Ptr, 0);
    end To;
 
    function To (Ptr : Access_T; Tag : Tag_Bits) return Tagged_Access is
-      function Convert is new Ada.Unchecked_Conversion
-        (Source => Access_T,
-         Target => Tagged_Access);
       Converted : Tagged_Access;
    begin
       Converted := Convert (Ptr);
@@ -38,9 +46,6 @@ package body Linted.Tagged_Accessors is
    end To;
 
    function From (Ptr : Tagged_Access) return Access_T is
-      function Convert is new Ada.Unchecked_Conversion
-        (Source => Tagged_Access,
-         Target => Access_T);
    begin
       return Convert
           (Ptr and 2#11111111_11111111_11111111_11111111_11111111_11111111#);
