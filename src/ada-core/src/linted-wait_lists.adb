@@ -22,6 +22,7 @@ package body Linted.Wait_Lists with
      Refined_State => (State => (Free_List, Free_List_Contention)) is
    package STC renames Ada.Synchronous_Task_Control;
 
+   use Linted.GCC_Atomics;
    use type Tags.Tagged_Access;
    use type Tags.Tag_Bits;
    use type Sched.Backoff_State;
@@ -51,7 +52,8 @@ package body Linted.Wait_Lists with
    procedure Wait (W : in out Wait_List) is
       Is_Triggered : Default_False;
    begin
-      Boolean_Atomics.Exchange (W.Triggered, Is_Triggered, False);
+      Boolean_Atomics.Exchange (W.Triggered, Is_Triggered, False,
+				Memory_Order_Acq_Rel);
       if Is_Triggered then
          return;
       end if;
@@ -68,7 +70,7 @@ package body Linted.Wait_Lists with
       Trigger : Suspend_Access;
       Success : Boolean;
    begin
-      Boolean_Atomics.Store (W.Triggered, True);
+      Boolean_Atomics.Store (W.Triggered, True, Memory_Order_Release);
 
       loop
          Dequeue (W.Q, Trigger);
@@ -80,7 +82,7 @@ package body Linted.Wait_Lists with
    procedure Signal (W : in out Wait_List) is
       Trigger : Suspend_Access;
    begin
-      Boolean_Atomics.Store (W.Triggered, True);
+      Boolean_Atomics.Store (W.Triggered, True, Memory_Order_Release);
 
       Dequeue (W.Q, Trigger);
       if Trigger /= null then
@@ -93,9 +95,9 @@ package body Linted.Wait_Lists with
    begin
       --  Can't use the free list
       N := new Node;
-      Node_Access_Atomics.Store (N.Next, Tags.To (null, 0));
-      Node_Access_Atomics.Store (Q.Head, Tags.To (N, 0));
-      Node_Access_Atomics.Store (Q.Tail, Tags.To (N, 0));
+      Node_Access_Atomics.Store (N.Next, Tags.To (null, 0), Memory_Order_Relaxed);
+      Node_Access_Atomics.Store (Q.Head, Tags.To (N, 0), Memory_Order_Relaxed);
+      Node_Access_Atomics.Store (Q.Tail, Tags.To (N, 0), Memory_Order_Relaxed);
    end Initialize;
 
    procedure Enqueue (Q : in out Queue; Trigger : Suspend_Access) is
@@ -112,33 +114,35 @@ package body Linted.Wait_Lists with
       declare
          N : Tags.Tagged_Access;
       begin
-         N := Node_Access_Atomics.Load (Node.Next);
-         Node_Access_Atomics.Store (Node.Next, Tags.To (null, Tags.Tag (N)));
+         N := Node_Access_Atomics.Load (Node.Next, Memory_Order_Acquire);
+         Node_Access_Atomics.Store (Node.Next, Tags.To (null, Tags.Tag (N)), Memory_Order_Release);
       end;
 
       loop
          loop
-            Tail := Node_Access_Atomics.Load (Q.Tail);
-            Next := Node_Access_Atomics.Load (Tags.From (Tail).Next);
-            Tail_Again := Node_Access_Atomics.Load (Q.Tail);
+            Tail := Node_Access_Atomics.Load (Q.Tail, Memory_Order_Relaxed);
+	    --  Do not load .Next before Tail is loaded
+            Next := Node_Access_Atomics.Load (Tags.From (Tail).Next, Memory_Order_Acquire);
+            Tail_Again := Node_Access_Atomics.Load (Q.Tail, Memory_Order_Acquire);
             exit when Tail = Tail_Again;
             Sched.Backoff (Q.Tail_Contention);
          end loop;
          Sched.Success (Q.Tail_Contention);
 
          if Tags.From (Next) = null then
-            Node_Access_Atomics.Compare_Exchange_Strong
+            Node_Access_Atomics.Compare_Exchange_Weak
               (Tags.From (Tail).Next,
                Next,
                Tags.To (Node, Tags.Tag (Next) + 1),
-               Success);
+               Success, Memory_Order_Acq_Rel, Memory_Order_Acquire);
             exit when Success;
          else
-            Node_Access_Atomics.Compare_Exchange_Strong
+            Node_Access_Atomics.Compare_Exchange_Weak
               (Q.Tail,
                Tail,
                Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1),
-               Unused);
+               Unused,
+	       Memory_Order_Acq_Rel, Memory_Order_Acquire);
          end if;
          Sched.Backoff (Q.Tail_Contention);
       end loop;
@@ -148,7 +152,7 @@ package body Linted.Wait_Lists with
         (Q.Tail,
          Tail,
          Tags.To (Node, Tags.Tag (Tail) + 1),
-         Unused);
+         Unused, Memory_Order_Acq_Rel, Memory_Order_Acquire);
    end Enqueue;
 
    procedure Dequeue (Q : in out Queue; Trigger : out Suspend_Access) is
@@ -162,9 +166,10 @@ package body Linted.Wait_Lists with
    begin
       loop
          loop
-            Head := Node_Access_Atomics.Load (Q.Head);
-            Tail := Node_Access_Atomics.Load (Q.Tail);
-            Next := Node_Access_Atomics.Load (Tags.From (Head).Next);
+            Head := Node_Access_Atomics.Load (Q.Head, Memory_Order_Relaxed);
+	    --  Do not load .Tail before .Head is loaded
+            Tail := Node_Access_Atomics.Load (Q.Tail, Memory_Order_Acquire);
+            Next := Node_Access_Atomics.Load (Tags.From (Head).Next, Memory_Order_Acquire);
             Head_Again := Node_Access_Atomics.Load (Q.Head);
             exit when Head = Head_Again;
             Sched.Backoff (Q.Head_Contention);
@@ -177,18 +182,20 @@ package body Linted.Wait_Lists with
                Trigger := null;
                exit;
             end if;
-            Node_Access_Atomics.Compare_Exchange_Strong
+            Node_Access_Atomics.Compare_Exchange_Weak
               (Q.Tail,
                Tail,
                Tags.To (Tags.From (Next), Tags.Tag (Tail) + 1),
-               Unused);
+               Unused,
+	       Memory_Order_Acq_Rel, Memory_Order_Acquire);
          else
             Trigger := Tags.From (Next).Trigger;
-            Node_Access_Atomics.Compare_Exchange_Strong
+            Node_Access_Atomics.Compare_Exchange_Weak
               (Q.Head,
                Head,
                Tags.To (Tags.From (Next), Tags.Tag (Head) + 1),
-               Success);
+               Success,
+	       Memory_Order_Acq_Rel, Memory_Order_Acquire);
             if Success then
                Dequeued := Tags.From (Head);
                exit;

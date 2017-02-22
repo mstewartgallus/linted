@@ -48,8 +48,8 @@ abstract project Shared is
 
   		    "-fpic", "-fPIC", "-fpie", "-fPIE",
 
-  		    -- "-fverbose-asm",
-  		    -- "-save-temps=cwd",
+  		    "-fverbose-asm",
+  		    "-save-temps=cwd",
 
   		    "-fstack-usage"
 

@@ -23,6 +23,11 @@ package Linted.GCC_Atomics with
       Memory_Order_Acq_Rel,
       Memory_Order_Seq_Cst);
 
+   procedure Thread_Fence (Order : Memory_Order) with
+     Inline_Always;
+   procedure Signal_Fence (Order : Memory_Order) with
+     Inline_Always;
+
    generic
       type Element_T is private;
    package Atomic_Ts with
@@ -32,60 +37,59 @@ package Linted.GCC_Atomics with
       procedure Store
         (A : in out Atomic;
          Element : Element_T;
-         Memory_Model : Memory_Order := Memory_Order_Seq_Cst) with
+         Order : Memory_Order := Memory_Order_Seq_Cst) with
          Inline_Always,
          Global => null,
-         Depends => (A =>+ (Element, Memory_Model));
+         Depends => (A =>+ (Element, Order));
       function Load
         (A : Atomic;
-         Memory_Model : Memory_Order :=
+         Order : Memory_Order :=
            Memory_Order_Seq_Cst)
          return Element_T with
          Inline_Always,
          Global => null,
-         Depends => (Load'Result => (A, Memory_Model));
+         Depends => (Load'Result => (A, Order));
       procedure Compare_Exchange_Strong
         (A : in out Atomic;
          Old_Element : Element_T;
          New_Element : Element_T;
          Success : out Boolean;
-         Success_Memory_Model : Memory_Order := Memory_Order_Seq_Cst;
-         Failure_Memory_Model : Memory_Order := Memory_Order_Seq_Cst) with
+         Success_Order : Memory_Order := Memory_Order_Seq_Cst;
+         Failure_Order : Memory_Order := Memory_Order_Seq_Cst) with
          Inline_Always,
          Global => null,
          Depends =>
-         (Success => (A, Old_Element, Success_Memory_Model),
-          A =>+ (Old_Element, New_Element, Failure_Memory_Model));
+         (Success => (A, Old_Element, Success_Order),
+          A =>+ (Old_Element, New_Element, Failure_Order));
       procedure Compare_Exchange_Weak
         (A : in out Atomic;
          Old_Element : Element_T;
          New_Element : Element_T;
          Success : out Boolean;
-         Success_Memory_Model : Memory_Order := Memory_Order_Seq_Cst;
-         Failure_Memory_Model : Memory_Order := Memory_Order_Seq_Cst) with
+         Success_Order : Memory_Order := Memory_Order_Seq_Cst;
+         Failure_Order : Memory_Order := Memory_Order_Seq_Cst) with
          Inline_Always,
          Global => null,
          Depends =>
-         (Success => (A, Old_Element, Success_Memory_Model),
-          A =>+ (Old_Element, New_Element, Failure_Memory_Model));
+         (Success => (A, Old_Element, Success_Order),
+          A =>+ (Old_Element, New_Element, Failure_Order));
 
       procedure Exchange
         (A : in out Atomic;
          Old_Element : out Element_T;
          New_Element : Element_T;
-         Memory_Model : Memory_Order := Memory_Order_Seq_Cst) with
+         Order : Memory_Order := Memory_Order_Seq_Cst) with
          Inline_Always,
          Global => null,
          Depends =>
-         (Old_Element => (A, Memory_Model),
-          A =>+ (New_Element, Memory_Model));
+         (Old_Element => (A, Order),
+          A =>+ (New_Element, Order));
    private
       -- A record has to be used so that it is passed by pointer
       type Atomic is record
          Value : Element_T with
             Atomic;
-      end record with
-         Volatile;
+      end record;
       pragma Convention (C, Atomic);
    end Atomic_Ts;
 end Linted.GCC_Atomics;

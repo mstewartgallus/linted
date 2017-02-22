@@ -21,6 +21,12 @@ package body Linted.GCC_Atomics with
    use Interfaces;
    use type Interfaces.C.int;
 
+   procedure Atomic_Thread_Fence (Memmodel : Interfaces.C.int);
+   pragma Import (Intrinsic, Atomic_Thread_Fence, "__atomic_thread_fence");
+
+   procedure Atomic_Signal_Fence (Memmodel : Interfaces.C.int);
+   pragma Import (Intrinsic, Atomic_Signal_Fence, "__atomic_signal_fence");
+
    procedure Atomic_Store_1
      (Ptr : System.Address;
       Val : Unsigned_8;
@@ -137,6 +143,16 @@ package body Linted.GCC_Atomics with
       Memmodel : Interfaces.C.int) return Unsigned_64;
    pragma Import (Intrinsic, Atomic_Exchange_8, "__atomic_exchange_8");
 
+   procedure Thread_Fence (Order : Memory_Order) is
+   begin
+      Atomic_Thread_Fence (Memory_Order'Pos (Order));
+   end Thread_Fence;
+
+   procedure Signal_Fence (Order : Memory_Order) is
+   begin
+      Atomic_Signal_Fence (Memory_Order'Pos (Order));
+   end Signal_Fence;
+
    package body Atomic_Ts with
         Spark_Mode => Off is
       pragma Compile_Time_Error
@@ -171,9 +187,9 @@ package body Linted.GCC_Atomics with
       procedure Store
         (A : in out Atomic;
          Element : Element_T;
-         Memory_Model : Memory_Order := Memory_Order_Seq_Cst)
+         Order : Memory_Order := Memory_Order_Seq_Cst)
       is
-         M : constant Interfaces.C.int := Memory_Order'Pos (Memory_Model);
+         M : constant Interfaces.C.int := Memory_Order'Pos (Order);
       begin
          case A.Value'Size is
             when 8 =>
@@ -191,9 +207,9 @@ package body Linted.GCC_Atomics with
 
       function Load
         (A : Atomic;
-         Memory_Model : Memory_Order := Memory_Order_Seq_Cst) return Element_T
+         Order : Memory_Order := Memory_Order_Seq_Cst) return Element_T
       is
-         M : constant Interfaces.C.int := Memory_Order'Pos (Memory_Model);
+         M : constant Interfaces.C.int := Memory_Order'Pos (Order);
       begin
          case A.Value'Size is
             when 8 =>
@@ -214,13 +230,13 @@ package body Linted.GCC_Atomics with
          Old_Element : Element_T;
          New_Element : Element_T;
          Success : out Boolean;
-         Success_Memory_Model : Memory_Order := Memory_Order_Seq_Cst;
-         Failure_Memory_Model : Memory_Order := Memory_Order_Seq_Cst)
+         Success_Order : Memory_Order := Memory_Order_Seq_Cst;
+         Failure_Order : Memory_Order := Memory_Order_Seq_Cst)
       is
          M : constant Interfaces.C.int :=
-           Memory_Order'Pos (Success_Memory_Model);
+           Memory_Order'Pos (Success_Order);
          N : constant Interfaces.C.int :=
-           Memory_Order'Pos (Failure_Memory_Model);
+           Memory_Order'Pos (Failure_Order);
          Expected : Element_T := Old_Element;
       begin
          case A.Value'Size is
@@ -271,13 +287,13 @@ package body Linted.GCC_Atomics with
          Old_Element : Element_T;
          New_Element : Element_T;
          Success : out Boolean;
-         Success_Memory_Model : Memory_Order := Memory_Order_Seq_Cst;
-         Failure_Memory_Model : Memory_Order := Memory_Order_Seq_Cst)
+         Success_Order : Memory_Order := Memory_Order_Seq_Cst;
+         Failure_Order : Memory_Order := Memory_Order_Seq_Cst)
       is
          M : constant Interfaces.C.int :=
-           Memory_Order'Pos (Success_Memory_Model);
+           Memory_Order'Pos (Success_Order);
          N : constant Interfaces.C.int :=
-           Memory_Order'Pos (Failure_Memory_Model);
+           Memory_Order'Pos (Failure_Order);
          Expected : Element_T := Old_Element;
       begin
          case A.Value'Size is
@@ -327,9 +343,9 @@ package body Linted.GCC_Atomics with
         (A : in out Atomic;
          Old_Element : out Element_T;
          New_Element : Element_T;
-         Memory_Model : Memory_Order := Memory_Order_Seq_Cst)
+         Order : Memory_Order := Memory_Order_Seq_Cst)
       is
-         M : constant Interfaces.C.int := Memory_Order'Pos (Memory_Model);
+         M : constant Interfaces.C.int := Memory_Order'Pos (Order);
          Result : Element_T;
       begin
          case A.Value'Size is
