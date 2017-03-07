@@ -17,9 +17,6 @@ package body Linted.Sched is
 
    High_Contention_Count : constant := 16;
 
-   procedure Pause;
-   pragma Import (Intrinsic, Pause, "__builtin_ia32_pause");
-
    procedure Backoff (State : in out Backoff_State) is
    begin
       if State < 20 then

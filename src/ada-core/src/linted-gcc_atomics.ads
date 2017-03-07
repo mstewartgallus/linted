@@ -73,8 +73,7 @@
    private
       -- A record has to be used so that it is passed by pointer
       type Atomic is record
-         Value : Element_T with
-            Atomic;
+         Value : Element_T;
       end record;
       pragma Convention (C, Atomic);
    end Atomic_Ts;

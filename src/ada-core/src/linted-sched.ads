@@ -47,4 +47,7 @@ package Linted.Sched with
       Inline_Always,
       Global => (null),
       Depends => ((Highly_Contended, C) => C);
+
+   procedure Pause;
+   pragma Import (Intrinsic, Pause, "__builtin_ia32_pause");
 end Linted.Sched;

@@ -14,7 +14,6 @@
 with Ada.Finalization;
 
 private with Linted.GCC_Atomics;
-private with Linted.Sched;
 private with Linted.Tagged_Accessors;
 
 package Linted.Wait_Lists with
@@ -27,9 +26,6 @@ package Linted.Wait_Lists with
    procedure Wait (W : in out Wait_List) with
       Global => (In_Out => State),
       Depends => ((State, W) => (State, W));
-   procedure Broadcast (W : in out Wait_List) with
-      Global => (In_Out => State),
-      Depends => ((State, W) => (State, W));
    procedure Signal (W : in out Wait_List) with
       Global => (In_Out => State),
       Depends => ((State, W) => (State, W));
@@ -38,22 +34,32 @@ private
 
    type Node;
 
-   type Default_False is new Boolean with
-        Default_Value => False;
-   for Default_False'Size use 8;
+   --  Should be 64 but we can only speciy up to 7
+   Cache_Line_Size : constant := 64;
+
+   type Waiter_Count is mod 2**32 with
+        Default_Value => 0;
 
    type Node_Access is access all Node;
 
    package Tags is new Tagged_Accessors (Node, Node_Access);
    package Node_Access_Atomics is new GCC_Atomics.Atomic_Ts
      (Tags.Tagged_Access);
-   package Boolean_Atomics is new GCC_Atomics.Atomic_Ts (Default_False);
+   package Waiter_Atomics is new GCC_Atomics.Atomic_Ts (Waiter_Count);
+
+   type Atomic_Node_Access is record
+      Value : Node_Access_Atomics.Atomic;
+   end record;
+   for Atomic_Node_Access'Alignment use Cache_Line_Size;
+
+   type Atomic_Waiter_Count is record
+      Value : Waiter_Atomics.Atomic;
+   end record;
+   for Atomic_Waiter_Count'Alignment use Cache_Line_Size;
 
    type Queue is new Ada.Finalization.Limited_Controlled with record
-      Head : Node_Access_Atomics.Atomic;
-      Tail : Node_Access_Atomics.Atomic;
-      Head_Contention : Sched.Contention;
-      Tail_Contention : Sched.Contention;
+      Head : Atomic_Node_Access;
+      Tail : Atomic_Node_Access;
    end record;
 
    overriding procedure Initialize (Q : in out Queue) with
@@ -62,6 +68,7 @@ private
 
    type Wait_List is record
       Q : Queue;
-      Triggered : Boolean_Atomics.Atomic;
+      Waiter_Count : Atomic_Waiter_Count;
    end record;
+   for Wait_List'Alignment use Cache_Line_Size;
 end Linted.Wait_Lists;
