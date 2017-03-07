@@ -37,7 +37,7 @@ private
    --  Should be 64 but we can only speciy up to 7
    Cache_Line_Size : constant := 64;
 
-   type Waiter_Count is mod 2**32 with
+   type Waiter_Count is range -2**31 .. 1 with
         Default_Value => 0;
 
    type Node_Access is access all Node;

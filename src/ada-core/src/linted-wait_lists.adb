@@ -95,7 +95,7 @@ package body Linted.Wait_Lists with
         Waiter_Atomics.Load (W.Waiter_Count.Value, Memory_Order_Acquire);
 
       loop
-         if Count >= 1 then
+         if Count = 1 then
             return;
          end if;
 
