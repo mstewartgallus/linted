@@ -23,9 +23,9 @@ package body Linted.Tagged_Accessors is
    pragma Warnings (Off);
    function Convert is new Ada.Unchecked_Conversion
      (Source => Access_T,
-      Target => Tagged_Access);
+      Target => Interfaces.Unsigned_64);
    function Convert is new Ada.Unchecked_Conversion
-     (Source => Tagged_Access,
+     (Source => Interfaces.Unsigned_64,
       Target => Access_T);
    pragma Warnings (On);
 
@@ -35,25 +35,28 @@ package body Linted.Tagged_Accessors is
    end To;
 
    function To (Ptr : Access_T; Tag : Tag_Bits) return Tagged_Access is
-      Converted : Tagged_Access;
+      Converted : Interfaces.Unsigned_64;
    begin
       Converted := Convert (Ptr);
       pragma Assert
         (Interfaces.Shift_Right (Interfaces.Unsigned_64 (Converted), 48) = 0);
-      return Converted or
-        Tagged_Access
-          (Interfaces.Shift_Left (Interfaces.Unsigned_64 (Tag), 48));
+      return Tagged_Access
+          (Interfaces.Shift_Right (Converted, 6) or
+           Interfaces.Shift_Left (Interfaces.Unsigned_64 (Tag), 42));
    end To;
 
    function From (Ptr : Tagged_Access) return Access_T is
    begin
       return Convert
-          (Ptr and 2#11111111_11111111_11111111_11111111_11111111_11111111#);
+          (Interfaces.Shift_Left
+             (Interfaces.Unsigned_64 (Ptr) and
+              2#11_11111111_11111111_11111111_11111111_11111111#,
+              6));
    end From;
 
    function Tag (Ptr : Tagged_Access) return Tag_Bits is
    begin
       return Tag_Bits
-          (Interfaces.Shift_Right (Interfaces.Unsigned_64 (Ptr), 48));
+          (Interfaces.Shift_Right (Interfaces.Unsigned_64 (Ptr), 42));
    end Tag;
 end Linted.Tagged_Accessors;
